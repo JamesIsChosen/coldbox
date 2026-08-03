@@ -52,11 +52,15 @@ Everything about Coldbox lives here. Guides and the glossary compile into the ap
 
 | | |
 |---|---|
+| [Roadmap](05-development/ROADMAP.md) | **What to build next.** Authoritative ordering |
+| [PR packet](05-development/pr-packet.md) | The independent-review deliverable |
 | [Build](05-development/build.md) | Reproducible build instructions |
 | [Dependencies](05-development/dependencies.md) | Pinned versions and upstream hashes |
 | [Testing](05-development/testing.md) | Vectors, security tests, device matrix |
 | [Release checklist](05-development/release-checklist.md) | |
 | [ADRs](05-development/adr/README.md) | Why things are built the way they are |
+
+Agents start at [AGENTS.md](../AGENTS.md).
 
 ---
 
