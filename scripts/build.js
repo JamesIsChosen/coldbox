@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { spawnSync } = require('node:child_process');
 
 // These values are part of the reproducibility contract. Set them rather than
 // trusting the caller's environment, so the build behaves the same everywhere.
@@ -76,5 +77,21 @@ function writeBuild(document) {
   return { digest, htmlPath, hashPath };
 }
 
+function verifyVendorOffline() {
+  const verifier = path.join(__dirname, 'verify-vendor.js');
+  const result = spawnSync(process.execPath, [verifier, '--offline'], {
+    cwd: projectRoot,
+    env: process.env,
+    stdio: 'inherit'
+  });
+  if (result.error) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    throw new Error('Build refused: vendored artifacts failed offline verification');
+  }
+}
+
+verifyVendorOffline();
 const result = writeBuild(assemble());
 console.log(`Built build/coldbox.html (${result.digest})`);
