@@ -32,25 +32,70 @@ Out of scope by design:
 The Windows environment used `npm.cmd` because PowerShell script execution policy blocks `npm.ps1`.
 
 ```text
-PS> npm.cmd ci --ignore-scripts
++PS> npm.cmd ci --ignore-scripts
+
+up to date, audited 1 package in 663ms
+
+found 0 vulnerabilities
+
 PS> npm.cmd run lint
+
+> coldbox@0.0.0 lint
+> node scripts/lint.js
+
+Lint passed: JavaScript syntax and LF source line endings are valid.
+
 PS> npm.cmd test
+
+> coldbox@0.0.0 test
+> node --test
+
+✔ build assembles one HTML file and emits its SHA-256 sidecar (138.4011ms)
+✔ two builds are byte-identical regardless of caller locale and timezone (252.922ms)
+✔ offline vendor verification accepts the pinned artifacts (73.3046ms)
+✔ a corrupted vendor artifact fails verification and blocks the build (199.7937ms)
+✔ canonical path, URL, and package metadata identity mismatches fail closed (235.2304ms)
+✔ an unmanifested vendor artifact fails closed (74.149ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 680.389
+
 PS> npm.cmd run verify-vendor
-PS> npm.cmd run build
-```
 
-Expected test result:
+> coldbox@0.0.0 verify-vendor
+> node scripts/verify-vendor.js
 
-```text
-tests 6
-pass 6
-fail 0
-```
-
-The online verifier must print an upstream verification line for each of the six packages and end with:
-
-```text
+Local vendor verified: @noble/ciphers@2.2.0
+Local vendor verified: @noble/curves@2.2.0
+Local vendor verified: @noble/hashes@2.2.0
+Local vendor verified: @scure/base@2.2.0
+Local vendor verified: @scure/bip32@2.2.0
+Local vendor verified: @scure/bip39@2.2.0
+Upstream release verified: @noble/ciphers@2.2.0
+Upstream release verified: @noble/curves@2.2.0
+Upstream release verified: @noble/hashes@2.2.0
+Upstream release verified: @scure/base@2.2.0
+Upstream release verified: @scure/bip32@2.2.0
+Upstream release verified: @scure/bip39@2.2.0
 Vendor verification passed against local files and upstream releases.
+
+PS> npm.cmd run build
+
+> coldbox@0.0.0 build
+> node scripts/build.js
+
+Local vendor verified: @noble/ciphers@2.2.0
+Local vendor verified: @noble/curves@2.2.0
+Local vendor verified: @noble/hashes@2.2.0
+Local vendor verified: @scure/base@2.2.0
+Local vendor verified: @scure/bip32@2.2.0
+Local vendor verified: @scure/bip39@2.2.0
+Vendor verification passed in offline mode.
+Built build/coldbox.html (40b39e4392477a4625791e23f0475f0585ec2f9588d611897c700a4effa534fe)
 ```
 
 The deterministic build must continue to emit SHA-256
@@ -62,7 +107,7 @@ The deterministic build must continue to emit SHA-256
 |---|---|---|
 | Vendor structure, upstream re-download verification, and real package versions/hashes. | Six versioned artifacts, a machine-readable manifest, canonical identity checks, and real registry metadata are committed. | Online verifier checks all six official registry tarballs. |
 | Verification passes for intact artifacts. | Offline verification checks size, SHA-256, SHA-512 integrity, tar safety, and exact package metadata. | Intact offline test and build pass. |
-| Corruption blocks verification and build. | A temporary one-byte change is rejected before assembly. | Corruption regression test. |
+| `verify-vendor` passes; a deliberately corrupted vendor file makes it fail; the build refuses to run if verification fails. | Intact offline and online verification pass. A temporary one-byte change is rejected before assembly, and the build refuses to proceed. | Corruption regression test and build refusal assertion. |
 | Identity and completeness fail closed. | Canonical path/URL, package metadata, and complete vendor-tree checks reject altered or unlisted artifacts. | Three identity mismatch cases and one unmanifested artifact case. |
 | Reproducibility remains intact. | The build output and sidecar are stable across locale/timezone changes. | Two independent builds are byte-identical. |
 
