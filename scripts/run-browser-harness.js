@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -32,7 +33,7 @@ function runBuild() {
   }
 }
 
-function ensureBrowserBinaries() {
+function requireBrowserBinaries() {
   const missing = [];
   if (!fs.existsSync(chromium.executablePath())) {
     missing.push('chromium');
@@ -44,18 +45,10 @@ function ensureBrowserBinaries() {
     return;
   }
 
-  console.log(`Installing missing Playwright browsers: ${missing.join(', ')}`);
-  const cli = path.join(projectRoot, 'node_modules', 'playwright', 'cli.js');
-  const result = spawnSync(process.execPath, [cli, 'install', ...missing], {
-    cwd: projectRoot,
-    encoding: 'utf8',
-    stdio: 'inherit'
-  });
-  if (result.status !== 0) {
-    throw new Error(
-      `Playwright browser installation failed with exit code ${result.status}`
-    );
-  }
+  throw new Error(
+    `Playwright browser binaries are missing (${missing.join(', ')}). `
+    + 'Run "npx playwright install chromium firefox" after npm ci.'
+  );
 }
 
 function createTamperedFixture() {
@@ -122,6 +115,20 @@ async function verifyTamperFixture(browser, engine) {
   }
 }
 
+async function verifyUntamperedFixture(browser, engine) {
+  const fixture = path.join(fixtureRoot, 'tamper.html');
+  const { harness, page } = await openPage(browser, fixture);
+  try {
+    const markerValue = await page.evaluate(() => window.__coldboxTamperScriptRan);
+    assert.equal(markerValue, true, `${engine}: untampered inline script did not run`);
+    await harness.expectNoConsoleErrors();
+    await harness.expectNoCspViolations();
+    console.log(`${engine}: confirmed untampered inline script control`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyReusableAssertions(browser, engine) {
   const fixture = path.join(fixtureRoot, 'harness-target.html');
   const { harness, page } = await openPage(browser, fixture);
@@ -138,9 +145,11 @@ async function verifyReusableAssertions(browser, engine) {
     assert.ok(frame, `${engine}: harness target did not create a child frame`);
     await frame.locator('#cold-ready').waitFor({ state: 'visible' });
     await harness.expectParentCannotReadFrame();
-    await harness.expectNetworkPrimitiveThrows('fetch', frame);
-    await harness.expectNetworkPrimitiveThrows('XMLHttpRequest', frame);
-    await harness.expectNetworkPrimitiveThrows('WebSocket', frame);
+    for (const primitive of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'sendBeacon']) {
+      const result = await harness.expectNetworkPrimitiveThrows(primitive, frame);
+      console.log(`${engine}: ${primitive} reported blocked (${result.signal})`);
+    }
+    await harness.expectCspViolationInFrame(frame, 'connect-src');
     console.log(`${engine}: reusable frame and viewport assertions passed`);
   } finally {
     await closePage(page);
@@ -151,14 +160,53 @@ async function verifyDevOnlyDependency() {
   const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
   assert.equal(packageJson.dependencies?.playwright, undefined);
   assert.equal(typeof packageJson.devDependencies?.playwright, 'string');
-  const built = fs.readFileSync(buildPath, 'utf8');
-  assert.doesNotMatch(built, /playwright/i);
-  console.log('Playwright is dev-only and contributes 0 bytes to build/coldbox.html');
+
+  const built = fs.readFileSync(buildPath);
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-browser-build-'));
+  try {
+    for (const directory of ['scripts', 'src', 'vendor']) {
+      fs.cpSync(
+        path.join(projectRoot, directory),
+        path.join(temporaryRoot, directory),
+        { recursive: true }
+      );
+    }
+    assert.equal(fs.existsSync(path.join(temporaryRoot, 'node_modules')), false);
+
+    const result = spawnSync(
+      process.execPath,
+      [path.join(temporaryRoot, 'scripts', 'build.js')],
+      {
+        cwd: temporaryRoot,
+        encoding: 'utf8',
+        env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' }
+      }
+    );
+    if (result.error || result.status !== 0) {
+      throw new Error(
+        `Dependency-free build failed: ${result.error?.message || result.status}\n`
+        + `${result.stdout}\n${result.stderr}`
+      );
+    }
+
+    const dependencyFreeBuild = fs.readFileSync(
+      path.join(temporaryRoot, 'build', 'coldbox.html')
+    );
+    assert.deepEqual(
+      dependencyFreeBuild,
+      built,
+      'Build with node_modules absent differs from the normal build'
+    );
+    const digest = crypto.createHash('sha256').update(built).digest('hex');
+    console.log(`Playwright is dev-only; dependency-free build matches byte-for-byte (${digest})`);
+  } finally {
+    fs.rmSync(temporaryRoot, { force: true, recursive: true });
+  }
 }
 
 async function run() {
+  requireBrowserBinaries();
   runBuild();
-  ensureBrowserBinaries();
   await verifyDevOnlyDependency();
 
   for (const [engine, browserType] of [['Chromium', chromium], ['Firefox', firefox]]) {
@@ -166,6 +214,7 @@ async function run() {
     try {
       await verifyBuiltFile(browser, engine);
       await verifyCspFixture(browser, engine);
+      await verifyUntamperedFixture(browser, engine);
       await verifyTamperFixture(browser, engine);
       await verifyReusableAssertions(browser, engine);
     } finally {

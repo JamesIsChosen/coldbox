@@ -127,10 +127,11 @@ That fourth line matters: a missing `'wasm-unsafe-eval'` silently downgrades eve
 From P0.3a, Playwright drives headless Chromium and Firefox against the built file over `file://`. This is where every browser-observable acceptance criterion is verified.
 
 ```bash
+npx playwright install chromium firefox  # once after npm ci
 npm run test:browser
 ```
 
-The command rebuilds the artifact, checks that Playwright is a development-only dependency, and installs the Chromium and Firefox test browsers on first use when they are not already present. Those browser binaries are test tooling only and never enter `build/coldbox.html`. The reusable assertions live in `test/browser/harness.js` and cover CSP reports, tampered-script rejection, frame isolation, network primitive failures, visible elements, and viewport sizes.
+`npm ci` installs the pinned Playwright package but does not download browser binaries. Install the Chromium and Firefox binaries once with the documented command before running the harness. `npm run test:browser` refuses to download anything and exits non-zero with that command if either binary is missing. The browser binaries are test tooling only and never enter `build/coldbox.html`. The reusable assertions live in `test/browser/harness.js` and cover CSP reports, tampered-script rejection, frame isolation, network primitive failures, visible elements, and viewport sizes.
 
 Covers: CSP enforcement and violation detection, post-build tamper rejection, cold realm instantiation, network primitives throwing inside the sandbox, parent-cannot-read-frame isolation, airgap banner states, responsive layout, and help rendering.
 

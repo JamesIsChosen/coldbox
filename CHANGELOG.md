@@ -29,6 +29,12 @@ Foundation work in progress. Wallet, vault, and cryptographic features are not a
 - Reusable browser assertions for CSP violations, hash-tampered script rejection, opaque-frame isolation, blocked network primitives, responsive viewports, and visible elements
 - Browser fixtures and negative checks proving deliberate CSP violations and byte-tampered inline scripts fail with a non-zero harness result
 
+### Changed — P0.3a review fixes (2026-08-03)
+
+- Per-primitive network assertions now cover throw/reject, asynchronous `EventSource` errors, and `sendBeacon` returning `false`, and exercise all five supported primitives against a real `connect-src 'none'` frame fixture
+- Added an untampered hash-pinning control and a byte-for-byte build comparison from a tree without `node_modules`
+- Made browser installation explicit with `npx playwright install chromium firefox`; the test command no longer downloads browsers implicitly
+
 ### Added — process (2026-08-02)
 
 - **[review-protocol.md](docs/05-development/review-protocol.md)** — binary PASS/FAIL review contract. No "approve with comments"; **any finding of any severity, including advisory, is a FAIL.** Requires independent verification, a review report opening with a verdict block, and a fresh verdict on re-review rather than an amendment

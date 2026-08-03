@@ -44,6 +44,20 @@ async function createHarness(page) {
     return page.evaluate(() => Array.from(window.__coldboxCspViolations || []));
   }
 
+  function matchesDirective(violation, directive) {
+    const acceptedDirectives = new Set([
+      directive,
+      `${directive}-elem`,
+      `${directive}-attr`
+    ]);
+    return acceptedDirectives.has(violation.effectiveDirective)
+      || acceptedDirectives.has(violation.violatedDirective);
+  }
+
+  function findDirectiveViolation(violations, directive) {
+    return violations.find((violation) => matchesDirective(violation, directive));
+  }
+
   return Object.freeze({
     async expectNoConsoleErrors() {
       const details = [
@@ -65,18 +79,23 @@ async function createHarness(page) {
     async expectCspViolation(directive) {
       assert.equal(typeof directive, 'string');
       const violations = await getCspViolations();
-      const acceptedDirectives = new Set([
-        directive,
-        `${directive}-elem`,
-        `${directive}-attr`
-      ]);
-      const matchingViolation = violations.find((violation) => (
-        acceptedDirectives.has(violation.effectiveDirective)
-        || acceptedDirectives.has(violation.violatedDirective)
-      ));
+      const matchingViolation = findDirectiveViolation(violations, directive);
       assert.ok(
         matchingViolation,
         `Expected CSP violation for ${directive}; observed ${JSON.stringify(violations)}`
+      );
+      return matchingViolation;
+    },
+
+    async expectCspViolationInFrame(frame, directive) {
+      assert.ok(frame && typeof frame.evaluate === 'function', 'A Playwright frame is required');
+      const violations = await frame.evaluate(
+        () => Array.from(window.__coldboxCspViolations || [])
+      );
+      const matchingViolation = findDirectiveViolation(violations, directive);
+      assert.ok(
+        matchingViolation,
+        `Expected frame CSP violation for ${directive}; observed ${JSON.stringify(violations)}`
       );
       return matchingViolation;
     },
@@ -97,45 +116,151 @@ async function createHarness(page) {
 
       const result = await frame.evaluate(async (primitive) => {
         const url = 'https://coldbox.invalid/network-primitive-test';
+        const blocked = (signal, error = '') => ({ blocked: true, error, signal });
+        const allowed = (signal) => ({ blocked: false, error: '', signal });
+        const connectViolationCount = () => Array.from(
+          window.__coldboxCspViolations || []
+        ).filter((violation) => (
+          violation.effectiveDirective === 'connect-src'
+          || violation.violatedDirective === 'connect-src'
+        )).length;
+        const waitForConnectViolation = (initialCount) => new Promise((resolve) => {
+          const currentCount = connectViolationCount();
+          if (currentCount > initialCount) {
+            resolve(true);
+            return;
+          }
+
+          let settled = false;
+          let timer;
+          const finish = (observed) => {
+            if (settled) {
+              return;
+            }
+            settled = true;
+            clearTimeout(timer);
+            document.removeEventListener('securitypolicyviolation', onViolation);
+            resolve(observed);
+          };
+          const onViolation = (event) => {
+            if (event.effectiveDirective === 'connect-src'
+              || event.violatedDirective === 'connect-src') {
+              finish(true);
+            }
+          };
+          document.addEventListener('securitypolicyviolation', onViolation);
+          timer = setTimeout(() => finish(false), 500);
+        });
+
         try {
           switch (primitive) {
             case 'fetch':
               await globalThis.fetch(url);
-              break;
+              return allowed('resolved');
             case 'XMLHttpRequest': {
               const request = new XMLHttpRequest();
               request.open('GET', url);
-              request.send();
-              break;
+              return await new Promise((resolve) => {
+                let settled = false;
+                let timer;
+                const finish = (outcome) => {
+                  if (settled) {
+                    return;
+                  }
+                  settled = true;
+                  clearTimeout(timer);
+                  resolve(outcome);
+                };
+                request.addEventListener('error', () => finish(blocked('error-event')));
+                request.addEventListener('abort', () => finish(blocked('abort-event')));
+                request.addEventListener('load', () => finish(allowed('load-event')));
+                request.addEventListener('timeout', () => finish(blocked('timeout-event')));
+                timer = setTimeout(() => finish(allowed('timeout')), 1500);
+                try {
+                  request.send();
+                } catch (error) {
+                  finish(blocked('threw', String(error)));
+                }
+              });
             }
             case 'WebSocket': {
-              const socket = new WebSocket(url);
-              socket.close();
-              break;
+              return await new Promise((resolve) => {
+                let settled = false;
+                let socket;
+                let timer;
+                const finish = (outcome) => {
+                  if (settled) {
+                    return;
+                  }
+                  settled = true;
+                  clearTimeout(timer);
+                  if (socket) {
+                    socket.close();
+                  }
+                  resolve(outcome);
+                };
+                try {
+                  socket = new WebSocket(url);
+                  socket.addEventListener('error', () => finish(blocked('error-event')));
+                  socket.addEventListener('open', () => finish(allowed('open-event')));
+                  socket.addEventListener('close', () => finish(blocked('close-event')));
+                  timer = setTimeout(() => finish(allowed('timeout')), 1500);
+                } catch (error) {
+                  finish(blocked('threw', String(error)));
+                }
+              });
             }
             case 'EventSource': {
-              const source = new EventSource(url);
-              source.close();
-              break;
+              return await new Promise((resolve) => {
+                let settled = false;
+                let source;
+                let timer;
+                const finish = (outcome) => {
+                  if (settled) {
+                    return;
+                  }
+                  settled = true;
+                  clearTimeout(timer);
+                  if (source) {
+                    source.close();
+                  }
+                  resolve(outcome);
+                };
+                try {
+                  source = new EventSource(url);
+                  source.addEventListener('error', () => finish(blocked('error-event')));
+                  source.addEventListener('open', () => finish(allowed('open-event')));
+                  timer = setTimeout(() => finish(allowed('timeout')), 1500);
+                } catch (error) {
+                  finish(blocked('threw', String(error)));
+                }
+              });
             }
-            case 'sendBeacon':
-              navigator.sendBeacon(url, 'coldbox');
-              break;
+            case 'sendBeacon': {
+              const initialViolationCount = connectViolationCount();
+              const accepted = navigator.sendBeacon(url, 'coldbox');
+              if (!accepted) {
+                return blocked('returned-false');
+              }
+              const violationObserved = await waitForConnectViolation(initialViolationCount);
+              return violationObserved
+                ? blocked('returned-true-csp-violation')
+                : allowed('accepted');
+            }
             default:
               throw new Error(`Unsupported network primitive: ${primitive}`);
           }
-          return { threw: false, error: '' };
         } catch (error) {
-          return { threw: true, error: String(error) };
+          return blocked('threw', String(error));
         }
       }, name);
 
       assert.equal(
-        result.threw,
+        result.blocked,
         true,
-        `${name} did not throw inside the frame (result: ${JSON.stringify(result)})`
+        `${name} did not signal a blocked request (result: ${JSON.stringify(result)})`
       );
-      return result.error;
+      return result;
     },
 
     async expectParentCannotReadFrame({ selector = '#cold-frame' } = {}) {
