@@ -39,6 +39,12 @@ Foundation work in progress. Wallet, vault, and cryptographic features are not a
 - Offline local artifact verification and explicit online re-download verification against SHA-256 and npm SHA-512 integrity values
 - Build fail-closed guard and regression tests for corrupted vendor artifacts
 
+### Added — P0.4 (2026-08-02)
+
+- Build-time SHA-256 hash-pinning for every inline script and style block in the CSP
+- CSP policy embedded in the built HTML with deterministic hash injection
+- Regression tests for multiple inline blocks and post-build script tampering
+
 ### Added — spec v0.4 (2026-08-02)
 
 - **US tax reporting exporter** (SPEC §14.5, roadmap P3.9): Form 8949 CSV per box code, Schedule D summary, ordinary income report, lot audit trail, transfer ledger, 1099-DA reconciliation, safe harbor allocation record, plus TurboTax and TaxAct profiles

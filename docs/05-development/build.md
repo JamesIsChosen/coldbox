@@ -33,7 +33,7 @@ npm test
 2. **Lint for forbidden constructs** — `eval`, `new Function`, `import`, `require`, external URLs, `localStorage` in secret paths. Any hit aborts.
 3. **Compile help content** — markdown from `docs/00-overview/glossary.md` and `docs/03-guides/` is converted and embedded. There is one copy of every explanation; in-app help and repo docs cannot drift.
 4. **Assemble the cold realm** — its HTML, CSS, and JS are built and serialized into a string for `srcdoc`.
-5. **Compute CSP hashes** — SHA-256 of each inline script and style block, injected into the respective meta tags. **This is why the build must be deterministic**: a nondeterministic build produces a hash mismatch and nothing runs.
+5. **Compute CSP hashes** — SHA-256 of the exact UTF-8 text in each inline script and style block, injected into the respective `script-src`/`style-src` directives. Missing hash placeholders or inline blocks abort the build. **This is why the build must be deterministic**: a nondeterministic build produces a hash mismatch and nothing runs.
 6. **Assemble the warm shell** — with the cold realm embedded.
 7. **Emit** `build/coldbox.html` and `build/coldbox.html.sha256`.
 

@@ -43,7 +43,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
   Build-time check rejecting `eval`, `new Function`, `import`, `require`, external URLs, and `localStorage` in secret-handling paths.
   **Accept:** lint runs in the build and fails it; a test fixture containing each construct is rejected.
 
-- [ ] **P0.4 — CSP hash-pinning in the build**
+- [~] **P0.4 — CSP hash-pinning in the build**
   *Deps: P0.1*
   Compute SHA-256 of each inline script and style block; inject into the respective `script-src`/`style-src` directives.
   **Accept:** built file runs with no CSP violations; altering one byte of the inline script post-build causes the browser to refuse to execute it.

@@ -1,193 +1,139 @@
-# PR packet - P0.2 vendor layout and verification
+# PR packet - P0.4 CSP hash-pinning in the build
 
 ## 1. Summary
 
-P0.2 vendors six official npm release tarballs for the planned `@noble/*` and `@scure/*` runtime libraries. The manifest records each artifact's canonical URL, canonical path, size, SHA-256, and npm SHA-512 integrity value. Verification checks local bytes offline and re-downloads the official releases when explicitly requested.
+P0.4 adds the documented warm-shell CSP to the source template and makes the build compute and inject a SHA-256 CSP hash for every inline script and style block. Hashes are computed from the exact UTF-8 text between each tag, so formatting and any later byte change are covered by the policy.
 
-The verifier now fails closed on name/version/path/URL identity mismatches, package metadata mismatches, and any vendored artifact absent from the manifest. Builds run the same verifier in offline mode before assembly.
+The implementation and static regression coverage are complete. The roadmap item remains in progress because the available in-app browser rejected `file://` navigation, so actual browser console behavior and post-build refusal could not be verified in this environment.
+
+Branch: `p0.4-csp-hash-pinning`
+Base: `main` at `487a19e`
 
 ## 2. Scope
 
 In scope:
 
-- Six pinned npm release tarballs at version 2.2.0
-- `vendor/vendor-manifest.json` with official URLs, sizes, SHA-256 hashes, and npm integrity values
-- Canonical path and URL derivation from package name and version
-- Exact `package/package.json` name/version inspection inside every tarball
-- Complete vendor-tree enforcement
-- `scripts/verify-vendor.js` with offline and explicit online modes
-- Build-time offline vendor verification
-- Corruption, identity-mismatch, and unmanifested-artifact regression tests
-- Real versions and hashes in `docs/05-development/dependencies.md`
+- CSP meta tag in `src/index.html` with build-time script and style hash placeholders
+- SHA-256 hash injection for all inline script blocks
+- SHA-256 hash injection for all inline style blocks
+- Multiple-inline-block coverage
+- Post-build script-tampering hash regression coverage
+- Deterministic output verification
+- Build documentation, changelog, roadmap status, and this packet
 
 Out of scope by design:
 
-- Extracting or bundling the packages into the HTML
-- Argon2, SLIP-39, codex32, QR, or camera dependencies
-- Runtime network access
-- CSP, realm, vault, or cryptographic behavior
+- Changing the documented network allowlist
+- Realm, message schema, vault format, or cryptographic behavior
+- Adding runtime dependencies or external scripts/styles
+- Claiming browser enforcement without a supported browser run
 
 ## 3. How to verify
 
 The Windows environment used `npm.cmd` because PowerShell script execution policy blocks `npm.ps1`.
 
 ```text
-+PS> npm.cmd ci --ignore-scripts
-
-up to date, audited 1 package in 663ms
-
-found 0 vulnerabilities
-
 PS> npm.cmd run lint
-
-> coldbox@0.0.0 lint
-> node scripts/lint.js
-
 Lint passed: JavaScript syntax and LF source line endings are valid.
 
 PS> npm.cmd test
-
-> coldbox@0.0.0 test
-> node --test
-
-✔ build assembles one HTML file and emits its SHA-256 sidecar (138.4011ms)
-✔ two builds are byte-identical regardless of caller locale and timezone (252.922ms)
-✔ offline vendor verification accepts the pinned artifacts (73.3046ms)
-✔ a corrupted vendor artifact fails verification and blocks the build (199.7937ms)
-✔ canonical path, URL, and package metadata identity mismatches fail closed (235.2304ms)
-✔ an unmanifested vendor artifact fails closed (74.149ms)
-ℹ tests 6
-ℹ suites 0
-ℹ pass 6
-ℹ cancelled 0
-ℹ skipped 0
-ℹ todo 0
-ℹ duration_ms 680.389
+ℹ tests 8
+ℹ pass 8
+ℹ fail 0
 
 PS> npm.cmd run verify-vendor
-
-> coldbox@0.0.0 verify-vendor
-> node scripts/verify-vendor.js
-
-Local vendor verified: @noble/ciphers@2.2.0
-Local vendor verified: @noble/curves@2.2.0
-Local vendor verified: @noble/hashes@2.2.0
-Local vendor verified: @scure/base@2.2.0
-Local vendor verified: @scure/bip32@2.2.0
-Local vendor verified: @scure/bip39@2.2.0
-Upstream release verified: @noble/ciphers@2.2.0
-Upstream release verified: @noble/curves@2.2.0
-Upstream release verified: @noble/hashes@2.2.0
-Upstream release verified: @scure/base@2.2.0
-Upstream release verified: @scure/bip32@2.2.0
-Upstream release verified: @scure/bip39@2.2.0
 Vendor verification passed against local files and upstream releases.
 
 PS> npm.cmd run build
-
-> coldbox@0.0.0 build
-> node scripts/build.js
-
-Local vendor verified: @noble/ciphers@2.2.0
-Local vendor verified: @noble/curves@2.2.0
-Local vendor verified: @noble/hashes@2.2.0
-Local vendor verified: @scure/base@2.2.0
-Local vendor verified: @scure/bip32@2.2.0
-Local vendor verified: @scure/bip39@2.2.0
 Vendor verification passed in offline mode.
-Built build/coldbox.html (40b39e4392477a4625791e23f0475f0585ec2f9588d611897c700a4effa534fe)
+Built build/coldbox.html (7878f1418085c4e212f9b1803d7acd56e3653ccda46bec29096569457b4c0605)
+
+PS> Get-FileHash -Algorithm SHA256 build/coldbox.html
+7878F1418085C4E212F9B1803D7ACD56E3653CCDA46BEC29096569457B4C0605
 ```
 
-The deterministic build must continue to emit SHA-256
-`40b39e4392477a4625791e23f0475f0585ec2f9588d611897c700a4effa534fe`.
+A second build emitted the same digest. `git diff --check` also passed.
+
+Browser runtime verification was attempted with the available Codex in-app browser. Its URL policy blocked `file://` navigation to the built artifact; no alternate browser, CDP, or indirect execution workaround was used. Consequently, the browser console/no-violation check and actual browser refusal after tampering remain pending.
 
 ## 4. Acceptance criteria
 
-| Criterion | How satisfied | Test/evidence |
+| Criterion | Status | Evidence |
 |---|---|---|
-| Vendor structure, upstream re-download verification, and real package versions/hashes. | Six versioned artifacts, a machine-readable manifest, canonical identity checks, and real registry metadata are committed. | Online verifier checks all six official registry tarballs. |
-| Verification passes for intact artifacts. | Offline verification checks size, SHA-256, SHA-512 integrity, tar safety, and exact package metadata. | Intact offline test and build pass. |
-| `verify-vendor` passes; a deliberately corrupted vendor file makes it fail; the build refuses to run if verification fails. | Intact offline and online verification pass. A temporary one-byte change is rejected before assembly, and the build refuses to proceed. | Corruption regression test and build refusal assertion. |
-| Identity and completeness fail closed. | Canonical path/URL, package metadata, and complete vendor-tree checks reject altered or unlisted artifacts. | Three identity mismatch cases and one unmanifested artifact case. |
-| Reproducibility remains intact. | The build output and sidecar are stable across locale/timezone changes. | Two independent builds are byte-identical. |
+| Compute SHA-256 of each inline script and style block; inject into the respective `script-src`/`style-src` directives. | Satisfied statically | Build code hashes every extracted inline block; the regression suite independently recomputes and checks each hash in the correct directive. |
+| Built file runs with no CSP violations. | Browser verification pending | The built policy contains no unresolved placeholders or `unsafe-inline`; the in-app browser could not open the local artifact. |
+| Altering one byte of the inline script causes the browser to refuse execution. | Static invariant verified; browser verification pending | The tampering test produces a different hash absent from `script-src`; a browser run is still required to observe refusal. |
+
+The roadmap item is intentionally marked `[~]` until the two browser-visible criteria can be run in a supported browser.
 
 ## 5. Security impact
 
-- Supply chain: yes. This adds the first runtime artifacts and records their exact bytes.
-- Build integrity: yes. The build refuses to assemble HTML when local vendor verification fails.
-- Runtime network access: no. Online re-download is limited to the explicit developer verifier.
-- Realm boundary, message schema, CSP, vault format, and randomness: untouched.
-- New application `connect-src` host: none.
+- CSP: yes. Inline execution is restricted to the build-generated hashes; `unsafe-inline` is not added.
+- Build integrity: yes. Missing CSP placeholders or inline blocks fail the build.
+- Runtime network access: no new host is introduced; the existing documented allowlist is embedded in the source policy.
+- Realm boundary, message schema, vault format, and randomness: untouched.
 
-This item verifies artifact identity and completeness; it does not claim that upstream code is independently audited.
+The security property depends on the browser applying the emitted CSP to the exact bytes of the built document; that final runtime behavior is the outstanding verification item.
 
 ## 6. Test evidence
 
-New tests cover:
+New P0.4 tests cover:
 
-- Offline verification of all six committed artifacts, including size and both digest forms.
-- Temporary one-byte corruption, with build refusal.
-- Canonical manifest path mismatch.
-- Canonical npm URL mismatch.
-- Package metadata mismatch using a valid tarball under the wrong manifest identity.
-- Unmanifested vendor artifact.
-- Existing reproducible-build behavior.
+- Independent SHA-256 recomputation for the built inline script and style.
+- Correct routing of script hashes to `script-src` and style hashes to `style-src`.
+- Rejection of unresolved CSP placeholders and `unsafe-inline`.
+- Multiple inline scripts and styles in a temporary build root.
+- A one-byte script tamper producing a different hash that is absent from the policy.
+- Existing reproducible-build and vendor verification behavior.
 
-Independent source evidence:
-
-- Official npm registry metadata and tarball URLs for each pinned release.
-- Manifest npm SHA-512 integrity values plus independently computed SHA-256 values.
-- Six tarballs total 916,610 bytes.
+The complete suite passes 8/8 tests. The build output is 1,498 bytes and reproduced byte-for-byte across the final build checks.
 
 ## 7. Device matrix
 
-P0.2 changes developer tooling and committed release inputs but does not change browser behavior or the HTML artifact.
+P0.4 changes browser-visible CSP behavior, but runtime testing was blocked by the local browser URL policy.
 
 | Platform | Result |
 |---|---|
-| Windows Chrome | N/A |
-| Windows Firefox | N/A |
-| macOS Safari | N/A |
-| macOS Chrome | N/A |
-| Linux Firefox | N/A |
-| iOS Safari (Files) | N/A |
-| Android Chrome (Files) | N/A |
-| Tor Browser | N/A |
+| Windows Chrome | Not run; supported browser access to the local artifact was unavailable |
+| Windows Firefox | Not run |
+| macOS Safari | Not run |
+| macOS Chrome | Not run |
+| Linux Firefox | Not run |
+| iOS Safari (Files) | Not run |
+| Android Chrome (Files) | Not run |
+| Tor Browser | Not run |
 
 ## 8. Assumptions
 
-- npm's official registry tarball is the release artifact to vendor.
-- Version 2.2.0 is the intended pinned release for all six packages.
-- Builds may verify local artifacts but must not download dependencies.
+- CSP hashes must cover the exact UTF-8 text between each inline tag, including whitespace and line endings.
+- The source CSP allowlist matches `docs/02-security/csp-policy.md`; that policy document was reviewed and is unchanged by P0.4.
+- The final browser acceptance check will use the built artifact without rewriting its inline blocks.
 
 ## 9. What to scrutinise
 
-- Name/version-derived canonical manifest paths and npm URLs.
-- Tarball inspection and exact `package/package.json` identity checks.
-- Complete vendor-tree enforcement, including rejection of unmanifested files.
-- The distinction between online developer verification and the build's offline guard.
-- SHA-256 and SHA-512 calculations and fail-closed error paths.
-- The fact that the tarballs are pinned but not yet extracted or bundled.
+- Exact bytes selected for hashing, including leading/trailing newlines.
+- Placeholder replacement order and fail-closed behavior.
+- Correct separation of script and style hashes between CSP directives.
+- Multiple inline-block handling.
+- Browser console behavior for the intact artifact and browser refusal after script tampering.
 
 ## 10. Self-assessment
 
-- No second-OS or browser test was needed for this developer-tooling-only change.
-- The upstream packages have not been independently audited in this PR.
-- Other planned dependencies remain TBD and are intentionally not included.
-- The corrected P0.2 commit is based directly on the P0.1 commit, preserving the one-roadmap-item boundary.
+- Static implementation and regression evidence are complete.
+- Actual browser CSP enforcement could not be observed because the available browser blocked `file://` navigation.
+- The roadmap item is not represented as complete until that runtime evidence exists.
 
 ## 11. Bundle impact
 
 | Artifact | Before | After | Delta |
 |---|---:|---:|---:|
-| `build/coldbox.html` | 776 bytes | 776 bytes | 0 bytes |
-| Vendored release tarballs | 0 bytes | 916,610 bytes | +916,610 bytes |
+| `build/coldbox.html` | 776 bytes | 1,498 bytes | +722 bytes |
 
-The HTML remains unchanged and far below the 3 MB target. The vendor artifacts are not yet included in the output bundle.
+The built HTML remains far below the 3 MB target. The CSP metadata accounts for the increase.
 
 ## 12. Docs updated
 
-- `docs/05-development/dependencies.md`
-- `docs/05-development/ROADMAP.md`
+- `docs/05-development/build.md`
+- `docs/05-development/ROADMAP.md` (P0.4 marked `[~]` pending browser evidence)
 - `CHANGELOG.md`
 - `PR-PACKET.md`
