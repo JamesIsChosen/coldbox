@@ -116,6 +116,12 @@ That last one matters more than it looks. A rushed final item produces a packet 
 
 If `gh pr create` fails, put the exact commands in a `🙋 Action required from you` block at the top of your handoff — never silently skip it.
 
+### 6a. Branch hygiene is automatic
+
+You do not ask the human to clean up branches. Merged branches are deleted by the reviewer on merge, and every session's preflight prunes stale local refs (`AGENTS.md` §6a).
+
+If you created worktrees for a parallel run, the handoff includes the `git worktree remove` command — that one genuinely needs the human, because the worktree lives outside the repo.
+
 ### 7. Exclusive access to the working tree
 
 A batch run **owns the checkout for its duration.** Nobody else — no second agent, no human editing files — touches it until the batch reports done.

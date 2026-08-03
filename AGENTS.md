@@ -119,10 +119,15 @@ If a second agent needs to work in parallel, it gets its own clone or a `git wor
 ```
 git status                    # MUST be clean. If not, stop (see below)
 git branch --show-current     # MUST be main before you branch
+git checkout main
 git pull
+git fetch --prune             # drop remote-tracking refs for deleted branches
+git branch -vv | grep ': gone]' | awk '{print $1}' | xargs -r git branch -D
 git checkout -b p0.5-cold-realm-bootstrap     # roadmap ID, short description
 git branch --show-current     # confirm you're where you think you are
 ```
+
+That prune-and-delete pair is housekeeping, not optional. Merged branches accumulate silently, and a stale local branch is how a session ends up building on work that was superseded weeks ago. `git branch -D` on a `[gone]` branch is safe — the remote is deleted, so it's already merged.
 
 **If `git status` is not clean, do not proceed.** Uncommitted changes belong to someone — possibly the human, possibly a previous session. Report what you found and ask. Never stash, discard, or absorb work you didn't create.
 

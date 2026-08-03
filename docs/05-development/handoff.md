@@ -275,14 +275,14 @@ git worktree remove ../coldbox-track-a
 
 ## 7. Review — PASS
 
-**You merge it yourself, then report.** Run `gh pr merge <n> --merge --delete-branch=false`, confirm `main` updated, then write this.
+**You merge it yourself, then report.** Run `gh pr merge <n> --merge --delete-branch`, confirm `main` updated, then write this. **Delete the branch on merge** — leftover branches make it impossible to see which are live work.
 
 ```markdown
 ---
 
 ## ✅ Handoff — VERDICT: PASS · merged
 
-PR #12 merged to `main`. `main` is now at `a1b2c3d`.
+PR #12 merged to `main`, branch deleted. `main` is now at `a1b2c3d`.
 
 **Paste into a NEW session:**
 
@@ -303,7 +303,7 @@ Next up is **P0.6 — Cold realm bootstrap**.
 **PASS** — but P0.6 is the realm boundary, so it wants your eyes before merging.
 
 ​```powershell
-gh pr merge 14 --merge --delete-branch=false
+gh pr merge 14 --merge --delete-branch
 git checkout main
 git pull
 ​```
