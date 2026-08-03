@@ -30,7 +30,7 @@ npm test
 ## What the build does
 
 1. **Verify vendor** — every file in `vendor/` is hashed and compared against the upstream release hashes in [dependencies.md](dependencies.md). Any mismatch aborts the build.
-2. **Lint for forbidden constructs** — `eval`, `new Function`, `import`, `require`, external URLs, `localStorage` in secret paths. Any hit aborts.
+2. **Lint for forbidden constructs** — `eval`, `new Function`, `import`, and `require` are rejected throughout application source. `src/cold/` is the secret-handling path; it additionally rejects external URLs and `localStorage`. Any hit aborts.
 3. **Compile help content** — markdown from `docs/00-overview/glossary.md` and `docs/03-guides/` is converted and embedded. There is one copy of every explanation; in-app help and repo docs cannot drift.
 4. **Assemble the cold realm** — its HTML, CSS, and JS are built and serialized into a string for `srcdoc`.
 5. **Compute CSP hashes** — SHA-256 of each inline script and style block, injected into the respective meta tags. **This is why the build must be deterministic**: a nondeterministic build produces a hash mismatch and nothing runs.
