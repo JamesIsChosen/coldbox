@@ -91,6 +91,12 @@ Foundation work in progress. Wallet, vault, and cryptographic features are not a
 - Chromium and Firefox coverage for per-primitive CSP-correlated throw results, standalone native CSP signals, parent DOM/variable isolation, exact sandbox permissions, and explicit fail-closed behavior for iframe creation or readiness timeout
 - The original P0.6 throw contract is enforced; P0.8 remains responsible for the broader five-primitive runtime guard and CSP canary
 
+### Added — P0.7 (2026-08-03)
+
+- MessageChannel port transfer after the payload-free cold bootstrap signal, with terminal handshake state and post-handshake global-message anomaly logging
+- Typed warm-to-cold and cold-to-warm protocol whitelist with payload validation, unknown-field stripping, and safe public-compartment projections that cannot carry mnemonic, private-key, xprv, passphrase, or secret-compartment plaintext fields
+- Node protocol tests and Chromium/Firefox browser-harness assertions for handshake readiness, global-handler discard behavior, and continued cold-realm boundary coverage
+
 ### Added — P0.5 (2026-08-03)
 
 - Responsive warm-shell skeleton with desktop navigation rail, mobile tab bar, overflow menu, hash routing, and dark/light mode

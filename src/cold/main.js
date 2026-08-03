@@ -1,8 +1,75 @@
+__COLDBOX_PROTOCOL__
 (function () {
   'use strict';
 
+  var protocol = window.__coldboxProtocol;
   var readyMarker = document.getElementById('cold-ready');
-  if (!readyMarker || !window.parent || typeof window.parent.postMessage !== 'function') {
+  var messagePort = null;
+  var handshakeState = 'starting';
+  var globalAnomalyCount = 0;
+  var channelAnomalyCount = 0;
+
+  function recordGlobalMessageAnomaly() {
+    globalAnomalyCount += 1;
+    document.documentElement.setAttribute('data-global-message-anomalies', String(globalAnomalyCount));
+    console.warn('Coldbox discarded a global message after handshake.');
+  }
+
+  function recordChannelAnomaly() {
+    channelAnomalyCount += 1;
+    document.documentElement.setAttribute('data-channel-anomalies', String(channelAnomalyCount));
+    console.warn('Coldbox discarded an invalid channel message.');
+  }
+
+  function handleChannelMessage(event) {
+    if (!protocol.validateMessage('warm-to-cold', event.data)) {
+      recordChannelAnomaly();
+    }
+  }
+
+  function handleGlobalMessage(event) {
+    if (handshakeState === 'ready') {
+      recordGlobalMessageAnomaly();
+      return;
+    }
+    if (handshakeState !== 'starting'
+      || event.source !== window.parent
+      || !protocol.isHandshakeMessage(event.data)
+      || !event.ports
+      || event.ports.length !== 1) {
+      return;
+    }
+
+    var candidatePort = event.ports[0];
+    if (!candidatePort || typeof candidatePort.postMessage !== 'function') {
+      recordGlobalMessageAnomaly();
+      return;
+    }
+
+    messagePort = candidatePort;
+    handshakeState = 'ready';
+    document.documentElement.setAttribute('data-handshake-state', 'ready');
+    messagePort.addEventListener('message', handleChannelMessage);
+    messagePort.start();
+    var readyMessage = protocol.createMessage(
+      'cold-to-warm',
+      'cold-ready-1',
+      'ready',
+      {
+        capabilities: {
+          messageChannel: true,
+          opaqueOrigin: true
+        }
+      }
+    );
+    if (!readyMessage) {
+      recordChannelAnomaly();
+      return;
+    }
+    messagePort.postMessage(readyMessage);
+  }
+
+  if (!readyMarker || !window.parent || !protocol) {
     return;
   }
 
@@ -66,6 +133,7 @@
   }
 
   installThrowContract();
+  window.addEventListener('message', handleGlobalMessage);
   document.documentElement.setAttribute('data-cold-state', 'ready');
   window.parent.postMessage({ type: 'cold.ready' }, '*');
 }());

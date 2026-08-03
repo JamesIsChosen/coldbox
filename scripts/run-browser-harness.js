@@ -160,6 +160,7 @@ async function verifyBuiltFile(browser, engine) {
     await harness.expectElementVisible('#app');
     await harness.expectElementVisible('#app[data-build-state="warm-shell"]');
     await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible' });
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible' });
     const sandbox = await page.locator('#cold-frame').getAttribute('sandbox');
     assert.equal(sandbox, 'allow-scripts allow-downloads', `${engine}: cold frame sandbox changed`);
     assert.equal(
@@ -176,6 +177,28 @@ async function verifyBuiltFile(browser, engine) {
     assert.match(coldPolicy, new RegExp(escapedRegExp(cspHash(coldStyle))));
     await harness.expectParentCannotReadFrame();
     await harness.expectNoConsoleErrors();
+    await page.evaluate(() => {
+      window.postMessage({
+        id: 'injected-global-1',
+        type: 'vault.open',
+        payload: { bytes: new Uint8Array([1]), mnemonic: 'must-be-discarded' }
+      }, '*');
+    });
+    await page.waitForFunction(() => (
+      document.documentElement.getAttribute('data-global-message-anomalies') === '1'
+    ));
+    await harness.expectConsoleWarning('discarded a global message after handshake');
+    await coldFrame.evaluate(() => {
+      window.postMessage({
+        id: 'injected-global-2',
+        type: 'private.key',
+        payload: { privateKey: 'must-be-discarded' }
+      }, '*');
+    });
+    await coldFrame.waitForFunction(() => (
+      document.documentElement.getAttribute('data-global-message-anomalies') === '1'
+    ));
+    await harness.expectConsoleWarning('discarded a global message after handshake');
     for (const primitive of ['fetch', 'XMLHttpRequest', 'WebSocket']) {
       const result = await harness.expectNetworkPrimitiveBlocked(
         primitive,

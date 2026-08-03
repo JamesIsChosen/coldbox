@@ -45,8 +45,9 @@ function injectOnce(template, token, contents) {
 
 function assemble() {
   let document = readSource('index.html');
-  const coldRealmDocument = injectColdCspHashes(assembleColdRealm());
-  let mainScript = readSource('main.js');
+  const protocolSource = readSource('protocol.js');
+  const coldRealmDocument = injectColdCspHashes(assembleColdRealm(protocolSource));
+  let mainScript = injectOnce(readSource('main.js'), '__COLDBOX_PROTOCOL__', protocolSource);
   mainScript = injectOnce(
     mainScript,
     '__COLDBOX_COLD_REALM_DOCUMENT__',
@@ -93,11 +94,16 @@ function assemble() {
   return ensureTrailingLf(document);
 }
 
-function assembleColdRealm() {
+function assembleColdRealm(protocolSource) {
   let document = readSource('cold/index.html');
+  const coldMainScript = injectOnce(
+    readSource('cold/main.js'),
+    '__COLDBOX_PROTOCOL__',
+    protocolSource
+  );
   const components = new Map([
     ['styles.css', readSource('cold/styles.css')],
-    ['main.js', readSource('cold/main.js')]
+    ['main.js', coldMainScript]
   ]);
 
   for (const entry of coldRealmManifest) {
@@ -110,7 +116,8 @@ function assembleColdRealm() {
 
   for (const placeholder of [
     '__COLDBOX_COLD_STYLES__',
-    '__COLDBOX_COLD_SCRIPT__'
+    '__COLDBOX_COLD_SCRIPT__',
+    '__COLDBOX_PROTOCOL__'
   ]) {
     if (document.includes(placeholder)) {
       throw new Error(`Unresolved cold-realm source placeholder: ${placeholder}`);

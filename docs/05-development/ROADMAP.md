@@ -79,10 +79,11 @@ Nothing above this phase is safe to build until the container is trustworthy.
   **Accept:** iframe instantiates; `fetch`, `XHR`, and `WebSocket` inside it **throw**; warm shell cannot read its DOM or variables; **app fails closed with an explanation if the iframe cannot be established.**
   🌐 *Verified by the P0.3a harness in headless Chromium and Firefox — this is the project's central security claim, so the harness assertions for it are the most important tests in the repo. Real-device confirmation is P0.19.*
 
-- [ ] **P0.7 — MessageChannel handshake and schema validator**
+- [x] **P0.7 — MessageChannel handshake and schema validator**
   *Deps: P0.6*
   Handshake transferring a port; typed whitelist schema per [architecture.md](../01-spec/architecture.md); global `message` handler ignored after handshake.
   **Accept:** schema rejects unknown types and strips unknown fields; a test asserts **no message type can carry a mnemonic, private key, xprv, passphrase, or secret-compartment plaintext**; messages injected on the global handler post-handshake are discarded and logged.
+  🌐 *Verified by the P0.3a harness in headless Chromium and Firefox. Real-device confirmation is P0.19.*
 
 - [ ] **P0.8 — CSP canary and airgap guard**
   *Deps: P0.7*
