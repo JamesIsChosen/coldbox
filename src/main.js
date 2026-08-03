@@ -89,9 +89,13 @@
     if (!moreMenu) {
       return;
     }
+    var focusInsideMenu = document.activeElement && moreMenu.contains(document.activeElement);
     moreMenu.hidden = true;
     if (moreTab) {
       moreTab.setAttribute('aria-expanded', 'false');
+    }
+    if (focusInsideMenu && moreTab) {
+      moreTab.focus();
     }
   }
 

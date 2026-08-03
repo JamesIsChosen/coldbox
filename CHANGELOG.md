@@ -79,6 +79,11 @@ Foundation work in progress. Wallet, vault, and cryptographic features are not a
 - Build-time SHA-256 hash-pinning for every inline script and style block in the CSP
 - CSP policy embedded in the built HTML with deterministic hash injection
 
+### Changed — P0.4 review fixes (2026-08-03)
+
+- Browser harness copies `build/coldbox.html`, flips one byte in its inline script, and verifies `script-src` rejection plus the absence of the skeleton state in Chromium and Firefox; the untampered build is a positive control
+- Final-document `__COLDBOX_` placeholder checking now fails the build before any output is created
+
 ### Added — P0.5 (2026-08-03)
 
 - Responsive warm-shell skeleton with desktop navigation rail, mobile tab bar, overflow menu, hash routing, and dark/light mode
@@ -86,11 +91,6 @@ Foundation work in progress. Wallet, vault, and cryptographic features are not a
 - Browser-harness coverage for file-based routing, theme switching, desktop/mobile navigation, and 360px horizontal-overflow checks in Chromium and Firefox
 - Regression tests for multiple inline blocks and browser verification of one-byte tampering on a copy of the built artifact
 - Lint compatibility for the required `wasm-unsafe-eval` directive while rejecting `unsafe-eval`
-
-### Changed — P0.4 review fixes (2026-08-03)
-
-- Browser harness copies `build/coldbox.html`, flips one byte in its inline script, and verifies `script-src` rejection plus the absence of the skeleton state in Chromium and Firefox; the untampered build is a positive control
-- Final-document `__COLDBOX_` placeholder checking now fails the build before any output is created
 
 ### Added — P0.3 (2026-08-02)
 

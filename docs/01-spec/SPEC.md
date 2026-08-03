@@ -226,22 +226,9 @@ object-src 'none'; frame-src 'none'; worker-src blob:;
 
 ### 6.2 Warm shell CSP (outer document)
 
-```
-default-src 'none'; script-src 'sha256-<hash>' 'wasm-unsafe-eval';
-style-src 'sha256-<hash>'; img-src data: blob:; font-src data:;
-connect-src https://api.coingecko.com https://api.coinbase.com
-            https://api.kraken.com https://api.coinpaprika.com
-            https://api.diadata.org https://mempool.space
-            https://blockstream.info https://eth.llamarpc.com
-            https://rpc.ankr.com https://api.mainnet-beta.solana.com
-            https://lcd.osmosis.zone https://rest.cosmos.directory
-            http://localhost:* https://localhost:* http://127.0.0.1:*;
-frame-src 'self' blob:; form-action 'none'; base-uri 'none'; object-src 'none';
-```
+The canonical warm-shell policy, including its complete `connect-src` host allowlist, is maintained in [csp-policy.md](../02-security/csp-policy.md) and injected by the build. It includes `frame-src 'self' blob:` and `worker-src blob:` alongside the hash-pinned script/style sources and fail-closed document directives.
 
-The allowlist is **pinned at build time** and visible in the Reference → Provenance panel.
-
-One gotcha to handle during implementation: **CSP re-checks the URL after every redirect**, so aggregator hosts that 302 you elsewhere (`rest.cosmos.directory` does this) will be blocked at the redirect target. Every Cosmos-family endpoint must therefore be a concrete LCD host in the allowlist, not a redirector. The adapter layer must resolve final hosts at build time, not runtime. `localhost` entries exist so you can point the app at your own Bitcoin/Electrum/Ethereum node. Any other self-hosted endpoint requires editing that one clearly-marked line in the HTML — which changes the file hash, so you'd verify against your own build. That's a deliberate tradeoff: a wildcard `connect-src` would let any injected code phone anywhere.
+The allowlist is **pinned at build time** and visible in the Reference → Provenance panel. `srcdoc` children inherit the parent policy, so the build also injects the child script/style hashes into the parent policy; see [build.md](../05-development/build.md) and [csp-policy.md](../02-security/csp-policy.md) for the single implementation contract. Redirect behavior and the concrete-host rule belong in that canonical security document rather than in a second copy here.
 
 ### 6.3 Runtime neutering and lockout
 

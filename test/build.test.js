@@ -141,6 +141,7 @@ test('warm shell CSP preserves the documented network allowlist', () => {
 
   assert.deepEqual(connectSources.split(/\s+/), expectedHosts);
   assert.match(policy, /frame-src 'self' blob:/);
+  assert.match(policy, /worker-src blob:/);
   assert.match(policy, /form-action 'none'/);
   assert.match(policy, /base-uri 'none'/);
   assert.match(policy, /object-src 'none'/);

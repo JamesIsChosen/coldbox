@@ -8,7 +8,7 @@
   --border-strong: #3b5278;
   --text: #f4f7fb;
   --muted: #9eacc4;
-  --faint: #6e7f9f;
+  --faint: #9eacc4;
   --accent: #7dd3fc;
   --accent-strong: #38bdf8;
   --accent-ink: #071521;
@@ -30,7 +30,7 @@ html[data-theme="light"] {
   --border-strong: #a9bad1;
   --text: #172033;
   --muted: #51627d;
-  --faint: #71829c;
+  --faint: #51627d;
   --accent: #0369a1;
   --accent-strong: #075985;
   --accent-ink: #ffffff;

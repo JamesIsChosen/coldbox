@@ -143,6 +143,14 @@ async function verifyBuiltFile(browser, engine) {
     await harness.expectElementVisible('#page-prices:not([hidden])');
     await page.locator('#mobile-more-tab').click();
     assert.equal(await page.locator('#mobile-more-menu').isVisible(), true);
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#mobile-more-menu').isVisible(), false);
+    assert.equal(
+      await page.evaluate(() => document.activeElement && document.activeElement.id),
+      'mobile-more-tab',
+      `${engine}: Escape did not return focus to the mobile overflow tab`
+    );
+    await page.locator('#mobile-more-tab').click();
     await page.locator('#mobile-more-menu a[data-route="reference"]').click();
     await page.waitForFunction(() => window.location.hash === '#reference');
     await harness.expectElementVisible('#page-reference:not([hidden])');
