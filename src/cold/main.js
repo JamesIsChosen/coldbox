@@ -4,6 +4,7 @@ __COLDBOX_PROTOCOL__
 
   var protocol = window.__coldboxProtocol;
   var readyMarker = document.getElementById('cold-ready');
+  var protocolWarning = document.getElementById('cold-protocol-warning');
   var messagePort = null;
   var handshakeState = 'starting';
   var globalAnomalyCount = 0;
@@ -12,12 +13,18 @@ __COLDBOX_PROTOCOL__
   function recordGlobalMessageAnomaly() {
     globalAnomalyCount += 1;
     document.documentElement.setAttribute('data-global-message-anomalies', String(globalAnomalyCount));
+    if (protocolWarning) {
+      protocolWarning.hidden = false;
+    }
     console.warn('Coldbox discarded a global message after handshake.');
   }
 
   function recordChannelAnomaly() {
     channelAnomalyCount += 1;
     document.documentElement.setAttribute('data-channel-anomalies', String(channelAnomalyCount));
+    if (protocolWarning) {
+      protocolWarning.hidden = false;
+    }
     console.warn('Coldbox discarded an invalid channel message.');
   }
 

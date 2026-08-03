@@ -131,6 +131,38 @@ function createColdReadySuppressedFixture() {
   };
 }
 
+function createHandshakeResponseSuppressedFixture() {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-browser-handshake-timeout-'));
+  for (const directory of ['scripts', 'src', 'vendor']) {
+    fs.cpSync(
+      path.join(projectRoot, directory),
+      path.join(temporaryRoot, directory),
+      { recursive: true }
+    );
+  }
+
+  const coldMainPath = path.join(temporaryRoot, 'src', 'cold', 'main.js');
+  const original = fs.readFileSync(coldMainPath, 'utf8');
+  const readyResponse = 'messagePort.postMessage(readyMessage);';
+  const occurrences = original.split(readyResponse).length - 1;
+  assert.equal(occurrences, 1, 'Cold realm must contain one typed ready response');
+  fs.writeFileSync(coldMainPath, original.replace(readyResponse, 'void readyMessage;'), 'utf8');
+
+  const result = spawnSync(process.execPath, [path.join(temporaryRoot, 'scripts', 'build.js')], {
+    cwd: temporaryRoot,
+    encoding: 'utf8',
+    env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' }
+  });
+  if (result.status !== 0) {
+    fs.rmSync(temporaryRoot, { force: true, recursive: true });
+    throw new Error(`Handshake-timeout fixture build failed: ${result.stdout}\n${result.stderr}`);
+  }
+  return {
+    path: path.join(temporaryRoot, 'build', 'coldbox.html'),
+    temporaryRoot
+  };
+}
+
 async function openPage(browser, file) {
   const page = await browser.newPage();
   const harness = await createHarness(page);
@@ -187,6 +219,7 @@ async function verifyBuiltFile(browser, engine) {
     await page.waitForFunction(() => (
       document.documentElement.getAttribute('data-global-message-anomalies') === '1'
     ));
+    await harness.expectElementVisible('#protocol-warning');
     await harness.expectConsoleWarning('discarded a global message after handshake');
     await coldFrame.evaluate(() => {
       window.postMessage({
@@ -198,6 +231,7 @@ async function verifyBuiltFile(browser, engine) {
     await coldFrame.waitForFunction(() => (
       document.documentElement.getAttribute('data-global-message-anomalies') === '1'
     ));
+    await coldFrame.locator('#cold-protocol-warning').waitFor({ state: 'visible' });
     await harness.expectConsoleWarning('discarded a global message after handshake');
     for (const primitive of ['fetch', 'XMLHttpRequest', 'WebSocket']) {
       const result = await harness.expectNetworkPrimitiveBlocked(
@@ -320,6 +354,33 @@ async function verifyColdRealmTimeout(browser, engine) {
     await harness.expectNoConsoleErrors();
     await harness.expectNoCspViolations();
     console.log(`${engine}: cold realm readiness timeout removed the frame and locked down`);
+  } finally {
+    await page.close();
+    fs.rmSync(fixture.temporaryRoot, { force: true, recursive: true });
+  }
+}
+
+async function verifyHandshakeTimeout(browser, engine) {
+  const fixture = createHandshakeResponseSuppressedFixture();
+  const page = await browser.newPage();
+  const harness = await createHarness(page);
+  try {
+    await page.goto(fileUrl(fixture.path), { waitUntil: 'load' });
+    await page.locator('#cold-realm-status[data-cold-state="failed"]').waitFor({ state: 'visible' });
+    assert.match(
+      await page.locator('#cold-realm-status-copy').textContent(),
+      /private channel did not complete/,
+      `${engine}: handshake timeout used the boot-failure copy`
+    );
+    await harness.expectElementVisible('#cold-realm-failure');
+    assert.equal(
+      await page.locator('#cold-frame').count(),
+      0,
+      `${engine}: handshake timeout left a cold frame attached`
+    );
+    await harness.expectNoConsoleErrors();
+    await harness.expectNoCspViolations();
+    console.log(`${engine}: typed handshake timeout used distinct copy and locked down`);
   } finally {
     await page.close();
     fs.rmSync(fixture.temporaryRoot, { force: true, recursive: true });
@@ -478,6 +539,7 @@ async function run() {
       await verifyBuiltFile(browser, engine);
       await verifyColdRealmFailure(browser, engine);
       await verifyColdRealmTimeout(browser, engine);
+      await verifyHandshakeTimeout(browser, engine);
       await verifyTamperedBuiltFile(browser, engine);
       await verifyCspFixture(browser, engine);
       await verifyUntamperedFixture(browser, engine);

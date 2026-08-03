@@ -2,6 +2,8 @@
   'use strict';
 
   var PROTOCOL_VERSION = 1;
+  var MAX_VAULT_BYTES = 64 * 1024 * 1024;
+  var MAX_PUBLIC_PAYLOAD_BYTES = 4 * 1024 * 1024;
   var SECRET_KEYS = Object.freeze({
     mnemonic: true,
     privateKey: true,
@@ -13,6 +15,7 @@
     shareMaterial: true
   });
   var COLLECTIONS = Object.freeze([
+    'seeds',
     'wallets',
     'accounts',
     'addresses',
@@ -20,9 +23,11 @@
     'devices',
     'transactions',
     'lots',
+    'disposals',
+    'basisAllocations',
     'prices',
     'backups',
-    'settings',
+    'contacts',
     'auditLog'
   ]);
   var SECTIONS = Object.freeze([
@@ -76,8 +81,28 @@
     return Boolean(value) && Object.prototype.toString.call(value) === '[object Object]';
   }
 
+  function isSecretContent(value) {
+    if (typeof value !== 'string') {
+      return false;
+    }
+    var text = value.trim();
+    if (/\b(?:xprv|tprv|yprv|zprv|uprv|vprv|Yprv|Zprv)[1-9A-HJ-NP-Za-km-z]{20,}\b/.test(text)) {
+      return true;
+    }
+    if (/(?:^|\s)[5KLc9][1-9A-HJ-NP-Za-km-z]{50,51}(?:$|\s)/.test(text)) {
+      return true;
+    }
+    var words = text.split(/\s+/);
+    if ([12, 15, 18, 21, 24].includes(words.length)
+      && words.every(function (word) { return /^[a-z]{2,12}$/.test(word); })) {
+      return true;
+    }
+    return false;
+  }
+
   function cleanText(value, maximum) {
-    if (typeof value !== 'string' || value.length === 0 || value.length > maximum) {
+    if (typeof value !== 'string' || value.length === 0 || value.length > maximum
+      || isSecretContent(value)) {
       return null;
     }
     return value;
@@ -125,9 +150,15 @@
   function cleanBytes(value) {
     var tag = Object.prototype.toString.call(value);
     if (tag === '[object Uint8Array]') {
+      if (value.byteLength > MAX_VAULT_BYTES) {
+        return null;
+      }
       return new Uint8Array(value);
     }
     if (tag === '[object ArrayBuffer]') {
+      if (value.byteLength > MAX_VAULT_BYTES) {
+        return null;
+      }
       return new Uint8Array(value.slice(0));
     }
     return null;
@@ -187,12 +218,17 @@
       return null;
     }
     var result = {};
-    Object.keys(PUBLIC_FIELD_RULES).forEach(function (key) {
+    var keys = Object.keys(PUBLIC_FIELD_RULES);
+    for (var index = 0; index < keys.length; index += 1) {
+      var key = keys[index];
       if (!hasOwn(value, key) || hasOwn(SECRET_KEYS, key)) {
-        return;
+        continue;
       }
       var rule = PUBLIC_FIELD_RULES[key];
       var cleaned;
+      if (isSecretContent(value[key])) {
+        return null;
+      }
       if (rule === 'text') {
         cleaned = cleanText(value[key], 512);
       } else if (rule === 'strings') {
@@ -200,10 +236,11 @@
       } else {
         cleaned = cleanNumber(value[key]);
       }
-      if (cleaned !== null) {
-        result[key] = cleaned;
+      if (cleaned === null) {
+        return null;
       }
-    });
+      result[key] = cleaned;
+    }
     return result;
   }
 
@@ -227,17 +264,17 @@
       return null;
     }
     var result = {};
-    COLLECTIONS.forEach(function (collection) {
+    for (var index = 0; index < COLLECTIONS.length; index += 1) {
+      var collection = COLLECTIONS[index];
       if (!hasOwn(value, collection) || hasOwn(SECRET_KEYS, collection)) {
-        return;
+        continue;
       }
-      var cleaned = collection === 'settings'
-        ? cleanPublicRecord(value[collection])
-        : cleanPublicRecordArray(value[collection]);
-      if (cleaned !== null) {
-        result[collection] = cleaned;
+      var cleaned = cleanPublicRecordArray(value[collection]);
+      if (cleaned === null) {
+        return null;
       }
-    });
+      result[collection] = cleaned;
+    }
     return result;
   }
 
@@ -296,6 +333,37 @@
       }
     }
     return { collections: collections };
+  }
+
+  function utf8Length(value) {
+    var length = 0;
+    for (var index = 0; index < value.length; index += 1) {
+      var code = value.charCodeAt(index);
+      if (code < 0x80) {
+        length += 1;
+      } else if (code < 0x800) {
+        length += 2;
+      } else if (code >= 0xd800 && code <= 0xdbff
+        && index + 1 < value.length
+        && value.charCodeAt(index + 1) >= 0xdc00
+        && value.charCodeAt(index + 1) <= 0xdfff) {
+        length += 4;
+        index += 1;
+      } else {
+        length += 3;
+      }
+    }
+    return length;
+  }
+
+  function payloadWithinLimit(payload, maximum) {
+    var serialized;
+    try {
+      serialized = JSON.stringify(payload);
+    } catch (error) {
+      return false;
+    }
+    return typeof serialized === 'string' && utf8Length(serialized) <= maximum;
   }
 
   function cleanUiNavigate(value) {
@@ -402,7 +470,15 @@
       return null;
     }
     var payload = definitions[type](raw.payload);
-    return payload === null ? null : { id: id, type: type, payload: payload };
+    if (payload === null) {
+      return null;
+    }
+    if (type === 'vault.open' || type === 'vault.bytes') {
+      return { id: id, type: type, payload: payload };
+    }
+    return payloadWithinLimit(payload, MAX_PUBLIC_PAYLOAD_BYTES)
+      ? { id: id, type: type, payload: payload }
+      : null;
   }
 
   function createMessage(direction, id, type, payload) {
@@ -435,11 +511,16 @@
 
   var api = Object.freeze({
     version: PROTOCOL_VERSION,
+    limits: Object.freeze({
+      maxVaultBytes: MAX_VAULT_BYTES,
+      maxPublicPayloadBytes: MAX_PUBLIC_PAYLOAD_BYTES
+    }),
     validateMessage: validateMessage,
     createMessage: createMessage,
     isReadySignal: isReadySignal,
     handshakeMessage: handshakeMessage,
     isHandshakeMessage: isHandshakeMessage,
+    isSecretContent: isSecretContent,
     messageTypes: messageTypes
   });
 

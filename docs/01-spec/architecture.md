@@ -103,6 +103,10 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 2. Payloads are validated against the schema on receipt. Extra fields are stripped, not passed through.
 3. Adding a message type requires review. This is written in [CONTRIBUTING.md](../../CONTRIBUTING.md) because it's the one change that could quietly dismantle the model.
 
+The `publicData.request.collections` allowlist is the public projection of [data-model.md](data-model.md): `seeds`, `wallets`, `accounts`, `addresses`, `notes`, `devices`, `transactions`, `lots`, `disposals`, `basisAllocations`, `prices`, `backups`, `contacts`, and `auditLog`. `settings` is not a vault collection and is rejected rather than silently accepted.
+
+The validator also rejects recognizable secret content in any allowed text field: extended-private-key forms, WIF forms, and mnemonic-shaped 12/15/18/21/24-word phrases. Arbitrary passphrases remain prohibited by field/schema design; they are not safely distinguishable from ordinary prose. All non-vault messages have a 4 MiB aggregate sanitized-payload limit, and encrypted `vault.open`/`vault.bytes` payloads have a 64 MiB byte limit.
+
 ---
 
 ## Capability assumptions inside the sandbox
@@ -127,7 +131,7 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 | `getRandomValues` missing | Hard fail; dice entropy still available for offline use |
 | `crypto.subtle` missing | Silent, expected. Use pure-JS, report in capability panel |
 | Workers unavailable | Silent. Chunked main-thread |
-| Message on global handler post-handshake | Discard, log, surface a warning |
+| Message on global handler post-handshake | Discard, log, surface a visible warning |
 
 **The governing principle is fail closed.** If the guarantee cannot be established, the app refuses to handle secrets rather than proceeding without it. A tool that silently degrades from "cannot leak" to "probably won't leak" is worse than one that stops, because the user's behaviour doesn't change to match.
 

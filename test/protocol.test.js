@@ -164,3 +164,80 @@ test('bootstrap signals and handshake controls are exact and payload-free', () =
   assert.equal(protocol.isReadySignal({ type: 'cold.ready', mnemonic: 'discarded' }), false);
   assert.equal(protocol.isReadySignal({ type: 'cold.ready', payload: {} }), false);
 });
+
+test('public collection allowlist matches the documented data model', () => {
+  const protocol = loadProtocol();
+
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'collections-1',
+    type: 'publicData.request',
+    payload: {
+      collections: [
+        'seeds',
+        'wallets',
+        'accounts',
+        'addresses',
+        'notes',
+        'devices',
+        'transactions',
+        'lots',
+        'disposals',
+        'basisAllocations',
+        'prices',
+        'backups',
+        'contacts',
+        'auditLog'
+      ]
+    }
+  })?.payload.collections.length, 14);
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'collections-2',
+    type: 'publicData.request',
+    payload: { collections: ['settings'] }
+  }), null);
+});
+
+test('recognizable secret content is rejected from allowed public fields', () => {
+  const protocol = loadProtocol();
+  const xprv = `xprv${'1'.repeat(107)}`;
+  const wif = `5${'K'.repeat(50)}`;
+  const mnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+
+  assert.equal(protocol.isSecretContent(xprv), true);
+  assert.equal(protocol.isSecretContent(wif), true);
+  assert.equal(protocol.isSecretContent(mnemonic), true);
+  assert.equal(protocol.validateMessage('cold-to-warm', {
+    id: 'content-1',
+    type: 'derive.result',
+    payload: { addresses: ['bc1public'], xpub: xprv, fingerprint: '1234' }
+  }), null);
+  assert.equal(protocol.validateMessage('cold-to-warm', {
+    id: 'content-2',
+    type: 'derive.result',
+    payload: { addresses: [wif], xpub: 'xpub-public', fingerprint: '1234' }
+  }), null);
+  assert.equal(protocol.validateMessage('cold-to-warm', {
+    id: 'content-3',
+    type: 'vault.opened',
+    payload: { publicCompartment: { notes: [{ notes: mnemonic }] } }
+  }), null);
+});
+
+test('protocol rejects aggregate payloads above the documented limits', () => {
+  const protocol = loadProtocol();
+  assert.equal(protocol.limits.maxVaultBytes, 64 * 1024 * 1024);
+  assert.equal(protocol.limits.maxPublicPayloadBytes, 4 * 1024 * 1024);
+
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'size-1',
+    type: 'vault.open',
+    payload: { bytes: new Uint8Array(protocol.limits.maxVaultBytes + 1) }
+  }), null);
+
+  const oversizedNotes = Array.from({ length: 10000 }, () => ({ notes: 'x'.repeat(512) }));
+  assert.equal(protocol.validateMessage('cold-to-warm', {
+    id: 'size-2',
+    type: 'vault.opened',
+    payload: { publicCompartment: { notes: oversizedNotes } }
+  }), null);
+});

@@ -94,8 +94,8 @@ Foundation work in progress. Wallet, vault, and cryptographic features are not a
 ### Added — P0.7 (2026-08-03)
 
 - MessageChannel port transfer after the payload-free cold bootstrap signal, with terminal handshake state and post-handshake global-message anomaly logging
-- Typed warm-to-cold and cold-to-warm protocol whitelist with payload validation, unknown-field stripping, and safe public-compartment projections that cannot carry mnemonic, private-key, xprv, passphrase, or secret-compartment plaintext fields
-- Node protocol tests and Chromium/Firefox browser-harness assertions for handshake readiness, global-handler discard behavior, and continued cold-realm boundary coverage
+- Typed warm-to-cold and cold-to-warm protocol whitelist with payload validation, unknown-field stripping, safe public-compartment projections, recognizable secret-content rejection, and aggregate payload limits
+- Visible anomaly warnings in both realms, Node handshake-guard mutation tests, and Chromium/Firefox browser-harness assertions for handshake readiness, global-handler discard behavior, and continued cold-realm boundary coverage
 
 ### Added — P0.5 (2026-08-03)
 
