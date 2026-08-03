@@ -84,6 +84,12 @@ Foundation work in progress. Wallet, vault, and cryptographic features are not a
 - Browser harness copies `build/coldbox.html`, flips one byte in its inline script, and verifies `script-src` rejection plus the absence of the skeleton state in Chromium and Firefox; the untampered build is a positive control
 - Final-document `__COLDBOX_` placeholder checking now fails the build before any output is created
 
+### Added — P0.6 (2026-08-03)
+
+- Hash-pinned cold-realm `srcdoc` assembly with `sandbox="allow-scripts allow-downloads"` and no `allow-same-origin`
+- Cold-realm CSP with `connect-src 'none'`, isolated child styling/script, and a warm-shell policy that permits only the pinned child hashes needed by the inherited `srcdoc` policy
+- Chromium and Firefox coverage for blocked cold network primitives, parent DOM isolation, and explicit fail-closed behavior when iframe creation fails
+
 ### Added — P0.5 (2026-08-03)
 
 - Responsive warm-shell skeleton with desktop navigation rail, mobile tab bar, overflow menu, hash routing, and dark/light mode

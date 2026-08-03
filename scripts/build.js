@@ -21,6 +21,11 @@ const sourceManifest = Object.freeze([
   Object.freeze({ file: 'index.html', token: '__COLDBOX_SCRIPT__', content: 'main.js' })
 ]);
 
+const coldRealmManifest = Object.freeze([
+  Object.freeze({ file: 'index.html', token: '__COLDBOX_COLD_STYLES__', content: 'styles.css' }),
+  Object.freeze({ file: 'index.html', token: '__COLDBOX_COLD_SCRIPT__', content: 'main.js' })
+]);
+
 function readSource(file) {
   const contents = fs.readFileSync(path.join(sourceRoot, file), 'utf8');
   return normalizeLineEndings(contents);
@@ -40,9 +45,19 @@ function injectOnce(template, token, contents) {
 
 function assemble() {
   let document = readSource('index.html');
+  const coldRealmDocument = injectColdCspHashes(assembleColdRealm());
+  let mainScript = readSource('main.js');
+  mainScript = injectOnce(
+    mainScript,
+    '__COLDBOX_COLD_REALM_DOCUMENT__',
+    JSON.stringify(coldRealmDocument)
+      .replace(/</g, '\\u003c')
+      .replace(/>/g, '\\u003e')
+      .replace(/&/g, '\\u0026')
+  );
   const components = new Map([
     ['styles.css', readSource('styles.css')],
-    ['main.js', readSource('main.js')]
+    ['main.js', mainScript]
   ]);
 
   for (const entry of sourceManifest) {
@@ -53,9 +68,52 @@ function assemble() {
     document = injectOnce(document, entry.token, component);
   }
 
-  for (const placeholder of ['__COLDBOX_STYLES__', '__COLDBOX_SCRIPT__']) {
+  document = injectOnce(
+    document,
+    '__COLDBOX_FRAME_SCRIPT_HASHES__',
+    hashInlineBlocks(coldRealmDocument, 'script')
+  );
+  document = injectOnce(
+    document,
+    '__COLDBOX_FRAME_STYLE_HASHES__',
+    hashInlineBlocks(coldRealmDocument, 'style')
+  );
+
+  for (const placeholder of [
+    '__COLDBOX_STYLES__',
+    '__COLDBOX_SCRIPT__',
+    '__COLDBOX_FRAME_SCRIPT_HASHES__',
+    '__COLDBOX_FRAME_STYLE_HASHES__'
+  ]) {
     if (document.includes(placeholder)) {
       throw new Error(`Unresolved source placeholder in assembled document: ${placeholder}`);
+    }
+  }
+
+  return ensureTrailingLf(document);
+}
+
+function assembleColdRealm() {
+  let document = readSource('cold/index.html');
+  const components = new Map([
+    ['styles.css', readSource('cold/styles.css')],
+    ['main.js', readSource('cold/main.js')]
+  ]);
+
+  for (const entry of coldRealmManifest) {
+    const component = components.get(entry.content);
+    if (component === undefined) {
+      throw new Error(`Missing cold-realm source component: ${entry.content}`);
+    }
+    document = injectOnce(document, entry.token, component);
+  }
+
+  for (const placeholder of [
+    '__COLDBOX_COLD_STYLES__',
+    '__COLDBOX_COLD_SCRIPT__'
+  ]) {
+    if (document.includes(placeholder)) {
+      throw new Error(`Unresolved cold-realm source placeholder: ${placeholder}`);
     }
   }
 
@@ -83,6 +141,21 @@ function injectCspHashes(document) {
   let result = document;
   result = injectOnce(result, '__COLDBOX_SCRIPT_HASHES__', hashInlineBlocks(document, 'script'));
   result = injectOnce(result, '__COLDBOX_STYLE_HASHES__', hashInlineBlocks(document, 'style'));
+  return result;
+}
+
+function injectColdCspHashes(document) {
+  let result = document;
+  result = injectOnce(
+    result,
+    '__COLDBOX_COLD_SCRIPT_HASHES__',
+    hashInlineBlocks(document, 'script')
+  );
+  result = injectOnce(
+    result,
+    '__COLDBOX_COLD_STYLE_HASHES__',
+    hashInlineBlocks(document, 'style')
+  );
   return result;
 }
 

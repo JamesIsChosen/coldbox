@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b1020">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src __COLDBOX_SCRIPT_HASHES__ 'wasm-unsafe-eval'; style-src __COLDBOX_STYLE_HASHES__; img-src data: blob:; font-src data:; connect-src https://api.coingecko.com https://api.coinbase.com https://api.kraken.com https://api.coinpaprika.com https://api.diadata.org https://api.frankfurter.app https://mempool.space https://blockstream.info https://eth.llamarpc.com https://rpc.ankr.com https://api.mainnet-beta.solana.com https://lcd.osmosis.zone http://localhost:* https://localhost:* http://127.0.0.1:*; frame-src 'self' blob:; worker-src blob:; form-action 'none'; base-uri 'none'; object-src 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src __COLDBOX_SCRIPT_HASHES__ __COLDBOX_FRAME_SCRIPT_HASHES__ 'wasm-unsafe-eval'; style-src __COLDBOX_STYLE_HASHES__ __COLDBOX_FRAME_STYLE_HASHES__; img-src data: blob:; font-src data:; connect-src https://api.coingecko.com https://api.coinbase.com https://api.kraken.com https://api.coinpaprika.com https://api.diadata.org https://api.frankfurter.app https://mempool.space https://blockstream.info https://eth.llamarpc.com https://rpc.ankr.com https://api.mainnet-beta.solana.com https://lcd.osmosis.zone http://localhost:* https://localhost:* http://127.0.0.1:*; frame-src 'self' blob:; worker-src blob:; form-action 'none'; base-uri 'none'; object-src 'none';">
   <title>Coldbox</title>
   <style>
 __COLDBOX_STYLES__
@@ -62,7 +62,7 @@ __COLDBOX_STYLES__
 
         <div class="nav-footer">
           <span class="build-badge"><span class="status-dot" aria-hidden="true"></span> Shell preview</span>
-          <p class="nav-footer-note">The warm shell is ready. Secret handling arrives inside the sealed realm.</p>
+          <p class="nav-footer-note">The warm shell stays public. Secret handling lives inside the sealed realm.</p>
         </div>
       </aside>
 
@@ -84,6 +84,20 @@ __COLDBOX_STYLES__
 
         <p class="sr-only" id="route-announcement" aria-live="polite"></p>
 
+        <section class="realm-status" id="cold-realm-status" data-cold-state="starting" aria-labelledby="cold-realm-status-title" aria-live="polite">
+          <div class="realm-status-copy">
+            <p class="eyebrow">Security boundary / P0.6</p>
+            <h2 id="cold-realm-status-title">Establishing the sealed realm</h2>
+            <p id="cold-realm-status-copy">The secret-capable side of Coldbox is starting inside an opaque sandbox. The shell will stay locked down if that boundary cannot be established.</p>
+          </div>
+          <div class="realm-status-state" aria-label="Sealed realm status">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="cold-realm-status-label">Starting</span>
+          </div>
+          <div class="cold-frame-host" id="cold-realm-host" aria-label="Sealed realm viewport"></div>
+          <p class="realm-status-failure" id="cold-realm-failure" role="alert" hidden>Coldbox is locked down because the sealed realm could not be established. Reload a verified build in a supported browser; no secret operation is available in this state.</p>
+        </section>
+
         <section class="page" id="page-dashboard" data-page="dashboard" aria-labelledby="page-title-dashboard">
           <header class="page-header">
             <p class="eyebrow">Workspace / Warm shell</p>
@@ -94,7 +108,7 @@ __COLDBOX_STYLES__
             <div>
               <span class="panel-kicker">Foundation complete</span>
               <h2>The shell is ready for the tools that come next.</h2>
-              <p>Coldbox runs as one local HTML file. This outer document owns navigation and public views; the next foundation item establishes the isolated realm for secrets.</p>
+              <p>Coldbox runs as one local HTML file. This outer document owns navigation and public views; secret-capable work stays inside the isolated realm above.</p>
             </div>
             <span class="hero-mark" aria-hidden="true">◈</span>
           </div>
@@ -119,7 +133,7 @@ __COLDBOX_STYLES__
 
         <section class="page" id="page-vault" data-page="vault" aria-labelledby="page-title-vault" hidden>
           <header class="page-header"><p class="eyebrow">Workspace / Sealed tools</p><h1 id="page-title-vault">Vault</h1><p class="page-lede">The vault surface will connect to the sealed realm after the realm bootstrap is in place.</p></header>
-          <div class="empty-panel"><span class="panel-kicker">Foundation item P0.6</span><h2>Sealed vault controls are not exposed here yet.</h2><p>This placeholder is intentionally part of the shell navigation. It keeps the route stable while the security boundary is built.</p></div>
+          <div class="empty-panel"><span class="panel-kicker">Cold realm foundation</span><h2>Sealed vault controls are not exposed here yet.</h2><p>This placeholder keeps the route stable while later items add the typed handshake and secret workflows inside the established boundary.</p></div>
         </section>
 
         <section class="page" id="page-portfolio" data-page="portfolio" aria-labelledby="page-title-portfolio" hidden>

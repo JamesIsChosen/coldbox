@@ -20,6 +20,14 @@ function fileUrl(file) {
   return pathToFileURL(file).href;
 }
 
+function cspHash(block) {
+  return `'sha256-${crypto.createHash('sha256').update(Buffer.from(block, 'utf8')).digest('base64')}'`;
+}
+
+function escapedRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function runBuild() {
   const result = spawnSync(process.execPath, [buildScript], {
     cwd: projectRoot,
@@ -98,11 +106,45 @@ async function closePage(page) {
   await page.close();
 }
 
+async function getColdFrame(page, engine) {
+  await page.waitForFunction(() => {
+    const iframe = document.querySelector('#cold-frame');
+    return iframe && iframe.contentWindow;
+  });
+  const frames = page.frames().filter((candidate) => candidate.parentFrame());
+  assert.equal(frames.length, 1, `${engine}: built app should have exactly one child frame`);
+  const frame = frames[0];
+  await frame.locator('#cold-ready').waitFor({ state: 'visible' });
+  return frame;
+}
+
 async function verifyBuiltFile(browser, engine) {
   const { harness, page } = await openPage(browser, buildPath);
   try {
     await harness.expectElementVisible('#app');
     await harness.expectElementVisible('#app[data-build-state="warm-shell"]');
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible' });
+    const sandbox = await page.locator('#cold-frame').getAttribute('sandbox');
+    assert.equal(sandbox, 'allow-scripts allow-downloads', `${engine}: cold frame sandbox changed`);
+    assert.equal(
+      sandbox.includes('allow-same-origin'),
+      false,
+      `${engine}: cold frame must remain opaque`
+    );
+    const coldFrame = await getColdFrame(page, engine);
+    const coldPolicy = await coldFrame.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
+    const coldScript = await coldFrame.locator('script').textContent();
+    const coldStyle = await coldFrame.locator('style').textContent();
+    assert.match(coldPolicy, /connect-src 'none'/, `${engine}: cold CSP lacks connect-src 'none'`);
+    assert.match(coldPolicy, new RegExp(escapedRegExp(cspHash(coldScript))));
+    assert.match(coldPolicy, new RegExp(escapedRegExp(cspHash(coldStyle))));
+    await harness.expectParentCannotReadFrame();
+    await harness.expectNoConsoleErrors();
+    for (const primitive of ['fetch', 'XMLHttpRequest', 'WebSocket']) {
+      const result = await harness.expectNetworkPrimitiveBlocked(primitive, coldFrame);
+      console.log(`${engine}: cold realm ${primitive} reported blocked (${result.signal})`);
+    }
+    await harness.expectCspViolationInFrame(coldFrame, 'connect-src');
     await harness.expectElementVisible('#nav-rail');
     await harness.expectElementVisible('#theme-toggle');
     await harness.expectElementVisible('#nav-rail .nav-link[aria-current="page"]');
@@ -156,9 +198,38 @@ async function verifyBuiltFile(browser, engine) {
     await harness.expectElementVisible('#page-reference:not([hidden])');
     assert.equal(await page.locator('#mobile-more-menu').isVisible(), false);
 
+    await harness.expectNoCspViolations();
+    console.log(`${engine}: warm shell routes, theme switch, responsive navigation, and cold boundary passed over file://`);
+  } finally {
+    await closePage(page);
+  }
+}
+
+async function verifyColdRealmFailure(browser, engine) {
+  const page = await browser.newPage();
+  await page.addInitScript(() => {
+    const createElement = Document.prototype.createElement;
+    Document.prototype.createElement = function createElementWithColdFrameFailure(name) {
+      if (String(name).toLowerCase() === 'iframe') {
+        throw new Error('deliberate cold iframe creation failure');
+      }
+      return createElement.apply(this, arguments);
+    };
+  });
+  const harness = await createHarness(page);
+  try {
+    await page.goto(fileUrl(buildPath), { waitUntil: 'load' });
+    await page.locator('#cold-realm-status[data-cold-state="failed"]').waitFor({ state: 'visible' });
+    await harness.expectElementVisible('#cold-realm-failure');
+    assert.equal(await page.locator('#cold-frame').count(), 0, `${engine}: failed bootstrap left a frame active`);
+    assert.equal(
+      await page.locator('#app').getAttribute('data-cold-state'),
+      'failed',
+      `${engine}: failed bootstrap did not lock the app`
+    );
     await harness.expectNoConsoleErrors();
     await harness.expectNoCspViolations();
-    console.log(`${engine}: warm shell routes, theme switch, and responsive navigation passed over file://`);
+    console.log(`${engine}: cold realm creation failure produced an explicit lockdown state`);
   } finally {
     await closePage(page);
   }
@@ -309,6 +380,7 @@ async function run() {
     const browser = await browserType.launch({ headless: true });
     try {
       await verifyBuiltFile(browser, engine);
+      await verifyColdRealmFailure(browser, engine);
       await verifyTamperedBuiltFile(browser, engine);
       await verifyCspFixture(browser, engine);
       await verifyUntamperedFixture(browser, engine);

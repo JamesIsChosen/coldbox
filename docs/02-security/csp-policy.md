@@ -39,6 +39,8 @@ worker-src   blob:;
 | `worker-src blob:` | Workers for Argon2 and search, created from blob URLs |
 | `frame-src 'none'` | The cold realm embeds nothing |
 
+The policy listing includes `frame-ancestors 'self'` for a header-capable deployment. The shipped `file://` artifact delivers CSP through a meta element, and Chromium reports that directive as ignored when it appears there. The embedded policy therefore omits that one non-functional meta directive; the required embedding boundary is still provided by the iframe's sandbox without `allow-same-origin` and the warm shell's `frame-src` policy. A server or packaged deployment may add `frame-ancestors 'self'` as an HTTP header.
+
 ### Sandbox attribute
 
 ```html

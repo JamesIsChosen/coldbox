@@ -147,6 +147,20 @@ test('warm shell CSP preserves the documented network allowlist', () => {
   assert.match(policy, /object-src 'none'/);
 });
 
+test('cold realm policy is embedded and remains opaque', () => {
+  runBuild();
+  const html = fs.readFileSync(htmlPath, 'utf8');
+
+  assert.match(html, /allow-scripts allow-downloads/);
+  assert.doesNotMatch(html, /allow-same-origin/);
+  assert.match(html, /connect-src 'none'/);
+  assert.match(html, /form-action 'none'/);
+  assert.match(html, /frame-src 'none'/);
+  assert.match(html, /object-src 'none'/);
+  assert.match(html, /worker-src blob:/);
+  assert.doesNotMatch(html, /__COLDBOX_/);
+});
+
 test('CSP hash injection covers multiple inline blocks and detects script tampering', () => {
   const root = createBuildRoot();
   try {
