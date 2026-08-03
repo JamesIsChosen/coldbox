@@ -1,10 +1,10 @@
-# Coldbox — Specification v0.3
+# Coldbox — Specification v0.4
 
 **A single-file, portable crypto toolkit, wallet registry, and portfolio manager.**
 **Secrets are cryptographically incapable of reaching the network. Everything else works online.**
 
-Status: Draft for review. No code written yet.
-Date: 2026-08-02 · Supersedes v0.2 · *"Coldbox" is a working name — see §22*
+Status: Draft for review. Phase 0 in progress.
+Date: 2026-08-02 · Supersedes v0.3 · *"Coldbox" is a working name — see §22*
 
 ---
 
@@ -636,7 +636,13 @@ Transaction types: `buy · sell · swap · transfer-in · transfer-out · fee ·
 
 Transfers between your own wallets are explicitly *not* disposals — the app models them as movement, preserving the original acquisition date and cost basis. Getting this wrong is the single most common error in portfolio trackers, and it silently corrupts every gain figure downstream.
 
-**Cost basis methods:** FIFO (default), LIFO, HIFO, average cost, and specific-identification. Selectable globally with per-transaction override. Changing the global method recomputes everything and shows you the delta, so you can see what the choice actually costs before committing.
+**Lot pools are keyed by `(walletId, asset)`, not by asset alone.** This is a legal requirement, not a preference: [Rev. Proc. 2024-28](https://www.irs.gov/pub/irs-drop/rp-24-28.pdf) eliminated the universal-wallet method effective 1 January 2025, so cost basis methods now apply per wallet or account. Selling 1 BTC from your Coldcard consumes lots acquired *in that wallet*, not the cheapest BTC you happen to hold elsewhere. A tracker with one global pool per asset cannot produce correct figures for 2025 onward regardless of how it formats its output.
+
+**Cost basis methods:** FIFO (default) and specific identification. Selectable per wallet, with per-transaction override.
+
+HIFO and LIFO are offered as **specific-identification selection rules**, not as independent methods — because that is what they are. They carry the full contemporaneous-records burden, and the app says so when you select one rather than implying a standing election exists. Whenever anything other than FIFO is used, the engine writes a lot-level audit trail recording which lots were identified and on what basis; that trail is the substantiation. Average cost is available for jurisdictions that require it, marked as not generally available for US filers.
+
+Changing a method recomputes and shows the delta before committing, so the choice is visible rather than silent.
 
 ### 14.2 Metrics
 
@@ -661,9 +667,38 @@ Holdings table with expandable per-lot detail. Transaction ledger with filtering
 
 CSV import with a column-mapping UI and a dry-run preview showing what will be created before anything is written, plus duplicate detection on txid. CSV/JSON export of transactions, lots, and realized gains.
 
-### 14.5 Not tax advice
+### 14.5 Tax reporting and CSV export
 
-The app computes cost basis and realized gains using standard methods. It does not know your jurisdiction, does not model wash sales or jurisdiction-specific rules, does not produce tax forms, and is not a substitute for a professional. Stated in the UI, not buried here.
+Full detail and rule citations in [us-tax-reporting.md](../04-reference/us-tax-reporting.md).
+
+**Export set:**
+
+| File | Contents |
+|---|---|
+| `form-8949-<code>.csv` | One per box code, in IRS column order |
+| `schedule-d-summary.csv` | Totals per box code and term |
+| `income.csv` | Ordinary income events — different form entirely |
+| `lot-audit-trail.csv` | Every lot: acquired, disposed, method, wallet, selection basis |
+| `transfers.csv` | Inter-wallet movements showing preserved dates and bases |
+| `1099-da-reconciliation.csv` | Your records against each broker's form |
+| `basis-allocation.csv` | Rev. Proc. 2024-28 safe harbor allocation, if recorded |
+| `README.txt` | Method, date range, app version, caveats |
+
+Plus **TurboTax and TaxAct CSV profiles**, since those are what people actually import, and their formats differ from the IRS column order and from each other.
+
+**Form 8949 box codes.** Digital assets got their own checkboxes for tax year 2025 onward — short-term **G/H/I**, long-term **J/K/L**, depending on whether a 1099-DA was received and whether basis was reported on it. Boxes C and F are for other property and must not be used. A separate form page is required per code, so rows are grouped and emitted per code.
+
+**Rows are per disposed lot, not per transaction.** A sale consuming three lots produces three rows, which is what the form requires.
+
+**1099-DA reconciliation matters more than it sounds.** Brokers were not required to report cost basis for 2025 transactions, so the form shows proceeds with basis blank — and if you don't supply basis, the IRS computes gain as 100% of proceeds. The IRS matches 1099-DA against Form 8949 automatically, so the reconciliation report flags proceeds discrepancies, transactions on a broker form but not in your records, and vice versa.
+
+**Wash sales are not applied to crypto** — it's property, not a security, so IRC §1091 doesn't reach it. The rule *does* apply to spot crypto ETFs, which are securities, so ETF-tagged holdings are flagged rather than silently given crypto treatment.
+
+**Missing basis is never defaulted to zero.** A lot without basis is flagged as missing. Zero basis is a real answer with real consequences and must never appear by accident.
+
+### 14.6 Not tax advice
+
+The app computes cost basis and realized gains and formats records for filing. It does not know your circumstances, does not file anything, does not handle DeFi, LP tokens, bridges, or NFTs with any confidence, and is not a substitute for a professional. Tax rules change frequently; the reference doc carries a review date for exactly that reason. Stated in the UI, not buried here.
 
 ---
 

@@ -45,6 +45,7 @@ Everything about Coldbox lives here. Guides and the glossary compile into the ap
 | [Derivation paths](04-reference/derivation-paths.md) | Including "my coins are missing" diagnosis |
 | [Hardware wallet matrix](04-reference/hardware-wallet-matrix.md) | Backup format and feature support by device |
 | [Entropy and strength](04-reference/entropy-and-strength.md) | How the health meter works |
+| [US tax reporting](04-reference/us-tax-reporting.md) | Form 8949, 1099-DA, per-wallet basis rules |
 | [API sources](04-reference/api-sources.md) | Every endpoint and what it learns about you |
 | [Standards](04-reference/standards.md) | Every BIP/SLIP implemented, tracked, or declined |
 

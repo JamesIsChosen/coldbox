@@ -126,6 +126,10 @@ A seed phrase alone is not always enough to recover. A seed plus a path is. The 
 
 ---
 
+## Related to tax records
+
+Your derivation path and wallet identity now matter for tax as well as recovery: cost basis is tracked **per wallet**, so "which wallet did this come from" is a reportable fact rather than bookkeeping trivia. See [us-tax-reporting.md](us-tax-reporting.md).
+
 ## Related
 
 - [BIP-32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki) — HD derivation
