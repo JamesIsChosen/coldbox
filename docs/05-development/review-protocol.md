@@ -93,7 +93,7 @@ No amount of good work elsewhere offsets these:
 
 ## The report
 
-Write `REVIEW-REPORT.md` at the repo root on the branch, and post its contents as the PR review.
+Write `docs/05-development/packets/<roadmap-id>-<slug>.review.md`, alongside the packet you're reviewing, and post its contents as the PR review.
 
 **It must open with the verdict block**, before anything else:
 
@@ -180,8 +180,6 @@ Check, and raise as findings:
 
 ## Kickoff prompt
 
-For a fresh reviewing agent:
-
-> Read `docs/05-development/review-protocol.md`, then review `PR-PACKET.md` on branch `<name>` as an independent reviewer. Verify every claim yourself — do not take the packet's word for anything. Write `REVIEW-REPORT.md` and end with a PASS or FAIL verdict. Any advisory counts as FAIL.
+Review and re-review prompts are in **[prompts.md](prompts.md)**.
 
 Use a **different session** from the one that wrote the code. An agent reviewing its own work in the same context isn't reviewing, it's re-reading.
