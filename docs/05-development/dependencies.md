@@ -1,27 +1,29 @@
 # Dependencies
 
-**Zero runtime dependencies.** Every library is vendored into `vendor/`, committed to the repository, and verified against its upstream release hash. Nothing is fetched at build time or run time.
+**Zero runtime dependencies.** Every library is vendored into `vendor/`, committed to the repository, and verified against its upstream release hash. Nothing is fetched at build time or run time. `npm run verify-vendor` is the explicit networked check; normal builds verify the committed artifacts offline.
 
-Hashes below are placeholders until the first build pins them. `npm run verify-vendor` is the authority.
+The six `@noble/*` and `@scure/*` artifacts below are pinned in [vendor/vendor-manifest.json](../../vendor/vendor-manifest.json), which is the machine-readable authority.
 
 ---
 
-## Runtime libraries (bundled into the HTML)
+## Runtime libraries (vendored; bundled by a later build step)
 
 | Library | Version | Purpose | Upstream SHA-256 |
 |---|---|---|---|
-| `@noble/hashes` | TBD | SHA-2/3, HMAC, PBKDF2, RIPEMD-160, Keccak | `TBD` |
-| `@noble/curves` | TBD | secp256k1, ed25519 | `TBD` |
-| `@noble/ciphers` | TBD | AES-GCM, ChaCha20-Poly1305 | `TBD` |
-| `@scure/bip32` | TBD | HD derivation | `TBD` |
-| `@scure/bip39` | TBD | Mnemonic encode/decode | `TBD` |
-| `@scure/base` | TBD | base58, bech32, bech32m, base64 | `TBD` |
+| `@noble/hashes` | 2.2.0 | SHA-2/3, HMAC, PBKDF2, RIPEMD-160, Keccak | `018b38bd7af36645fa0ece8f89eba21c828f3e4d219da5aacadd78bd0e654606` |
+| `@noble/curves` | 2.2.0 | secp256k1, ed25519 | `6daf47e557e070b0657eda25549466bae3d07df555de4f702363355e8fb92ec8` |
+| `@noble/ciphers` | 2.2.0 | AES-GCM, ChaCha20-Poly1305 | `4a030353f7de42e977cad54cf1d7ecedfe0558add24c5742e4a2e55159614ffa` |
+| `@scure/bip32` | 2.2.0 | HD derivation | `648335439c8bf752209a40cd470aa86858de844d491fb46d9d934cb96073f08b` |
+| `@scure/bip39` | 2.2.0 | Mnemonic encode/decode | `04a6e2bb040301954373f543e44c352137f14dff58f942782769984ef5ea8e1c` |
+| `@scure/base` | 2.2.0 | base58, bech32, bech32m, base64 | `659e1b1eaac82df04e5a4b97ef48779cfd3e7c24dafde5efa4324659a25d70a3` |
 | `argon2-browser` (WASM) | TBD | Argon2id KDF | `TBD` |
 | SLIP-39 implementation | TBD | Shamir mnemonic shares | `TBD` |
 | codex32 implementation | TBD | BIP-93 hand-verifiable shares | `TBD` |
 | `secrets.js` | TBD | Raw Shamir over GF(2^n) | `TBD` |
 | QR encoder | TBD | SVG/PNG generation | `TBD` |
 | `jsQR` | TBD | Camera decoding (optional) | `TBD` |
+
+P0.2 verifies and stores these release artifacts; it does not yet extract or bundle them into the HTML output.
 
 ## Data files
 
@@ -61,6 +63,10 @@ In `package.json`, **not** shipped in the output. Kept minimal — a compromised
 | Vendor verifier | Upstream hash comparison |
 
 Installed with `npm ci`, never `npm install`, so the lockfile is respected exactly.
+
+### Pinned release artifacts
+
+The first six runtime libraries are stored as npm release tarballs under `vendor/npm/<scope>/<package>/<version>/package.tgz`. Each manifest entry records the official npm tarball URL, package size, SHA-256, and npm SHA-512 integrity value. The verifier checks the local bytes on every build and, when `npm run verify-vendor` is run, downloads the same official URLs again and checks both digests before passing.
 
 ---
 

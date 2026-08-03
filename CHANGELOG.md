@@ -18,6 +18,12 @@ P0.1 deterministic build skeleton implemented. Wallet, vault, and cryptographic 
 - Deterministic source assembly into one `build/coldbox.html` file
 - SHA-256 sidecar emission and reproducibility tests covering locale, timezone, line endings, and machine-path leakage
 
+### Added — P0.2 (2026-08-02)
+
+- Pinned official npm release tarballs for `@noble/hashes`, `@noble/curves`, `@noble/ciphers`, `@scure/bip32`, `@scure/bip39`, and `@scure/base`
+- Offline local artifact verification and explicit online re-download verification against SHA-256 and npm SHA-512 integrity values
+- Build fail-closed guard and regression tests for corrupted vendor artifacts
+
 ### Added — spec v0.3 (2026-08-02)
 
 - Hardware wallet companion role as the project's primary framing (§14a): device registry, fingerprint and receive-address verification, vendor support matrix, Seed XOR, multisig quorum survivability analysis

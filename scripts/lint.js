@@ -14,7 +14,8 @@ const javascriptFiles = Object.freeze([
 const textFiles = Object.freeze([
   path.join(projectRoot, 'src', 'index.html'),
   path.join(projectRoot, 'src', 'main.js'),
-  path.join(projectRoot, 'src', 'styles.css')
+  path.join(projectRoot, 'src', 'styles.css'),
+  path.join(projectRoot, 'vendor', 'vendor-manifest.json')
 ]);
 
 for (const file of javascriptFiles) {
@@ -26,6 +27,9 @@ for (const file of textFiles) {
   const source = fs.readFileSync(file, 'utf8');
   if (source.includes('\r')) {
     throw new Error(`CRLF line ending found in ${path.relative(projectRoot, file)}`);
+  }
+  if (file.endsWith('vendor-manifest.json')) {
+    JSON.parse(source);
   }
 }
 
