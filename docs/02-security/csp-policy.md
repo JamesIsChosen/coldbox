@@ -111,6 +111,8 @@ A `srcdoc` iframe inherits its parent's policy, and multiple policies combine **
 
 This works in our favour: the cold realm's `connect-src 'none'` applies on top of the warm shell's allowlist, and the intersection is `'none'`. **The child cannot be loosened by the parent.**
 
+The build preserves this contract in a fixed order: it assembles and hashes the child document, inserts those exact child hashes into the parent `script-src` and `style-src`, serializes the child into the outer script, and then hashes the outer blocks. A child hash in the parent is authorization for that exact inline block only; it does not weaken the child's own `connect-src 'none'` policy. See [build.md](../05-development/build.md) for the assembly steps.
+
 ### Opaque origins may lack `crypto.subtle`
 
 Not strictly a CSP issue, but it arises from the same sandbox. An opaque origin may not qualify as a secure context, so WebCrypto may be undefined. The cold realm defaults to pure-JS implementations and only uses WebCrypto after a known-answer test. See [crypto-choices](crypto-choices.md).

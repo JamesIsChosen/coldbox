@@ -6,6 +6,7 @@
     return;
   }
 
+  window.__coldboxColdRealmMarker = 'cold-realm-ready';
   document.documentElement.setAttribute('data-cold-state', 'ready');
   window.parent.postMessage({ type: 'cold.ready' }, '*');
 }());

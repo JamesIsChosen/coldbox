@@ -15,6 +15,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0005](0005-no-duress-compartment.md) | No duress or decoy compartment | Accepted (rejected feature) |
 | [0006](0006-companion-not-replacement.md) | A companion to hardware wallets, not a replacement | Accepted |
 | [0007](0007-headless-browser-harness.md) | Headless browser harness as a dev dependency | Accepted |
+| [0008](0008-csp-blocked-network-signals.md) | CSP-blocked network signals are not a throw contract | Accepted |
 
 ## When to write one
 

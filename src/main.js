@@ -135,6 +135,10 @@
     coldRealmReady = false;
     coldRealmFailed = true;
     window.removeEventListener('message', handleColdRealmMessage);
+    if (coldFrame && coldFrame.parentNode) {
+      coldFrame.parentNode.removeChild(coldFrame);
+    }
+    coldFrame = null;
     if (coldRealmStatus) {
       coldRealmStatus.setAttribute('data-cold-state', 'failed');
     }

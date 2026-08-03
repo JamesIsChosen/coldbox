@@ -95,6 +95,42 @@ function createTamperedBuildFixture() {
   return { path: tamperedPath, temporaryRoot };
 }
 
+function createColdReadySuppressedFixture() {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-browser-timeout-'));
+  for (const directory of ['scripts', 'src', 'vendor']) {
+    fs.cpSync(
+      path.join(projectRoot, directory),
+      path.join(temporaryRoot, directory),
+      { recursive: true }
+    );
+  }
+
+  const coldMainPath = path.join(temporaryRoot, 'src', 'cold', 'main.js');
+  const original = fs.readFileSync(coldMainPath, 'utf8');
+  const readySignal = "window.parent.postMessage({ type: 'cold.ready' }, '*');";
+  const occurrences = original.split(readySignal).length - 1;
+  assert.equal(occurrences, 1, 'Built cold realm must contain one readiness signal');
+  fs.writeFileSync(
+    coldMainPath,
+    original.replace(readySignal, "window.parent.postMessage({ type: 'cold.not-ready' }, '*');"),
+    'utf8'
+  );
+
+  const result = spawnSync(process.execPath, [path.join(temporaryRoot, 'scripts', 'build.js')], {
+    cwd: temporaryRoot,
+    encoding: 'utf8',
+    env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' }
+  });
+  if (result.status !== 0) {
+    fs.rmSync(temporaryRoot, { force: true, recursive: true });
+    throw new Error(`Cold readiness-timeout fixture build failed: ${result.stdout}\n${result.stderr}`);
+  }
+  return {
+    path: path.join(temporaryRoot, 'build', 'coldbox.html'),
+    temporaryRoot
+  };
+}
+
 async function openPage(browser, file) {
   const page = await browser.newPage();
   const harness = await createHarness(page);
@@ -141,7 +177,11 @@ async function verifyBuiltFile(browser, engine) {
     await harness.expectParentCannotReadFrame();
     await harness.expectNoConsoleErrors();
     for (const primitive of ['fetch', 'XMLHttpRequest', 'WebSocket']) {
-      const result = await harness.expectNetworkPrimitiveBlocked(primitive, coldFrame);
+      const result = await harness.expectNetworkPrimitiveBlocked(
+        primitive,
+        coldFrame,
+        { requireCspViolation: true }
+      );
       console.log(`${engine}: cold realm ${primitive} reported blocked (${result.signal})`);
     }
     await harness.expectCspViolationInFrame(coldFrame, 'connect-src');
@@ -232,6 +272,33 @@ async function verifyColdRealmFailure(browser, engine) {
     console.log(`${engine}: cold realm creation failure produced an explicit lockdown state`);
   } finally {
     await closePage(page);
+  }
+}
+
+async function verifyColdRealmTimeout(browser, engine) {
+  const fixture = createColdReadySuppressedFixture();
+  const page = await browser.newPage();
+  const harness = await createHarness(page);
+  try {
+    await page.goto(fileUrl(fixture.path), { waitUntil: 'load' });
+    await page.locator('#cold-realm-status[data-cold-state="failed"]').waitFor({ state: 'visible' });
+    await harness.expectElementVisible('#cold-realm-failure');
+    assert.equal(
+      await page.locator('#cold-frame').count(),
+      0,
+      `${engine}: readiness timeout left a cold frame attached`
+    );
+    assert.equal(
+      await page.locator('#app').getAttribute('data-cold-state'),
+      'failed',
+      `${engine}: readiness timeout did not lock the app`
+    );
+    await harness.expectNoConsoleErrors();
+    await harness.expectNoCspViolations();
+    console.log(`${engine}: cold realm readiness timeout removed the frame and locked down`);
+  } finally {
+    await page.close();
+    fs.rmSync(fixture.temporaryRoot, { force: true, recursive: true });
   }
 }
 
@@ -381,6 +448,7 @@ async function run() {
     try {
       await verifyBuiltFile(browser, engine);
       await verifyColdRealmFailure(browser, engine);
+      await verifyColdRealmTimeout(browser, engine);
       await verifyTamperedBuiltFile(browser, engine);
       await verifyCspFixture(browser, engine);
       await verifyUntamperedFixture(browser, engine);

@@ -76,7 +76,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
 - [x] **P0.6 — Cold realm bootstrap**
   *Deps: P0.5*
   `srcdoc` iframe with `sandbox="allow-scripts allow-downloads"` and its own CSP including `connect-src 'none'`.
-  **Accept:** iframe instantiates; `fetch`, `XHR`, and `WebSocket` inside it throw; warm shell cannot read its DOM or variables; **app fails closed with an explanation if the iframe cannot be established.**
+  **Accept:** iframe instantiates; `fetch`, `XHR`, and `WebSocket` inside it are blocked by the cold CSP (the browser may report rejection, error, or close events); warm shell cannot read its DOM or variables; **app fails closed with an explanation if the iframe cannot be established.** See [ADR-0008](adr/0008-csp-blocked-network-signals.md).
   🌐 *Verified by the P0.3a harness in headless Chromium and Firefox — this is the project's central security claim, so the harness assertions for it are the most important tests in the repo. Real-device confirmation is P0.19.*
 
 - [ ] **P0.7 — MessageChannel handshake and schema validator**
