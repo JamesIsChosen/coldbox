@@ -43,7 +43,7 @@ The default. One item, one branch, one PR.
 
 > Read AGENTS.md and start the next roadmap item.
 
-That's the whole prompt. The agent finds the first unchecked item with satisfied dependencies, does it, writes the packet, and opens a PR.
+That's the whole prompt. The agent finds the first unchecked item with satisfied dependencies, does it, writes the packet, **pushes and opens the PR itself**, and hands you the review prompt.
 
 ---
 
@@ -51,7 +51,7 @@ That's the whole prompt. The agent finds the first unchecked item with satisfied
 
 Several items in one session, with an explicit ceiling.
 
-> Read `AGENTS.md` and `docs/05-development/batch-run.md`. Run a batch from P0.4 through P0.9. Follow the self-review gate between every item and the stop conditions exactly. Do not merge anything. Finish with the handoff note.
+> Read `AGENTS.md` and `docs/05-development/batch-run.md`. Run a batch from P0.4 through P0.9. Follow the self-review gate between every item and the stop conditions exactly. **Open a PR for every branch you produce**, with the correct base. Do not merge anything. Finish with the handoff block.
 
 Adjust the range; keep everything else verbatim.
 
@@ -61,7 +61,7 @@ Adjust the range; keep everything else verbatim.
 
 The overnight mode. No artificial ceiling — the agent works forward until a real stop condition.
 
-> Read `AGENTS.md` and `docs/05-development/batch-run.md`. Run a batch starting from the next roadmap item and continue until you hit a stop condition. Follow the self-review gate between every item. Do not merge anything. Finish with the handoff note.
+> Read `AGENTS.md` and `docs/05-development/batch-run.md`. Run a batch starting from the next roadmap item and continue until you hit a stop condition. Follow the self-review gate between every item. **Open a PR for every branch you produce**, with the correct base. Do not merge anything. Finish with the handoff block.
 
 Expect it to stop at a `👤 human-required` item, at maximum stack depth (8 unmerged branches), on a second consecutive self-review FAIL, or on any spec ambiguity touching a security boundary.
 
@@ -75,7 +75,7 @@ For working through a phase across several sessions. Identical to until-blocked,
 >
 > Start by checking what's already merged into `main` and what branches are outstanding — earlier legs may have left work awaiting review. Then work forward from the next available roadmap item until you hit a stop condition.
 >
-> Follow the self-review gate between every item. Do not merge anything. In the handoff note, state clearly where the campaign now stands and what I need to do before the next leg can make progress.
+> Follow the self-review gate between every item. **Open a PR for every branch you produce**, with the correct base. Do not merge anything. In the handoff block, state clearly where the campaign now stands and what — if anything — I need to do before the next leg can make progress.
 
 Run this repeatedly. Between legs: review, merge, then start the next. **Merging is what resets the stack depth**, so how often you merge sets the pace.
 
@@ -96,7 +96,7 @@ Then, per agent:
 
 > Read `AGENTS.md` and `docs/05-development/batch-run.md`. You own the worktree at `../coldbox-track-a` — work only there, and never touch any other checkout.
 >
-> Your items are P4.1, P4.2, and P4.3. These have no dependencies on each other or on work another agent is doing. Run until blocked. Do not merge. Finish with the handoff note.
+> Your items are P4.1, P4.2, and P4.3. These have no dependencies on each other or on work another agent is doing. Run until blocked. **Open a PR for each.** Do not merge. Finish with the handoff block.
 
 Only assign genuinely independent items — check the `Deps:` lines. Phase 0 after P0.3 is largely a chain and doesn't parallelise; Phases 2, 4, and 5 have wide independent tracks.
 
@@ -110,9 +110,9 @@ Only assign genuinely independent items — check the `Deps:` lines. Phase 0 aft
 >
 > Verify every claim yourself — do not take the packet's word for anything. Build under a different path, timezone, and locale. Deliberately break things and confirm they fail closed with non-zero exit codes. Check the acceptance criteria verbatim against the roadmap.
 >
-> Write your report to `docs/05-development/packets/<roadmap-id>-<slug>.review.md` and end with a PASS or FAIL verdict. **Any finding of any severity, including cosmetic or advisory, is a FAIL.**
+> Write your report to `docs/05-development/packets/<roadmap-id>-<slug>.review.md`, end with a PASS or FAIL verdict — **any finding of any severity, including cosmetic or advisory, is a FAIL** — and **merge the PR yourself if it passes**.
 
-For a batch, review each branch in dependency order, one session each.
+For a batch, review each branch in dependency order, one session each. Each PASS merge retargets the next PR automatically.
 
 ---
 
@@ -120,7 +120,7 @@ For a batch, review each branch in dependency order, one session each.
 
 > Read `docs/05-development/review-protocol.md` and the existing review at `docs/05-development/packets/<roadmap-id>-<slug>.review.md`.
 >
-> The author has pushed fixes. Issue a **fresh verdict on the new commit** — not an amendment. Re-check every previous finding and look for new ones introduced by the fixes. Append a new verdict block; do not edit the old one.
+> The author has pushed fixes. Issue a **fresh verdict on the new commit** — not an amendment. Re-check every previous finding and look for new ones introduced by the fixes. Append a new verdict block; do not edit the old one. **Merge the PR yourself if it passes.**
 
 ---
 
@@ -128,7 +128,7 @@ For a batch, review each branch in dependency order, one session each.
 
 Given to the *author's* session, not the reviewer's:
 
-> Read the review at `docs/05-development/packets/<roadmap-id>-<slug>.review.md`. Address every finding — fix it, or argue it should be dismissed and say why. Advisory findings must be fixed like any other. Push, then update the packet to describe what changed.
+> Read the review at `docs/05-development/packets/<roadmap-id>-<slug>.review.md`. Address every finding — fix it, or argue it should be dismissed and say why. Advisory findings must be fixed like any other. Update the packet to describe what changed, push, and hand me the re-review prompt.
 
 The reviewer never fixes findings. That would make them an author and destroy the independence the process exists for.
 

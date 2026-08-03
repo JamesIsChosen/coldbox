@@ -143,13 +143,10 @@ That last line is not filler. A weakness you flagged is a managed risk; the same
 
 **Why I stopped:** <reason>
 
-**1. Save the work:**
-​```powershell
-git push -u origin p0.11-vault-format
-​```
+**Pushed** — nothing is lost. No PR yet, since the item isn't finished.
 
-**2. Resume in a new session:**
-> Read `AGENTS.md`. Continue P0.11 on branch `p0.11-vault-format`. Read `docs/05-development/packets/p0.11-vault-format.md` for where the previous session stopped. Do not start a new item.
+**Resume in a new session:**
+> Read `AGENTS.md`. Continue P0.11 on branch `p0.11-vault-format`. Read `docs/05-development/packets/p0.11-vault-format.md` for where the previous session stopped. Do not start a new item. Open the PR when it's done.
 
 **What I'd do next:** <specific next step>
 ```
@@ -219,9 +216,11 @@ Open `build/coldbox.html` on each device and confirm the seven per-platform chec
 
 Per platform: cold realm instantiates · handshake completes · capability panel accurate · vault round-trips · **vault details show Argon2id, not PBKDF2** · a save path works · airgap banner correct.
 
-**1. Push and open PRs:** […commands…]
-**2. Review each:** […prompts in order…]
-**3. After your device pass**, resume with:
+**Everything below is already pushed with PRs open** — nothing for you to run there.
+
+**Review each, in order:** […one prompt per item…]
+
+**After your device pass**, resume with:
 > Read `AGENTS.md` and `docs/05-development/batch-run.md`. P0.19 is complete — I verified the device matrix manually. Continue the campaign from the next available item.
 ```
 
@@ -240,9 +239,12 @@ Same shape for a **missing credential** — CoinGecko key, repo secret, GPG key.
 
 Nothing is wrong. This is the designed stopping point: an 8-deep stack is the most that can be reviewed in order without rework becoming expensive. **Merging resets the depth to zero.**
 
-**1. Push and open PRs:** […commands…]
-**2. Review and merge in dependency order:** […prompts…]
-**3. Then the next leg:** […campaign prompt…]
+**All pushed, all PRs open** — see the table above.
+
+**Review in dependency order**, each in its own new session. Each reviewer merges on PASS, which retargets the next PR.
+[…one review prompt per item…]
+
+**Then the next leg:** […campaign prompt…]
 ```
 
 ---
@@ -256,10 +258,17 @@ Nothing is wrong. This is the designed stopping point: an 8-deep stack is the mo
 
 **Items:** P4.1, P4.2, P4.3 — independent, each branched from `main`
 
-**1. Push and open PRs** *(run from `../coldbox-track-a`)*: […commands…]
-**2. Review each — order doesn't matter, no dependencies between them:** […prompts…]
-**3. Other tracks:** these merge cleanly alongside track B's items; no shared files touched.
-**4. Clean up when merged:** `git worktree remove ../coldbox-track-a`
+**All pushed, all PRs open:** #21, #22, #23 — all based on `main`.
+
+**Review each — order doesn't matter, no dependencies between them:**
+[…one review prompt per item…]
+
+**Other tracks:** these merge cleanly alongside track B's items; no shared files touched.
+
+**When all are merged**, one command for you:
+​```powershell
+git worktree remove ../coldbox-track-a
+​```
 ```
 
 ---
@@ -337,12 +346,9 @@ Worth a look at the Files Changed tab first: 6 files, all under `src/`.
 
 **Fixed:** F1, F2 · **Dismissed:** F3 — <argument>
 
-**1. Push:**
-​```powershell
-git push origin p0.4-csp-hash-pinning
-​```
+**Pushed to** `p0.4-csp-hash-pinning`. PR #12 updated.
 
-**2. Re-review** — new session:
+**Re-review** — new session:
 > Read `docs/05-development/review-protocol.md` and the existing review at `docs/05-development/packets/p0.4-csp-hash-pinning.review.md`. The author has pushed fixes. Issue a fresh verdict on the new commit — not an amendment. […]
 ```
 
@@ -354,7 +360,7 @@ git push origin p0.4-csp-hash-pinning
 
 **Handoff last.** Nothing after it — the human should find it at the bottom without scrolling past a summary.
 
-**Never merge.** Implementation and review sessions produce commands *for the human*; they don't merge, and they don't touch `main`.
+**Implementation sessions open their own PR. Reviewers merge on PASS.** The human runs commands only when something genuinely requires them — and then it goes in a §0 block at the top, with real values filled in.
 
 **One session per checkout.** If handing to a reviewer while this session may still be alive, include the `git worktree add` command.
 
