@@ -85,7 +85,40 @@ Write `PR-PACKET.md` at the repo root on your branch. Its purpose is to let a re
 - **Report gaps honestly.** Couldn't test on iOS? Mark it untested. A flagged gap is a managed risk; a hidden one is a latent failure.
 - **Self-assess.** What might be wrong? What did you skip?
 
-Then commit to a branch named `p0.5-cold-realm-bootstrap` (roadmap ID, short description) and open a PR using the template.
+## 6a. Git protocol
+
+**Check your branch before you touch anything.** `git status` first, every session. If you're on `main` or on someone else's item branch, stop and create your own.
+
+```
+git checkout main
+git pull
+git checkout -b p0.5-cold-realm-bootstrap     # roadmap ID, short description
+```
+
+**One branch per roadmap item. No exceptions.** If you finish an item and want to continue, open the PR, return to `main`, and branch again. Two items on one branch cannot be reviewed independently, which defeats the purpose of the packet.
+
+**Commit as you go**, in logical chunks — not one giant commit at the end. The commit sequence is part of the audit trail; a reviewer should be able to follow how the work developed. Imperative mood, and explain *why* in the body.
+
+**Push at the end of every run**, always to your item branch:
+
+```
+git push -u origin p0.5-cold-realm-bootstrap
+```
+
+This means the work survives a lost session, the human can review from GitHub, CI runs, and a second agent can fetch the branch to review it.
+
+**Never:**
+
+- Push directly to `main`
+- Force-push a branch that has an open PR
+- Commit work belonging to a different roadmap item
+- Commit `.cbx` files, real seeds, or keys — run `git status` and look before every commit
+
+**Open the PR when the item is done and the packet is written**, not per run. A run that ends mid-item ends with a push and a note in `PR-PACKET.md` saying where you stopped.
+
+**If the working tree contains changes you didn't make** — the human may have edited docs while you were working — do not sweep them into your commit. Stage your files explicitly by path. `git add -A` is how unrelated work ends up in the wrong PR.
+
+Then open a PR using the template.
 
 ## 7. Never
 
