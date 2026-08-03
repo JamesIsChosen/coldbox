@@ -140,6 +140,14 @@ Severity is recorded for triage, **not** to excuse anything. Advisory findings m
 
 ---
 
+## End your response with a handoff block
+
+**Mandatory, and the last thing in your response.** On PASS, give the merge commands and the next-item prompt. On FAIL, give the fix prompt and then the re-review prompt.
+
+Templates: **[handoff.md](handoff.md)** §7 (PASS) and §8 (FAIL). Fill in every placeholder — you know the branch and the PR number.
+
+**Reviewers never fix findings.** That would make the reviewer an author and destroy the independence this protocol exists for. Hand off to a fixing session instead.
+
 ## After a FAIL
 
 1. The **author** fixes the findings. The reviewer does not fix them — that would make the reviewer an author and destroy the independence the process exists for.

@@ -4,6 +4,19 @@ Copy-paste prompts for starting an agent session. All modes are valid — pick b
 
 Every one of these works from a **cold session**. The repo carries the context; the prompt just points at it.
 
+> **You should rarely need this file.** Every session is required to end with a **handoff block** containing the exact commands to run and the exact prompt for the next agent, with every placeholder already filled in — see [handoff.md](handoff.md). Copy, paste, move on. This file is the fallback for when you're starting cold or an agent forgot.
+
+## The loop
+
+```
+implement  →  handoff: push + PR commands, review prompt
+review     →  PASS: merge commands + next-item prompt
+              FAIL: fix prompt, then re-review prompt
+fix        →  handoff: push + re-review prompt
+```
+
+Each step tells you the next one. **If a session ends without a handoff block, that's a contract violation** — say so, and it should produce one.
+
 ---
 
 ## Quick reference
