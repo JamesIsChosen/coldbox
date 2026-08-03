@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Coldbox browser harness target</title>
+  <style>
+    body { margin: 0; font-family: sans-serif; }
+    #fixture-visible { min-height: 4rem; padding: 1rem; }
+  </style>
+</head>
+<body>
+  <main id="fixture-visible">Visible harness target</main>
+  <iframe id="cold-frame" sandbox="allow-scripts" title="Opaque cold frame"></iframe>
+  <script>
+    (function () {
+      var coldDocument = [
+        '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Cold fixture</title></head>',
+        '<body><p id="cold-ready">Cold frame ready</p><script>',
+        'window.fetch = function () { throw new Error("fetch blocked"); };',
+        'window.XMLHttpRequest = function () { throw new Error("XHR blocked"); };',
+        'window.WebSocket = function () { throw new Error("WebSocket blocked"); };',
+        '<\/script></body></html>'
+      ].join('');
+      document.getElementById('cold-frame').srcdoc = coldDocument;
+    }());
+  </script>
+</body>
+</html>

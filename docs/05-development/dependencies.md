@@ -61,7 +61,7 @@ In `package.json`, **not** shipped in the output. Kept minimal — a compromised
 | Test runner | Unit and vector tests |
 | Linter | Forbidden-construct enforcement |
 | Vendor verifier | Upstream hash comparison |
-| **Playwright** *(P0.3a)* | Headless browser verification of CSP, sandbox, and realm boundary |
+| **Playwright 1.62.1** *(P0.3a)* | Headless browser verification of CSP, sandbox, and realm boundary |
 
 Installed with `npm ci`, never `npm install`, so the lockfile is respected exactly.
 
