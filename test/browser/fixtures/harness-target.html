@@ -15,11 +15,11 @@
   <script>
     (function () {
       var coldDocument = [
-        '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Cold fixture</title></head>',
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">',
+        "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; connect-src 'none'; script-src 'unsafe-inline'\">",
+        '<title>Cold fixture</title></head>',
         '<body><p id="cold-ready">Cold frame ready</p><script>',
-        'window.fetch = function () { throw new Error("fetch blocked"); };',
-        'window.XMLHttpRequest = function () { throw new Error("XHR blocked"); };',
-        'window.WebSocket = function () { throw new Error("WebSocket blocked"); };',
+        'window.__coldboxHarnessFrameReady = true;',
         '<\/script></body></html>'
       ].join('');
       document.getElementById('cold-frame').srcdoc = coldDocument;

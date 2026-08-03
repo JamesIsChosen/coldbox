@@ -25,6 +25,15 @@ npm run build           # → build/coldbox.html
 npm test
 ```
 
+To run the browser harness, install its development-only browser binaries once after `npm ci`:
+
+```bash
+npx playwright install chromium firefox
+npm run test:browser
+```
+
+The browser download is explicit and separate from `npm ci`; the application build and the shipped HTML never fetch it or any runtime dependency.
+
 ---
 
 ## What the build does
