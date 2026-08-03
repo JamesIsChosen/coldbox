@@ -122,6 +122,18 @@ That fourth line matters: a missing `'wasm-unsafe-eval'` silently downgrades eve
 
 ---
 
+## Browser harness — automated
+
+From P0.3a, Playwright drives headless Chromium and Firefox against the built file over `file://`. This is where every browser-observable acceptance criterion is verified.
+
+```bash
+npm run test:browser
+```
+
+Covers: CSP enforcement and violation detection, post-build tamper rejection, cold realm instantiation, network primitives throwing inside the sandbox, parent-cannot-read-frame isolation, airgap banner states, responsive layout, and help rendering.
+
+**What it does not cover: iOS Safari.** WebKit-on-Linux is not Safari-on-iOS, and the differences land precisely where this project is fragile — `file://` secure-context status, opaque-origin `crypto.subtle`, and blob download restrictions. A packet claiming iOS verification on the strength of harness results should be failed. See [ADR-0007](adr/0007-headless-browser-harness.md).
+
 ## Manual device matrix
 
 `file://` behaviour varies enough between browsers that automated testing alone is insufficient. Required before every release.

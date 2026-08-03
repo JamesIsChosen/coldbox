@@ -61,8 +61,11 @@ In `package.json`, **not** shipped in the output. Kept minimal — a compromised
 | Test runner | Unit and vector tests |
 | Linter | Forbidden-construct enforcement |
 | Vendor verifier | Upstream hash comparison |
+| **Playwright** *(P0.3a)* | Headless browser verification of CSP, sandbox, and realm boundary |
 
 Installed with `npm ci`, never `npm install`, so the lockfile is respected exactly.
+
+**On Playwright specifically.** It is by far the largest thing in the tree (~300 MB of browser binaries), which sits awkwardly in a project whose identity is minimal dependencies. It earns its place because the central security claim — that secrets cannot cross the realm boundary — is only observable in a real browser engine, and asserting a guarantee we have no way to observe would be exactly the unverified confidence this project exists to avoid. It contributes **zero bytes** to `build/coldbox.html`, an explicit P0.3a acceptance criterion. Full reasoning and rejected alternatives in [ADR-0007](adr/0007-headless-browser-harness.md).
 
 ### Pinned release artifacts
 
