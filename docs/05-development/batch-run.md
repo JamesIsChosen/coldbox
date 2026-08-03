@@ -108,9 +108,13 @@ That last one matters more than it looks. A rushed final item produces a packet 
 
 **Stopping is a good outcome.** Four solid items and a clear handoff beats seven where three are unsound. The handoff note is the deliverable as much as the code is.
 
-### 6. Never merge
+### 6. Open the PRs, never merge
 
-A batch produces branches and PRs. It does not merge, and it does not touch `main`. The human merges after independent review.
+**Open a PR for every branch you produce**, with the correct base — stacked branches target their dependency, not `main`. The human should not be running `gh pr create`.
+
+**Never merge.** A batch does not touch `main`. Merging happens after independent review, by the reviewer.
+
+If `gh pr create` fails, put the exact commands in a `🙋 Action required from you` block at the top of your handoff — never silently skip it.
 
 ### 7. Exclusive access to the working tree
 

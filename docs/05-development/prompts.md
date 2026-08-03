@@ -9,13 +9,17 @@ Every one of these works from a **cold session**. The repo carries the context; 
 ## The loop
 
 ```
-implement  →  handoff: push + PR commands, review prompt
-review     →  PASS: merge commands + next-item prompt
-              FAIL: fix prompt, then re-review prompt
-fix        →  handoff: push + re-review prompt
+implement  →  pushes, opens the PR, hands you the review prompt
+review     →  PASS: merges, hands you the next-item prompt
+              FAIL: hands you the fix prompt, then the re-review prompt
+fix        →  pushes, hands you the re-review prompt
 ```
 
-Each step tells you the next one. **If a session ends without a handoff block, that's a contract violation** — say so, and it should produce one.
+**In the normal case you run no commands at all** — you paste one prompt per step.
+
+Anything only you can do — a device pass, a credential, a blocked command — arrives as a `🙋 Action required from you` block at the **top** of the handoff, with exact commands and what's blocked until you run them.
+
+**If a session ends without a handoff block, that's a contract violation** — say so, and it should produce one.
 
 ---
 

@@ -140,11 +140,26 @@ Severity is recorded for triage, **not** to excuse anything. Advisory findings m
 
 ---
 
+## Merge it yourself on PASS
+
+**A PASS verdict means you merge.** Run it, confirm `main` updated, then report in the handoff:
+
+```
+gh pr merge 12 --merge --delete-branch=false
+git checkout main && git pull
+```
+
+**Do not merge if:**
+
+- You are the session that wrote the code — self-merge is not review
+- The verdict is anything other than PASS
+- The item touches the **realm boundary, message schema, or vault format** (P0.6, P0.7, P0.11). Issue the PASS, then hand the merge to the human with the exact command in a §0 block. Those three are the security core and warrant a human looking at the diff
+
+On FAIL, nobody merges. It gets fixed first.
+
 ## End your response with a handoff block
 
-**Mandatory, and the last thing in your response.** On PASS, give the merge commands and the next-item prompt. On FAIL, give the fix prompt and then the re-review prompt.
-
-Templates: **[handoff.md](handoff.md)** §7 (PASS) and §8 (FAIL). Fill in every placeholder — you know the branch and the PR number.
+**Mandatory, and the last thing in your response.** Templates: **[handoff.md](handoff.md)** §7 (PASS, merged) and §8 (FAIL). Fill in every placeholder — you know the branch and the PR number.
 
 **Reviewers never fix findings.** That would make the reviewer an author and destroy the independence this protocol exists for. Hand off to a fixing session instead.
 

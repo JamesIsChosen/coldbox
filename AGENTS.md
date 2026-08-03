@@ -197,13 +197,21 @@ The reviewer will independently re-run your verification, build under a differen
 
 The most useful thing you can put in a packet is an honest account of what you're unsure about. A finding you flagged yourself is a managed risk. One the reviewer discovers that you should have known about damages the credibility of everything else you claimed.
 
-## 6c. End every session with a handoff block
+## 6c. Open the PR yourself, then hand off
 
-**Mandatory, in every mode, and the last thing in your response.**
+**You open the pull request. The human does not.**
 
-The human should never memorize a command, work out what happens next, or search these docs. They copy, they paste, they move on.
+When the item is done and pushed:
 
-Templates for every exit path — item complete, stopped mid-item, batch complete, stopped at a human-required item, stopped at stack depth, parallel track, review PASS/FAIL, fix complete — are in **[docs/05-development/handoff.md](docs/05-development/handoff.md)**. Use the one matching how your session ended.
+```
+gh pr create --base <dependency-or-main> --head <your-branch> --title "<ID> - <Title>" --body-file docs/05-development/packets/<your-branch>.md
+```
+
+Then end your response with a handoff block — **mandatory, in every mode, and the last thing you write.**
+
+If a command fails — `gh` unauthenticated, permission refused, network blocked — **do not silently skip it.** Put the exact command, with real values filled in, in a `🙋 Action required from you` block at the **top** of your handoff, and state what's blocked until it runs.
+
+Templates for every exit path are in **[docs/05-development/handoff.md](docs/05-development/handoff.md)**. Use the one matching how your session ended.
 
 **Fill in every placeholder.** You know the branch, the PR number, the item ID, the packet path. Leaving `<branch>` for the human to substitute defeats the point entirely.
 
