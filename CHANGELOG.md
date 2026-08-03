@@ -79,6 +79,7 @@ Foundation work in progress. Wallet, vault, and cryptographic features are not a
 - Build-time SHA-256 hash-pinning for every inline script and style block in the CSP
 - CSP policy embedded in the built HTML with deterministic hash injection
 - Regression tests for multiple inline blocks and post-build script tampering
+- Lint compatibility for the required `wasm-unsafe-eval` directive while rejecting `unsafe-eval`
 
 ### Added — P0.3 (2026-08-02)
 

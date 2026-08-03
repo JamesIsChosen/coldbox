@@ -70,6 +70,24 @@ test('external URLs and localStorage remain available in warm source', () => {
   }
 });
 
+test('the required wasm-unsafe-eval CSP token is not treated as JavaScript eval', () => {
+  const root = createLintRoot();
+  try {
+    const policyPath = path.join(root, 'src', 'index.html');
+    fs.writeFileSync(policyPath, '<meta http-equiv="Content-Security-Policy" content="script-src \'wasm-unsafe-eval\'">\n', 'utf8');
+    const result = runLint(root);
+    assert.equal(result.status, 0, combinedOutput(result));
+    assert.match(result.stdout, /Lint passed/);
+
+    fs.writeFileSync(policyPath, '<meta http-equiv="Content-Security-Policy" content="script-src \'unsafe-eval\'">\n', 'utf8');
+    const unsafeResult = runLint(root);
+    assert.notEqual(unsafeResult.status, 0);
+    assert.match(combinedOutput(unsafeResult), /Forbidden construct "eval"/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('the build invokes forbidden-construct lint and refuses a bad source file', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-build-lint-'));
   try {
