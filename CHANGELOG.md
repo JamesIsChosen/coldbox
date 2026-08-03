@@ -12,12 +12,47 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 Foundation work in progress. Wallet, vault, and cryptographic features are not available yet. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
+### Changed — workflow (2026-08-03)
+
+- **Branch hygiene is automatic.** Reviewers merge with `--delete-branch`; every session's preflight runs `git fetch --prune` and deletes local branches marked `[gone]`. Combined with the repo's *Automatically delete head branches* setting, no periodic manual sweep is ever needed. The only cleanup that still reaches the human is `git worktree remove` after a parallel run, since worktrees live outside the repo
+
+- **Agents now do the git work.** Implementation sessions open their own PR with `gh pr create`; reviewers **merge on PASS**. In the normal case the human runs no commands and pastes one prompt per step
+- **`🙋 Action required from you`** block, which appears **first** in any handoff where the human is blocked — a `👤 human-required` item, a missing credential, or a command the agent could not run. Exact commands with real values, plus what stays blocked until they run
+- Reviewers do **not** auto-merge items touching the realm boundary, message schema, or vault format (P0.6, P0.7, P0.11) — those hand the merge to the human with the command pre-filled
+- Renamed `expectNetworkPrimitiveThrows` → `expectNetworkPrimitiveBlocked`; the assertion checks whether a request was blocked, which for `sendBeacon` means a `false` return or a `connect-src` violation rather than a throw
+
+### Added — process (2026-08-03)
+
+- **Mandatory handoff blocks** closing the copy-paste loop. Every session — implementation, batch, and review — must end with the exact commands to run and the exact prompt for the next agent, **with every placeholder already filled in**. The human copies and pastes; they never memorize a command or search the docs. `AGENTS.md` §6b-handoff, [review-protocol.md](docs/05-development/review-protocol.md), [batch-run.md](docs/05-development/batch-run.md)
+- Reviewers hand off too: PASS gives merge commands plus the next-item prompt; FAIL gives the fix prompt and then the re-review prompt. A reviewer never fixes findings itself
+- A session ending without a handoff block is a contract violation
+
+- **P0.3a — headless browser harness** roadmap item, and [ADR-0007](docs/05-development/adr/0007-headless-browser-harness.md) justifying Playwright as a dev dependency. Discovered when P0.4's implementation could not verify either of its acceptance criteria: **9 of 19 Phase 0 items have criteria only a browser can satisfy**, which under the binary review protocol stalls a campaign indefinitely. The harness makes 8 of them agent-verifiable
+- `🌐` roadmap marker for browser-verifiable criteria, applied to the eight affected items, each naming what the harness covers and what it cannot
+- Explicit rule: **an item whose criteria you cannot verify is `[~]`, never `[x]`**
+- P0.19 remains `👤 human-required` — Playwright cannot test iOS Safari, and that is the platform most likely to break the two-realm model
+
+### Added — P0.3a (2026-08-02)
+
+- Pinned Playwright 1.62.1 under `devDependencies` with a `test:browser` command that runs the built artifact from `file://` in Chromium and Firefox
+- Reusable browser assertions for CSP violations, hash-tampered script rejection, opaque-frame isolation, blocked network primitives, responsive viewports, and visible elements
+- Browser fixtures and negative checks proving deliberate CSP violations and byte-tampered inline scripts fail with a non-zero harness result
+
+### Changed — P0.3a review fixes (2026-08-03)
+
+- Per-primitive network assertions now cover throw/reject, asynchronous `EventSource` errors, and `sendBeacon` returning `false`, and exercise all five supported primitives against a real `connect-src 'none'` frame fixture
+- Added an untampered hash-pinning control and a byte-for-byte build comparison from a tree without `node_modules`
+- Made browser installation explicit with `npx playwright install chromium firefox`; the test command no longer downloads browsers implicitly
+
 ### Added — process (2026-08-02)
 
-- **[review-protocol.md](docs/05-development/review-protocol.md)** — binary PASS/FAIL review contract. No "approve with comments"; **any finding of any severity, including advisory, is a FAIL.** Requires independent verification, a `REVIEW-REPORT.md` artifact opening with a verdict block, and a fresh verdict on re-review rather than an amendment
+- **[review-protocol.md](docs/05-development/review-protocol.md)** — binary PASS/FAIL review contract. No "approve with comments"; **any finding of any severity, including advisory, is a FAIL.** Requires independent verification, a review report opening with a verdict block, and a fresh verdict on re-review rather than an amendment
 - `AGENTS.md` §6a: session preflight and postflight checklists, mandatory output verification after every git command, and shell gotchas (PowerShell mangling `@{`, `$?` reporting the wrong command after a pipeline)
 - `AGENTS.md` §6b: agents are told upfront how their work will be judged
 
+- **[batch-run.md](docs/05-development/batch-run.md)** — protocol for working several roadmap items unattended: bounded scope, dependency-aware branching (branch from the declared dependency, not the previous item), a self-review gate between items, hard stop conditions, and a handoff note. Batches never merge
+- **[packets/](docs/05-development/packets/)** — PR packets and review reports moved to per-item paths. A single rotating `PR-PACKET.md` destroyed the audit trail and caused a merge conflict on every stacked branch
+- `👤 human-required` roadmap marker for items needing physical hardware or a human decision; P0.19 (device matrix) flagged
 - **[doc-hygiene.md](docs/05-development/doc-hygiene.md)** — rules preventing documentation decay: one canonical home per fact, review dates and max ages on anything describing the outside world, docs shipping with the code that changes them, no orphan numbers, and automated checks wired into CI at P0.18
 - Review dates added to `standards.md`, `api-sources.md`, `crypto-choices.md`, and `supported-chains.md`
 
@@ -44,6 +79,12 @@ Foundation work in progress. Wallet, vault, and cryptographic features are not a
 - Build-time SHA-256 hash-pinning for every inline script and style block in the CSP
 - CSP policy embedded in the built HTML with deterministic hash injection
 - Regression tests for multiple inline blocks and post-build script tampering
+
+### Added — P0.3 (2026-08-02)
+
+- Build-integrated forbidden-construct lint for application source: `eval`, `new Function`, `import`, and `require`
+- Cold-realm source checks rejecting external URLs and `localStorage`
+- Negative fixture tests proving each forbidden construct fails the lint and the build refuses the source
 
 ### Added — spec v0.4 (2026-08-02)
 

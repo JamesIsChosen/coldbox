@@ -14,6 +14,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0004](0004-median-not-mean-prices.md) | Aggregate prices by median, not mean | Accepted |
 | [0005](0005-no-duress-compartment.md) | No duress or decoy compartment | Accepted (rejected feature) |
 | [0006](0006-companion-not-replacement.md) | A companion to hardware wallets, not a replacement | Accepted |
+| [0007](0007-headless-browser-harness.md) | Headless browser harness as a dev dependency | Accepted |
 
 ## When to write one
 

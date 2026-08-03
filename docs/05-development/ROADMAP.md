@@ -3,6 +3,11 @@
 **This file is the single source of truth for what to build next _and_ for current status.** It is machine-readable by convention: work the first unchecked item whose dependencies are all complete.
 
 Status: `[ ]` not started · `[~]` in progress · `[x]` complete
+Markers: `👤 human-required` — an agent cannot complete it (physical hardware, or a decision that isn't theirs)
+· `⚠️` — agent-implementable, but something is needed from the human before it fully works
+· `🌐` — has acceptance criteria only a browser can verify; use the P0.3a harness and mark `[~]` until it confirms them
+
+**An item whose criteria you cannot verify is `[~]`, never `[x]`.** Nine Phase 0 items have browser-dependent criteria; the P0.3a harness makes eight of them agent-verifiable. The ninth, P0.19, needs real devices and always will.
 
 Every PR must update this file in the same commit as the work it completes.
 
@@ -19,6 +24,10 @@ Every PR must update this file in the same commit as the work it completes.
 5. If the item is ambiguous or the spec doesn't settle a design question it raises, **stop and open a question issue or an ADR proposal rather than guessing.** Guessing on a security boundary is worse than a delay.
 
 Do not skip ahead to a later phase because it looks more interesting. Ordering encodes dependency, and Phase 0 in particular is load-bearing for everything above it.
+
+**Working several items in one unattended session?** That's a batch run — see [batch-run.md](batch-run.md). It adds dependency-aware branching, a self-review gate between items, a maximum unmerged stack depth, and hard stop conditions.
+
+**Getting through the whole roadmap** is a *campaign*: repeated batches with merges between them. Merging resets the stack depth, so how often you merge — not agent capability — sets the pace.
 
 ---
 
@@ -38,15 +47,23 @@ Nothing above this phase is safe to build until the container is trustworthy.
   `vendor/` structure, `npm run verify-vendor` re-downloading upstream releases and comparing hashes, `dependencies.md` populated with real versions and hashes for `@noble/*` and `@scure/*`.
   **Accept:** `verify-vendor` passes; a deliberately corrupted vendor file makes it fail; the build refuses to run if verification fails.
 
-- [ ] **P0.3 — Forbidden-construct lint**
+- [x] **P0.3 — Forbidden-construct lint**
   *Deps: P0.1*
   Build-time check rejecting `eval`, `new Function`, `import`, `require`, external URLs, and `localStorage` in secret-handling paths.
   **Accept:** lint runs in the build and fails it; a test fixture containing each construct is rejected.
 
-- [~] **P0.4 — CSP hash-pinning in the build**
+- [x] **P0.3a — Headless browser harness** 🌐 *unblocks browser verification for eight later items*
   *Deps: P0.1*
+  Playwright as a **dev dependency** (never shipped), loading `build/coldbox.html` over `file://` in headless Chromium and Firefox. Exposes reusable assertions used by every later item's browser criteria:
+  `expectNoConsoleErrors()` · `expectNoCspViolations()` · `expectCspViolation(directive)` · `expectScriptRejected()` (after post-build byte tampering) · `expectNetworkPrimitiveBlocked(name)` inside a frame · `expectParentCannotReadFrame()` · `expectElementVisible(sel)` · `atViewport(w, h)`.
+  Rationale in [ADR-0007](adr/0007-headless-browser-harness.md).
+  **Accept:** After a clean `npm ci` and the documented `npx playwright install chromium firefox` prerequisite, `npm run test:browser` loads the built file over `file://` in both engines; a deliberately CSP-violating fixture is detected; a byte-tampered inline script is rejected by the browser and the harness reports it; harness failures exit **non-zero**; Playwright appears only under `devDependencies` and contributes **0 bytes** to `build/coldbox.html`.
+
+- [~] **P0.4 — CSP hash-pinning in the build**
+  *Deps: P0.1 (implementation) · P0.3a (verification)*
   Compute SHA-256 of each inline script and style block; inject into the respective `script-src`/`style-src` directives.
   **Accept:** built file runs with no CSP violations; altering one byte of the inline script post-build causes the browser to refuse to execute it.
+  🌐 *Both criteria are verified by the P0.3a harness. Implementation may land first and sit at `[~]` until the harness confirms them.*
 
 ### The two realms
 
@@ -54,11 +71,13 @@ Nothing above this phase is safe to build until the container is trustworthy.
   *Deps: P0.4*
   Outer document, CSP per [csp-policy.md](../02-security/csp-policy.md), nav rail and mobile tab bar, routing, dark/light. No features.
   **Accept:** loads from `file://` on the full device matrix; no console errors; responsive from 360 px to desktop.
+  🌐 *Verified by the P0.3a harness in headless Chromium and Firefox. Real-device confirmation is P0.19.*
 
 - [ ] **P0.6 — Cold realm bootstrap**
   *Deps: P0.5*
   `srcdoc` iframe with `sandbox="allow-scripts allow-downloads"` and its own CSP including `connect-src 'none'`.
   **Accept:** iframe instantiates; `fetch`, `XHR`, and `WebSocket` inside it throw; warm shell cannot read its DOM or variables; **app fails closed with an explanation if the iframe cannot be established.**
+  🌐 *Verified by the P0.3a harness — this is the project's central security claim, so the harness assertions for it are the most important tests in the repo.*
 
 - [ ] **P0.7 — MessageChannel handshake and schema validator**
   *Deps: P0.6*
@@ -69,11 +88,13 @@ Nothing above this phase is safe to build until the container is trustworthy.
   *Deps: P0.7*
   Deliberate policy-violating request as a canary; `navigator.onLine` and `connection` signals; banner states green/amber/red; runtime neutering of network primitives inside the cold realm.
   **Accept:** canary fires correctly in both realms; a build with CSP stripped goes to full lockdown and refuses vault operations; banner reflects actual network state within 5 s.
+  🌐 *Verified by the P0.3a harness. Network-state simulation uses Playwright's offline emulation.*
 
 - [ ] **P0.9 — Capability self-check panel**
   *Deps: P0.8*
   Boot-time detection of `getRandomValues`, `crypto.subtle`, WASM, Workers, camera, and available save paths.
   **Accept:** accurate on every platform in the device matrix; **hard-fails with an explanation if `getRandomValues` is absent**, never substituting `Math.random`.
+  🌐 *Harness covers Chromium and Firefox. Safari and mobile accuracy is confirmed at P0.19 — do not mark those platforms verified without real devices.*
 
 ### Cryptography and vault
 
@@ -96,6 +117,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
   *Deps: P0.12*
   Three save paths (File System Access, blob download, manual base64/QR); symmetric load; idle auto-lock; `Esc Esc` panic hide.
   **Accept:** at least one save path works on every device-matrix platform; **the manual base64 path is a complete, usable flow on iOS Safari**, not a stub.
+  🌐 *Harness verifies the blob and manual paths in Chromium/Firefox. **The iOS Safari claim cannot be verified without an iPhone** — leave it unverified until P0.19.*
 
 - [ ] **P0.14 — Save integrity**
   *Deps: P0.13*
@@ -113,21 +135,24 @@ Nothing above this phase is safe to build until the container is trustworthy.
   *Deps: P0.15*
   Every embedded library with version and upstream hash; the full CSP allowlist; build date; expected hash; drag-and-drop self-hash drop zone.
   **Accept:** listed hashes match `dependencies.md`; **the drop zone states plainly that self-verification is circular** and points to [verification.md](../02-security/verification.md).
+  🌐 *Drop-zone behaviour verified by the P0.3a harness via file upload emulation.*
 
 - [ ] **P0.17 — Help framework**
   *Deps: P0.5*
   Three-depth content model; build-time compilation of `docs/00-overview/glossary.md` and `docs/03-guides/`; contextual `?`; inline glossary; offline search.
   **Accept:** all three depths render and switch; a documented feature missing a depth block produces a build warning; search works with no network.
+  🌐 *Rendering and depth switching verified by the P0.3a harness.*
 
-- [ ] **P0.18 — CI**
+- [ ] **P0.18 — CI** ⚠️ *needs repository secrets configured by the human before the attestation step works*
   *Deps: P0.16, P0.17*
   GitHub Actions: build, test, `verify-vendor`, lint, **double-build hash comparison**, second-OS build comparison, bundle size report, release attestation. Plus the documentation checks in [doc-hygiene.md](doc-hygiene.md): internal link resolution, review dates present and within max age, three-depth help blocks, doc index consistency, roadmap ID references, and `dependencies.md` matching `vendor-manifest.json`.
   **Accept:** CI hash matches a local build; a nondeterministic change fails CI; a broken internal link fails CI; a missing review date fails CI; an out-of-date review date warns.
 
-- [ ] **P0.19 — Device matrix pass**
+- [ ] **P0.19 — Device matrix pass** 👤 **human-required**
   *Deps: P0.18*
   Full manual pass per [testing.md](testing.md) across all eight platforms.
   **Accept:** every platform passes the seven per-platform checks; results recorded in the PR packet. **iOS Safari is tested first, not last.**
+  Requires physically opening the file on real devices. An agent must not mark this complete, and must not infer a platform's result from a similar one.
 
 ---
 
@@ -143,7 +168,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
 - [ ] P1.6 Registry CRUD: wallets, accounts, addresses
 - [ ] P1.7 Notes, tags, and concealment levels
 - [ ] P1.8 Device registry
-- [ ] P1.9 Verification workflows: fingerprint, receive address, xpub, backup, passphrase
+- [ ] P1.9 Verification workflows: fingerprint, receive address, xpub, backup, passphrase ⚠️ *implementable by agent; final validation needs real hardware wallets*
 - [ ] P1.10 QR generation: addresses, SeedQR, Compact SeedQR, printable cards
 
 ## Phase 2 — Backup
@@ -154,7 +179,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
 
 ## Phase 3 — Portfolio and online
 
-- [ ] P3.1 Price aggregation · P3.2 Multi-currency and Frankfurter FX
+- [ ] P3.1 Price aggregation ⚠️ *needs a free CoinGecko demo key from the human* · P3.2 Multi-currency and Frankfurter FX
 - [ ] P3.3 Balance lookups · P3.4 Transactions and **per-wallet** lot pools
 - [ ] P3.5 Cost basis engine — FIFO plus specific ID with lot-level audit trail
 - [ ] P3.6 Dashboard and charts · P3.7 CSV import/export · P3.8 BIP-329 labels

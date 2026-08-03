@@ -1,0 +1,2 @@
+var endpoint = 'https://example.invalid/';
+var theme = localStorage.getItem('theme');

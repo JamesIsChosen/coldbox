@@ -118,6 +118,22 @@ function verifyVendorOffline() {
   }
 }
 
+function verifyForbiddenConstructLint() {
+  const lint = path.join(__dirname, 'lint.js');
+  const result = spawnSync(process.execPath, [lint], {
+    cwd: projectRoot,
+    env: process.env,
+    stdio: 'inherit'
+  });
+  if (result.error) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    throw new Error('Build refused: source failed forbidden-construct lint');
+  }
+}
+
 verifyVendorOffline();
+verifyForbiddenConstructLint();
 const result = writeBuild(injectCspHashes(assemble()));
 console.log(`Built build/coldbox.html (${result.digest})`);

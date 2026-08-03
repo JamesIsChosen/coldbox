@@ -11,6 +11,10 @@
     "build": "node scripts/build.js",
     "lint": "node scripts/lint.js",
     "verify-vendor": "node scripts/verify-vendor.js",
+    "test:browser": "node scripts/run-browser-harness.js",
     "test": "node --test"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
   }
 }

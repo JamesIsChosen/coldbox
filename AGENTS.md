@@ -18,6 +18,7 @@ Read in this order. Don't skip — most "why is it built like that" questions ar
 6. **[docs/02-security/threat-model.md](docs/02-security/threat-model.md)** — what's defended and what isn't.
 7. **[docs/05-development/pr-packet.md](docs/05-development/pr-packet.md)** — your deliverable.
 8. **[docs/05-development/review-protocol.md](docs/05-development/review-protocol.md)** — how your work will be judged. Read it before you start, not after.
+9. **[docs/05-development/handoff.md](docs/05-development/handoff.md)** — how your session must end. Mandatory in every mode.
 
 Then, for your specific item: `vault-format.md`, `csp-policy.md`, `crypto-choices.md`, `data-model.md`, or `chain-registry.md` as relevant.
 
@@ -29,7 +30,11 @@ Check `git log` and open branches first, in case an item marked `[~]` is genuine
 
 **One roadmap item per PR.** Don't bundle. Don't skip ahead because a later item looks more interesting — the ordering encodes dependency.
 
+**Never start an item marked `👤 human-required`.** It needs physical hardware or a human decision that isn't yours to make. Report it and stop.
+
 If the item is already complete but unmarked, mark it and move to the next.
+
+Asked to work several items in one session? That's a **batch run** — follow [batch-run.md](docs/05-development/batch-run.md), which adds dependency-aware branching, a self-review gate between items, and hard stop conditions.
 
 ## 3. Constraints you cannot violate
 
@@ -78,6 +83,7 @@ For genuinely minor gaps — a variable name, a layout detail — decide, and re
 - [ ] Roadmap status updated
 - [ ] CHANGELOG updated
 - [ ] **PR packet written**
+- [ ] **Handoff block is the last thing in your response, with every placeholder filled in** (§6c)
 - [ ] Working tree clean, everything pushed
 - [ ] Exactly one roadmap item in this branch
 - [ ] You would PASS this yourself under [the review protocol](docs/05-development/review-protocol.md)
@@ -88,7 +94,7 @@ That last one is the real test. Read your own diff as a stranger who distrusts y
 
 Full spec: [docs/05-development/pr-packet.md](docs/05-development/pr-packet.md).
 
-Write `PR-PACKET.md` at the repo root on your branch. Its purpose is to let a reviewer verify your work **without trusting you**. So:
+Write `docs/05-development/packets/<roadmap-id>-<slug>.md`, matching your branch name. Its purpose is to let a reviewer verify your work **without trusting you**. So:
 
 - **Show, don't assert.** Paste the commands and their real output. "Verified reproducible" is worthless; two matching hashes are evidence.
 - **State every assumption**, its basis, and what breaks if it's wrong.
@@ -100,15 +106,32 @@ Write `PR-PACKET.md` at the repo root on your branch. Its purpose is to let a re
 
 Every rule below exists because it was broken once and cost real time. Follow them literally.
 
+### One agent per working tree — always
+
+**Never run two agents, or an agent and a human, against the same checkout at the same time.** Git serialises on `.git/index.lock`, so concurrent work produces `Unable to create index.lock` — and the failure mode is nasty: `add` and `commit` fail while `push` still succeeds, silently publishing empty branches while you believe work was saved.
+
+If you see `index.lock` errors, **stop immediately**. Do not retry, do not delete the lock file. Another process is mid-operation and deleting its lock can corrupt the index. Report it and wait.
+
+If a second agent needs to work in parallel, it gets its own clone or a `git worktree` — never a shared checkout.
+
 ### Session preflight — run before touching anything
 
 ```
 git status                    # MUST be clean. If not, stop (see below)
 git branch --show-current     # MUST be main before you branch
+git checkout main
 git pull
+git fetch --prune             # drop remote-tracking refs for deleted branches
+# then delete local branches whose remote is gone — pick your shell:
+#   bash:       git for-each-ref --format='%(refname:short) %(upstream:track)' refs/heads | awk '$2=="[gone]"{print $1}' | xargs -r git branch -D
+#   PowerShell: git for-each-ref --format='%(refname:short) %(upstream:track)' refs/heads | Where-Object { $_ -match '\[gone\]$' } | ForEach-Object { git branch -D ($_ -split ' ')[0] }
 git checkout -b p0.5-cold-realm-bootstrap     # roadmap ID, short description
 git branch --show-current     # confirm you're where you think you are
 ```
+
+**Use `git for-each-ref`, not `git branch -vv | grep`.** The porcelain output carries decorations and — in PowerShell — carriage returns, which produce branch names like `my-branch?` that no delete command will match. `for-each-ref` is the plumbing command and emits exactly what you asked for.
+
+That prune-and-delete pair is housekeeping, not optional. Merged branches accumulate silently, and a stale local branch is how a session ends up building on work that was superseded weeks ago. `git branch -D` on a `[gone]` branch is safe — the remote is deleted, so it's already merged.
 
 **If `git status` is not clean, do not proceed.** Uncommitted changes belong to someone — possibly the human, possibly a previous session. Report what you found and ask. Never stash, discard, or absorb work you didn't create.
 
@@ -124,9 +147,11 @@ git push -u origin <your-branch>
 git status                    # MUST be clean now
 ```
 
-**Never end a session with uncommitted work.** Not "I'll finish next run" — commit what exists, push it, and note the state in `PR-PACKET.md`. Work left in a working tree across sessions gets tangled with other branches and eventually lost.
+**Never end a session with uncommitted work.** Not "I'll finish next run" — commit what exists, push it, and note the state in your packet. Work left in a working tree across sessions gets tangled with other branches and eventually lost.
 
 **One branch per roadmap item. No exceptions.** If you finish an item and want to continue, open the PR, return to `main`, and branch again. Two items on one branch cannot be reviewed independently, which defeats the purpose of the packet — and the reviewer will FAIL it on sight.
+
+If you were asked to work several items in one session, that's a **batch run** — follow [batch-run.md](docs/05-development/batch-run.md). It still means one branch per item; the difference is that branches stack on their dependencies rather than all coming off `main`.
 
 The temptation is real: you finish P0.1, the next item looks small, and continuing feels efficient. It isn't. It produces a branch whose packet describes one thing and whose diff contains two, and untangling that afterwards costs far more than the branch switch would have.
 
@@ -147,7 +172,7 @@ This means the work survives a lost session, the human can review from GitHub, C
 - Commit work belonging to a different roadmap item
 - Commit `.cbx` files, real seeds, or keys — run `git status` and look before every commit
 
-**Open the PR when the item is done and the packet is written**, not per run. A run that ends mid-item ends with a push and a note in `PR-PACKET.md` saying where you stopped.
+**Open the PR when the item is done and the packet is written**, not per run. A run that ends mid-item ends with a push and a note in your packet saying where you stopped.
 
 **If the working tree contains changes you didn't make** — the human may have edited docs while you were working — do not sweep them into your commit. Stage your files explicitly by path. `git add -A` is how unrelated work ends up in the wrong PR.
 
@@ -180,6 +205,26 @@ Two things to internalize about how that review works:
 The reviewer will independently re-run your verification, build under a different path/timezone/locale, deliberately break things to confirm they fail closed with non-zero exit codes, and download vendored dependencies from upstream to compare bytes. Write your packet expecting all of that, and expecting a stranger to do it without asking you anything.
 
 The most useful thing you can put in a packet is an honest account of what you're unsure about. A finding you flagged yourself is a managed risk. One the reviewer discovers that you should have known about damages the credibility of everything else you claimed.
+
+## 6c. Open the PR yourself, then hand off
+
+**You open the pull request. The human does not.**
+
+When the item is done and pushed:
+
+```
+gh pr create --base <dependency-or-main> --head <your-branch> --title "<ID> - <Title>" --body-file docs/05-development/packets/<your-branch>.md
+```
+
+Then end your response with a handoff block — **mandatory, in every mode, and the last thing you write.**
+
+If a command fails — `gh` unauthenticated, permission refused, network blocked — **do not silently skip it.** Put the exact command, with real values filled in, in a `🙋 Action required from you` block at the **top** of your handoff, and state what's blocked until it runs.
+
+Templates for every exit path are in **[docs/05-development/handoff.md](docs/05-development/handoff.md)**. Use the one matching how your session ended.
+
+**Fill in every placeholder.** You know the branch, the PR number, the item ID, the packet path. Leaving `<branch>` for the human to substitute defeats the point entirely.
+
+A session that ends without a handoff block is a contract violation.
 
 ## 7. Never
 

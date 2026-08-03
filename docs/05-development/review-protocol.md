@@ -93,7 +93,7 @@ No amount of good work elsewhere offsets these:
 
 ## The report
 
-Write `REVIEW-REPORT.md` at the repo root on the branch, and post its contents as the PR review.
+Write `docs/05-development/packets/<roadmap-id>-<slug>.review.md`, alongside the packet you're reviewing, and post its contents as the PR review.
 
 **It must open with the verdict block**, before anything else:
 
@@ -140,6 +140,33 @@ Severity is recorded for triage, **not** to excuse anything. Advisory findings m
 
 ---
 
+## Merge it yourself on PASS
+
+**A PASS verdict means you merge.** Run it, confirm `main` updated, then report in the handoff:
+
+```
+gh pr merge 12 --merge --delete-branch
+git checkout main && git pull && git fetch --prune
+```
+
+**Use `--delete-branch`, not `--delete-branch=false`.** Merged branches are dead weight, and leaving them makes it impossible to tell at a glance which branches are live work. GitHub retargets any stacked child PR to the merged branch's base before deleting, so this is safe even mid-stack.
+
+The one exception: if the repo-level *"Automatically delete head branches"* setting is on, `--delete-branch` is redundant but harmless.
+
+**Do not merge if:**
+
+- You are the session that wrote the code — self-merge is not review
+- The verdict is anything other than PASS
+- The item touches the **realm boundary, message schema, or vault format** (P0.6, P0.7, P0.11). Issue the PASS, then hand the merge to the human with the exact command in a §0 block. Those three are the security core and warrant a human looking at the diff
+
+On FAIL, nobody merges. It gets fixed first.
+
+## End your response with a handoff block
+
+**Mandatory, and the last thing in your response.** Templates: **[handoff.md](handoff.md)** §7 (PASS, merged) and §8 (FAIL). Fill in every placeholder — you know the branch and the PR number.
+
+**Reviewers never fix findings.** That would make the reviewer an author and destroy the independence this protocol exists for. Hand off to a fixing session instead.
+
 ## After a FAIL
 
 1. The **author** fixes the findings. The reviewer does not fix them — that would make the reviewer an author and destroy the independence the process exists for.
@@ -180,8 +207,6 @@ Check, and raise as findings:
 
 ## Kickoff prompt
 
-For a fresh reviewing agent:
-
-> Read `docs/05-development/review-protocol.md`, then review `PR-PACKET.md` on branch `<name>` as an independent reviewer. Verify every claim yourself — do not take the packet's word for anything. Write `REVIEW-REPORT.md` and end with a PASS or FAIL verdict. Any advisory counts as FAIL.
+Review and re-review prompts are in **[prompts.md](prompts.md)**.
 
 Use a **different session** from the one that wrote the code. An agent reviewing its own work in the same context isn't reviewing, it's re-reading.
