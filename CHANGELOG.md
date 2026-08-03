@@ -10,7 +10,13 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
-Specification and documentation only. No application code yet.
+P0.1 deterministic build skeleton implemented. Wallet, vault, and cryptographic features are not available yet.
+
+### Added — P0.1 (2026-08-02)
+
+- Pinned Node.js toolchain and lockfile for the first build step
+- Deterministic source assembly into one `build/coldbox.html` file
+- SHA-256 sidecar emission and reproducibility tests covering locale, timezone, line endings, and machine-path leakage
 
 ### Added — spec v0.3 (2026-08-02)
 

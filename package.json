@@ -1,0 +1,16 @@
+{
+  "name": "coldbox",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A single-file, offline-first crypto toolkit.",
+  "license": "MIT",
+  "engines": {
+    "node": "24.16.0"
+  },
+  "scripts": {
+    "build": "node scripts/build.js",
+    "lint": "node scripts/lint.js",
+    "verify-vendor": "node scripts/verify-vendor.js",
+    "test": "node --test"
+  }
+}
