@@ -1,8 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src __COLDBOX_SCRIPT_HASHES__ 'wasm-unsafe-eval'; style-src __COLDBOX_STYLE_HASHES__; img-src data: blob:; font-src data:; connect-src https://api.coingecko.com https://api.coinbase.com https://api.kraken.com https://api.coinpaprika.com https://api.diadata.org https://api.frankfurter.app https://mempool.space https://blockstream.info https://eth.llamarpc.com https://rpc.ankr.com https://api.mainnet-beta.solana.com https://lcd.osmosis.zone http://localhost:* https://localhost:* http://127.0.0.1:*; frame-src 'self' blob:; form-action 'none'; base-uri 'none'; object-src 'none';">
   <title>Coldbox</title>
   <style>
@@ -10,10 +11,210 @@ __COLDBOX_STYLES__
   </style>
 </head>
 <body>
-  <main id="app" aria-live="polite">
-    <h1>Coldbox</h1>
-    <p>The application shell is being assembled.</p>
-  </main>
+  <div class="app-shell" id="app">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <header class="mobile-header">
+      <a class="brand brand-mobile" href="#dashboard" data-route="dashboard" aria-label="Coldbox dashboard">
+        <span class="brand-mark" aria-hidden="true">CB</span>
+        <span class="brand-name">Coldbox</span>
+      </a>
+    </header>
+
+    <div class="app-layout">
+      <aside class="nav-rail" id="nav-rail" aria-label="Primary navigation">
+        <a class="brand brand-desktop" href="#dashboard" data-route="dashboard" aria-label="Coldbox dashboard">
+          <span class="brand-mark" aria-hidden="true">CB</span>
+          <span>
+            <span class="brand-name">Coldbox</span>
+            <span class="brand-subtitle">Offline-first toolkit</span>
+          </span>
+        </a>
+
+        <div class="nav-scroll">
+          <nav class="nav-group" aria-label="Workspace">
+            <p class="nav-group-title">Workspace</p>
+            <a class="nav-link" href="#vault" data-route="vault"><span class="nav-icon" aria-hidden="true">V</span><span>Vault</span></a>
+            <a class="nav-link" href="#dashboard" data-route="dashboard"><span class="nav-icon" aria-hidden="true">D</span><span>Dashboard</span></a>
+            <a class="nav-link" href="#portfolio" data-route="portfolio"><span class="nav-icon" aria-hidden="true">P</span><span>Portfolio</span></a>
+            <a class="nav-link" href="#prices" data-route="prices"><span class="nav-icon" aria-hidden="true">$</span><span>Prices</span></a>
+            <a class="nav-link" href="#registry" data-route="registry"><span class="nav-icon" aria-hidden="true">R</span><span>Registry</span></a>
+            <a class="nav-link" href="#devices" data-route="devices"><span class="nav-icon" aria-hidden="true">W</span><span>Devices</span></a>
+          </nav>
+
+          <nav class="nav-group" aria-label="Tools">
+            <p class="nav-group-title">Tools</p>
+            <a class="nav-link" href="#entropy" data-route="entropy"><span class="nav-icon" aria-hidden="true">E</span><span>Entropy Lab</span></a>
+            <a class="nav-link" href="#seed-forge" data-route="seed-forge"><span class="nav-icon" aria-hidden="true">S</span><span>Seed Forge</span></a>
+            <a class="nav-link" href="#derivation" data-route="derivation"><span class="nav-icon" aria-hidden="true">∿</span><span>Derivation</span></a>
+            <a class="nav-link" href="#backup" data-route="backup"><span class="nav-icon" aria-hidden="true">B</span><span>Backup Lab</span></a>
+            <a class="nav-link" href="#qr" data-route="qr"><span class="nav-icon" aria-hidden="true">Q</span><span>QR Studio</span></a>
+            <a class="nav-link" href="#recovery" data-route="recovery"><span class="nav-icon" aria-hidden="true">↺</span><span>Recovery</span></a>
+          </nav>
+
+          <nav class="nav-group" aria-label="Reference">
+            <p class="nav-group-title">Reference</p>
+            <a class="nav-link" href="#verify" data-route="verify"><span class="nav-icon" aria-hidden="true">✓</span><span>Verify Bench</span></a>
+            <a class="nav-link" href="#reference" data-route="reference"><span class="nav-icon" aria-hidden="true">i</span><span>Reference</span></a>
+            <a class="nav-link" href="#learn" data-route="learn"><span class="nav-icon" aria-hidden="true">?</span><span>Learn</span></a>
+          </nav>
+        </div>
+
+        <div class="nav-footer">
+          <span class="build-badge"><span class="status-dot" aria-hidden="true"></span> Shell preview</span>
+          <p class="nav-footer-note">The warm shell is ready. Secret handling arrives inside the sealed realm.</p>
+        </div>
+      </aside>
+
+      <main class="content" id="main-content" tabindex="-1">
+        <div class="content-bar">
+          <div class="breadcrumbs" aria-label="Breadcrumb">
+            <span>Coldbox</span>
+            <span class="breadcrumb-separator" aria-hidden="true">/</span>
+            <span id="current-section">Dashboard</span>
+          </div>
+          <div class="top-actions">
+            <span class="mode-badge"><span class="status-dot" aria-hidden="true"></span> Warm shell</span>
+            <button class="theme-toggle" id="theme-toggle" type="button" aria-pressed="false">
+              <span class="theme-toggle-icon" aria-hidden="true">☼</span>
+              <span id="theme-toggle-label">Light mode</span>
+            </button>
+          </div>
+        </div>
+
+        <p class="sr-only" id="route-announcement" aria-live="polite"></p>
+
+        <section class="page" id="page-dashboard" data-page="dashboard" aria-labelledby="page-title-dashboard">
+          <header class="page-header">
+            <p class="eyebrow">Workspace / Warm shell</p>
+            <h1 id="page-title-dashboard">Dashboard</h1>
+            <p class="page-lede">A calm starting point for the public side of Coldbox. Your balances, labels, and reference material will live here while secret work stays sealed away.</p>
+          </header>
+          <div class="hero-panel">
+            <div>
+              <span class="panel-kicker">Foundation complete</span>
+              <h2>The shell is ready for the tools that come next.</h2>
+              <p>Coldbox runs as one local HTML file. This outer document owns navigation and public views; the next foundation item establishes the isolated realm for secrets.</p>
+            </div>
+            <span class="hero-mark" aria-hidden="true">◈</span>
+          </div>
+          <div class="card-grid card-grid-three">
+            <article class="info-card">
+              <span class="card-icon" aria-hidden="true">01</span>
+              <h2>Portable by default</h2>
+              <p>The interface is designed for a narrow phone screen up through a desktop window, without a server or install step.</p>
+            </article>
+            <article class="info-card">
+              <span class="card-icon" aria-hidden="true">02</span>
+              <h2>Public work stays visible</h2>
+              <p>Portfolio and reference screens have a home in the warm shell, so reviewing public information never needs secret access.</p>
+            </article>
+            <article class="info-card">
+              <span class="card-icon" aria-hidden="true">03</span>
+              <h2>Secrets get their own boundary</h2>
+              <p>The sealed cold realm is the next foundation step. The shell does not create a shortcut around that boundary.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="page" id="page-vault" data-page="vault" aria-labelledby="page-title-vault" hidden>
+          <header class="page-header"><p class="eyebrow">Workspace / Sealed tools</p><h1 id="page-title-vault">Vault</h1><p class="page-lede">The vault surface will connect to the sealed realm after the realm bootstrap is in place.</p></header>
+          <div class="empty-panel"><span class="panel-kicker">Foundation item P0.6</span><h2>Sealed vault controls are not exposed here yet.</h2><p>This placeholder is intentionally part of the shell navigation. It keeps the route stable while the security boundary is built.</p></div>
+        </section>
+
+        <section class="page" id="page-portfolio" data-page="portfolio" aria-labelledby="page-title-portfolio" hidden>
+          <header class="page-header"><p class="eyebrow">Workspace / Public data</p><h1 id="page-title-portfolio">Portfolio</h1><p class="page-lede">Holdings, transactions, lots, and performance will be available in the public workspace.</p></header>
+          <div class="empty-panel"><span class="panel-kicker">Coming in Phase 3</span><h2>Your public portfolio will have a clear home.</h2><p>The shell already provides the route and responsive layout; portfolio data is intentionally not part of this foundation item.</p></div>
+        </section>
+
+        <section class="page" id="page-prices" data-page="prices" aria-labelledby="page-title-prices" hidden>
+          <header class="page-header"><p class="eyebrow">Workspace / Online views</p><h1 id="page-title-prices">Prices</h1><p class="page-lede">Live market data will appear here, behind the pinned warm-shell allowlist.</p></header>
+          <div class="empty-panel"><span class="panel-kicker">Coming in Phase 3</span><h2>Price sources will be explicit and inspectable.</h2><p>No network request is made by this shell skeleton. The route is ready for the future price view.</p></div>
+        </section>
+
+        <section class="page" id="page-registry" data-page="registry" aria-labelledby="page-title-registry" hidden>
+          <header class="page-header"><p class="eyebrow">Workspace / Public records</p><h1 id="page-title-registry">Registry</h1><p class="page-lede">Wallets, accounts, addresses, labels, and public notes will be organized here.</p></header>
+          <div class="empty-panel"><span class="panel-kicker">Coming in Phase 1</span><h2>A durable home for wallet records.</h2><p>This screen stays public-facing by design. Secret material will never be needed to render its shell.</p></div>
+        </section>
+
+        <section class="page" id="page-devices" data-page="devices" aria-labelledby="page-title-devices" hidden>
+          <header class="page-header"><p class="eyebrow">Workspace / Companion records</p><h1 id="page-title-devices">Devices</h1><p class="page-lede">Record the hardware wallets and backup context that surround your registry.</p></header>
+          <div class="empty-panel"><span class="panel-kicker">Coming in Phase 1</span><h2>Verification belongs beside the device record.</h2><p>The shell has a stable destination for device notes and verification workflows.</p></div>
+        </section>
+
+        <section class="page" id="page-entropy" data-page="entropy" aria-labelledby="page-title-entropy" hidden>
+          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-entropy">Entropy Lab</h1><p class="page-lede">Entropy collection and health analysis will run inside the sealed realm.</p></header>
+          <div class="empty-panel"><span class="panel-kicker">Coming in Phase 1</span><h2>Secret creation will stay on the protected side.</h2><p>This route is present so the shell's information architecture is complete before secret-handling code arrives.</p></div>
+        </section>
+
+        <section class="page" id="page-seed-forge" data-page="seed-forge" aria-labelledby="page-title-seed-forge" hidden>
+          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-seed-forge">Seed Forge</h1><p class="page-lede">Seed generation and validation will be rendered only inside the sealed realm.</p></header>
+          <div class="empty-panel"><span class="panel-kicker">Coming in Phase 1</span><h2>There is no warm-shell shortcut for seed work.</h2><p>The route is ready, but no secret field or derivation logic is present in this shell.</p></div>
+        </section>
+
+        <section class="page" id="page-derivation" data-page="derivation" aria-labelledby="page-title-derivation" hidden>
+          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-derivation">Derivation</h1><p class="page-lede">Derivation tools will live behind the realm boundary, with only public results returning to this shell.</p></header>
+          <div class="empty-panel"><span class="panel-kicker">Coming in Phase 1</span><h2>Public results, protected inputs.</h2><p>The route anticipates that separation without implementing either side early.</p></div>
+        </section>
+
+        <section class="page" id="page-backup" data-page="backup" aria-labelledby="page-title-backup" hidden>
+          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-backup">Backup Lab</h1><p class="page-lede">Backup engineering will have a dedicated workspace with its own guidance and checks.</p></header>
+          <div class="empty-panel"><span class="panel-kicker">Coming in Phase 2</span><h2>Backup work deserves a deliberate flow.</h2><p>The navigation is ready for it; the backup formats and verification workflows are not yet implemented.</p></div>
+        </section>
+
+        <section class="page" id="page-qr" data-page="qr" aria-labelledby="page-title-qr" hidden>
+          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-qr">QR Studio</h1><p class="page-lede">Local QR generation and airgapped transfer tools will be added to this route.</p></header>
+          <div class="empty-panel"><span class="panel-kicker">Coming in Phase 1</span><h2>Airgapped transfer gets its own workspace.</h2><p>Nothing is scanned, generated, or transferred by the shell skeleton.</p></div>
+        </section>
+
+        <section class="page" id="page-recovery" data-page="recovery" aria-labelledby="page-title-recovery" hidden>
+          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-recovery">Recovery</h1><p class="page-lede">Recovery workflows will be designed around careful estimates, confirmation, and cancellation.</p></header>
+          <div class="empty-panel"><span class="panel-kicker">Coming in Phase 4</span><h2>Recovery is not a guess-and-click surface.</h2><p>The shell only reserves the route. No recovery input or search runs here.</p></div>
+        </section>
+
+        <section class="page" id="page-verify" data-page="verify" aria-labelledby="page-title-verify" hidden>
+          <header class="page-header"><p class="eyebrow">Reference / Verification</p><h1 id="page-title-verify">Verify Bench</h1><p class="page-lede">Independent checks for files, addresses, and other public values will live here.</p></header>
+          <div class="empty-panel"><span class="panel-kicker">Coming in Phase 4</span><h2>Verification tools will show their inputs and limits.</h2><p>The route is public-facing and ready for the later verification modules.</p></div>
+        </section>
+
+        <section class="page" id="page-reference" data-page="reference" aria-labelledby="page-title-reference" hidden>
+          <header class="page-header"><p class="eyebrow">Reference / Provenance</p><h1 id="page-title-reference">Reference</h1><p class="page-lede">Standards, build provenance, and the app's verification instructions will be collected here.</p></header>
+          <div class="empty-panel"><span class="panel-kicker">Foundation destination</span><h2>Trust information belongs in the open.</h2><p>The reference route is part of the warm shell so it remains available without opening a vault.</p></div>
+        </section>
+
+        <section class="page" id="page-learn" data-page="learn" aria-labelledby="page-title-learn" hidden>
+          <header class="page-header"><p class="eyebrow">Reference / Learn</p><h1 id="page-title-learn">Learn</h1><p class="page-lede">Plain, working, and technical explanations will be available offline from this route.</p></header>
+          <div class="empty-panel"><span class="panel-kicker">Coming in Phase 0</span><h2>Help will be part of the product, not a link away.</h2><p>The help framework is a later foundation item. This shell makes room for it now.</p></div>
+        </section>
+      </main>
+    </div>
+
+    <nav class="mobile-tabs" id="mobile-tabs" aria-label="Mobile navigation">
+      <a class="mobile-tab" href="#dashboard" data-route="dashboard"><span class="mobile-tab-icon" aria-hidden="true">D</span><span>Dashboard</span></a>
+      <a class="mobile-tab" href="#portfolio" data-route="portfolio"><span class="mobile-tab-icon" aria-hidden="true">P</span><span>Portfolio</span></a>
+      <a class="mobile-tab" href="#prices" data-route="prices"><span class="mobile-tab-icon" aria-hidden="true">$</span><span>Prices</span></a>
+      <a class="mobile-tab" href="#registry" data-route="registry"><span class="mobile-tab-icon" aria-hidden="true">R</span><span>Registry</span></a>
+      <button class="mobile-tab" id="mobile-more-tab" type="button" aria-controls="mobile-more-menu" aria-expanded="false"><span class="mobile-tab-icon" aria-hidden="true">•••</span><span>More</span></button>
+    </nav>
+
+    <div class="mobile-more-menu" id="mobile-more-menu" hidden>
+      <div class="mobile-more-header"><span>More sections</span><button class="icon-button icon-button-small" id="mobile-more-close" type="button" aria-label="Close more sections">×</button></div>
+      <div class="mobile-more-links">
+        <a class="mobile-more-link" href="#vault" data-route="vault">Vault</a>
+        <a class="mobile-more-link" href="#devices" data-route="devices">Devices</a>
+        <a class="mobile-more-link" href="#entropy" data-route="entropy">Entropy Lab</a>
+        <a class="mobile-more-link" href="#seed-forge" data-route="seed-forge">Seed Forge</a>
+        <a class="mobile-more-link" href="#derivation" data-route="derivation">Derivation</a>
+        <a class="mobile-more-link" href="#backup" data-route="backup">Backup Lab</a>
+        <a class="mobile-more-link" href="#qr" data-route="qr">QR Studio</a>
+        <a class="mobile-more-link" href="#recovery" data-route="recovery">Recovery</a>
+        <a class="mobile-more-link" href="#verify" data-route="verify">Verify Bench</a>
+        <a class="mobile-more-link" href="#reference" data-route="reference">Reference</a>
+        <a class="mobile-more-link" href="#learn" data-route="learn">Learn</a>
+      </div>
+    </div>
+
+  </div>
   <script>
 __COLDBOX_SCRIPT__
   </script>

@@ -74,9 +74,9 @@ function createTamperedBuildFixture() {
   const scriptEnd = original.indexOf(scriptEndMarker, bodyStart);
   assert.notEqual(scriptEnd, -1, 'Built artifact must close its inline script');
 
-  const tamperTarget = Buffer.from('skeleton');
+  const tamperTarget = Buffer.from('warm-shell');
   const relativeTarget = original.subarray(bodyStart, scriptEnd).indexOf(tamperTarget);
-  assert.notEqual(relativeTarget, -1, 'Built skeleton script must contain its state marker');
+  assert.notEqual(relativeTarget, -1, 'Built warm shell script must contain its state marker');
   const targetOffset = bodyStart + relativeTarget;
   const tampered = Buffer.from(original);
   tampered[targetOffset] ^= 1;
@@ -102,12 +102,55 @@ async function verifyBuiltFile(browser, engine) {
   const { harness, page } = await openPage(browser, buildPath);
   try {
     await harness.expectElementVisible('#app');
-    await harness.expectElementVisible('#app[data-build-state="skeleton"]');
+    await harness.expectElementVisible('#app[data-build-state="warm-shell"]');
+    await harness.expectElementVisible('#nav-rail');
+    await harness.expectElementVisible('#theme-toggle');
+    await harness.expectElementVisible('#nav-rail .nav-link[aria-current="page"]');
+    assert.equal(
+      await page.locator('#current-section').textContent(),
+      'Dashboard',
+      `${engine}: dashboard should be the default route`
+    );
+
+    await page.locator('#nav-rail a[data-route="portfolio"]').click();
+    await page.waitForFunction(() => window.location.hash === '#portfolio');
+    await harness.expectElementVisible('#page-portfolio:not([hidden])');
+    assert.equal(
+      await page.locator('#current-section').textContent(),
+      'Portfolio',
+      `${engine}: route navigation did not update the current section`
+    );
+
+    await page.locator('#theme-toggle').click();
+    assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
+    await page.locator('#theme-toggle').click();
+    assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
+
+    await harness.atViewport(1440, 900);
+    assert.equal(await page.locator('#nav-rail').isVisible(), true);
+    assert.equal(await page.locator('#mobile-tabs').isVisible(), false);
+
+    await harness.atViewport(360, 640);
+    assert.equal(await page.locator('#nav-rail').isVisible(), false);
+    assert.equal(await page.locator('#mobile-tabs').isVisible(), true);
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      true,
+      `${engine}: warm shell overflows horizontally at 360px`
+    );
+    await page.locator('#mobile-tabs a[data-route="prices"]').click();
+    await page.waitForFunction(() => window.location.hash === '#prices');
+    await harness.expectElementVisible('#page-prices:not([hidden])');
+    await page.locator('#mobile-more-tab').click();
+    assert.equal(await page.locator('#mobile-more-menu').isVisible(), true);
+    await page.locator('#mobile-more-menu a[data-route="reference"]').click();
+    await page.waitForFunction(() => window.location.hash === '#reference');
+    await harness.expectElementVisible('#page-reference:not([hidden])');
+    assert.equal(await page.locator('#mobile-more-menu').isVisible(), false);
+
     await harness.expectNoConsoleErrors();
     await harness.expectNoCspViolations();
-    await harness.atViewport(360, 640);
-    await harness.expectElementVisible('#app');
-    console.log(`${engine}: untampered built artifact ran its hash-pinned script over file://`);
+    console.log(`${engine}: warm shell routes, theme switch, and responsive navigation passed over file://`);
   } finally {
     await closePage(page);
   }
@@ -119,11 +162,11 @@ async function verifyTamperedBuiltFile(browser, engine) {
     const { harness, page } = await openPage(browser, tampered.path);
     try {
       await harness.expectCspViolation('script-src');
-      const skeletonMatches = await page.locator('#app[data-build-state="skeleton"]').count();
+      const shellMatches = await page.locator('#app[data-build-state="warm-shell"]').count();
       assert.equal(
-        skeletonMatches,
+        shellMatches,
         0,
-        `${engine}: tampered built script ran and set the skeleton state`
+        `${engine}: tampered built script ran and set the warm-shell state`
       );
       console.log(`${engine}: built-artifact byte tampering triggered script-src and prevented execution`);
     } finally {

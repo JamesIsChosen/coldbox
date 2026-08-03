@@ -67,7 +67,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
 
 ### The two realms
 
-- [ ] **P0.5 — Warm shell skeleton**
+- [x] **P0.5 — Warm shell skeleton**
   *Deps: P0.4*
   Outer document, CSP per [csp-policy.md](../02-security/csp-policy.md), nav rail and mobile tab bar, routing, dark/light. No features.
   **Accept:** loads from `file://` on the full device matrix; no console errors; responsive from 360 px to desktop.
