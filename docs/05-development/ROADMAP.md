@@ -26,7 +26,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
 
 ### Build and verification pipeline
 
-- [ ] **P0.1 — Deterministic build skeleton**
+- [x] **P0.1 — Deterministic build skeleton**
   *Deps: none*
   `package.json`, `.nvmrc`, and a build script assembling `src/` into a single `build/coldbox.html`. No app features yet — an empty shell is fine.
   **Accept:** two consecutive clean builds produce byte-identical output; `build/coldbox.html.sha256` emitted; `LC_ALL=C TZ=UTC` enforced; no timestamps, machine paths, or unsorted iteration in output.

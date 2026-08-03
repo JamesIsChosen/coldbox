@@ -4,7 +4,7 @@
 
 One HTML file. No install, no server, no runtime. Copy it to a USB stick and open it on Windows, macOS, Linux, iOS, or Android.
 
-> ⚠️ **Pre-release.** No code has been written yet. This repository currently contains the specification and documentation. Nothing here should be used to secure real funds.
+> ⚠️ **Pre-release.** The deterministic build skeleton is in place, but no wallet, vault, or cryptographic features are available yet. Nothing here should be used to secure real funds.
 
 ---
 
@@ -100,7 +100,7 @@ What it does is the layer around them — the part a device can't do for you bec
 
 | Phase | Contents | Status |
 |---|---|---|
-| 0 | Foundation: two-realm bootstrap, vault format, reproducible builds | 📋 Specified |
+| 0 | Foundation: two-realm bootstrap, vault format, reproducible builds | 🚧 P0.1 build skeleton complete |
 | 1 | Core wallet: entropy, seeds, derivation, registry, devices | 📋 Specified |
 | 2 | Backup: SLIP-39, codex32, Seed XOR, recovery shares | 📋 Specified |
 | 3 | Portfolio and online: prices, balances, PnL, BIP-329 labels | 📋 Specified |
