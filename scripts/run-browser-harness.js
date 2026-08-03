@@ -146,7 +146,7 @@ async function verifyReusableAssertions(browser, engine) {
     await frame.locator('#cold-ready').waitFor({ state: 'visible' });
     await harness.expectParentCannotReadFrame();
     for (const primitive of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'sendBeacon']) {
-      const result = await harness.expectNetworkPrimitiveThrows(primitive, frame);
+      const result = await harness.expectNetworkPrimitiveBlocked(primitive, frame);
       console.log(`${engine}: ${primitive} reported blocked (${result.signal})`);
     }
     await harness.expectCspViolationInFrame(frame, 'connect-src');

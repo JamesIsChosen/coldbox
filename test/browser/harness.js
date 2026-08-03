@@ -110,7 +110,7 @@ async function createHarness(page) {
       return this.expectCspViolation('script-src');
     },
 
-    async expectNetworkPrimitiveThrows(name, frame) {
+    async expectNetworkPrimitiveBlocked(name, frame) {
       assert.ok(frame && typeof frame.evaluate === 'function', 'A Playwright frame is required');
       assert.ok(NETWORK_PRIMITIVES.includes(name), `Unsupported network primitive: ${name}`);
 

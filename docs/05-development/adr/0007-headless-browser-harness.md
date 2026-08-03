@@ -28,7 +28,7 @@ The harness exposes reusable assertions consumed by later items rather than one-
 ```
 expectNoConsoleErrors()          expectCspViolation(directive)
 expectNoCspViolations()          expectScriptRejected()
-expectNetworkPrimitiveThrows()   expectParentCannotReadFrame()
+expectNetworkPrimitiveBlocked()   expectParentCannotReadFrame()
 expectElementVisible(sel)        atViewport(w, h)
 ```
 
