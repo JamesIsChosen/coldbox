@@ -53,7 +53,8 @@ Everything about Coldbox lives here. Guides and the glossary compile into the ap
 
 | | |
 |---|---|
-| [Prompts](05-development/prompts.md) | Copy-paste session kickoffs for every mode |
+| [Handoff blocks](05-development/handoff.md) | **How every session ends.** Copy-paste commands + next prompt |
+| [Prompts](05-development/prompts.md) | Cold-start kickoffs for every mode |
 | [Roadmap](05-development/ROADMAP.md) | **What to build next, and current status.** Authoritative |
 | [PR packet](05-development/pr-packet.md) | The independent-review deliverable |
 | [Review protocol](05-development/review-protocol.md) | Binary PASS/FAIL. Any advisory is a FAIL |

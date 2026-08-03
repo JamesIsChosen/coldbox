@@ -18,6 +18,7 @@ Read in this order. Don't skip — most "why is it built like that" questions ar
 6. **[docs/02-security/threat-model.md](docs/02-security/threat-model.md)** — what's defended and what isn't.
 7. **[docs/05-development/pr-packet.md](docs/05-development/pr-packet.md)** — your deliverable.
 8. **[docs/05-development/review-protocol.md](docs/05-development/review-protocol.md)** — how your work will be judged. Read it before you start, not after.
+9. **[docs/05-development/handoff.md](docs/05-development/handoff.md)** — how your session must end. Mandatory in every mode.
 
 Then, for your specific item: `vault-format.md`, `csp-policy.md`, `crypto-choices.md`, `data-model.md`, or `chain-registry.md` as relevant.
 
@@ -82,6 +83,7 @@ For genuinely minor gaps — a variable name, a layout detail — decide, and re
 - [ ] Roadmap status updated
 - [ ] CHANGELOG updated
 - [ ] **PR packet written**
+- [ ] **Handoff block is the last thing in your response, with every placeholder filled in** (§6c)
 - [ ] Working tree clean, everything pushed
 - [ ] Exactly one roadmap item in this branch
 - [ ] You would PASS this yourself under [the review protocol](docs/05-development/review-protocol.md)
@@ -194,6 +196,18 @@ Two things to internalize about how that review works:
 The reviewer will independently re-run your verification, build under a different path/timezone/locale, deliberately break things to confirm they fail closed with non-zero exit codes, and download vendored dependencies from upstream to compare bytes. Write your packet expecting all of that, and expecting a stranger to do it without asking you anything.
 
 The most useful thing you can put in a packet is an honest account of what you're unsure about. A finding you flagged yourself is a managed risk. One the reviewer discovers that you should have known about damages the credibility of everything else you claimed.
+
+## 6c. End every session with a handoff block
+
+**Mandatory, in every mode, and the last thing in your response.**
+
+The human should never memorize a command, work out what happens next, or search these docs. They copy, they paste, they move on.
+
+Templates for every exit path — item complete, stopped mid-item, batch complete, stopped at a human-required item, stopped at stack depth, parallel track, review PASS/FAIL, fix complete — are in **[docs/05-development/handoff.md](docs/05-development/handoff.md)**. Use the one matching how your session ended.
+
+**Fill in every placeholder.** You know the branch, the PR number, the item ID, the packet path. Leaving `<branch>` for the human to substitute defeats the point entirely.
+
+A session that ends without a handoff block is a contract violation.
 
 ## 7. Never
 

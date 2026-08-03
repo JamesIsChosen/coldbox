@@ -14,10 +14,20 @@ Foundation work in progress. Wallet, vault, and cryptographic features are not a
 
 ### Added — process (2026-08-03)
 
+- **Mandatory handoff blocks** closing the copy-paste loop. Every session — implementation, batch, and review — must end with the exact commands to run and the exact prompt for the next agent, **with every placeholder already filled in**. The human copies and pastes; they never memorize a command or search the docs. `AGENTS.md` §6b-handoff, [review-protocol.md](docs/05-development/review-protocol.md), [batch-run.md](docs/05-development/batch-run.md)
+- Reviewers hand off too: PASS gives merge commands plus the next-item prompt; FAIL gives the fix prompt and then the re-review prompt. A reviewer never fixes findings itself
+- A session ending without a handoff block is a contract violation
+
 - **P0.3a — headless browser harness** roadmap item, and [ADR-0007](docs/05-development/adr/0007-headless-browser-harness.md) justifying Playwright as a dev dependency. Discovered when P0.4's implementation could not verify either of its acceptance criteria: **9 of 19 Phase 0 items have criteria only a browser can satisfy**, which under the binary review protocol stalls a campaign indefinitely. The harness makes 8 of them agent-verifiable
 - `🌐` roadmap marker for browser-verifiable criteria, applied to the eight affected items, each naming what the harness covers and what it cannot
 - Explicit rule: **an item whose criteria you cannot verify is `[~]`, never `[x]`**
 - P0.19 remains `👤 human-required` — Playwright cannot test iOS Safari, and that is the platform most likely to break the two-realm model
+
+### Added — P0.3a (2026-08-02)
+
+- Pinned Playwright 1.62.1 under `devDependencies` with a `test:browser` command that runs the built artifact from `file://` in Chromium and Firefox
+- Reusable browser assertions for CSP violations, hash-tampered script rejection, opaque-frame isolation, blocked network primitives, responsive viewports, and visible elements
+- Browser fixtures and negative checks proving deliberate CSP violations and byte-tampered inline scripts fail with a non-zero harness result
 
 ### Added — process (2026-08-02)
 

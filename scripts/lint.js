@@ -12,7 +12,8 @@ const secretSourcePrefixes = Object.freeze([
 const toolingJavaScriptFiles = Object.freeze([
   path.join(projectRoot, 'scripts', 'build.js'),
   path.join(projectRoot, 'scripts', 'lint.js'),
-  path.join(projectRoot, 'scripts', 'verify-vendor.js')
+  path.join(projectRoot, 'scripts', 'verify-vendor.js'),
+  path.join(projectRoot, 'scripts', 'run-browser-harness.js')
 ]);
 
 const forbiddenConstructs = Object.freeze([

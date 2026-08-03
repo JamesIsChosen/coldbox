@@ -130,6 +130,8 @@ From P0.3a, Playwright drives headless Chromium and Firefox against the built fi
 npm run test:browser
 ```
 
+The command rebuilds the artifact, checks that Playwright is a development-only dependency, and installs the Chromium and Firefox test browsers on first use when they are not already present. Those browser binaries are test tooling only and never enter `build/coldbox.html`. The reusable assertions live in `test/browser/harness.js` and cover CSP reports, tampered-script rejection, frame isolation, network primitive failures, visible elements, and viewport sizes.
+
 Covers: CSP enforcement and violation detection, post-build tamper rejection, cold realm instantiation, network primitives throwing inside the sandbox, parent-cannot-read-frame isolation, airgap banner states, responsive layout, and help rendering.
 
 **What it does not cover: iOS Safari.** WebKit-on-Linux is not Safari-on-iOS, and the differences land precisely where this project is fragile — `file://` secure-context status, opaque-origin `crypto.subtle`, and blob download restrictions. A packet claiming iOS verification on the strength of harness results should be failed. See [ADR-0007](adr/0007-headless-browser-harness.md).

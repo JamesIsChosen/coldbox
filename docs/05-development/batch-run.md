@@ -171,7 +171,13 @@ determinism, which everything downstream depends on.
 
 The "what I'd scrutinise hardest" and "known-weak areas" sections are the most valuable part. They direct a tired human to the right place first.
 
----
+### The batch handoff block
+
+**End your response with copy-paste blocks for every branch you produced**, in dependency order, with every placeholder filled in and the **correct PR base** — stacked branches target their dependency, not `main`.
+
+Templates in **[handoff.md](handoff.md)**: §3 batch complete · §4 stopped at a human-required item · §5 stopped at stack depth · §6 parallel track.
+
+§4 matters most for overnight runs. When a batch halts because only you can do the next thing — a device pass, an API key, a repo secret — the handoff **leads** with exactly what you need to do, because nothing else moves until it's done.
 
 ## What the human does next
 
