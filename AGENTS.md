@@ -29,7 +29,11 @@ Check `git log` and open branches first, in case an item marked `[~]` is genuine
 
 **One roadmap item per PR.** Don't bundle. Don't skip ahead because a later item looks more interesting — the ordering encodes dependency.
 
+**Never start an item marked `👤 human-required`.** It needs physical hardware or a human decision that isn't yours to make. Report it and stop.
+
 If the item is already complete but unmarked, mark it and move to the next.
+
+Asked to work several items in one session? That's a **batch run** — follow [batch-run.md](docs/05-development/batch-run.md), which adds dependency-aware branching, a self-review gate between items, and hard stop conditions.
 
 ## 3. Constraints you cannot violate
 
@@ -88,7 +92,7 @@ That last one is the real test. Read your own diff as a stranger who distrusts y
 
 Full spec: [docs/05-development/pr-packet.md](docs/05-development/pr-packet.md).
 
-Write `PR-PACKET.md` at the repo root on your branch. Its purpose is to let a reviewer verify your work **without trusting you**. So:
+Write `docs/05-development/packets/<roadmap-id>-<slug>.md`, matching your branch name. Its purpose is to let a reviewer verify your work **without trusting you**. So:
 
 - **Show, don't assert.** Paste the commands and their real output. "Verified reproducible" is worthless; two matching hashes are evidence.
 - **State every assumption**, its basis, and what breaks if it's wrong.
@@ -99,6 +103,14 @@ Write `PR-PACKET.md` at the repo root on your branch. Its purpose is to let a re
 ## 6a. Git protocol
 
 Every rule below exists because it was broken once and cost real time. Follow them literally.
+
+### One agent per working tree — always
+
+**Never run two agents, or an agent and a human, against the same checkout at the same time.** Git serialises on `.git/index.lock`, so concurrent work produces `Unable to create index.lock` — and the failure mode is nasty: `add` and `commit` fail while `push` still succeeds, silently publishing empty branches while you believe work was saved.
+
+If you see `index.lock` errors, **stop immediately**. Do not retry, do not delete the lock file. Another process is mid-operation and deleting its lock can corrupt the index. Report it and wait.
+
+If a second agent needs to work in parallel, it gets its own clone or a `git worktree` — never a shared checkout.
 
 ### Session preflight — run before touching anything
 
@@ -124,9 +136,11 @@ git push -u origin <your-branch>
 git status                    # MUST be clean now
 ```
 
-**Never end a session with uncommitted work.** Not "I'll finish next run" — commit what exists, push it, and note the state in `PR-PACKET.md`. Work left in a working tree across sessions gets tangled with other branches and eventually lost.
+**Never end a session with uncommitted work.** Not "I'll finish next run" — commit what exists, push it, and note the state in your packet. Work left in a working tree across sessions gets tangled with other branches and eventually lost.
 
 **One branch per roadmap item. No exceptions.** If you finish an item and want to continue, open the PR, return to `main`, and branch again. Two items on one branch cannot be reviewed independently, which defeats the purpose of the packet — and the reviewer will FAIL it on sight.
+
+If you were asked to work several items in one session, that's a **batch run** — follow [batch-run.md](docs/05-development/batch-run.md). It still means one branch per item; the difference is that branches stack on their dependencies rather than all coming off `main`.
 
 The temptation is real: you finish P0.1, the next item looks small, and continuing feels efficient. It isn't. It produces a branch whose packet describes one thing and whose diff contains two, and untangling that afterwards costs far more than the branch switch would have.
 
@@ -147,7 +161,7 @@ This means the work survives a lost session, the human can review from GitHub, C
 - Commit work belonging to a different roadmap item
 - Commit `.cbx` files, real seeds, or keys — run `git status` and look before every commit
 
-**Open the PR when the item is done and the packet is written**, not per run. A run that ends mid-item ends with a push and a note in `PR-PACKET.md` saying where you stopped.
+**Open the PR when the item is done and the packet is written**, not per run. A run that ends mid-item ends with a push and a note in your packet saying where you stopped.
 
 **If the working tree contains changes you didn't make** — the human may have edited docs while you were working — do not sweep them into your commit. Stage your files explicitly by path. `git add -A` is how unrelated work ends up in the wrong PR.
 

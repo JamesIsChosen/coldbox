@@ -8,7 +8,11 @@ That framing drives everything below. A packet that says "I tested it and it wor
 
 ## Where it lives
 
-`PR-PACKET.md` at the repo root on the working branch, deleted or superseded before merge. Its contents also go in the PR description.
+`docs/05-development/packets/<roadmap-id>-<slug>.md`, matching your branch name — for example `docs/05-development/packets/p0.3-forbidden-construct-lint.md`.
+
+Per-item paths, not a single rotating `PR-PACKET.md`: packets are the permanent audit trail, and a shared path causes a merge conflict on every stacked branch. See [packets/README.md](packets/README.md).
+
+Its contents also go in the PR description.
 
 ---
 
