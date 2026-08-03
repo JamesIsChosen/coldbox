@@ -4,6 +4,10 @@ Every external endpoint the app can contact. This list *is* the `connect-src` al
 
 **The cold realm contacts nothing.** `connect-src 'none'`. Nothing below applies to it.
 
+Free tiers, key requirements, and CORS policies change without notice. Verify before depending on any row.
+
+*Last reviewed: 2026-08-02 · Max age: 12 months · See [doc-hygiene.md](../05-development/doc-hygiene.md)*
+
 ---
 
 ## Price sources

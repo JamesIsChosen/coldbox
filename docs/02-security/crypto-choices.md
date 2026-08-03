@@ -2,6 +2,10 @@
 
 Every primitive, why it was chosen, and what was rejected.
 
+Parameter recommendations move as attack hardware improves. See the review triggers at the end.
+
+*Last reviewed: 2026-08-02 · Max age: 12 months · See [doc-hygiene.md](../05-development/doc-hygiene.md)*
+
 ---
 
 ## Summary

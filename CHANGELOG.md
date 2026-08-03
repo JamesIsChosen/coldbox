@@ -10,7 +10,22 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
-P0.1 deterministic build skeleton implemented. Wallet, vault, and cryptographic features are not available yet.
+Foundation work in progress. Wallet, vault, and cryptographic features are not available yet. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
+
+### Added — process (2026-08-02)
+
+- **[review-protocol.md](docs/05-development/review-protocol.md)** — binary PASS/FAIL review contract. No "approve with comments"; **any finding of any severity, including advisory, is a FAIL.** Requires independent verification, a `REVIEW-REPORT.md` artifact opening with a verdict block, and a fresh verdict on re-review rather than an amendment
+- `AGENTS.md` §6a: session preflight and postflight checklists, mandatory output verification after every git command, and shell gotchas (PowerShell mangling `@{`, `$?` reporting the wrong command after a pipeline)
+- `AGENTS.md` §6b: agents are told upfront how their work will be judged
+
+- **[doc-hygiene.md](docs/05-development/doc-hygiene.md)** — rules preventing documentation decay: one canonical home per fact, review dates and max ages on anything describing the outside world, docs shipping with the code that changes them, no orphan numbers, and automated checks wired into CI at P0.18
+- Review dates added to `standards.md`, `api-sources.md`, `crypto-choices.md`, and `supported-chains.md`
+
+### Changed — process
+
+- **Status is single-sourced to the roadmap.** README carries phase descriptions only; item-level status lives in exactly one place so it cannot drift
+- Definition of done now includes a clean working tree, exactly one roadmap item per branch, no duplicated facts, updated review dates, and a self-review against the reviewer's checklist
+- Documentation staleness is explicitly in scope for review, and therefore a FAIL condition
 
 ### Added — P0.1 (2026-08-02)
 

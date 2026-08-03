@@ -1,10 +1,12 @@
 # Roadmap
 
-**This file is the single source of truth for what to build next.** It is machine-readable by convention: work the first unchecked item whose dependencies are all complete.
+**This file is the single source of truth for what to build next _and_ for current status.** It is machine-readable by convention: work the first unchecked item whose dependencies are all complete.
 
 Status: `[ ]` not started · `[~]` in progress · `[x]` complete
 
 Every PR must update this file in the same commit as the work it completes.
+
+**Do not duplicate item-level status anywhere else** — not in the README, not in the spec, not in a PR description. Duplicated status drifts, and stale status is worse than none because people trust it. Other documents link here.
 
 ---
 
@@ -119,8 +121,8 @@ Nothing above this phase is safe to build until the container is trustworthy.
 
 - [ ] **P0.18 — CI**
   *Deps: P0.16, P0.17*
-  GitHub Actions: build, test, `verify-vendor`, lint, **double-build hash comparison**, second-OS build comparison, bundle size report, release attestation.
-  **Accept:** CI hash matches a local build; a nondeterministic change fails CI.
+  GitHub Actions: build, test, `verify-vendor`, lint, **double-build hash comparison**, second-OS build comparison, bundle size report, release attestation. Plus the documentation checks in [doc-hygiene.md](doc-hygiene.md): internal link resolution, review dates present and within max age, three-depth help blocks, doc index consistency, roadmap ID references, and `dependencies.md` matching `vendor-manifest.json`.
+  **Accept:** CI hash matches a local build; a nondeterministic change fails CI; a broken internal link fails CI; a missing review date fails CI; an out-of-date review date warns.
 
 - [ ] **P0.19 — Device matrix pass**
   *Deps: P0.18*

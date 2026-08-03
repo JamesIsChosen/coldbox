@@ -2,6 +2,10 @@
 
 Every BIP, SLIP, and other standard Coldbox implements, tracks, or deliberately declines.
 
+Adoption status changes as wallets ship support and proposals activate. Re-check before relying on the "tracked, not implemented" rows.
+
+*Last reviewed: 2026-08-02 · Max age: 12 months · See [doc-hygiene.md](../05-development/doc-hygiene.md)*
+
 ---
 
 ## Implemented

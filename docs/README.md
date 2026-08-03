@@ -53,8 +53,10 @@ Everything about Coldbox lives here. Guides and the glossary compile into the ap
 
 | | |
 |---|---|
-| [Roadmap](05-development/ROADMAP.md) | **What to build next.** Authoritative ordering |
+| [Roadmap](05-development/ROADMAP.md) | **What to build next, and current status.** Authoritative |
 | [PR packet](05-development/pr-packet.md) | The independent-review deliverable |
+| [Review protocol](05-development/review-protocol.md) | Binary PASS/FAIL. Any advisory is a FAIL |
+| [Doc hygiene](05-development/doc-hygiene.md) | How docs are kept from going stale |
 | [Build](05-development/build.md) | Reproducible build instructions |
 | [Dependencies](05-development/dependencies.md) | Pinned versions and upstream hashes |
 | [Testing](05-development/testing.md) | Vectors, security tests, device matrix |
@@ -73,4 +75,6 @@ Agents start at [AGENTS.md](../AGENTS.md).
 
 **Consequences stated.** These docs cover operations that can lose someone everything. Steps that are commonly skipped are marked as commonly skipped.
 
-**Single-sourced.** Guides and glossary compile into the app. Changing behaviour means updating the doc in the same PR — they cannot drift.
+**Single-sourced.** Every fact has exactly one canonical home; everything else links to it. Guides and glossary compile into the app, so changing behaviour means updating the doc in the same PR.
+
+**Dated where reality moves.** Documents describing tax rules, vendor firmware, API terms, or standards adoption carry a review date and a maximum age. Past that age CI warns. See [doc-hygiene.md](05-development/doc-hygiene.md).

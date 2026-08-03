@@ -127,38 +127,14 @@ Which docs changed. Help content at all three depths for user-facing features. A
 
 ---
 
-## Reviewer checklist
+## Review
 
-For whoever reviews — human or agent:
+Reviewers follow **[review-protocol.md](review-protocol.md)**. Two things about it shape how you should write your packet:
 
-- [ ] Every acceptance criterion is met and evidenced, not reinterpreted
-- [ ] Verification commands reproduce the stated output on my machine
-- [ ] Build hash matches across two of my own builds
-- [ ] Test vectors come from a genuinely independent source
-- [ ] No new message type can carry secret material
-- [ ] CSP unchanged, or the change is justified and has an ADR
-- [ ] No secret can reach `localStorage`, the URL, the page title, or session restore
-- [ ] `getRandomValues` used for all key material; no `Math.random` in any security path
-- [ ] Failure modes fail **closed**, not open
-- [ ] Assumptions are stated and plausible
-- [ ] Device matrix is filled honestly, with gaps marked rather than inferred
-- [ ] Docs and help content updated in this PR
-- [ ] Roadmap status updated
+**The verdict is binary — PASS or FAIL.** No "approve with comments."
 
-**Reject rather than accept when unsure.** The cost of a delayed merge is hours. The cost of a wrong merge in a tool that handles seed phrases is someone's savings.
+**Any finding of any severity, including cosmetic, is a FAIL.** There is no advisory tier that lets something through.
 
----
+So there is no upside to leaving a rough edge, and considerable upside to flagging your own uncertainties. A weakness you disclosed is a managed risk; the same weakness discovered by a reviewer undermines every other claim in your packet.
 
-## Automatic rejection
-
-No amount of good work elsewhere offsets these:
-
-- A secret can cross the realm boundary
-- `connect-src 'none'` removed or weakened in the cold realm
-- Build is not reproducible
-- A vendored dependency doesn't match its upstream hash
-- Test vectors are self-generated
-- A failure mode fails **open**
-- `Math.random` in a security-relevant path
-- A chain added without independent test vectors
-- Acceptance criteria reinterpreted rather than met
+Before you request review, read your own diff as a hostile stranger using the reviewer's checklist, and fix anything you'd flag.

@@ -17,6 +17,7 @@ Read in this order. Don't skip — most "why is it built like that" questions ar
 5. **[CONTRIBUTING.md](CONTRIBUTING.md)** — hard constraints and conventions.
 6. **[docs/02-security/threat-model.md](docs/02-security/threat-model.md)** — what's defended and what isn't.
 7. **[docs/05-development/pr-packet.md](docs/05-development/pr-packet.md)** — your deliverable.
+8. **[docs/05-development/review-protocol.md](docs/05-development/review-protocol.md)** — how your work will be judged. Read it before you start, not after.
 
 Then, for your specific item: `vault-format.md`, `csp-policy.md`, `crypto-choices.md`, `data-model.md`, or `chain-registry.md` as relevant.
 
@@ -54,7 +55,9 @@ For genuinely minor gaps — a variable name, a layout detail — decide, and re
 
 **Write the test first for anything cryptographic.** Get the official vectors, write the failing test, then implement.
 
-**Update docs in the same PR.** Help content compiles from `docs/` into the app, so they cannot drift. User-facing features need all three depths (plain / working / technical).
+**Update docs in the same PR.** Help content compiles from `docs/` into the app, so a doc lag means the app itself is lying to users. User-facing features need all three depths (plain / working / technical).
+
+**Follow [doc-hygiene.md](docs/05-development/doc-hygiene.md).** The two rules that catch most people: every fact has exactly one canonical home and everywhere else links to it, and any document describing the outside world — tax rules, vendor firmware, API terms — carries a review date. Never restate a fact that lives elsewhere; you're creating a future contradiction.
 
 **Add an ADR for structural decisions.** Format in [docs/05-development/adr/README.md](docs/05-development/adr/README.md).
 
@@ -67,11 +70,19 @@ For genuinely minor gaps — a variable name, a layout detail — decide, and re
 - [ ] `npm test`, `npm run verify-vendor`, and the lint all pass
 - [ ] Build is reproducible — built twice, hashes identical
 - [ ] Tested on at least one desktop and one mobile browser from `file://`
-- [ ] Docs and help content updated
+- [ ] Docs and help content updated, per [doc-hygiene.md](docs/05-development/doc-hygiene.md)
+- [ ] No fact duplicated — every claim links to its canonical home
+- [ ] Review dates updated on any dated doc this change touches
+- [ ] No doc left contradicting the new behaviour
 - [ ] ADR added if a structural decision was made
 - [ ] Roadmap status updated
 - [ ] CHANGELOG updated
 - [ ] **PR packet written**
+- [ ] Working tree clean, everything pushed
+- [ ] Exactly one roadmap item in this branch
+- [ ] You would PASS this yourself under [the review protocol](docs/05-development/review-protocol.md)
+
+That last one is the real test. Read your own diff as a stranger who distrusts you, using the reviewer's checklist. Anything you'd flag, fix now — because the reviewer will flag it, and any finding is a FAIL.
 
 ## 6. Deliver a PR packet
 
@@ -87,15 +98,37 @@ Write `PR-PACKET.md` at the repo root on your branch. Its purpose is to let a re
 
 ## 6a. Git protocol
 
-**Check your branch before you touch anything.** `git status` first, every session. If you're on `main` or on someone else's item branch, stop and create your own.
+Every rule below exists because it was broken once and cost real time. Follow them literally.
+
+### Session preflight — run before touching anything
 
 ```
-git checkout main
+git status                    # MUST be clean. If not, stop (see below)
+git branch --show-current     # MUST be main before you branch
 git pull
 git checkout -b p0.5-cold-realm-bootstrap     # roadmap ID, short description
+git branch --show-current     # confirm you're where you think you are
 ```
 
-**One branch per roadmap item. No exceptions.** If you finish an item and want to continue, open the PR, return to `main`, and branch again. Two items on one branch cannot be reviewed independently, which defeats the purpose of the packet.
+**If `git status` is not clean, do not proceed.** Uncommitted changes belong to someone — possibly the human, possibly a previous session. Report what you found and ask. Never stash, discard, or absorb work you didn't create.
+
+**If you are not on `main`,** you may be on a previous item's branch. Do not build on it. Return to `main` and branch fresh.
+
+### Session postflight — run before you stop, every time
+
+```
+git status                    # review every listed file; expect no surprises
+git add <explicit paths>      # never `git add -A`
+git commit -m "..."
+git push -u origin <your-branch>
+git status                    # MUST be clean now
+```
+
+**Never end a session with uncommitted work.** Not "I'll finish next run" — commit what exists, push it, and note the state in `PR-PACKET.md`. Work left in a working tree across sessions gets tangled with other branches and eventually lost.
+
+**One branch per roadmap item. No exceptions.** If you finish an item and want to continue, open the PR, return to `main`, and branch again. Two items on one branch cannot be reviewed independently, which defeats the purpose of the packet — and the reviewer will FAIL it on sight.
+
+The temptation is real: you finish P0.1, the next item looks small, and continuing feels efficient. It isn't. It produces a branch whose packet describes one thing and whose diff contains two, and untangling that afterwards costs far more than the branch switch would have.
 
 **Commit as you go**, in logical chunks — not one giant commit at the end. The commit sequence is part of the audit trail; a reviewer should be able to follow how the work developed. Imperative mood, and explain *why* in the body.
 
@@ -118,7 +151,35 @@ This means the work survives a lost session, the human can review from GitHub, C
 
 **If the working tree contains changes you didn't make** — the human may have edited docs while you were working — do not sweep them into your commit. Stage your files explicitly by path. `git add -A` is how unrelated work ends up in the wrong PR.
 
+### Verify every git command's output
+
+Do not fire a batch of git commands and assume they worked. Each one either succeeded or it didn't, and git failures are frequently non-fatal — the next command runs anyway, on a state you didn't expect.
+
+Specifically: after `checkout`, confirm the branch. After `commit`, confirm the file count. After `push`, confirm the ref updated. If a command errored, **stop and resolve it** rather than continuing down the script.
+
+### Shell gotchas
+
+**PowerShell mangles `@{`** — it's a hashtable literal. `git checkout stash@{0} -- file` fails with a confusing `unknown switch 'e'`. Quote it: `git checkout 'stash@{0}' -- file`, or use the raw commit SHA instead.
+
+**`$?` after a pipeline reports the last command in the pipe**, not the one you care about. `npm run build 2>&1 | tail -4; echo $?` tells you about `tail`. Test exit codes without a pipe, or use `PIPESTATUS`.
+
+**Prefer raw SHAs over symbolic refs** in any scripted recovery. They can't be reinterpreted by a shell.
+
 Then open a PR using the template.
+
+## 6b. Expect an independent review
+
+Your packet will be reviewed by someone — human or another agent — working from [docs/05-development/review-protocol.md](docs/05-development/review-protocol.md).
+
+Two things to internalize about how that review works:
+
+**The verdict is binary: PASS or FAIL.** There is no "approve with comments."
+
+**Any finding at all — including cosmetic or advisory — is a FAIL.** So there is no benefit in leaving a rough edge and hoping it slides. It won't.
+
+The reviewer will independently re-run your verification, build under a different path/timezone/locale, deliberately break things to confirm they fail closed with non-zero exit codes, and download vendored dependencies from upstream to compare bytes. Write your packet expecting all of that, and expecting a stranger to do it without asking you anything.
+
+The most useful thing you can put in a packet is an honest account of what you're unsure about. A finding you flagged yourself is a managed risk. One the reviewer discovers that you should have known about damages the credibility of everything else you claimed.
 
 ## 7. Never
 

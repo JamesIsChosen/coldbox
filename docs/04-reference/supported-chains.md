@@ -1,6 +1,8 @@
 # Supported chains
 
-Coin types verified against the [SLIP-44 registry](https://github.com/satoshilabs/slips/blob/master/slip-0044.md), which currently holds 1,464 registered types.
+Coin types verified against the [SLIP-44 registry](https://github.com/satoshilabs/slips/blob/master/slip-0044.md), which held 1,464 registered types when last checked.
+
+*Last reviewed: 2026-08-02 · Max age: 12 months · See [doc-hygiene.md](../05-development/doc-hygiene.md)*
 
 **Tier 3 applies to everything:** any BIP-32 path produces correct private and public keys even where no address formatter exists. That's the recovery-critical data — the address is presentation.
 

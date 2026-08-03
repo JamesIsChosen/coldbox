@@ -97,10 +97,19 @@ Making a structural decision? Add an ADR in `docs/05-development/adr/`. Short: w
 
 ## Pull requests
 
-- One logical change per PR.
+- One logical change per PR — and for roadmap work, exactly one roadmap item.
 - Describe what breaks if you're wrong. Security-relevant PRs should state their threat-model impact explicitly.
 - Note bundle size impact.
 - Confirm you tested on at least one desktop and one mobile browser, from `file://`.
+- Include a PR packet per [pr-packet.md](docs/05-development/pr-packet.md).
+
+### How review works
+
+Reviews follow [review-protocol.md](docs/05-development/review-protocol.md) and end in a binary **PASS or FAIL**. There is no "approve with comments," and **any finding of any severity — including cosmetic — is a FAIL.**
+
+This is stricter than typical projects, deliberately. A comment attached to a merged PR is a comment nobody actions; requiring a FAIL means every concern is either fixed or explicitly dismissed with reasoning. Given that this tool handles seed phrases, a delayed merge costing hours is a good trade against a wrong merge costing someone their savings.
+
+FAIL carries no judgement about effort. It means "not yet." Fix the findings, push, and request a fresh verdict.
 
 Commit messages: imperative mood, explain *why* in the body. `fix: reject xpub with invalid version bytes` beats `fixes`.
 
