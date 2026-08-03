@@ -145,9 +145,13 @@ Severity is recorded for triage, **not** to excuse anything. Advisory findings m
 **A PASS verdict means you merge.** Run it, confirm `main` updated, then report in the handoff:
 
 ```
-gh pr merge 12 --merge --delete-branch=false
-git checkout main && git pull
+gh pr merge 12 --merge --delete-branch
+git checkout main && git pull && git fetch --prune
 ```
+
+**Use `--delete-branch`, not `--delete-branch=false`.** Merged branches are dead weight, and leaving them makes it impossible to tell at a glance which branches are live work. GitHub retargets any stacked child PR to the merged branch's base before deleting, so this is safe even mid-stack.
+
+The one exception: if the repo-level *"Automatically delete head branches"* setting is on, `--delete-branch` is redundant but harmless.
 
 **Do not merge if:**
 
