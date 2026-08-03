@@ -64,6 +64,29 @@ function createTamperedFixture() {
   return { path: tamperedPath, temporaryRoot };
 }
 
+function createTamperedBuildFixture() {
+  const original = fs.readFileSync(buildPath);
+  const scriptStartMarker = Buffer.from('<script>');
+  const scriptEndMarker = Buffer.from('</script>');
+  const scriptStart = original.indexOf(scriptStartMarker);
+  assert.notEqual(scriptStart, -1, 'Built artifact must contain an inline script');
+  const bodyStart = scriptStart + scriptStartMarker.length;
+  const scriptEnd = original.indexOf(scriptEndMarker, bodyStart);
+  assert.notEqual(scriptEnd, -1, 'Built artifact must close its inline script');
+
+  const tamperTarget = Buffer.from('skeleton');
+  const relativeTarget = original.subarray(bodyStart, scriptEnd).indexOf(tamperTarget);
+  assert.notEqual(relativeTarget, -1, 'Built skeleton script must contain its state marker');
+  const targetOffset = bodyStart + relativeTarget;
+  const tampered = Buffer.from(original);
+  tampered[targetOffset] ^= 1;
+
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-browser-built-tamper-'));
+  const tamperedPath = path.join(temporaryRoot, 'coldbox.html');
+  fs.writeFileSync(tamperedPath, tampered);
+  return { path: tamperedPath, temporaryRoot };
+}
+
 async function openPage(browser, file) {
   const page = await browser.newPage();
   const harness = await createHarness(page);
@@ -79,13 +102,35 @@ async function verifyBuiltFile(browser, engine) {
   const { harness, page } = await openPage(browser, buildPath);
   try {
     await harness.expectElementVisible('#app');
+    await harness.expectElementVisible('#app[data-build-state="skeleton"]');
     await harness.expectNoConsoleErrors();
     await harness.expectNoCspViolations();
     await harness.atViewport(360, 640);
     await harness.expectElementVisible('#app');
-    console.log(`${engine}: loaded build/coldbox.html over file://`);
+    console.log(`${engine}: untampered built artifact ran its hash-pinned script over file://`);
   } finally {
     await closePage(page);
+  }
+}
+
+async function verifyTamperedBuiltFile(browser, engine) {
+  const tampered = createTamperedBuildFixture();
+  try {
+    const { harness, page } = await openPage(browser, tampered.path);
+    try {
+      await harness.expectCspViolation('script-src');
+      const skeletonMatches = await page.locator('#app[data-build-state="skeleton"]').count();
+      assert.equal(
+        skeletonMatches,
+        0,
+        `${engine}: tampered built script ran and set the skeleton state`
+      );
+      console.log(`${engine}: built-artifact byte tampering triggered script-src and prevented execution`);
+    } finally {
+      await closePage(page);
+    }
+  } finally {
+    fs.rmSync(tampered.temporaryRoot, { force: true, recursive: true });
   }
 }
 
@@ -213,6 +258,7 @@ async function run() {
     const browser = await browserType.launch({ headless: true });
     try {
       await verifyBuiltFile(browser, engine);
+      await verifyTamperedBuiltFile(browser, engine);
       await verifyCspFixture(browser, engine);
       await verifyUntamperedFixture(browser, engine);
       await verifyTamperFixture(browser, engine);

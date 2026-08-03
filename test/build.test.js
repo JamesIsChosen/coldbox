@@ -12,6 +12,51 @@ const buildScript = path.join(projectRoot, 'scripts', 'build.js');
 const htmlPath = path.join(projectRoot, 'build', 'coldbox.html');
 const hashPath = path.join(projectRoot, 'build', 'coldbox.html.sha256');
 
+function cspHash(block) {
+  return `'sha256-${crypto.createHash('sha256').update(Buffer.from(block, 'utf8')).digest('base64')}'`;
+}
+
+function inlineBlocks(html, tagName) {
+  const pattern = new RegExp(`<${tagName}\\b[^>]*>([\\s\\S]*?)<\\/${tagName}>`, 'gi');
+  return [...html.matchAll(pattern)].map((match) => match[1]);
+}
+
+function cspPolicy(html) {
+  const match = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/i);
+  assert.ok(match, 'built document must include a CSP meta tag');
+  return match[1];
+}
+
+function cspDirective(policy, directive) {
+  const match = policy.match(new RegExp(`(?:^|;)\\s*${directive}\\s+([^;]+)`));
+  assert.ok(match, `CSP must include ${directive}`);
+  return match[1];
+}
+
+function createBuildRoot() {
+  const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'coldbox-csp-'));
+  for (const directory of ['scripts', 'src', 'vendor']) {
+    fs.cpSync(path.join(projectRoot, directory), path.join(root, directory), { recursive: true });
+  }
+  return root;
+}
+
+function runBuildAt(root) {
+  const result = spawnSync(process.execPath, [path.join(root, 'scripts', 'build.js')], {
+    cwd: root,
+    encoding: 'utf8'
+  });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  return fs.readFileSync(path.join(root, 'build', 'coldbox.html'), 'utf8');
+}
+
+function runBuildProcessAt(root) {
+  return spawnSync(process.execPath, [path.join(root, 'scripts', 'build.js')], {
+    cwd: root,
+    encoding: 'utf8'
+  });
+}
+
 function runBuild(overrides = {}) {
   const result = spawnSync(process.execPath, [buildScript], {
     cwd: projectRoot,
@@ -48,4 +93,79 @@ test('two builds are byte-identical regardless of caller locale and timezone', (
 
   assert.deepEqual(secondHtml, firstHtml);
   assert.deepEqual(secondSidecar, firstSidecar);
+});
+
+test('CSP hashes match every inline script and style block', () => {
+  runBuild();
+  const html = fs.readFileSync(htmlPath, 'utf8');
+  const policy = cspPolicy(html);
+  const scripts = inlineBlocks(html, 'script');
+  const styles = inlineBlocks(html, 'style');
+  const scriptDirective = cspDirective(policy, 'script-src');
+  const styleDirective = cspDirective(policy, 'style-src');
+
+  assert.equal(scripts.length, 1);
+  assert.equal(styles.length, 1);
+  for (const block of scripts) {
+    assert.match(scriptDirective, new RegExp(cspHash(block).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  for (const block of styles) {
+    assert.match(styleDirective, new RegExp(cspHash(block).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.doesNotMatch(policy, /__COLDBOX_/);
+  assert.doesNotMatch(policy, /'unsafe-inline'/);
+});
+
+test('CSP hash injection covers multiple inline blocks and detects script tampering', () => {
+  const root = createBuildRoot();
+  try {
+    const templatePath = path.join(root, 'src', 'index.html');
+    let template = fs.readFileSync(templatePath, 'utf8');
+    template = template.replace('</head>', '  <style>\n    body { border: 0; }\n  </style>\n</head>');
+    template = template.replace('</body>', '  <script>\n    document.body.dataset.fixture = \'csp\';\n  </script>\n</body>');
+    fs.writeFileSync(templatePath, template, 'utf8');
+
+    const html = runBuildAt(root);
+    const policy = cspPolicy(html);
+    const scripts = inlineBlocks(html, 'script');
+    const styles = inlineBlocks(html, 'style');
+    const scriptDirective = cspDirective(policy, 'script-src');
+    const styleDirective = cspDirective(policy, 'style-src');
+    assert.equal(scripts.length, 2);
+    assert.equal(styles.length, 2);
+    for (const block of scripts) {
+      assert.match(scriptDirective, new RegExp(cspHash(block).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    }
+    for (const block of styles) {
+      assert.match(styleDirective, new RegExp(cspHash(block).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    }
+
+    const alteredScriptBytes = Buffer.from(scripts[0], 'utf8');
+    const tamperOffset = alteredScriptBytes.indexOf(Buffer.from('skeleton', 'utf8'));
+    assert.notEqual(tamperOffset, -1);
+    alteredScriptBytes[tamperOffset] ^= 1;
+    const alteredScript = alteredScriptBytes.toString('utf8');
+    assert.notEqual(cspHash(alteredScript), cspHash(scripts[0]));
+    assert.doesNotMatch(scriptDirective, new RegExp(cspHash(alteredScript).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a stray final-document placeholder fails the build before creating output', () => {
+  const root = createBuildRoot();
+  try {
+    const templatePath = path.join(root, 'src', 'index.html');
+    const template = fs.readFileSync(templatePath, 'utf8')
+      .replace('<title>Coldbox</title>', '<title>__COLDBOX_TYPO__</title>');
+    fs.writeFileSync(templatePath, template, 'utf8');
+
+    const result = runBuildProcessAt(root);
+    const output = `${result.stdout}\n${result.stderr}`;
+    assert.notEqual(result.status, 0, output);
+    assert.match(output, /Unresolved source placeholder in final document/);
+    assert.equal(fs.existsSync(path.join(root, 'build')), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });

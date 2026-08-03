@@ -59,11 +59,11 @@ Nothing above this phase is safe to build until the container is trustworthy.
   Rationale in [ADR-0007](adr/0007-headless-browser-harness.md).
   **Accept:** After a clean `npm ci` and the documented `npx playwright install chromium firefox` prerequisite, `npm run test:browser` loads the built file over `file://` in both engines; a deliberately CSP-violating fixture is detected; a byte-tampered inline script is rejected by the browser and the harness reports it; harness failures exit **non-zero**; Playwright appears only under `devDependencies` and contributes **0 bytes** to `build/coldbox.html`.
 
-- [ ] **P0.4 — CSP hash-pinning in the build**
+- [x] **P0.4 — CSP hash-pinning in the build**
   *Deps: P0.1 (implementation) · P0.3a (verification)*
   Compute SHA-256 of each inline script and style block; inject into the respective `script-src`/`style-src` directives.
   **Accept:** built file runs with no CSP violations; altering one byte of the inline script post-build causes the browser to refuse to execute it.
-  🌐 *Both criteria are verified by the P0.3a harness. Implementation may land first and sit at `[~]` until the harness confirms them.*
+  🌐 *Both criteria are verified against the built artifact by the P0.3a harness in Chromium and Firefox. Implementation may land first and sit at `[~]` until the harness confirms them.*
 
 ### The two realms
 

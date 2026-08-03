@@ -53,11 +53,43 @@ function assemble() {
     document = injectOnce(document, entry.token, component);
   }
 
-  if (document.includes('__COLDBOX_')) {
-    throw new Error('Unresolved source placeholder in assembled document');
+  for (const placeholder of ['__COLDBOX_STYLES__', '__COLDBOX_SCRIPT__']) {
+    if (document.includes(placeholder)) {
+      throw new Error(`Unresolved source placeholder in assembled document: ${placeholder}`);
+    }
   }
 
   return ensureTrailingLf(document);
+}
+
+function inlineBlockContents(document, tagName) {
+  const pattern = new RegExp(`<${tagName}\\b[^>]*>([\\s\\S]*?)<\\/${tagName}>`, 'gi');
+  return [...document.matchAll(pattern)].map((match) => match[1]);
+}
+
+function hashInlineBlocks(document, tagName) {
+  const blocks = inlineBlockContents(document, tagName);
+  if (blocks.length === 0) {
+    throw new Error(`No inline ${tagName} block found for CSP hash-pinning`);
+  }
+
+  return blocks.map((block) => {
+    const digest = crypto.createHash('sha256').update(Buffer.from(block, 'utf8')).digest('base64');
+    return `'sha256-${digest}'`;
+  }).join(' ');
+}
+
+function injectCspHashes(document) {
+  let result = document;
+  result = injectOnce(result, '__COLDBOX_SCRIPT_HASHES__', hashInlineBlocks(document, 'script'));
+  result = injectOnce(result, '__COLDBOX_STYLE_HASHES__', hashInlineBlocks(document, 'style'));
+  return result;
+}
+
+function assertNoUnresolvedPlaceholders(document) {
+  if (/__COLDBOX_/.test(document)) {
+    throw new Error('Unresolved source placeholder in final document');
+  }
 }
 
 function ensureTrailingLf(contents) {
@@ -109,5 +141,7 @@ function verifyForbiddenConstructLint() {
 
 verifyVendorOffline();
 verifyForbiddenConstructLint();
-const result = writeBuild(assemble());
+const document = injectCspHashes(assemble());
+assertNoUnresolvedPlaceholders(document);
+const result = writeBuild(document);
 console.log(`Built build/coldbox.html (${result.digest})`);

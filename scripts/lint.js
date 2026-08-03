@@ -17,7 +17,7 @@ const toolingJavaScriptFiles = Object.freeze([
 ]);
 
 const forbiddenConstructs = Object.freeze([
-  Object.freeze({ name: 'eval', pattern: /\beval\b/g }),
+  Object.freeze({ name: 'eval', pattern: /(?<!wasm-unsafe-)\beval\b/g }),
   Object.freeze({ name: 'new Function', pattern: /\bnew\s+Function\b/g }),
   Object.freeze({ name: 'import', pattern: /\bimport\b/g }),
   Object.freeze({ name: 'require', pattern: /\brequire\b/g })
