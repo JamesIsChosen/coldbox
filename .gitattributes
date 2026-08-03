@@ -1,0 +1,32 @@
+# Line endings are load-bearing here.
+#
+# Reproducible builds require byte-identical source on every platform. If a
+# Windows checkout has CRLF and a Linux CI checkout has LF, the two builds
+# produce different output hashes — and the whole verification story collapses
+# before it starts. Force LF everywhere, in the repo and in working trees.
+
+* text=auto eol=lf
+
+# Binary — never touch these
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.zip  binary
+*.wasm binary
+*.woff  binary
+*.woff2 binary
+
+# Signatures and hashes must not be altered in any way
+*.asc    binary
+*.sig    binary
+*.sha256 binary
+
+# Vault files should never be committed, but if one ever is, don't corrupt it
+*.cbx binary
+
+# Diff hints
+*.md   diff=markdown
+*.json diff=json

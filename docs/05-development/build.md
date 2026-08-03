@@ -52,7 +52,10 @@ Every one of these has been a source of nondeterminism in real projects.
 | No network access during build | Fetched content can change |
 | Fixed locale (`LC_ALL=C`) | Sorting is locale-dependent |
 | Fixed timezone (`TZ=UTC`) | Date formatting varies |
+| **LF line endings everywhere** | CRLF on Windows vs LF on Linux produces different bytes and different hashes. Enforced by `.gitattributes` |
 | No randomness | Obviously |
+
+That line-endings row is the one people miss. It costs nothing to enforce and silently breaks cross-platform hash comparison if you don't — including the CI-versus-local check that the whole verification story rests on.
 
 Verify locally:
 
