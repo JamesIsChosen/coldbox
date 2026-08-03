@@ -140,7 +140,7 @@ __COLDBOX_CAPABILITIES__
         ? 'ready'
         : 'failed'
     );
-    if (canaryPassed && runtimeNeuteringInstalled) {
+    if (canaryPassed && runtimeNeuteringInstalled && capabilityReport.randomValues === true) {
       document.documentElement.setAttribute('data-airgap-state', 'green');
       if (readyMarker) {
         readyMarker.textContent = 'Cold realm sealed';

@@ -46,7 +46,8 @@
     if (typeof global.Worker !== 'function'
       || typeof global.Blob !== 'function'
       || !global.URL
-      || typeof global.URL.createObjectURL !== 'function') {
+      || typeof global.URL.createObjectURL !== 'function'
+      || typeof global.URL.revokeObjectURL !== 'function') {
       return Promise.resolve(false);
     }
 
