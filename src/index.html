@@ -86,7 +86,7 @@ __COLDBOX_STYLES__
 
         <section class="realm-status" id="cold-realm-status" data-cold-state="starting" aria-labelledby="cold-realm-status-title" aria-live="polite">
           <div class="realm-status-copy">
-            <p class="eyebrow">Security boundary / P0.6</p>
+            <p class="eyebrow">Security boundary / P0.8</p>
             <h2 id="cold-realm-status-title">Establishing the sealed realm</h2>
             <p id="cold-realm-status-copy">The secret-capable side of Coldbox is starting inside an opaque sandbox. The shell will stay locked down if that boundary cannot be established.</p>
           </div>
@@ -97,6 +97,18 @@ __COLDBOX_STYLES__
           <div class="cold-frame-host" id="cold-realm-host" aria-label="Sealed realm viewport"></div>
           <p class="realm-status-failure" id="cold-realm-failure" role="alert" hidden>Coldbox is locked down because the sealed realm could not be established. Reload a verified build in a supported browser; no secret operation is available in this state.</p>
           <p class="protocol-warning" id="protocol-warning" role="alert" hidden>Unexpected protocol traffic was discarded and logged. No message was accepted.</p>
+        </section>
+
+        <section class="airgap-banner" id="airgap-banner" data-airgap-state="checking" aria-labelledby="airgap-banner-title" aria-live="polite">
+          <div class="airgap-banner-copy">
+            <p class="eyebrow">Airgap guard / P0.8</p>
+            <h2 id="airgap-banner-title">Checking the airgap guard</h2>
+            <p id="airgap-banner-copy">Coldbox is confirming both CSP policies and the private cold-realm channel before vault operations can be considered.</p>
+          </div>
+          <div class="airgap-banner-state" aria-label="Airgap and network status">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="airgap-banner-label">Checking</span>
+          </div>
         </section>
 
         <section class="page" id="page-dashboard" data-page="dashboard" aria-labelledby="page-title-dashboard">
@@ -127,14 +139,14 @@ __COLDBOX_STYLES__
             <article class="info-card">
               <span class="card-icon" aria-hidden="true">03</span>
               <h2>Secrets get their own boundary</h2>
-              <p>The sealed cold realm is the next foundation step. The shell does not create a shortcut around that boundary.</p>
+              <p>The sealed cold realm is active, and the airgap guard keeps its policy visible. The shell does not create a shortcut around that boundary.</p>
             </article>
           </div>
         </section>
 
         <section class="page" id="page-vault" data-page="vault" aria-labelledby="page-title-vault" hidden>
-          <header class="page-header"><p class="eyebrow">Workspace / Sealed tools</p><h1 id="page-title-vault">Vault</h1><p class="page-lede">The vault surface will connect to the sealed realm after the realm bootstrap is in place.</p></header>
-          <div class="empty-panel"><span class="panel-kicker">Cold realm foundation</span><h2>Sealed vault controls are not exposed here yet.</h2><p>This placeholder keeps the route stable while later items add the typed handshake and secret workflows inside the established boundary.</p></div>
+          <header class="page-header"><p class="eyebrow">Workspace / Sealed tools</p><h1 id="page-title-vault">Vault</h1><p class="page-lede">The vault surface will connect to the sealed realm when secret workflows are implemented inside the verified boundary.</p></header>
+          <div class="empty-panel"><span class="panel-kicker">Cold realm foundation</span><h2>Sealed vault controls are not exposed here yet.</h2><p>This placeholder keeps the route stable while later items add the secret workflows inside the established boundary and airgap guard.</p></div>
         </section>
 
         <section class="page" id="page-portfolio" data-page="portfolio" aria-labelledby="page-title-portfolio" hidden>

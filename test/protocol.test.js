@@ -282,3 +282,52 @@ test('protocol rejects aggregate payloads above the documented limits', () => {
     payload: { publicCompartment: { notes: oversizedNotes } }
   }), null);
 });
+
+test('airgap capabilities and runtime violation status use the typed schema', () => {
+  const protocol = loadProtocol();
+  const ready = protocol.validateMessage('cold-to-warm', {
+    id: 'airgap-ready-1',
+    type: 'ready',
+    payload: {
+      capabilities: {
+        messageChannel: true,
+        opaqueOrigin: true,
+        cspCanary: true,
+        runtimeNeutering: true,
+        unknown: 'discarded'
+      }
+    }
+  });
+  assert.equal(JSON.stringify(ready), JSON.stringify({
+    id: 'airgap-ready-1',
+    type: 'ready',
+    payload: {
+      capabilities: {
+        messageChannel: true,
+        opaqueOrigin: true,
+        cspCanary: true,
+        runtimeNeutering: true
+      }
+    }
+  }));
+
+  const violation = protocol.validateMessage('cold-to-warm', {
+    id: 'airgap-violation-1',
+    type: 'status',
+    payload: {
+      locked: true,
+      mode: 'cold',
+      warnings: ['airgap-violation']
+    }
+  });
+  assert.ok(violation);
+  assert.equal(protocol.validateMessage('cold-to-warm', {
+    id: 'airgap-violation-2',
+    type: 'status',
+    payload: {
+      locked: true,
+      mode: 'cold',
+      warnings: ['network-leak']
+    }
+  }), null);
+});

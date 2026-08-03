@@ -46,8 +46,10 @@ function injectOnce(template, token, contents) {
 function assemble() {
   let document = readSource('index.html');
   const protocolSource = readSource('protocol.js');
-  const coldRealmDocument = injectColdCspHashes(assembleColdRealm(protocolSource));
+  const airgapSource = readSource('airgap.js');
+  const coldRealmDocument = injectColdCspHashes(assembleColdRealm(protocolSource, airgapSource));
   let mainScript = injectOnce(readSource('main.js'), '__COLDBOX_PROTOCOL__', protocolSource);
+  mainScript = injectOnce(mainScript, '__COLDBOX_AIRGAP__', airgapSource);
   mainScript = injectOnce(
     mainScript,
     '__COLDBOX_COLD_REALM_DOCUMENT__',
@@ -94,10 +96,10 @@ function assemble() {
   return ensureTrailingLf(document);
 }
 
-function assembleColdRealm(protocolSource) {
+function assembleColdRealm(protocolSource, airgapSource) {
   let document = readSource('cold/index.html');
   const coldMainScript = injectOnce(
-    readSource('cold/main.js'),
+    injectOnce(readSource('cold/main.js'), '__COLDBOX_AIRGAP__', airgapSource),
     '__COLDBOX_PROTOCOL__',
     protocolSource
   );
@@ -117,7 +119,8 @@ function assembleColdRealm(protocolSource) {
   for (const placeholder of [
     '__COLDBOX_COLD_STYLES__',
     '__COLDBOX_COLD_SCRIPT__',
-    '__COLDBOX_PROTOCOL__'
+    '__COLDBOX_PROTOCOL__',
+    '__COLDBOX_AIRGAP__'
   ]) {
     if (document.includes(placeholder)) {
       throw new Error(`Unresolved cold-realm source placeholder: ${placeholder}`);

@@ -127,7 +127,7 @@ Not strictly a CSP issue, but it arises from the same sandbox. An opaque origin 
 
 Defense in depth *behind* the CSP, never instead of it.
 
-P0.6's cold bootstrap normalizes its three acceptance probes: the native XHR send and WebSocket construction are attempted under `connect-src 'none'` and then produce a labelled throw, while native `fetch` rejection is reported as a thrown probe result. P0.8 adds the broader runtime guard for `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, and `navigator.sendBeacon`, with visible alarms and frozen replacement properties.
+P0.6's cold bootstrap normalizes its three acceptance probes: the native XHR send and WebSocket construction are attempted under `connect-src 'none'` and then produce a labelled throw, while native `fetch` rejection is reported as a thrown probe result. P0.8 runs its own native `fetch` canary first, then adds the broader runtime guard for `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, and `navigator.sendBeacon`, with visible alarms and frozen replacement properties. Any failed canary or failed installation enters full lockdown before the warm shell accepts the private-channel readiness response.
 
 If any of these ever fires, the CSP has failed and something is badly wrong — the alarm exists to make that loud rather than silent.
 

@@ -97,6 +97,13 @@ Foundation work in progress. Wallet, vault, and cryptographic features are not a
 - Typed warm-to-cold and cold-to-warm protocol whitelist with payload validation, unknown-field stripping, safe public-compartment projections, recognizable secret-content rejection, and aggregate payload limits
 - Visible anomaly warnings in both realms, Node handshake-guard mutation tests, and Chromium/Firefox browser-harness assertions for handshake readiness, global-handler discard behavior, and continued cold-realm boundary coverage
 
+### Added — P0.8 (2026-08-03)
+
+- Native CSP canaries in the warm shell and cold realm, with exact `connect-src` violation matching and fail-closed behavior when a policy is missing or modified
+- Cold-realm runtime neutering for `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, and `navigator.sendBeacon`, with non-configurable, non-writable blockers and typed runtime-violation lockdown
+- Green/amber/red airgap banner states driven by `navigator.onLine`, `navigator.connection`, focus, online/offline events, and a one-second refresh interval
+- Chromium/Firefox browser-harness coverage for offline emulation, stripped-CSP full lockdown, canary failures, and all five built-artifact network primitives
+
 ### Added — P0.5 (2026-08-03)
 
 - Responsive warm-shell skeleton with desktop navigation rail, mobile tab bar, overflow menu, hash routing, and dark/light mode

@@ -62,10 +62,18 @@ async function createHarness(page) {
   }
 
   return Object.freeze({
-    async expectNoConsoleErrors() {
+    async expectNoConsoleErrors({ allowedFragments = [] } = {}) {
+      assert.ok(Array.isArray(allowedFragments), 'Allowed console-error fragments must be an array');
+      const isAllowed = (message) => allowedFragments.some((fragment) => (
+        typeof fragment === 'string' && message.includes(fragment)
+      ));
       const details = [
-        ...consoleErrors.map((message) => `console.error: ${message}`),
-        ...pageErrors.map((message) => `pageerror: ${message}`)
+        ...consoleErrors
+          .filter((message) => !isAllowed(message))
+          .map((message) => `console.error: ${message}`),
+        ...pageErrors
+          .filter((message) => !isAllowed(message))
+          .map((message) => `pageerror: ${message}`)
       ];
       assert.equal(details.length, 0, details.join('\n'));
     },
@@ -98,6 +106,22 @@ async function createHarness(page) {
       return matchingViolation;
     },
 
+    async expectOnlyCspViolations(directives) {
+      assert.ok(Array.isArray(directives), 'CSP directives must be an array');
+      const violations = await getCspViolations();
+      const allowed = new Set(directives);
+      const unexpected = violations.filter((violation) => (
+        !allowed.has(violation.effectiveDirective)
+        && !allowed.has(violation.violatedDirective)
+      ));
+      assert.equal(
+        unexpected.length,
+        0,
+        `Unexpected CSP violations: ${JSON.stringify(unexpected)}`
+      );
+      return violations;
+    },
+
     async expectCspViolationInFrame(frame, directive) {
       assert.ok(frame && typeof frame.evaluate === 'function', 'A Playwright frame is required');
       const violations = await frame.evaluate(
@@ -121,11 +145,19 @@ async function createHarness(page) {
       return this.expectCspViolation('script-src');
     },
 
-    async expectNetworkPrimitiveBlocked(name, frame, { requireCspViolation = false } = {}) {
+    async expectNetworkPrimitiveBlocked(
+      name,
+      frame,
+      { requireCspViolation = false, requireRuntimeBlock = false } = {}
+    ) {
       assert.ok(frame && typeof frame.evaluate === 'function', 'A Playwright frame is required');
       assert.ok(NETWORK_PRIMITIVES.includes(name), `Unsupported network primitive: ${name}`);
 
-      const result = await frame.evaluate(async ({ primitive, requireCspViolation: requireViolation }) => {
+      const result = await frame.evaluate(async ({
+        primitive,
+        requireCspViolation: requireViolation,
+        requireRuntimeBlock: requireRuntime
+      }) => {
         const url = primitive === 'WebSocket'
           ? 'wss://coldbox.invalid/network-primitive-test'
           : 'https://coldbox.invalid/network-primitive-test';
@@ -272,8 +304,13 @@ async function createHarness(page) {
         const cspViolation = requireViolation
           ? await waitForConnectViolation(initialViolationCount)
           : null;
-        return { ...outcome, cspViolation };
-      }, { primitive: name, requireCspViolation });
+        return {
+          ...outcome,
+          cspViolation,
+          runtimeBlock: outcome.signal === 'threw'
+            && outcome.error.includes('Coldbox airgap blocked')
+        };
+      }, { primitive: name, requireCspViolation, requireRuntimeBlock });
 
       assert.equal(
         result.blocked,
@@ -285,6 +322,13 @@ async function createHarness(page) {
           result.cspViolation,
           true,
           `${name} did not produce a matching connect-src violation; DNS or another non-CSP failure may have satisfied the probe: ${JSON.stringify(result)}`
+        );
+      }
+      if (requireRuntimeBlock) {
+        assert.equal(
+          result.runtimeBlock,
+          true,
+          `${name} did not hit the labelled runtime airgap blocker; DNS or another non-runtime failure may have satisfied the probe: ${JSON.stringify(result)}`
         );
       }
       return result;
