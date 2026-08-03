@@ -52,7 +52,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
   Build-time check rejecting `eval`, `new Function`, `import`, `require`, external URLs, and `localStorage` in secret-handling paths.
   **Accept:** lint runs in the build and fails it; a test fixture containing each construct is rejected.
 
-- [~] **P0.3a — Headless browser harness** 🌐 *unblocks browser verification for eight later items*
+- [x] **P0.3a — Headless browser harness** 🌐 *unblocks browser verification for eight later items*
   *Deps: P0.1*
   Playwright as a **dev dependency** (never shipped), loading `build/coldbox.html` over `file://` in headless Chromium and Firefox. Exposes reusable assertions used by every later item's browser criteria:
   `expectNoConsoleErrors()` · `expectNoCspViolations()` · `expectCspViolation(directive)` · `expectScriptRejected()` (after post-build byte tampering) · `expectNetworkPrimitiveThrows(name)` inside a frame · `expectParentCannotReadFrame()` · `expectElementVisible(sel)` · `atViewport(w, h)`.
