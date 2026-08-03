@@ -14,10 +14,13 @@ Foundation work in progress. Wallet, vault, and cryptographic features are not a
 
 ### Added — process (2026-08-02)
 
-- **[review-protocol.md](docs/05-development/review-protocol.md)** — binary PASS/FAIL review contract. No "approve with comments"; **any finding of any severity, including advisory, is a FAIL.** Requires independent verification, a `REVIEW-REPORT.md` artifact opening with a verdict block, and a fresh verdict on re-review rather than an amendment
+- **[review-protocol.md](docs/05-development/review-protocol.md)** — binary PASS/FAIL review contract. No "approve with comments"; **any finding of any severity, including advisory, is a FAIL.** Requires independent verification, a review report opening with a verdict block, and a fresh verdict on re-review rather than an amendment
 - `AGENTS.md` §6a: session preflight and postflight checklists, mandatory output verification after every git command, and shell gotchas (PowerShell mangling `@{`, `$?` reporting the wrong command after a pipeline)
 - `AGENTS.md` §6b: agents are told upfront how their work will be judged
 
+- **[batch-run.md](docs/05-development/batch-run.md)** — protocol for working several roadmap items unattended: bounded scope, dependency-aware branching (branch from the declared dependency, not the previous item), a self-review gate between items, hard stop conditions, and a handoff note. Batches never merge
+- **[packets/](docs/05-development/packets/)** — PR packets and review reports moved to per-item paths. A single rotating `PR-PACKET.md` destroyed the audit trail and caused a merge conflict on every stacked branch
+- `👤 human-required` roadmap marker for items needing physical hardware or a human decision; P0.19 (device matrix) flagged
 - **[doc-hygiene.md](docs/05-development/doc-hygiene.md)** — rules preventing documentation decay: one canonical home per fact, review dates and max ages on anything describing the outside world, docs shipping with the code that changes them, no orphan numbers, and automated checks wired into CI at P0.18
 - Review dates added to `standards.md`, `api-sources.md`, `crypto-choices.md`, and `supported-chains.md`
 
@@ -38,6 +41,12 @@ Foundation work in progress. Wallet, vault, and cryptographic features are not a
 - Pinned official npm release tarballs for `@noble/hashes`, `@noble/curves`, `@noble/ciphers`, `@scure/bip32`, `@scure/bip39`, and `@scure/base`
 - Offline local artifact verification and explicit online re-download verification against SHA-256 and npm SHA-512 integrity values
 - Build fail-closed guard and regression tests for corrupted vendor artifacts
+
+### Added — P0.3 (2026-08-02)
+
+- Build-integrated forbidden-construct lint for application source: `eval`, `new Function`, `import`, and `require`
+- Cold-realm source checks rejecting external URLs and `localStorage`
+- Negative fixture tests proving each forbidden construct fails the lint and the build refuses the source
 
 ### Added — spec v0.4 (2026-08-02)
 
