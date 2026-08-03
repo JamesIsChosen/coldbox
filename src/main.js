@@ -23,6 +23,7 @@
   var coldFrame = null;
   var coldBootTimer = null;
   var coldRealmReady = false;
+  var coldRealmFailed = false;
   var pages = Array.prototype.slice.call(document.querySelectorAll('[data-page]'));
   var routeLinks = Array.prototype.slice.call(document.querySelectorAll('[data-route]'));
 
@@ -132,6 +133,8 @@
       coldBootTimer = null;
     }
     coldRealmReady = false;
+    coldRealmFailed = true;
+    window.removeEventListener('message', handleColdRealmMessage);
     if (coldRealmStatus) {
       coldRealmStatus.setAttribute('data-cold-state', 'failed');
     }
@@ -151,6 +154,9 @@
   }
 
   function setColdRealmReady() {
+    if (coldRealmFailed) {
+      return;
+    }
     if (coldBootTimer !== null) {
       window.clearTimeout(coldBootTimer);
       coldBootTimer = null;
@@ -175,7 +181,7 @@
   }
 
   function handleColdRealmMessage(event) {
-    if (coldRealmReady || !coldFrame || event.source !== coldFrame.contentWindow) {
+    if (coldRealmReady || coldRealmFailed || !coldFrame || event.source !== coldFrame.contentWindow) {
       return;
     }
     if (!event.data || event.data.type !== 'cold.ready') {
