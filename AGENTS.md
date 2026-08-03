@@ -122,10 +122,14 @@ git branch --show-current     # MUST be main before you branch
 git checkout main
 git pull
 git fetch --prune             # drop remote-tracking refs for deleted branches
-git branch -vv | grep ': gone]' | awk '{print $1}' | xargs -r git branch -D
+# then delete local branches whose remote is gone — pick your shell:
+#   bash:       git for-each-ref --format='%(refname:short) %(upstream:track)' refs/heads | awk '$2=="[gone]"{print $1}' | xargs -r git branch -D
+#   PowerShell: git for-each-ref --format='%(refname:short) %(upstream:track)' refs/heads | Where-Object { $_ -match '\[gone\]$' } | ForEach-Object { git branch -D ($_ -split ' ')[0] }
 git checkout -b p0.5-cold-realm-bootstrap     # roadmap ID, short description
 git branch --show-current     # confirm you're where you think you are
 ```
+
+**Use `git for-each-ref`, not `git branch -vv | grep`.** The porcelain output carries decorations and — in PowerShell — carriage returns, which produce branch names like `my-branch?` that no delete command will match. `for-each-ref` is the plumbing command and emits exactly what you asked for.
 
 That prune-and-delete pair is housekeeping, not optional. Merged branches accumulate silently, and a stale local branch is how a session ends up building on work that was superseded weeks ago. `git branch -D` on a `[gone]` branch is safe — the remote is deleted, so it's already merged.
 
