@@ -1,12 +1,14 @@
 
 __COLDBOX_PROTOCOL__
 __COLDBOX_AIRGAP__
+__COLDBOX_CAPABILITIES__
 (function () {
   'use strict';
 
   var coldRealmDocument = __COLDBOX_COLD_REALM_DOCUMENT__;
   var protocol = window.__coldboxProtocol;
   var airgap = window.__coldboxAirgap;
+  var capabilities = window.__coldboxCapabilities;
   var root = document.documentElement;
   var app = document.getElementById('app');
   var main = document.getElementById('main-content');
@@ -29,6 +31,33 @@ __COLDBOX_AIRGAP__
   var airgapBannerTitle = document.getElementById('airgap-banner-title');
   var airgapBannerCopy = document.getElementById('airgap-banner-copy');
   var airgapBannerLabel = document.getElementById('airgap-banner-label');
+  var capabilityPanel = document.getElementById('capability-panel');
+  var capabilityPanelLabel = document.getElementById('capability-panel-label');
+  var capabilitySummary = document.getElementById('capability-summary');
+  var capabilityRows = {
+    randomValues: document.getElementById('capability-row-random-values'),
+    cryptoSubtle: document.getElementById('capability-row-crypto-subtle'),
+    wasm: document.getElementById('capability-row-wasm'),
+    workers: document.getElementById('capability-row-workers'),
+    camera: document.getElementById('capability-row-camera'),
+    savePaths: document.getElementById('capability-row-save-paths')
+  };
+  var capabilityStatuses = {
+    randomValues: document.getElementById('capability-status-random-values'),
+    cryptoSubtle: document.getElementById('capability-status-crypto-subtle'),
+    wasm: document.getElementById('capability-status-wasm'),
+    workers: document.getElementById('capability-status-workers'),
+    camera: document.getElementById('capability-status-camera'),
+    savePaths: document.getElementById('capability-status-save-paths')
+  };
+  var capabilityDetails = {
+    randomValues: document.getElementById('capability-detail-random-values'),
+    cryptoSubtle: document.getElementById('capability-detail-crypto-subtle'),
+    wasm: document.getElementById('capability-detail-wasm'),
+    workers: document.getElementById('capability-detail-workers'),
+    camera: document.getElementById('capability-detail-camera'),
+    savePaths: document.getElementById('capability-detail-save-paths')
+  };
   var coldFrame = null;
   var coldBootTimer = null;
   var coldRealmFailed = false;
@@ -37,8 +66,13 @@ __COLDBOX_AIRGAP__
   var globalAnomalyCount = 0;
   var channelAnomalyCount = 0;
   var airgapFailure = false;
+  var capabilityFailure = false;
+  var lockdownTitle = 'CSP failure / locked down';
+  var lockdownCopy = 'The CSP canary or runtime network guard failed. Vault operations are refused until a verified build is loaded.';
   var warmCanaryPassed = false;
   var coldCanaryPassed = false;
+  var warmCapabilityReport = null;
+  var coldCapabilityReport = null;
   var pages = Array.prototype.slice.call(document.querySelectorAll('[data-page]'));
   var routeLinks = Array.prototype.slice.call(document.querySelectorAll('[data-route]'));
 
@@ -142,6 +176,217 @@ __COLDBOX_AIRGAP__
     }
   }
 
+  function capabilityBoolean(report, name) {
+    if (!report || typeof report[name] !== 'boolean') {
+      return null;
+    }
+    return report[name];
+  }
+
+  function capabilityWord(value) {
+    if (value === true) {
+      return 'available';
+    }
+    if (value === false) {
+      return 'unavailable';
+    }
+    return 'checking';
+  }
+
+  function setCapabilityRootAttributes(report, realm) {
+    if (!report) {
+      return;
+    }
+    [
+      'randomValues',
+      'cryptoSubtle',
+      'wasm',
+      'workers',
+      'camera',
+      'fileSystemAccess',
+      'blobDownload',
+      'manualExport'
+    ].forEach(function (name) {
+      var value = capabilityBoolean(report, name);
+      root.setAttribute(
+        'data-capability-' + realm + '-' + name,
+        value === null ? 'unknown' : String(value)
+      );
+    });
+  }
+
+  function setCapabilityPanelState(state, label, summary) {
+    root.setAttribute('data-capability-state', state);
+    app.setAttribute('data-capability-state', state);
+    if (capabilityPanel) {
+      capabilityPanel.setAttribute('data-capability-state', state);
+    }
+    if (capabilityPanelLabel) {
+      capabilityPanelLabel.textContent = label;
+    }
+    if (capabilitySummary) {
+      capabilitySummary.textContent = summary;
+    }
+  }
+
+  function setCapabilityRow(name, state, label, detail) {
+    var row = capabilityRows[name];
+    if (row) {
+      row.setAttribute('data-state', state);
+    }
+    if (capabilityStatuses[name]) {
+      capabilityStatuses[name].textContent = label;
+    }
+    if (capabilityDetails[name]) {
+      capabilityDetails[name].textContent = detail;
+    }
+  }
+
+  function renderRealmCapability(name, warmValue, coldValue) {
+    if (warmValue === null || coldValue === null) {
+      setCapabilityRow(name, 'checking', 'Checking', 'Checking the warm shell and cold realm.');
+      return false;
+    }
+    if (warmValue === true && coldValue === true) {
+      setCapabilityRow(name, 'available', 'Available', 'Warm shell: available · Cold realm: available.');
+      return false;
+    }
+    if (warmValue === false && coldValue === false) {
+      setCapabilityRow(name, 'unavailable', 'Unavailable', 'Warm shell: unavailable · Cold realm: unavailable.');
+      return true;
+    }
+    setCapabilityRow(
+      name,
+      'partial',
+      'Mixed',
+      'Warm shell: ' + capabilityWord(warmValue) + ' · Cold realm: ' + capabilityWord(coldValue) + '.'
+    );
+    return true;
+  }
+
+  function renderCapabilityPanel() {
+    setCapabilityRootAttributes(warmCapabilityReport, 'warm');
+    setCapabilityRootAttributes(coldCapabilityReport, 'cold');
+    if (capabilityFailure) {
+      setCapabilityPanelState(
+        'failed',
+        'Locked down',
+        'A required boot capability is unavailable. Vault operations are refused until a verified build is loaded.'
+      );
+      return;
+    }
+    if (!warmCapabilityReport || !coldCapabilityReport) {
+      setCapabilityPanelState(
+        'checking',
+        'Checking',
+        'Coldbox is checking the platform capabilities needed for safe secret work and portable saves.'
+      );
+      setCapabilityRow('randomValues', 'checking', 'Checking', 'Checking both realms.');
+      setCapabilityRow('cryptoSubtle', 'checking', 'Checking', 'Checking the warm shell and cold realm.');
+      setCapabilityRow('wasm', 'checking', 'Checking', 'Checking the warm shell and cold realm.');
+      setCapabilityRow('workers', 'checking', 'Checking', 'Checking the warm shell and cold realm.');
+      setCapabilityRow('camera', 'checking', 'Checking', 'Checking the warm shell.');
+      setCapabilityRow('savePaths', 'checking', 'Checking', 'Checking the warm shell.');
+      return;
+    }
+
+    var warmRandom = capabilityBoolean(warmCapabilityReport, 'randomValues');
+    var coldRandom = capabilityBoolean(coldCapabilityReport, 'randomValues');
+    var randomReady = warmRandom === true && coldRandom === true;
+    if (randomReady) {
+      setCapabilityRow('randomValues', 'available', 'Ready', 'Warm shell: available · Cold realm: available.');
+    } else if (warmRandom === false || coldRandom === false) {
+      setCapabilityRow('randomValues', 'unavailable', 'Missing', 'Required in both realms; no Math.random fallback is permitted.');
+    } else {
+      setCapabilityRow('randomValues', 'checking', 'Checking', 'Checking both realms.');
+    }
+
+    var optionalWarnings = 0;
+    optionalWarnings += renderRealmCapability(
+      'cryptoSubtle',
+      capabilityBoolean(warmCapabilityReport, 'cryptoSubtle'),
+      capabilityBoolean(coldCapabilityReport, 'cryptoSubtle')
+    ) ? 1 : 0;
+    optionalWarnings += renderRealmCapability(
+      'wasm',
+      capabilityBoolean(warmCapabilityReport, 'wasm'),
+      capabilityBoolean(coldCapabilityReport, 'wasm')
+    ) ? 1 : 0;
+    optionalWarnings += renderRealmCapability(
+      'workers',
+      capabilityBoolean(warmCapabilityReport, 'workers'),
+      capabilityBoolean(coldCapabilityReport, 'workers')
+    ) ? 1 : 0;
+
+    var camera = capabilityBoolean(warmCapabilityReport, 'camera');
+    if (camera === true) {
+      setCapabilityRow('camera', 'available', 'API available', 'Permission is requested only when a camera workflow starts.');
+    } else {
+      setCapabilityRow('camera', 'unavailable', 'Unavailable', 'No camera API is exposed; QR generation and manual entry remain separate paths.');
+      optionalWarnings += 1;
+    }
+
+    var savePathDefinitions = [
+      { key: 'fileSystemAccess', label: 'File System Access' },
+      { key: 'blobDownload', label: 'Blob download' },
+      { key: 'manualExport', label: 'Manual export' }
+    ];
+    var availableSavePaths = savePathDefinitions.filter(function (path) {
+      return capabilityBoolean(warmCapabilityReport, path.key) === true;
+    });
+    if (availableSavePaths.length > 0) {
+      setCapabilityRow(
+        'savePaths',
+        'available',
+        String(availableSavePaths.length) + '/3 available',
+        availableSavePaths.map(function (path) { return path.label; }).join(' · ')
+      );
+    } else {
+      setCapabilityRow('savePaths', 'unavailable', 'None detected', 'No save path API is exposed in the warm shell.');
+      optionalWarnings += 1;
+    }
+
+    if (!randomReady) {
+      setCapabilityFailure('Required crypto.getRandomValues is unavailable in every required realm. Coldbox refuses all vault operations and never substitutes Math.random.');
+      return;
+    }
+    if (optionalWarnings > 0) {
+      setCapabilityPanelState(
+        'ready-with-warnings',
+        'Ready with limits',
+        'Required randomness is available. Optional platform limits are shown above and do not change the cold-realm boundary.'
+      );
+      return;
+    }
+    setCapabilityPanelState(
+      'ready',
+      'Ready',
+      'Required randomness and all detected optional capability checks are available in this browser.'
+    );
+  }
+
+  function setCapabilityFailure(reason) {
+    if (capabilityFailure || airgapFailure) {
+      return;
+    }
+    capabilityFailure = true;
+    lockdownTitle = 'Capability failure / locked down';
+    lockdownCopy = 'A required boot capability is unavailable. Vault operations are refused until a verified build is loaded.';
+    root.setAttribute('data-capability-state', 'failed');
+    app.setAttribute('data-capability-state', 'failed');
+    setCapabilityPanelState('failed', 'Locked down', lockdownCopy);
+    setAirgapFailure(reason);
+    if (coldRealmStatusTitle) {
+      coldRealmStatusTitle.textContent = 'Required capability unavailable';
+    }
+    if (coldRealmStatusCopy) {
+      coldRealmStatusCopy.textContent = reason;
+    }
+    if (coldRealmFailure) {
+      coldRealmFailure.textContent = reason;
+    }
+  }
+
   function setAirgapBanner(state, title, copy, label) {
     root.setAttribute('data-airgap-state', state);
     app.setAttribute('data-airgap-state', state);
@@ -173,10 +418,24 @@ __COLDBOX_AIRGAP__
     if (airgapFailure) {
       setAirgapBanner(
         'red',
-        'CSP failure / locked down',
-        'The CSP canary or runtime network guard failed. Vault operations are refused until a verified build is loaded.',
+        lockdownTitle,
+        lockdownCopy,
         'Locked down'
       );
+      return;
+    }
+    if (!warmCapabilityReport || !coldCapabilityReport) {
+      setAirgapBanner(
+        'checking',
+        'Checking the capability panel',
+        'Coldbox is confirming required randomness and optional platform capabilities before vault operations can be considered.',
+        'Checking'
+      );
+      return;
+    }
+    if (capabilityBoolean(warmCapabilityReport, 'randomValues') !== true
+      || capabilityBoolean(coldCapabilityReport, 'randomValues') !== true) {
+      setCapabilityFailure('Required crypto.getRandomValues is unavailable in every required realm. Coldbox refuses all vault operations and never substitutes Math.random.');
       return;
     }
     if (!warmCanaryPassed || !coldCanaryPassed || handshakeState !== 'ready') {
@@ -261,8 +520,8 @@ __COLDBOX_AIRGAP__
     }
     setAirgapBanner(
       'red',
-      'CSP failure / locked down',
-      'The CSP canary or runtime network guard failed. Vault operations are refused until a verified build is loaded.',
+      lockdownTitle,
+      lockdownCopy,
       'Locked down'
     );
   }
@@ -363,9 +622,25 @@ __COLDBOX_AIRGAP__
         setAirgapFailure('The cold realm airgap guard did not pass its CSP canary or runtime-neutering check. Vault operations are refused.');
         return;
       }
+      coldCapabilityReport = {
+        randomValues: capabilities.randomValues === true,
+        cryptoSubtle: capabilities.cryptoSubtle === true,
+        wasm: capabilities.wasm === true,
+        workers: capabilities.workers === true,
+        camera: capabilities.camera === true,
+        fileSystemAccess: capabilities.fileSystemAccess === true,
+        blobDownload: capabilities.blobDownload === true,
+        manualExport: capabilities.manualExport === true
+      };
+      setCapabilityRootAttributes(coldCapabilityReport, 'cold');
+      if (coldCapabilityReport.randomValues !== true) {
+        setCapabilityFailure('Required crypto.getRandomValues is unavailable in the cold realm. Coldbox refuses all vault operations and never substitutes Math.random.');
+        return;
+      }
       coldCanaryPassed = true;
       root.setAttribute('data-cold-csp-canary', 'passed');
       root.setAttribute('data-cold-runtime-neutering', 'installed');
+      renderCapabilityPanel();
       setHandshakeReady();
       updateAirgapBanner();
       return;
@@ -397,6 +672,32 @@ __COLDBOX_AIRGAP__
     } catch (error) {
       setColdRealmFailure('handshake-failed');
     }
+  }
+
+  function handleWarmCapabilityResult(result) {
+    warmCapabilityReport = result || {};
+    setCapabilityRootAttributes(warmCapabilityReport, 'warm');
+    renderCapabilityPanel();
+    if (capabilityBoolean(warmCapabilityReport, 'randomValues') !== true) {
+      setCapabilityFailure('Required crypto.getRandomValues is unavailable in the warm shell. Coldbox refuses all vault operations and never substitutes Math.random.');
+      return;
+    }
+    updateAirgapBanner();
+  }
+
+  function startCapabilities() {
+    setCapabilityPanelState(
+      'checking',
+      'Checking',
+      'Coldbox is checking the platform capabilities needed for safe secret work and portable saves.'
+    );
+    if (!capabilities || typeof capabilities.detect !== 'function') {
+      handleWarmCapabilityResult({ randomValues: false });
+      return;
+    }
+    capabilities.detect().then(handleWarmCapabilityResult, function () {
+      handleWarmCapabilityResult({ randomValues: false });
+    });
   }
 
   function handleWarmCanaryResult(result) {
@@ -534,6 +835,7 @@ __COLDBOX_AIRGAP__
   app.setAttribute('data-cold-state', 'starting');
   app.setAttribute('data-handshake-state', 'starting');
   app.setAttribute('data-airgap-state', 'checking');
+  app.setAttribute('data-capability-state', 'checking');
   app.setAttribute('data-lockdown-state', 'checking');
   app.setAttribute('data-vault-operations', 'refused');
   renderRoute(false);
@@ -565,6 +867,7 @@ __COLDBOX_AIRGAP__
     renderRoute(true);
   });
   startNetworkMonitor();
+  startCapabilities();
   startWarmCanary();
   startColdRealm();
 }());

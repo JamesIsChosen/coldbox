@@ -198,6 +198,9 @@ test('airgap canary and lockdown markers are embedded in both realms', () => {
   assert.match(html, /data-csp-canary/);
   assert.match(html, /data-runtime-neutering/);
   assert.match(html, /data-vault-operations/);
+  assert.match(html, /data-capability-state/);
+  assert.match(html, /crypto\.getRandomValues/);
+  assert.match(html, /worker-src blob:/);
   assert.match(html, /navigatorObject\.onLine/);
   assert.match(html, /navigatorObject\.connection/);
 });

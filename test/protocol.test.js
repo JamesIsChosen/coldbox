@@ -291,9 +291,17 @@ test('airgap capabilities and runtime violation status use the typed schema', ()
     payload: {
       capabilities: {
         messageChannel: true,
+        cryptoSubtle: false,
+        wasm: true,
+        workers: false,
         opaqueOrigin: true,
         cspCanary: true,
         runtimeNeutering: true,
+        randomValues: true,
+        camera: true,
+        fileSystemAccess: false,
+        blobDownload: true,
+        manualExport: true,
         unknown: 'discarded'
       }
     }
@@ -304,9 +312,17 @@ test('airgap capabilities and runtime violation status use the typed schema', ()
     payload: {
       capabilities: {
         messageChannel: true,
+        cryptoSubtle: false,
+        wasm: true,
+        workers: false,
         opaqueOrigin: true,
         cspCanary: true,
-        runtimeNeutering: true
+        runtimeNeutering: true,
+        randomValues: true,
+        camera: true,
+        fileSystemAccess: false,
+        blobDownload: true,
+        manualExport: true
       }
     }
   }));
