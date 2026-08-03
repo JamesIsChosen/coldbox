@@ -56,17 +56,32 @@ Import defaults to **manual pricing** — importing 500 rows should not fire 500
 
 ## 3. Choose a cost basis method
 
+**Set per wallet, not globally.** Since 1 January 2025, US rules require cost basis to be tracked per wallet or account — the old "universal" pooling of an asset across all your wallets is no longer permitted. Selling 1 BTC from your Coldcard consumes lots acquired *in that wallet*.
+
 | Method | Effect |
 |---|---|
-| **FIFO** | Oldest lots sold first. Default; the assumed method in many jurisdictions |
-| LIFO | Newest first |
-| HIFO | Highest cost first — usually minimises reported gains |
-| Average cost | Blended. Required in some jurisdictions |
-| Specific ID | You choose per disposal. Most control, most work |
+| **FIFO** | Oldest lots first. Default, and what applies if you can't substantiate anything else |
+| **Specific ID** | You choose which lots. Most control — and requires contemporaneous records |
+| HIFO / LIFO | **Selection rules within specific ID**, not separate methods. Same documentation burden |
+| Average cost | For jurisdictions that require it. Not generally available to US filers |
 
-Set globally with per-transaction overrides. **Changing the method recomputes everything and shows the delta**, so you can see what the choice costs before committing.
+That HIFO/LIFO distinction trips people up. Software offering them as menu items implies a standing election exists; it doesn't. Whenever you use anything other than FIFO, Coldbox writes a lot-level audit trail recording which lots were identified and why — that trail *is* your substantiation.
+
+**Changing a method recomputes everything and shows the delta** before committing.
 
 Your jurisdiction may mandate a method or require consistency once chosen. Ask an accountant.
+
+## 3a. Tax export
+
+Portfolio → Reports → Tax export produces a filing-ready set: Form 8949 CSVs grouped by box code, a Schedule D summary, ordinary income as a separate file (it belongs on a different form), the lot audit trail, a transfer ledger, and a 1099-DA reconciliation. TurboTax and TaxAct profiles are included since those are what most people import.
+
+Two things worth knowing before you rely on it:
+
+**Your 1099-DA probably has no cost basis.** Brokers weren't required to report it for 2025 transactions. If you don't supply basis, the IRS computes your gain as 100% of proceeds — which for anyone who bought and held overstates the gain by the entire purchase price. The reconciliation report exists to catch mismatches before the IRS's automated matching does.
+
+**Missing basis is flagged, never defaulted to zero.** Zero basis is a real answer with real consequences and should never appear by accident.
+
+Full rules and citations: [us-tax-reporting.md](../04-reference/us-tax-reporting.md).
 
 ---
 

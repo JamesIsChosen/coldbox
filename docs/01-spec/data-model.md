@@ -84,10 +84,39 @@ lotMethodOverride?, notes, tags[], hidden
 ### Lot 🔵 — derived
 
 ```
-acquisitionTs, asset, qtyRemaining, costBasisPerUnit, quoteCurrency, sourceTxId
+id, walletId, asset, acquisitionTs, qtyOriginal, qtyRemaining,
+costBasisPerUnit, quoteCurrency, sourceTxId, acquisitionType,
+carriedFromLotId?          set when a transfer moved this lot between wallets
 ```
 
 Recomputed from transactions; never authored directly.
+
+**`walletId` is part of the pool key.** Lot pools are `(walletId, asset)`, never asset alone. [Rev. Proc. 2024-28](https://www.irs.gov/pub/irs-drop/rp-24-28.pdf) eliminated universal-wallet basis pooling effective 1 January 2025 — a global pool per asset cannot produce correct US figures. See [us-tax-reporting.md](../04-reference/us-tax-reporting.md).
+
+A transfer between your own wallets **moves lots**, preserving `acquisitionTs` and `costBasisPerUnit` and setting `carriedFromLotId`. It does not create a disposal and does not reset the holding period.
+
+### Disposal 🔵 — derived
+
+```
+id, disposalTs, lotId, walletId, asset, qtyDisposed,
+proceeds, quoteCurrency, feeTreatment, costBasis, gainLoss,
+term (short|long), selectionMethod, selectionBasis, form8949Box,
+sourceTxId, brokerFormRef?
+```
+
+One record per lot consumed, which is what Form 8949 requires — a sale drawing on three lots produces three disposals, not one.
+
+`selectionMethod` and `selectionBasis` are the audit trail: when anything other than FIFO is used, they record which lots were identified and why. That trail is the substantiation for specific identification, and the documentation burden sits with the taxpayer regardless of broker relief.
+
+`form8949Box` is one of `G|H|I` (short) or `J|K|L` (long), determined by whether a 1099-DA was received and whether it reported basis.
+
+### BasisAllocation 🔵
+
+```
+id, effectiveDate, walletId, asset, quantity, allocatedBasis, note
+```
+
+Records a Rev. Proc. 2024-28 safe harbor allocation. **Irrevocable once filed**, so these are write-once and flagged in the UI as such.
 
 ### BackupRecord 🔵 / 🔒
 

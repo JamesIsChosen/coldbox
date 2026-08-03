@@ -24,6 +24,17 @@ P0.1 deterministic build skeleton implemented. Wallet, vault, and cryptographic 
 - Offline local artifact verification and explicit online re-download verification against SHA-256 and npm SHA-512 integrity values
 - Build fail-closed guard and regression tests for corrupted vendor artifacts
 
+### Added — spec v0.4 (2026-08-02)
+
+- **US tax reporting exporter** (SPEC §14.5, roadmap P3.9): Form 8949 CSV per box code, Schedule D summary, ordinary income report, lot audit trail, transfer ledger, 1099-DA reconciliation, safe harbor allocation record, plus TurboTax and TaxAct profiles
+- New reference: [us-tax-reporting.md](docs/04-reference/us-tax-reporting.md) with rule citations and a review date
+
+### Changed — spec v0.4
+
+- **Breaking data model change: lot pools are now keyed by `(walletId, asset)`, not asset alone.** Rev. Proc. 2024-28 eliminated universal-wallet basis pooling effective 1 January 2025, so a global pool per asset cannot produce correct US figures
+- Cost basis methods narrowed to FIFO and specific identification; HIFO and LIFO reclassified as **selection rules within specific ID** rather than independent methods, carrying the contemporaneous-records burden
+- Added `Disposal` and `BasisAllocation` entities; `Lot` gained `walletId` and `carriedFromLotId`
+
 ### Added — spec v0.3 (2026-08-02)
 
 - Hardware wallet companion role as the project's primary framing (§14a): device registry, fingerprint and receive-address verification, vendor support matrix, Seed XOR, multisig quorum survivability analysis

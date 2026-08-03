@@ -153,8 +153,11 @@ Nothing above this phase is safe to build until the container is trustworthy.
 ## Phase 3 — Portfolio and online
 
 - [ ] P3.1 Price aggregation · P3.2 Multi-currency and Frankfurter FX
-- [ ] P3.3 Balance lookups · P3.4 Transactions and lots · P3.5 Cost basis engine
+- [ ] P3.3 Balance lookups · P3.4 Transactions and **per-wallet** lot pools
+- [ ] P3.5 Cost basis engine — FIFO plus specific ID with lot-level audit trail
 - [ ] P3.6 Dashboard and charts · P3.7 CSV import/export · P3.8 BIP-329 labels
+- [ ] **P3.9 Tax reporting exporter** — Form 8949 CSV per box code (G/H/I, J/K/L), Schedule D summary, income report, lot audit trail, transfer ledger, 1099-DA reconciliation, safe harbor allocation record, plus TurboTax and TaxAct profiles. Spec: [us-tax-reporting.md](../04-reference/us-tax-reporting.md)
+  **Accept:** rows are per disposed lot, not per transaction; box codes correctly assigned; short/long term boundary is *more than* one year; **missing basis is flagged, never defaulted to zero**; transfers appear in the transfer ledger with dates and bases preserved and produce no disposal; no wash sale adjustment applied to crypto positions; ETF-tagged holdings flagged as securities
 
 ## Phase 4 — Full coverage
 
