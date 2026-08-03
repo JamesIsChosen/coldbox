@@ -86,6 +86,12 @@ function injectCspHashes(document) {
   return result;
 }
 
+function assertNoUnresolvedPlaceholders(document) {
+  if (/__COLDBOX_/.test(document)) {
+    throw new Error('Unresolved source placeholder in final document');
+  }
+}
+
 function ensureTrailingLf(contents) {
   return `${contents.replace(/\n*$/, '')}\n`;
 }
@@ -135,5 +141,7 @@ function verifyForbiddenConstructLint() {
 
 verifyVendorOffline();
 verifyForbiddenConstructLint();
-const result = writeBuild(injectCspHashes(assemble()));
+const document = injectCspHashes(assemble());
+assertNoUnresolvedPlaceholders(document);
+const result = writeBuild(document);
 console.log(`Built build/coldbox.html (${result.digest})`);

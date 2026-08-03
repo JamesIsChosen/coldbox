@@ -50,6 +50,13 @@ function runBuildAt(root) {
   return fs.readFileSync(path.join(root, 'build', 'coldbox.html'), 'utf8');
 }
 
+function runBuildProcessAt(root) {
+  return spawnSync(process.execPath, [path.join(root, 'scripts', 'build.js')], {
+    cwd: root,
+    encoding: 'utf8'
+  });
+}
+
 function runBuild(overrides = {}) {
   const result = spawnSync(process.execPath, [buildScript], {
     cwd: projectRoot,
@@ -140,6 +147,24 @@ test('CSP hash injection covers multiple inline blocks and detects script tamper
     const alteredScript = alteredScriptBytes.toString('utf8');
     assert.notEqual(cspHash(alteredScript), cspHash(scripts[0]));
     assert.doesNotMatch(scriptDirective, new RegExp(cspHash(alteredScript).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a stray final-document placeholder fails the build before creating output', () => {
+  const root = createBuildRoot();
+  try {
+    const templatePath = path.join(root, 'src', 'index.html');
+    const template = fs.readFileSync(templatePath, 'utf8')
+      .replace('<title>Coldbox</title>', '<title>__COLDBOX_TYPO__</title>');
+    fs.writeFileSync(templatePath, template, 'utf8');
+
+    const result = runBuildProcessAt(root);
+    const output = `${result.stdout}\n${result.stderr}`;
+    assert.notEqual(result.status, 0, output);
+    assert.match(output, /Unresolved source placeholder in final document/);
+    assert.equal(fs.existsSync(path.join(root, 'build')), false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

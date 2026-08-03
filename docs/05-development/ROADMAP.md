@@ -63,7 +63,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
   *Deps: P0.1 (implementation) · P0.3a (verification)*
   Compute SHA-256 of each inline script and style block; inject into the respective `script-src`/`style-src` directives.
   **Accept:** built file runs with no CSP violations; altering one byte of the inline script post-build causes the browser to refuse to execute it.
-  🌐 *Both criteria are verified by the P0.3a harness. Implementation may land first and sit at `[~]` until the harness confirms them.*
+  🌐 *Both criteria are verified against the built artifact by the P0.3a harness in Chromium and Firefox. Implementation may land first and sit at `[~]` until the harness confirms them.*
 
 ### The two realms
 
