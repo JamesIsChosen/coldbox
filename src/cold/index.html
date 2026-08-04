@@ -26,6 +26,18 @@ __COLDBOX_COLD_STYLES__
         <p id="cold-kdf-benchmark-result" role="status" aria-live="polite">Benchmark not run.</p>
       </div>
     </section>
+    <section id="cold-vault-controls" data-state="locked" aria-label="Vault session controls">
+      <p class="eyebrow">Vault session / P0.13</p>
+      <p id="cold-vault-status" data-state="locked" role="status" aria-live="polite">Vault is locked. Unlocking stays in this sealed realm.</p>
+      <label id="cold-vault-passphrase-label" for="cold-vault-passphrase">Unlock phrase (never leaves this realm)</label>
+      <input id="cold-vault-passphrase" type="password" autocomplete="new-password" spellcheck="false" autocapitalize="off" disabled>
+      <div id="cold-vault-actions">
+        <button id="cold-vault-create" type="button" disabled>Create empty vault</button>
+        <button id="cold-vault-unlock" type="button" disabled>Unlock loaded vault</button>
+        <button id="cold-vault-lock" type="button" disabled>Lock now</button>
+      </div>
+      <p id="cold-vault-help">The warm shell can carry encrypted bytes only. This input and decrypted compartments remain inside the opaque frame.</p>
+    </section>
   </main>
   <script>
 __COLDBOX_CRYPTO_VENDOR_SOURCE__

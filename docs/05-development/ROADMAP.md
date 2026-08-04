@@ -117,11 +117,11 @@ Nothing above this phase is safe to build until the container is trustworthy.
   **Accept:** all three profiles round-trip; benchmark reports realistic timings; Paranoid warns about iOS allocation failure.
   🌐 *Verified by real profile round-trips, sequential on-device benchmark timings, a likely-iOS allocation guard, and the cold-only browser offer; physical-device timing remains part of P0.19.*
 
-- [ ] **P0.13 — Lock, unlock, save, load**
+- [~] **P0.13 — Lock, unlock, save, load**
   *Deps: P0.12*
   Three save paths (File System Access, blob download, manual base64/QR); symmetric load; idle auto-lock; `Esc Esc` panic hide.
   **Accept:** at least one save path works on every device-matrix platform; **the manual base64 path is a complete, usable flow on iOS Safari**, not a stub.
-  🌐 *Harness verifies the blob and manual paths in Chromium/Firefox. **The iOS Safari claim cannot be verified without an iPhone** — leave it unverified until P0.19.*
+  🌐 *Harness verifies the blob and manual paths in Chromium/Firefox, including a create → save → lock → manual-load → unlock round-trip. **The iOS Safari claim cannot be verified without an iPhone** — leave it unverified until P0.19.*
 
 - [ ] **P0.14 — Save integrity**
   *Deps: P0.13*

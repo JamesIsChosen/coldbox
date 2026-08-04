@@ -46,6 +46,7 @@ test('protocol exposes only the documented message whitelist', () => {
     'vault.open',
     'vault.saveRequest',
     'vault.lock',
+    'panic.hide',
     'mode.set',
     'derive.request',
     'publicData.request',
@@ -57,7 +58,8 @@ test('protocol exposes only the documented message whitelist', () => {
     'vault.bytes',
     'derive.result',
     'status',
-    'error'
+    'error',
+    'panic.hide'
   ]);
   assert.equal(protocol.validateMessage('warm-to-cold', {
     id: 'unknown-1',
@@ -141,6 +143,10 @@ test('every cold-to-warm message rejects secret-bearing fields', () => {
     {
       type: 'error',
       payload: { code: 'operation-failed', message: 'discarded', storedSecret: 'discarded' }
+    },
+    {
+      type: 'panic.hide',
+      payload: { secretPlaintext: 'discarded' }
     }
   ];
 

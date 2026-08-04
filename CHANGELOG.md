@@ -10,7 +10,14 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
-Foundation work in progress. Wallet and vault workflows are not available yet; the P0.10 cryptographic layer, P0.11 vault format, and P0.12 KDF benchmark are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
+Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
+
+### Added — P0.13 (2026-08-03)
+
+- Cold-realm vault session controls for create, unlock, lock, five-minute idle auto-lock, and `Esc Esc` panic concealment; the warm shell never receives the unlock phrase or decrypted secret compartment.
+- File System Access save/load when available, portable blob download, and a complete manual base64 export/import flow with copy fallback for browsers such as iOS Safari.
+- Explicit mode signaling: online unlock uses a public-only opener that never derives the secret subkey; full compartment unlock is available only after the warm shell reports offline.
+- Chromium/Firefox browser coverage for blob and manual round-trips, panic hide, and the existing cold boundary. Physical iOS Safari verification remains P0.19 work.
 
 ### Added — P0.12 (2026-08-03)
 

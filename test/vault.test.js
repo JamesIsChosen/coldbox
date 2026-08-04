@@ -96,6 +96,28 @@ function createFormatContext() {
   return context;
 }
 
+function createPublicTrackingContext() {
+  const context = baseContext();
+  vm.runInNewContext(createCryptoVendorSource(projectRoot), context);
+  vm.runInNewContext(cryptoSource, context);
+  const originalNoble = context.__coldboxNobleCrypto;
+  const infos = [];
+  const trackedNoble = Object.create(originalNoble);
+  Object.defineProperty(trackedNoble, 'hkdf', {
+    configurable: true,
+    enumerable: true,
+    writable: true,
+    value: function () {
+      const info = arguments[3];
+      infos.push(new TextDecoder().decode(new Uint8Array(info)));
+      return originalNoble.hkdf.apply(this, arguments);
+    }
+  });
+  context.__coldboxNobleCrypto = trackedNoble;
+  vm.runInNewContext(vaultSource, context);
+  return { context, infos };
+}
+
 function cloneBytes(value) {
   return new Uint8Array(value);
 }
@@ -134,6 +156,22 @@ test('P0.11 vault round-trip uses real P0.10 crypto and 64 KiB compartments', as
   assert.equal(publicOnlyHeader.secretLength, 0);
   const publicOnlyOpened = await context.__coldboxVault.open(publicOnly, 'correct horse battery staple');
   assert.equal(publicOnlyOpened.secretData, null);
+});
+
+test('P0.13 public-only unlock never derives the secret subkey', async () => {
+  const tracked = createPublicTrackingContext();
+  const context = tracked.context;
+  const vault = await context.__coldboxVault.create({
+    passphrase: 'online public passphrase',
+    profile: 'fast',
+    publicData: { wallets: [] },
+    secretData: { seeds: [{ storedSecret: { mnemonic: 'test only' } }] }
+  });
+  tracked.infos.length = 0;
+  const opened = await context.__coldboxVault.openPublic(vault, 'online public passphrase');
+  assert.equal(JSON.stringify(opened.publicData), JSON.stringify({ wallets: [] }));
+  assert.equal(opened.secretData, null);
+  assert.deepEqual(tracked.infos, ['cbx/public/v1']);
 });
 
 test('P0.12 all Argon2id profiles round-trip and remain stored in the header', async () => {
@@ -189,7 +227,8 @@ test('P0.11 exposes the vault API only in the cold layer and never exports secre
   const warmSource = fs.readFileSync(path.join(projectRoot, 'src', 'main.js'), 'utf8');
   const warmTemplate = fs.readFileSync(path.join(projectRoot, 'src', 'index.html'), 'utf8');
   assert.doesNotMatch(warmSource, /__coldboxVault|deriveSecretSubkey|cbx\/secret\/v1/);
-  assert.doesNotMatch(warmTemplate, /__COLDBOX_VAULT_LAYER__/);
+  assert.doesNotMatch(warmSource, /passphrase|cold-vault-passphrase/);
+  assert.doesNotMatch(warmTemplate, /__COLDBOX_VAULT_LAYER__|cold-vault-passphrase/);
 
   const context = createFormatContext();
   assert.equal(typeof context.__coldboxVault, 'object');

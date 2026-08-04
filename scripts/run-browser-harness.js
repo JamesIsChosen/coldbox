@@ -352,6 +352,7 @@ async function verifyBuiltFile(browser, engine) {
     assert.equal(await coldFrame.locator('#cold-kdf-benchmark-result').textContent(), 'Benchmark not run.');
     await page.locator('#capability-crypto-summary').waitFor({ state: 'visible' });
     assert.match(await page.locator('#capability-crypto-summary').textContent(), /argon2id-standard/);
+    await coldFrame.locator('html[data-warm-network-online="true"]').waitFor({ state: 'visible' });
     await harness.expectParentCannotReadFrame();
     await harness.expectCspViolation('connect-src', { blockedURI: WARM_CANARY_URL });
     await harness.expectCspViolationInFrame(
@@ -368,6 +369,41 @@ async function verifyBuiltFile(browser, engine) {
     await page.context().setOffline(false);
     await page.locator('#airgap-banner[data-airgap-state="amber"]').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await page.locator('html').getAttribute('data-network-online'), 'true');
+
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    await coldFrame.locator('#cold-vault-passphrase').fill('browser round-trip phrase');
+    await coldFrame.locator('#cold-vault-create').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    assert.equal(await coldFrame.locator('#cold-vault-passphrase').inputValue(), '');
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator('#vault-save-download').click();
+    const download = await downloadPromise;
+    assert.equal(download.suggestedFilename(), 'coldbox-vault.cbxvault');
+
+    await page.locator('#vault-save-manual').click();
+    await page.waitForFunction(() => document.querySelector('#vault-manual-data').value.length > 0);
+    const manualVaultText = await page.locator('#vault-manual-data').inputValue();
+    assert.ok(manualVaultText.length > 100, `${engine}: manual export should contain encrypted vault bytes`);
+    assert.equal(await page.locator('#vault-manual-copy').isDisabled(), false);
+
+    await page.locator('#vault-lock').click();
+    await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible' });
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible' });
+    await page.locator('#vault-manual-data').fill(manualVaultText);
+    await page.locator('#vault-load-manual').click();
+    await page.locator('#vault-status[data-state="pending"]').waitFor({ state: 'visible' });
+    await coldFrame.locator('#cold-vault-status[data-state="pending"]').waitFor({ state: 'visible' });
+    await coldFrame.locator('#cold-vault-passphrase').fill('browser round-trip phrase');
+    await coldFrame.locator('#cold-vault-unlock').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    console.log(`${engine}: blob download and manual base64 load/save round-tripped through the cold realm`);
+    await page.locator('#nav-rail .nav-link[data-route="dashboard"]').click();
+    await page.waitForFunction(() => window.location.hash === '#dashboard');
+
     await page.evaluate(() => {
       window.postMessage({
         id: 'injected-global-1',
@@ -540,8 +576,29 @@ async function verifyColdRealmFailure(browser, engine) {
       `${engine}: failed bootstrap did not lock the app`
     );
     await harness.expectCspViolation('connect-src', { blockedURI: WARM_CANARY_URL });
-    await harness.expectNoConsoleErrors({ allowedFragments: [CANARY_ERROR_FRAGMENT] });
+    await harness.expectNoConsoleErrors({
+      allowedFragments: [CANARY_ERROR_FRAGMENT, COLD_CANARY_ERROR_FRAGMENT]
+    });
     console.log(`${engine}: cold realm creation failure produced an explicit lockdown state`);
+  } finally {
+    await closePage(page);
+  }
+}
+
+async function verifyPanicHide(browser, engine) {
+  const { harness, page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+    await page.locator('#panic-screen:not([hidden])').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#app').isHidden(), true, `${engine}: panic hide left the warm app visible`);
+    assert.equal(await page.locator('#panic-screen').isVisible(), true, `${engine}: panic hide did not show its recovery screen`);
+    await harness.expectCspViolation('connect-src', { blockedURI: WARM_CANARY_URL });
+    await harness.expectNoConsoleErrors({
+      allowedFragments: [CANARY_ERROR_FRAGMENT, COLD_CANARY_ERROR_FRAGMENT]
+    });
+    console.log(`${engine}: Escape Escape locked and concealed the warm app`);
   } finally {
     await closePage(page);
   }
@@ -851,6 +908,7 @@ async function run() {
     const browser = await browserType.launch({ headless: true });
     try {
       await verifyBuiltFile(browser, engine);
+      await verifyPanicHide(browser, engine);
       await verifyColdRealmFailure(browser, engine);
       await verifyColdRealmTimeout(browser, engine);
       await verifyHandshakeTimeout(browser, engine);

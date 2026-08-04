@@ -89,3 +89,83 @@ body {
   cursor: wait;
   opacity: 0.55;
 }
+
+#cold-vault-controls {
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(134, 197, 255, 0.2);
+}
+
+#cold-vault-status {
+  margin: 0.3rem 0 0;
+  color: #f2d58c;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+#cold-vault-status[data-state="unlocked"] {
+  color: #8ff0c3;
+}
+
+#cold-vault-status[data-state="pending"] {
+  color: #f2d58c;
+}
+
+#cold-vault-passphrase-label {
+  display: block;
+  margin-top: 0.55rem;
+  color: #aabbd2;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+#cold-vault-passphrase {
+  display: block;
+  width: min(100%, 24rem);
+  margin-top: 0.3rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid rgba(134, 197, 255, 0.35);
+  border-radius: 0.35rem;
+  background: #101f35;
+  color: #e6f0ff;
+  font: inherit;
+  font-size: 0.72rem;
+}
+
+#cold-vault-passphrase:focus {
+  border-color: #86c5ff;
+  outline: 0.12rem solid rgba(134, 197, 255, 0.2);
+}
+
+#cold-vault-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.45rem;
+}
+
+#cold-vault-actions button {
+  padding: 0.35rem 0.55rem;
+  border: 1px solid rgba(143, 240, 195, 0.55);
+  border-radius: 0.35rem;
+  background: #183b3c;
+  color: #dfffea;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#cold-vault-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+#cold-vault-help {
+  max-width: 48rem;
+  margin: 0.45rem 0 0;
+  color: #aabbd2;
+  font-size: 0.67rem;
+  line-height: 1.4;
+}

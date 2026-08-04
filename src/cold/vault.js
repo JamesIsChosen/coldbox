@@ -427,7 +427,7 @@
     }
   }
 
-  async function openVault(value, passphrase) {
+  async function openVault(value, passphrase, includeSecret) {
     var dek = null;
     var publicKey = null;
     var secretKey = null;
@@ -459,7 +459,7 @@
       publicPlain = await aesGcm('decrypt', publicKey, publicNonce, publicCiphertext, header.bytes);
       var publicData = parsePaddedJson(publicPlain);
       var secretData = null;
-      if (header.secretLength > 0) {
+      if (includeSecret !== false && header.secretLength > 0) {
         secretKey = hkdfSubkey(dek, 'cbx/secret/v1');
         secretPlain = await aesGcm('decrypt', secretKey, secretNonce, secretCiphertext, header.bytes);
         secretData = parsePaddedJson(secretPlain);
@@ -479,6 +479,10 @@
       zeroBytes(publicPlain);
       zeroBytes(secretPlain);
     }
+  }
+
+  async function openPublicVault(value, passphrase) {
+    return openVault(value, passphrase, false);
   }
 
   function inspectHeader(value) {
@@ -504,6 +508,7 @@
     create: createVault,
     serialize: createVault,
     open: openVault,
+    openPublic: openPublicVault,
     parse: openVault,
     inspectHeader: inspectHeader
   });
