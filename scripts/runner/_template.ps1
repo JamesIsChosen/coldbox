@@ -58,12 +58,12 @@ function Write-Log {
 function Invoke-Step {
     param(
         [Parameter(Mandatory)] [string]   $Exe,
-        [Parameter(Mandatory)] [string[]] $Args,
+        [Parameter(Mandatory)] [string[]] $Arguments,
         [switch] $AllowFailure
     )
-    $display = "$Exe $($Args -join ' ')"
+    $display = "$Exe $($Arguments -join ' ')"
     Write-Log "`$ $display"
-    $output = & $Exe @Args 2>&1 | Out-String
+    $output = & $Exe @Arguments 2>&1 | Out-String
     $code   = $LASTEXITCODE
     if ($output.Trim()) { [void] $script:Transcript.AppendLine($output.TrimEnd()) }
     [void] $script:Transcript.AppendLine("-- exit $code")
@@ -75,10 +75,28 @@ function Invoke-Step {
 }
 
 function Get-GitOut {
-    param([Parameter(Mandatory)][string[]] $Args)
-    $out = & git @Args 2>&1 | Out-String
-    if ($LASTEXITCODE -ne 0) { throw "git $($Args -join ' ') failed: $out" }
+    param([Parameter(Mandatory)][string[]] $Arguments)
+    $out = & git @Arguments 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) { throw "git $($Arguments -join ' ') failed: $out" }
     $out.Trim()
+}
+
+# Same, but never throws - for building the report after a failure, where a
+# throw would lose the bundle. 'try' is a statement in PowerShell and cannot be
+# parenthesised into an expression, so this exists to be callable inline.
+function Get-GitOrNa {
+    param([Parameter(Mandatory)][string[]] $Arguments)
+    try { Get-GitOut -Arguments $Arguments } catch { 'n/a' }
+}
+
+# Splits git output into a clean array of lines. Kept as a function because
+# `Get-GitOut @(...) -split "..."` binds -split as a PARAMETER rather than
+# applying the operator - PowerShell 5.1 parses it that way and fails.
+function Get-GitLines {
+    param([Parameter(Mandatory)][string[]] $Arguments)
+    $raw = Get-GitOut -Arguments $Arguments
+    if (-not $raw) { return @() }
+    @($raw -split "`r?`n" | Where-Object { $_.Trim() })
 }
 
 # ------------------------------------------------------------------ preflight
@@ -116,10 +134,11 @@ function Invoke-Preflight {
 
     $script:BeforeBranch = $branch
     $script:BeforeHead   = $head
-    $script:PreUntracked = @(Get-GitOut @('ls-files','--others','--exclude-standard') -split "`n" |
-                             Where-Object { $_.Trim() })
+    $script:PreUntracked = Get-GitLines @('ls-files','--others','--exclude-standard')
 
-    $script:NodeVersion = try { (& node --version 2>&1 | Out-String).Trim() } catch { 'not found' }
+    try   { $script:NodeVersion = (& node --version 2>&1 | Out-String).Trim() }
+    catch { $script:NodeVersion = 'not found' }
+    if (-not $script:NodeVersion) { $script:NodeVersion = 'not found' }
     $pinned = if (Test-Path .nvmrc) { (Get-Content .nvmrc -Raw).Trim() } else { '(unpinned)' }
     if ($script:NodeVersion -notlike "*$pinned*") {
         Write-Log "Node $($script:NodeVersion) does not match pinned $pinned. Build evidence is weaker; recorded in manifest." 'WARN'
@@ -146,8 +165,7 @@ function Invoke-Rollback {
         if ($LASTEXITCODE -ne 0) { throw 'git reset failed' }
 
         # Remove ONLY untracked files this runner introduced.
-        $nowUntracked = @(Get-GitOut @('ls-files','--others','--exclude-standard') -split "`n" |
-                          Where-Object { $_.Trim() })
+        $nowUntracked = Get-GitLines @('ls-files','--others','--exclude-standard')
         foreach ($f in $nowUntracked) {
             if ($script:PreUntracked -notcontains $f) {
                 Write-Log "removing runner-created untracked file: $f"
@@ -222,8 +240,8 @@ function New-Bundle {
     New-Item -ItemType Directory -Path $script:Stage -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $script:Stage 'evidence') -Force | Out-Null
 
-    $afterBranch = try { Get-GitOut @('rev-parse','--abbrev-ref','HEAD') } catch { 'unknown' }
-    $afterHead   = try { Get-GitOut @('rev-parse','HEAD') } catch { 'unknown' }
+    $afterBranch = Get-GitOrNa @('rev-parse','--abbrev-ref','HEAD')
+    $afterHead   = Get-GitOrNa @('rev-parse','HEAD')
 
     [pscustomobject]@{
         runnerId       = $RunnerId
@@ -250,9 +268,14 @@ function New-Bundle {
                 -Value $script:Transcript.ToString() -Encoding UTF8
 
     $gitState = @(
-        '--- status --porcelain ---'; (try { Get-GitOut @('status','--porcelain') } catch { 'n/a' })
-        ''; '--- log --oneline -20 ---'; (try { Get-GitOut @('log','--oneline','-20') } catch { 'n/a' })
-        ''; '--- branch -vv ---';       (try { Get-GitOut @('branch','-vv') } catch { 'n/a' })
+        '--- status --porcelain ---'
+        Get-GitOrNa @('status','--porcelain')
+        ''
+        '--- log --oneline -20 ---'
+        Get-GitOrNa @('log','--oneline','-20')
+        ''
+        '--- branch -vv ---'
+        Get-GitOrNa @('branch','-vv')
     ) -join "`n"
     Set-Content -LiteralPath (Join-Path $script:Stage 'git-state.txt') -Value $gitState -Encoding UTF8
 
