@@ -56,7 +56,7 @@ Use it whenever the human must act: a `👤 human-required` item, a missing cred
 Open `build/coldbox.html` on each device and confirm the seven checks in
 `docs/05-development/testing.md`:
 
-- [ ] **iOS Safari, from the Files app** ← highest risk, do this first
+- [ ] **iOS local-execution target** — record PASS, BLOCKED, or UNSUPPORTED with the exact device and iOS build; Quick Look is not a Safari pass ([ADR-0009](adr/0009-ios-local-html-execution.md))
 - [ ] Android Chrome, from Files
 - [ ] macOS Safari
 - [ ] Tor Browser
@@ -209,7 +209,7 @@ The all-night case. **Lead with what the human must do**, since nothing progress
 
 Open `build/coldbox.html` on each device and confirm the seven per-platform checks in `docs/05-development/testing.md`:
 
-- [ ] **iOS Safari, from the Files app** — highest risk, do this first
+- [ ] **iOS local-execution target** — record PASS, BLOCKED, or UNSUPPORTED with the exact device and iOS build; Quick Look is not a Safari pass ([ADR-0009](adr/0009-ios-local-html-execution.md))
 - [ ] Android Chrome, from Files
 - [ ] macOS Safari
 - [ ] Tor Browser

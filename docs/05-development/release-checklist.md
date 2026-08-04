@@ -36,14 +36,14 @@ Copy this into the release issue and tick as you go.
 
 ### Manual device matrix
 
-Per [testing.md](testing.md). **All eight required.**
+Per [testing.md](testing.md). **All eight currently supported contexts are required; record the iOS target separately under [ADR-0009](adr/0009-ios-local-html-execution.md).**
 
 - [ ] Windows Chrome/Edge
 - [ ] Windows Firefox
 - [ ] macOS Safari
 - [ ] macOS Chrome
 - [ ] Linux Firefox
-- [ ] **iOS Safari from Files** — highest risk
+- [ ] **iOS local-execution target** — record PASS, BLOCKED, or UNSUPPORTED with the exact device and iOS build; Quick Look is not a Safari pass ([ADR-0009](adr/0009-ios-local-html-execution.md))
 - [ ] Android Chrome from Files
 - [ ] Tails / Tor Browser
 

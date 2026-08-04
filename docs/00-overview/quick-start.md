@@ -34,7 +34,7 @@ The app enforces the distinction: when a network connection exists, the secret h
 
 ## 3. Open it
 
-Double-click. On iOS or Android, open from the Files app.
+Double-click on a supported desktop browser. On Android, open from the Files app. Direct local HTML execution from iOS Files is currently a blocked portability target; see [ADR-0009](../05-development/adr/0009-ios-local-html-execution.md).
 
 Check the banner across the top:
 
@@ -42,7 +42,7 @@ Check the banner across the top:
 - 🟡 **Online — secrets sealed** — tools work, secrets locked
 - 🔴 **CSP failure** — something is wrong; don't proceed
 
-Then check the capability panel, which reports what your browser supports. Some features degrade on iOS.
+Then check the capability panel, which reports what your browser supports. Do not treat an iOS Files Quick Look preview as an application run.
 
 ## 4. Create your vault
 
