@@ -39,7 +39,7 @@ Owns: vault decryption and encryption, passphrase entry, seed generation and val
 ## Why this is a real boundary
 
 **1. The cold realm's CSP is its own document's policy.**
-Even if its code were malicious, there is no network primitive available to it. Not a blocked call — an absent capability.
+Even if its code were malicious, its `connect-src 'none'` policy blocks network requests. Native browser signals can differ, so the P0.6 bootstrap requires the three documented probes to produce a thrown result while the harness independently verifies the exact `connect-src` policy violation. P0.8 later adds the broader runtime guard for defense in depth.
 
 **2. CSP inheritance works in our favour.**
 A `srcdoc` iframe inherits its parent's CSP, and multiple policies combine **restrictively**: a request must satisfy every applicable policy. The cold realm's `connect-src 'none'` applies on top of the warm shell's allowlist, and the intersection is `'none'`. **The child cannot be loosened by the parent.**

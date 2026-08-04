@@ -20,6 +20,14 @@ function fileUrl(file) {
   return pathToFileURL(file).href;
 }
 
+function cspHash(block) {
+  return `'sha256-${crypto.createHash('sha256').update(Buffer.from(block, 'utf8')).digest('base64')}'`;
+}
+
+function escapedRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function runBuild() {
   const result = spawnSync(process.execPath, [buildScript], {
     cwd: projectRoot,
@@ -87,6 +95,42 @@ function createTamperedBuildFixture() {
   return { path: tamperedPath, temporaryRoot };
 }
 
+function createColdReadySuppressedFixture() {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-browser-timeout-'));
+  for (const directory of ['scripts', 'src', 'vendor']) {
+    fs.cpSync(
+      path.join(projectRoot, directory),
+      path.join(temporaryRoot, directory),
+      { recursive: true }
+    );
+  }
+
+  const coldMainPath = path.join(temporaryRoot, 'src', 'cold', 'main.js');
+  const original = fs.readFileSync(coldMainPath, 'utf8');
+  const readySignal = "window.parent.postMessage({ type: 'cold.ready' }, '*');";
+  const occurrences = original.split(readySignal).length - 1;
+  assert.equal(occurrences, 1, 'Built cold realm must contain one readiness signal');
+  fs.writeFileSync(
+    coldMainPath,
+    original.replace(readySignal, "window.parent.postMessage({ type: 'cold.not-ready' }, '*');"),
+    'utf8'
+  );
+
+  const result = spawnSync(process.execPath, [path.join(temporaryRoot, 'scripts', 'build.js')], {
+    cwd: temporaryRoot,
+    encoding: 'utf8',
+    env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' }
+  });
+  if (result.status !== 0) {
+    fs.rmSync(temporaryRoot, { force: true, recursive: true });
+    throw new Error(`Cold readiness-timeout fixture build failed: ${result.stdout}\n${result.stderr}`);
+  }
+  return {
+    path: path.join(temporaryRoot, 'build', 'coldbox.html'),
+    temporaryRoot
+  };
+}
+
 async function openPage(browser, file) {
   const page = await browser.newPage();
   const harness = await createHarness(page);
@@ -98,11 +142,50 @@ async function closePage(page) {
   await page.close();
 }
 
+async function getColdFrame(page, engine) {
+  await page.waitForFunction(() => {
+    const iframe = document.querySelector('#cold-frame');
+    return iframe && iframe.contentWindow;
+  });
+  const frames = page.frames().filter((candidate) => candidate.parentFrame());
+  assert.equal(frames.length, 1, `${engine}: built app should have exactly one child frame`);
+  const frame = frames[0];
+  await frame.locator('#cold-ready').waitFor({ state: 'visible' });
+  return frame;
+}
+
 async function verifyBuiltFile(browser, engine) {
   const { harness, page } = await openPage(browser, buildPath);
   try {
     await harness.expectElementVisible('#app');
     await harness.expectElementVisible('#app[data-build-state="warm-shell"]');
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible' });
+    const sandbox = await page.locator('#cold-frame').getAttribute('sandbox');
+    assert.equal(sandbox, 'allow-scripts allow-downloads', `${engine}: cold frame sandbox changed`);
+    assert.equal(
+      sandbox.includes('allow-same-origin'),
+      false,
+      `${engine}: cold frame must remain opaque`
+    );
+    const coldFrame = await getColdFrame(page, engine);
+    const coldPolicy = await coldFrame.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
+    const coldScript = await coldFrame.locator('script').textContent();
+    const coldStyle = await coldFrame.locator('style').textContent();
+    assert.match(coldPolicy, /connect-src 'none'/, `${engine}: cold CSP lacks connect-src 'none'`);
+    assert.match(coldPolicy, new RegExp(escapedRegExp(cspHash(coldScript))));
+    assert.match(coldPolicy, new RegExp(escapedRegExp(cspHash(coldStyle))));
+    await harness.expectParentCannotReadFrame();
+    await harness.expectNoConsoleErrors();
+    for (const primitive of ['fetch', 'XMLHttpRequest', 'WebSocket']) {
+      const result = await harness.expectNetworkPrimitiveBlocked(
+        primitive,
+        coldFrame,
+        { requireCspViolation: true }
+      );
+      assert.equal(result.signal, 'threw', `${engine}: ${primitive} did not satisfy the literal throw contract`);
+      console.log(`${engine}: cold realm ${primitive} reported blocked (${result.signal})`);
+    }
+    await harness.expectCspViolationInFrame(coldFrame, 'connect-src');
     await harness.expectElementVisible('#nav-rail');
     await harness.expectElementVisible('#theme-toggle');
     await harness.expectElementVisible('#nav-rail .nav-link[aria-current="page"]');
@@ -156,11 +239,67 @@ async function verifyBuiltFile(browser, engine) {
     await harness.expectElementVisible('#page-reference:not([hidden])');
     assert.equal(await page.locator('#mobile-more-menu').isVisible(), false);
 
-    await harness.expectNoConsoleErrors();
     await harness.expectNoCspViolations();
-    console.log(`${engine}: warm shell routes, theme switch, and responsive navigation passed over file://`);
+    console.log(`${engine}: warm shell routes, theme switch, responsive navigation, and cold boundary passed over file://`);
   } finally {
     await closePage(page);
+  }
+}
+
+async function verifyColdRealmFailure(browser, engine) {
+  const page = await browser.newPage();
+  await page.addInitScript(() => {
+    const createElement = Document.prototype.createElement;
+    Document.prototype.createElement = function createElementWithColdFrameFailure(name) {
+      if (String(name).toLowerCase() === 'iframe') {
+        throw new Error('deliberate cold iframe creation failure');
+      }
+      return createElement.apply(this, arguments);
+    };
+  });
+  const harness = await createHarness(page);
+  try {
+    await page.goto(fileUrl(buildPath), { waitUntil: 'load' });
+    await page.locator('#cold-realm-status[data-cold-state="failed"]').waitFor({ state: 'visible' });
+    await harness.expectElementVisible('#cold-realm-failure');
+    assert.equal(await page.locator('#cold-frame').count(), 0, `${engine}: failed bootstrap left a frame active`);
+    assert.equal(
+      await page.locator('#app').getAttribute('data-cold-state'),
+      'failed',
+      `${engine}: failed bootstrap did not lock the app`
+    );
+    await harness.expectNoConsoleErrors();
+    await harness.expectNoCspViolations();
+    console.log(`${engine}: cold realm creation failure produced an explicit lockdown state`);
+  } finally {
+    await closePage(page);
+  }
+}
+
+async function verifyColdRealmTimeout(browser, engine) {
+  const fixture = createColdReadySuppressedFixture();
+  const page = await browser.newPage();
+  const harness = await createHarness(page);
+  try {
+    await page.goto(fileUrl(fixture.path), { waitUntil: 'load' });
+    await page.locator('#cold-realm-status[data-cold-state="failed"]').waitFor({ state: 'visible' });
+    await harness.expectElementVisible('#cold-realm-failure');
+    assert.equal(
+      await page.locator('#cold-frame').count(),
+      0,
+      `${engine}: readiness timeout left a cold frame attached`
+    );
+    assert.equal(
+      await page.locator('#app').getAttribute('data-cold-state'),
+      'failed',
+      `${engine}: readiness timeout did not lock the app`
+    );
+    await harness.expectNoConsoleErrors();
+    await harness.expectNoCspViolations();
+    console.log(`${engine}: cold realm readiness timeout removed the frame and locked down`);
+  } finally {
+    await page.close();
+    fs.rmSync(fixture.temporaryRoot, { force: true, recursive: true });
   }
 }
 
@@ -241,8 +380,13 @@ async function verifyReusableAssertions(browser, engine) {
     assert.ok(frame, `${engine}: harness target did not create a child frame`);
     await frame.locator('#cold-ready').waitFor({ state: 'visible' });
     await harness.expectParentCannotReadFrame();
-    for (const primitive of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'sendBeacon']) {
-      const result = await harness.expectNetworkPrimitiveBlocked(primitive, frame);
+    for (const primitive of ['fetch', 'XMLHttpRequest', 'WebSocket']) {
+      const result = await harness.expectNetworkPrimitiveBlocked(
+        primitive,
+        frame,
+        { requireCspViolation: true }
+      );
+      assert.equal(result.cspViolation, true, `${engine}: standalone native CSP probe lost exact evidence for ${primitive}`);
       console.log(`${engine}: ${primitive} reported blocked (${result.signal})`);
     }
     await harness.expectCspViolationInFrame(frame, 'connect-src');
@@ -309,6 +453,8 @@ async function run() {
     const browser = await browserType.launch({ headless: true });
     try {
       await verifyBuiltFile(browser, engine);
+      await verifyColdRealmFailure(browser, engine);
+      await verifyColdRealmTimeout(browser, engine);
       await verifyTamperedBuiltFile(browser, engine);
       await verifyCspFixture(browser, engine);
       await verifyUntamperedFixture(browser, engine);

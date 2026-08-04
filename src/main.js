@@ -2,6 +2,7 @@
 (function () {
   'use strict';
 
+  var coldRealmDocument = __COLDBOX_COLD_REALM_DOCUMENT__;
   var root = document.documentElement;
   var app = document.getElementById('app');
   var main = document.getElementById('main-content');
@@ -13,6 +14,16 @@
   var moreMenu = document.getElementById('mobile-more-menu');
   var moreTab = document.getElementById('mobile-more-tab');
   var moreClose = document.getElementById('mobile-more-close');
+  var coldRealmStatus = document.getElementById('cold-realm-status');
+  var coldRealmStatusTitle = document.getElementById('cold-realm-status-title');
+  var coldRealmStatusCopy = document.getElementById('cold-realm-status-copy');
+  var coldRealmStatusLabel = document.getElementById('cold-realm-status-label');
+  var coldRealmFailure = document.getElementById('cold-realm-failure');
+  var coldRealmHost = document.getElementById('cold-realm-host');
+  var coldFrame = null;
+  var coldBootTimer = null;
+  var coldRealmReady = false;
+  var coldRealmFailed = false;
   var pages = Array.prototype.slice.call(document.querySelectorAll('[data-page]'));
   var routeLinks = Array.prototype.slice.call(document.querySelectorAll('[data-route]'));
 
@@ -116,6 +127,103 @@
     }
   }
 
+  function setColdRealmFailure() {
+    if (coldBootTimer !== null) {
+      window.clearTimeout(coldBootTimer);
+      coldBootTimer = null;
+    }
+    coldRealmReady = false;
+    coldRealmFailed = true;
+    window.removeEventListener('message', handleColdRealmMessage);
+    if (coldFrame && coldFrame.parentNode) {
+      coldFrame.parentNode.removeChild(coldFrame);
+    }
+    coldFrame = null;
+    if (coldRealmStatus) {
+      coldRealmStatus.setAttribute('data-cold-state', 'failed');
+    }
+    if (coldRealmStatusTitle) {
+      coldRealmStatusTitle.textContent = 'The sealed realm is unavailable';
+    }
+    if (coldRealmStatusCopy) {
+      coldRealmStatusCopy.textContent = 'The isolated frame did not establish its boot signal. Coldbox refuses to continue as a single-realm app.';
+    }
+    if (coldRealmStatusLabel) {
+      coldRealmStatusLabel.textContent = 'Locked down';
+    }
+    if (coldRealmFailure) {
+      coldRealmFailure.hidden = false;
+    }
+    app.setAttribute('data-cold-state', 'failed');
+  }
+
+  function setColdRealmReady() {
+    if (coldRealmFailed) {
+      return;
+    }
+    if (coldBootTimer !== null) {
+      window.clearTimeout(coldBootTimer);
+      coldBootTimer = null;
+    }
+    coldRealmReady = true;
+    if (coldRealmStatus) {
+      coldRealmStatus.setAttribute('data-cold-state', 'ready');
+    }
+    if (coldRealmStatusTitle) {
+      coldRealmStatusTitle.textContent = 'The sealed realm is active';
+    }
+    if (coldRealmStatusCopy) {
+      coldRealmStatusCopy.textContent = 'Secret-capable work will remain inside this sandbox. The warm shell cannot read its DOM or variables.';
+    }
+    if (coldRealmStatusLabel) {
+      coldRealmStatusLabel.textContent = 'Ready';
+    }
+    if (coldRealmFailure) {
+      coldRealmFailure.hidden = true;
+    }
+    app.setAttribute('data-cold-state', 'ready');
+  }
+
+  function handleColdRealmMessage(event) {
+    if (coldRealmReady || coldRealmFailed || !coldFrame || event.source !== coldFrame.contentWindow) {
+      return;
+    }
+    if (!event.data || event.data.type !== 'cold.ready') {
+      return;
+    }
+    setColdRealmReady();
+    window.removeEventListener('message', handleColdRealmMessage);
+  }
+
+  function startColdRealm() {
+    if (!coldRealmHost) {
+      setColdRealmFailure();
+      return;
+    }
+
+    window.addEventListener('message', handleColdRealmMessage);
+    try {
+      coldFrame = document.createElement('iframe');
+      coldFrame.id = 'cold-frame';
+      coldFrame.className = 'cold-frame';
+      coldFrame.setAttribute('sandbox', 'allow-scripts allow-downloads');
+      coldFrame.setAttribute('title', 'Opaque sealed realm');
+      coldFrame.setAttribute('aria-label', 'Opaque sealed realm');
+      if (!('srcdoc' in coldFrame)) {
+        throw new Error('srcdoc is unavailable');
+      }
+      coldRealmHost.appendChild(coldFrame);
+      coldBootTimer = window.setTimeout(function () {
+        if (!coldRealmReady) {
+          setColdRealmFailure();
+        }
+      }, 1500);
+      coldFrame.srcdoc = coldRealmDocument;
+    } catch (error) {
+      setColdRealmFailure();
+    }
+  }
+
   function renderRoute(shouldFocus) {
     var route = routeFromLocation();
     var detail = routeDetails[route];
@@ -157,6 +265,7 @@
   setTheme(readStoredTheme(), false);
   app.setAttribute('data-build-state', 'warm-shell');
   app.setAttribute('data-routing-ready', 'true');
+  app.setAttribute('data-cold-state', 'starting');
   renderRoute(false);
 
   if (themeToggle) {
@@ -185,4 +294,5 @@
   window.addEventListener('hashchange', function () {
     renderRoute(true);
   });
+  startColdRealm();
 }());

@@ -33,6 +33,16 @@ function cspDirective(policy, directive) {
   return match[1];
 }
 
+function coldSandboxToken(html) {
+  const match = html.match(/coldFrame\.setAttribute\('sandbox', '([^']+)'\)/);
+  assert.ok(match, 'Built artifact must set the cold iframe sandbox explicitly');
+  return match[1];
+}
+
+function assertExactColdSandbox(html) {
+  assert.equal(coldSandboxToken(html), 'allow-scripts allow-downloads');
+}
+
 function createBuildRoot() {
   const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'coldbox-csp-'));
   for (const directory of ['scripts', 'src', 'vendor']) {
@@ -145,6 +155,38 @@ test('warm shell CSP preserves the documented network allowlist', () => {
   assert.match(policy, /form-action 'none'/);
   assert.match(policy, /base-uri 'none'/);
   assert.match(policy, /object-src 'none'/);
+});
+
+test('cold realm policy is embedded and remains opaque', () => {
+  runBuild();
+  const html = fs.readFileSync(htmlPath, 'utf8');
+
+  assertExactColdSandbox(html);
+  assert.doesNotMatch(html, /allow-same-origin/);
+  assert.match(html, /connect-src 'none'/);
+  assert.match(html, /form-action 'none'/);
+  assert.match(html, /frame-src 'none'/);
+  assert.match(html, /object-src 'none'/);
+  assert.match(html, /worker-src blob:/);
+  assert.doesNotMatch(html, /__COLDBOX_/);
+});
+
+test('cold iframe sandbox rejects an extra permission token in a negative fixture', () => {
+  const root = createBuildRoot();
+  try {
+    const mainPath = path.join(root, 'src', 'main.js');
+    const main = fs.readFileSync(mainPath, 'utf8')
+      .replace(
+        "coldFrame.setAttribute('sandbox', 'allow-scripts allow-downloads')",
+        "coldFrame.setAttribute('sandbox', 'allow-scripts allow-downloads allow-top-navigation')"
+      );
+    fs.writeFileSync(mainPath, main, 'utf8');
+
+    const html = runBuildAt(root);
+    assert.throws(() => assertExactColdSandbox(html));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('CSP hash injection covers multiple inline blocks and detects script tampering', () => {

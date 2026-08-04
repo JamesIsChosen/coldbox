@@ -42,8 +42,8 @@ The browser download is explicit and separate from `npm ci`; the application bui
 2. **Lint for forbidden constructs** — `eval`, `new Function`, `import`, and `require` are rejected throughout application source. `src/cold/` is the secret-handling path; it additionally rejects external URLs and `localStorage`. Any hit aborts.
 3. **Compile help content** — markdown from `docs/00-overview/glossary.md` and `docs/03-guides/` is converted and embedded. There is one copy of every explanation; in-app help and repo docs cannot drift.
 4. **Assemble the cold realm** — its HTML, CSS, and JS are built and serialized into a string for `srcdoc`.
-5. **Compute CSP hashes** — SHA-256 of the exact UTF-8 text in each inline script and style block, injected into the respective `script-src`/`style-src` directives. Missing hash placeholders or inline blocks abort the build. **This is why the build must be deterministic**: a nondeterministic build produces a hash mismatch and nothing runs.
-6. **Assemble the warm shell** — with the cold realm embedded.
+5. **Compute cold CSP hashes** — SHA-256 of the exact UTF-8 text in each cold inline script and style block, injected into the child policy and then into the parent policy because `srcdoc` inherits the parent's CSP. The parent and child policies still combine restrictively; the parent hashes only authorize the exact child blocks.
+6. **Compute warm CSP hashes and assemble the shell** — the warm script receives the serialized child document, the parent receives the exact child hashes, and the outer script/style hashes are injected last. Missing hash placeholders or inline blocks abort the build. **This is why the build must be deterministic**: a nondeterministic build produces a hash mismatch and nothing runs.
 7. **Emit** `build/coldbox.html` and `build/coldbox.html.sha256`.
 
 ---

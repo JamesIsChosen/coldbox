@@ -39,6 +39,8 @@ worker-src   blob:;
 | `worker-src blob:` | Workers for Argon2 and search, created from blob URLs |
 | `frame-src 'none'` | The cold realm embeds nothing |
 
+The policy listing includes `frame-ancestors 'self'` for a header-capable deployment. The shipped `file://` artifact delivers CSP through a meta element, and Chromium reports that directive as ignored when it appears there. The embedded policy therefore omits that one non-functional meta directive; the required embedding boundary is still provided by the iframe's sandbox without `allow-same-origin` and the warm shell's `frame-src` policy. A server or packaged deployment may add `frame-ancestors 'self'` as an HTTP header.
+
 ### Sandbox attribute
 
 ```html
@@ -109,6 +111,8 @@ A `srcdoc` iframe inherits its parent's policy, and multiple policies combine **
 
 This works in our favour: the cold realm's `connect-src 'none'` applies on top of the warm shell's allowlist, and the intersection is `'none'`. **The child cannot be loosened by the parent.**
 
+The build preserves this contract in a fixed order: it assembles and hashes the child document, inserts those exact child hashes into the parent `script-src` and `style-src`, serializes the child into the outer script, and then hashes the outer blocks. A child hash in the parent is authorization for that exact inline block only; it does not weaken the child's own `connect-src 'none'` policy. See [build.md](../05-development/build.md) for the assembly steps.
+
 ### Opaque origins may lack `crypto.subtle`
 
 Not strictly a CSP issue, but it arises from the same sandbox. An opaque origin may not qualify as a secure context, so WebCrypto may be undefined. The cold realm defaults to pure-JS implementations and only uses WebCrypto after a known-answer test. See [crypto-choices](crypto-choices.md).
@@ -123,7 +127,7 @@ Not strictly a CSP issue, but it arises from the same sandbox. An opaque origin 
 
 Defense in depth *behind* the CSP, never instead of it.
 
-At the top of the cold realm's script, before anything else runs, `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, and `navigator.sendBeacon` are overwritten with functions that throw a labelled error and raise a visible alarm. The relevant globals are then frozen.
+P0.6's cold bootstrap normalizes its three acceptance probes: the native XHR send and WebSocket construction are attempted under `connect-src 'none'` and then produce a labelled throw, while native `fetch` rejection is reported as a thrown probe result. P0.8 adds the broader runtime guard for `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, and `navigator.sendBeacon`, with visible alarms and frozen replacement properties.
 
 If any of these ever fires, the CSP has failed and something is badly wrong — the alarm exists to make that loud rather than silent.
 

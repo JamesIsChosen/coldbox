@@ -110,12 +110,14 @@ async function createHarness(page) {
       return this.expectCspViolation('script-src');
     },
 
-    async expectNetworkPrimitiveBlocked(name, frame) {
+    async expectNetworkPrimitiveBlocked(name, frame, { requireCspViolation = false } = {}) {
       assert.ok(frame && typeof frame.evaluate === 'function', 'A Playwright frame is required');
       assert.ok(NETWORK_PRIMITIVES.includes(name), `Unsupported network primitive: ${name}`);
 
-      const result = await frame.evaluate(async (primitive) => {
-        const url = 'https://coldbox.invalid/network-primitive-test';
+      const result = await frame.evaluate(async ({ primitive, requireCspViolation: requireViolation }) => {
+        const url = primitive === 'WebSocket'
+          ? 'wss://coldbox.invalid/network-primitive-test'
+          : 'https://coldbox.invalid/network-primitive-test';
         const blocked = (signal, error = '') => ({ blocked: true, error, signal });
         const allowed = (signal) => ({ blocked: false, error: '', signal });
         const connectViolationCount = () => Array.from(
@@ -152,114 +154,128 @@ async function createHarness(page) {
           timer = setTimeout(() => finish(false), 500);
         });
 
-        try {
-          switch (primitive) {
-            case 'fetch':
-              await globalThis.fetch(url);
-              return allowed('resolved');
-            case 'XMLHttpRequest': {
-              const request = new XMLHttpRequest();
-              request.open('GET', url);
-              return await new Promise((resolve) => {
-                let settled = false;
-                let timer;
-                const finish = (outcome) => {
-                  if (settled) {
-                    return;
-                  }
-                  settled = true;
-                  clearTimeout(timer);
-                  resolve(outcome);
-                };
-                request.addEventListener('error', () => finish(blocked('error-event')));
-                request.addEventListener('abort', () => finish(blocked('abort-event')));
-                request.addEventListener('load', () => finish(allowed('load-event')));
-                request.addEventListener('timeout', () => finish(blocked('timeout-event')));
-                timer = setTimeout(() => finish(allowed('timeout')), 1500);
-                try {
-                  request.send();
-                } catch (error) {
-                  finish(blocked('threw', String(error)));
-                }
-              });
-            }
-            case 'WebSocket': {
-              return await new Promise((resolve) => {
-                let settled = false;
-                let socket;
-                let timer;
-                const finish = (outcome) => {
-                  if (settled) {
-                    return;
-                  }
-                  settled = true;
-                  clearTimeout(timer);
-                  if (socket) {
-                    socket.close();
-                  }
-                  resolve(outcome);
-                };
-                try {
-                  socket = new WebSocket(url);
-                  socket.addEventListener('error', () => finish(blocked('error-event')));
-                  socket.addEventListener('open', () => finish(allowed('open-event')));
-                  socket.addEventListener('close', () => finish(blocked('close-event')));
+        const initialViolationCount = connectViolationCount();
+        const outcome = await (async () => {
+          try {
+            switch (primitive) {
+              case 'fetch':
+                await globalThis.fetch(url);
+                return allowed('resolved');
+              case 'XMLHttpRequest': {
+                const request = new XMLHttpRequest();
+                request.open('GET', url);
+                return await new Promise((resolve) => {
+                  let settled = false;
+                  let timer;
+                  const finish = (result) => {
+                    if (settled) {
+                      return;
+                    }
+                    settled = true;
+                    clearTimeout(timer);
+                    resolve(result);
+                  };
+                  request.addEventListener('error', () => finish(blocked('error-event')));
+                  request.addEventListener('abort', () => finish(blocked('abort-event')));
+                  request.addEventListener('load', () => finish(allowed('load-event')));
+                  request.addEventListener('timeout', () => finish(blocked('timeout-event')));
                   timer = setTimeout(() => finish(allowed('timeout')), 1500);
-                } catch (error) {
-                  finish(blocked('threw', String(error)));
-                }
-              });
-            }
-            case 'EventSource': {
-              return await new Promise((resolve) => {
-                let settled = false;
-                let source;
-                let timer;
-                const finish = (outcome) => {
-                  if (settled) {
-                    return;
+                  try {
+                    request.send();
+                  } catch (error) {
+                    finish(blocked('threw', String(error)));
                   }
-                  settled = true;
-                  clearTimeout(timer);
-                  if (source) {
-                    source.close();
-                  }
-                  resolve(outcome);
-                };
-                try {
-                  source = new EventSource(url);
-                  source.addEventListener('error', () => finish(blocked('error-event')));
-                  source.addEventListener('open', () => finish(allowed('open-event')));
-                  timer = setTimeout(() => finish(allowed('timeout')), 1500);
-                } catch (error) {
-                  finish(blocked('threw', String(error)));
-                }
-              });
-            }
-            case 'sendBeacon': {
-              const initialViolationCount = connectViolationCount();
-              const accepted = navigator.sendBeacon(url, 'coldbox');
-              if (!accepted) {
-                return blocked('returned-false');
+                });
               }
-              const violationObserved = await waitForConnectViolation(initialViolationCount);
-              return violationObserved
-                ? blocked('returned-true-csp-violation')
-                : allowed('accepted');
+              case 'WebSocket': {
+                return await new Promise((resolve) => {
+                  let settled = false;
+                  let socket;
+                  let timer;
+                  const finish = (result) => {
+                    if (settled) {
+                      return;
+                    }
+                    settled = true;
+                    clearTimeout(timer);
+                    if (socket) {
+                      socket.close();
+                    }
+                    resolve(result);
+                  };
+                  try {
+                    socket = new WebSocket(url);
+                    socket.addEventListener('error', () => finish(blocked('error-event')));
+                    socket.addEventListener('open', () => finish(allowed('open-event')));
+                    socket.addEventListener('close', () => finish(blocked('close-event')));
+                    timer = setTimeout(() => finish(allowed('timeout')), 1500);
+                  } catch (error) {
+                    finish(blocked('threw', String(error)));
+                  }
+                });
+              }
+              case 'EventSource': {
+                return await new Promise((resolve) => {
+                  let settled = false;
+                  let source;
+                  let timer;
+                  const finish = (result) => {
+                    if (settled) {
+                      return;
+                    }
+                    settled = true;
+                    clearTimeout(timer);
+                    if (source) {
+                      source.close();
+                    }
+                    resolve(result);
+                  };
+                  try {
+                    source = new EventSource(url);
+                    source.addEventListener('error', () => finish(blocked('error-event')));
+                    source.addEventListener('open', () => finish(allowed('open-event')));
+                    timer = setTimeout(() => finish(allowed('timeout')), 1500);
+                  } catch (error) {
+                    finish(blocked('threw', String(error)));
+                  }
+                });
+              }
+              case 'sendBeacon': {
+                const beaconInitialViolationCount = connectViolationCount();
+                const accepted = navigator.sendBeacon(url, 'coldbox');
+                if (!accepted) {
+                  return blocked('returned-false');
+                }
+                const violationObserved = await waitForConnectViolation(beaconInitialViolationCount);
+                return violationObserved
+                  ? blocked('returned-true-csp-violation')
+                  : allowed('accepted');
+              }
+              default:
+                throw new Error(`Unsupported network primitive: ${primitive}`);
             }
-            default:
-              throw new Error(`Unsupported network primitive: ${primitive}`);
+          } catch (error) {
+            return blocked('threw', String(error));
           }
-        } catch (error) {
-          return blocked('threw', String(error));
-        }
-      }, name);
+        })();
+        const cspViolation = requireViolation
+          ? await waitForConnectViolation(initialViolationCount)
+          : null;
+        return { ...outcome, cspViolation };
+      }, { primitive: name, requireCspViolation });
 
       assert.equal(
         result.blocked,
         true,
         `${name} did not signal a blocked request (result: ${JSON.stringify(result)})`
       );
+      if (requireCspViolation) {
+        assert.equal(
+          result.cspViolation,
+          true,
+          `${name} did not produce a matching connect-src violation; DNS or another non-CSP failure may have satisfied the probe: ${JSON.stringify(result)}`
+        );
+      }
       return result;
     },
 
@@ -269,18 +285,38 @@ async function createHarness(page) {
         if (!iframe) {
           throw new Error(`Frame not found: ${frameSelector}`);
         }
+        let domReadable = false;
+        let variableReadable = false;
+        let contentDocumentReadable = false;
+        const errors = [];
         try {
-          void iframe.contentWindow.document;
-          return { readable: true, error: '' };
+          domReadable = Boolean(iframe.contentWindow.document);
         } catch (error) {
-          return { readable: false, error: String(error) };
+          errors.push(`document: ${String(error)}`);
         }
+        try {
+          variableReadable = iframe.contentWindow.__coldboxColdRealmMarker === 'cold-realm-ready';
+        } catch (error) {
+          errors.push(`variable: ${String(error)}`);
+        }
+        try {
+          contentDocumentReadable = Boolean(iframe.contentDocument);
+        } catch (error) {
+          errors.push(`contentDocument: ${String(error)}`);
+        }
+        return {
+          readable: domReadable || variableReadable || contentDocumentReadable,
+          error: errors.join('; '),
+          domReadable,
+          variableReadable,
+          contentDocumentReadable
+        };
       }, selector);
 
       assert.equal(
         result.readable,
         false,
-        `Parent could read the frame DOM: ${JSON.stringify(result)}`
+        `Parent could read the frame DOM or variables: ${JSON.stringify(result)}`
       );
       return result.error;
     },
