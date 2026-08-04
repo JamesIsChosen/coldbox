@@ -116,6 +116,37 @@ test('CSP hashes match every inline script and style block', () => {
   assert.doesNotMatch(policy, /'unsafe-inline'/);
 });
 
+test('warm shell CSP preserves the documented network allowlist', () => {
+  runBuild();
+  const html = fs.readFileSync(htmlPath, 'utf8');
+  const policy = cspPolicy(html);
+  const connectSources = cspDirective(policy, 'connect-src');
+  const expectedHosts = [
+    'https://api.coingecko.com',
+    'https://api.coinbase.com',
+    'https://api.kraken.com',
+    'https://api.coinpaprika.com',
+    'https://api.diadata.org',
+    'https://api.frankfurter.app',
+    'https://mempool.space',
+    'https://blockstream.info',
+    'https://eth.llamarpc.com',
+    'https://rpc.ankr.com',
+    'https://api.mainnet-beta.solana.com',
+    'https://lcd.osmosis.zone',
+    'http://localhost:*',
+    'https://localhost:*',
+    'http://127.0.0.1:*'
+  ];
+
+  assert.deepEqual(connectSources.split(/\s+/), expectedHosts);
+  assert.match(policy, /frame-src 'self' blob:/);
+  assert.match(policy, /worker-src blob:/);
+  assert.match(policy, /form-action 'none'/);
+  assert.match(policy, /base-uri 'none'/);
+  assert.match(policy, /object-src 'none'/);
+});
+
 test('CSP hash injection covers multiple inline blocks and detects script tampering', () => {
   const root = createBuildRoot();
   try {
@@ -141,7 +172,7 @@ test('CSP hash injection covers multiple inline blocks and detects script tamper
     }
 
     const alteredScriptBytes = Buffer.from(scripts[0], 'utf8');
-    const tamperOffset = alteredScriptBytes.indexOf(Buffer.from('skeleton', 'utf8'));
+    const tamperOffset = alteredScriptBytes.indexOf(Buffer.from('warm-shell', 'utf8'));
     assert.notEqual(tamperOffset, -1);
     alteredScriptBytes[tamperOffset] ^= 1;
     const alteredScript = alteredScriptBytes.toString('utf8');

@@ -75,6 +75,7 @@ connect-src  https://api.coingecko.com
              https://localhost:*
              http://127.0.0.1:*;
 frame-src    'self' blob:;
+worker-src   blob:;
 form-action  'none';
 base-uri     'none';
 object-src   'none';
