@@ -88,8 +88,8 @@ Foundation work in progress. Wallet, vault, and cryptographic features are not a
 
 - Hash-pinned cold-realm `srcdoc` assembly with `sandbox="allow-scripts allow-downloads"` and no `allow-same-origin`
 - Cold-realm CSP with `connect-src 'none'`, isolated child styling/script, and a warm-shell policy that permits only the pinned child hashes needed by the inherited `srcdoc` policy
-- Chromium and Firefox coverage for per-primitive CSP-blocked network signals, parent DOM/variable isolation, exact sandbox permissions, and explicit fail-closed behavior for iframe creation or readiness timeout
-- ADR-0008 documents why CSP blocking is the contract while primitive-specific throws remain P0.8 defense in depth
+- Chromium and Firefox coverage for per-primitive CSP-correlated throw results, standalone native CSP signals, parent DOM/variable isolation, exact sandbox permissions, and explicit fail-closed behavior for iframe creation or readiness timeout
+- The original P0.6 throw contract is enforced; P0.8 remains responsible for the broader five-primitive runtime guard and CSP canary
 
 ### Added — P0.5 (2026-08-03)
 

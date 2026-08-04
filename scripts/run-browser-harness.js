@@ -182,6 +182,7 @@ async function verifyBuiltFile(browser, engine) {
         coldFrame,
         { requireCspViolation: true }
       );
+      assert.equal(result.signal, 'threw', `${engine}: ${primitive} did not satisfy the literal throw contract`);
       console.log(`${engine}: cold realm ${primitive} reported blocked (${result.signal})`);
     }
     await harness.expectCspViolationInFrame(coldFrame, 'connect-src');
@@ -379,8 +380,13 @@ async function verifyReusableAssertions(browser, engine) {
     assert.ok(frame, `${engine}: harness target did not create a child frame`);
     await frame.locator('#cold-ready').waitFor({ state: 'visible' });
     await harness.expectParentCannotReadFrame();
-    for (const primitive of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'sendBeacon']) {
-      const result = await harness.expectNetworkPrimitiveBlocked(primitive, frame);
+    for (const primitive of ['fetch', 'XMLHttpRequest', 'WebSocket']) {
+      const result = await harness.expectNetworkPrimitiveBlocked(
+        primitive,
+        frame,
+        { requireCspViolation: true }
+      );
+      assert.equal(result.cspViolation, true, `${engine}: standalone native CSP probe lost exact evidence for ${primitive}`);
       console.log(`${engine}: ${primitive} reported blocked (${result.signal})`);
     }
     await harness.expectCspViolationInFrame(frame, 'connect-src');

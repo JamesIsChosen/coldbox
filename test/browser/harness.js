@@ -115,7 +115,9 @@ async function createHarness(page) {
       assert.ok(NETWORK_PRIMITIVES.includes(name), `Unsupported network primitive: ${name}`);
 
       const result = await frame.evaluate(async ({ primitive, requireCspViolation: requireViolation }) => {
-        const url = 'https://coldbox.invalid/network-primitive-test';
+        const url = primitive === 'WebSocket'
+          ? 'wss://coldbox.invalid/network-primitive-test'
+          : 'https://coldbox.invalid/network-primitive-test';
         const blocked = (signal, error = '') => ({ blocked: true, error, signal });
         const allowed = (signal) => ({ blocked: false, error: '', signal });
         const connectViolationCount = () => Array.from(
