@@ -189,6 +189,33 @@ test('cold iframe sandbox rejects an extra permission token in a negative fixtur
   }
 });
 
+test('randomness fallback mutation fails the capability lint and build', () => {
+  const root = createBuildRoot();
+  try {
+    const capabilityPath = path.join(root, 'src', 'capabilities.js');
+    const original = fs.readFileSync(capabilityPath, 'utf8');
+    const mutated = original.replace(
+      'cryptoObject.getRandomValues(sample);',
+      'sample[0] = Math.floor(Math.random() * 256);'
+    );
+    assert.notEqual(mutated, original, 'Randomness mutation fixture did not replace getRandomValues');
+    fs.writeFileSync(capabilityPath, mutated, 'utf8');
+
+    const lint = spawnSync(process.execPath, [path.join(root, 'scripts', 'lint.js'), '--root', root], {
+      cwd: root,
+      encoding: 'utf8'
+    });
+    assert.notEqual(lint.status, 0, 'Capability lint accepted an executable Math.random fallback');
+    assert.match(`${lint.stdout}\n${lint.stderr}`, /Forbidden construct "Math\.random"/);
+
+    const build = runBuildProcessAt(root);
+    assert.notEqual(build.status, 0, 'Build accepted an executable Math.random fallback');
+    assert.match(`${build.stdout}\n${build.stderr}`, /Math\.random/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('airgap canary and lockdown markers are embedded in both realms', () => {
   runBuild();
   const html = fs.readFileSync(htmlPath, 'utf8');
@@ -198,6 +225,9 @@ test('airgap canary and lockdown markers are embedded in both realms', () => {
   assert.match(html, /data-csp-canary/);
   assert.match(html, /data-runtime-neutering/);
   assert.match(html, /data-vault-operations/);
+  assert.match(html, /data-capability-state/);
+  assert.match(html, /crypto\.getRandomValues/);
+  assert.match(html, /worker-src blob:/);
   assert.match(html, /navigatorObject\.onLine/);
   assert.match(html, /navigatorObject\.connection/);
 });

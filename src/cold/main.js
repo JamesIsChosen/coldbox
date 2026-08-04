@@ -1,10 +1,12 @@
 __COLDBOX_PROTOCOL__
 __COLDBOX_AIRGAP__
+__COLDBOX_CAPABILITIES__
 (function () {
   'use strict';
 
   var protocol = window.__coldboxProtocol;
   var airgap = window.__coldboxAirgap;
+  var capabilities = window.__coldboxCapabilities;
   var readyMarker = document.getElementById('cold-ready');
   var protocolWarning = document.getElementById('cold-protocol-warning');
   var details = document.getElementById('cold-realm-details');
@@ -15,6 +17,7 @@ __COLDBOX_AIRGAP__
   var canaryPassed = false;
   var runtimeNeuteringInstalled = false;
   var runtimeViolationCount = 0;
+  var capabilityReport = {};
 
   function recordGlobalMessageAnomaly() {
     globalAnomalyCount += 1;
@@ -36,6 +39,36 @@ __COLDBOX_AIRGAP__
 
   function setAirgapFailure(reason) {
     document.documentElement.setAttribute('data-airgap-state', 'red');
+    document.documentElement.setAttribute('data-lockdown-state', 'full');
+    document.documentElement.setAttribute('data-vault-operations', 'refused');
+    if (details) {
+      details.textContent = reason;
+    }
+  }
+
+  function setCapabilityAttributes(report) {
+    var names = [
+      'randomValues',
+      'cryptoSubtle',
+      'wasm',
+      'workers',
+      'camera',
+      'fileSystemAccess',
+      'blobDownload',
+      'manualExport'
+    ];
+    names.forEach(function (name) {
+      var value = typeof report[name] === 'boolean' ? String(report[name]) : 'unknown';
+      document.documentElement.setAttribute('data-capability-' + name, value);
+    });
+    document.documentElement.setAttribute(
+      'data-capability-state',
+      report.randomValues === true ? 'ready' : 'failed'
+    );
+  }
+
+  function setCapabilityFailure(reason) {
+    document.documentElement.setAttribute('data-capability-state', 'failed');
     document.documentElement.setAttribute('data-lockdown-state', 'full');
     document.documentElement.setAttribute('data-vault-operations', 'refused');
     if (details) {
@@ -68,7 +101,9 @@ __COLDBOX_AIRGAP__
     }
   }
 
-  function completeBootstrap(result) {
+  function completeBootstrap(result, detectedCapabilities) {
+    capabilityReport = detectedCapabilities || {};
+    setCapabilityAttributes(capabilityReport);
     canaryPassed = Boolean(result && result.passed);
     document.documentElement.setAttribute(
       'data-csp-canary',
@@ -95,12 +130,17 @@ __COLDBOX_AIRGAP__
     if (!runtimeNeuteringInstalled) {
       setAirgapFailure('The cold realm network guard could not be installed. Vault operations are refused.');
     }
+    if (capabilityReport.randomValues !== true) {
+      setCapabilityFailure('Required crypto.getRandomValues is unavailable in the cold realm. Coldbox refuses all vault operations and never substitutes Math.random.');
+    }
 
     document.documentElement.setAttribute(
       'data-cold-state',
-      canaryPassed && runtimeNeuteringInstalled ? 'ready' : 'failed'
+      canaryPassed && runtimeNeuteringInstalled && capabilityReport.randomValues === true
+        ? 'ready'
+        : 'failed'
     );
-    if (canaryPassed && runtimeNeuteringInstalled) {
+    if (canaryPassed && runtimeNeuteringInstalled && capabilityReport.randomValues === true) {
       document.documentElement.setAttribute('data-airgap-state', 'green');
       if (readyMarker) {
         readyMarker.textContent = 'Cold realm sealed';
@@ -151,7 +191,15 @@ __COLDBOX_AIRGAP__
           messageChannel: true,
           opaqueOrigin: true,
           cspCanary: canaryPassed,
-          runtimeNeutering: runtimeNeuteringInstalled
+          runtimeNeutering: runtimeNeuteringInstalled,
+          randomValues: capabilityReport.randomValues === true,
+          cryptoSubtle: capabilityReport.cryptoSubtle === true,
+          wasm: capabilityReport.wasm === true,
+          workers: capabilityReport.workers === true,
+          camera: capabilityReport.camera === true,
+          fileSystemAccess: capabilityReport.fileSystemAccess === true,
+          blobDownload: capabilityReport.blobDownload === true,
+          manualExport: capabilityReport.manualExport === true
         }
       }
     );
@@ -162,7 +210,7 @@ __COLDBOX_AIRGAP__
     messagePort.postMessage(readyMessage);
   }
 
-  if (!readyMarker || !window.parent || !protocol || !airgap) {
+  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities) {
     return;
   }
 
@@ -229,7 +277,13 @@ __COLDBOX_AIRGAP__
   window.addEventListener('message', handleGlobalMessage);
   document.documentElement.setAttribute('data-cold-state', 'checking');
   document.documentElement.setAttribute('data-airgap-state', 'checking');
-  airgap.runCanary(airgap.coldCanaryUrl).then(completeBootstrap, function () {
-    completeBootstrap({ passed: false, reason: 'canary-error' });
+  document.documentElement.setAttribute('data-capability-state', 'checking');
+  Promise.all([airgap.runCanary(airgap.coldCanaryUrl), capabilities.detect()]).then(function (results) {
+    completeBootstrap(results[0], results[1]);
+  }, function () {
+    completeBootstrap(
+      { passed: false, reason: 'bootstrap-error' },
+      { randomValues: false }
+    );
   });
 }());

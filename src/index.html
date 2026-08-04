@@ -111,6 +111,70 @@ __COLDBOX_STYLES__
           </div>
         </section>
 
+        <section class="capability-panel" id="capability-panel" data-capability-state="checking" aria-labelledby="capability-panel-title" aria-live="polite">
+          <div class="capability-panel-header">
+            <div>
+              <p class="eyebrow">Boot self-check / P0.9</p>
+              <h2 id="capability-panel-title">Capability self-check</h2>
+              <p id="capability-summary">Coldbox is checking the platform capabilities needed for safe secret work and portable saves.</p>
+            </div>
+            <div class="capability-panel-state" aria-label="Capability self-check status">
+              <span class="status-dot" aria-hidden="true"></span>
+              <span id="capability-panel-label">Checking</span>
+            </div>
+          </div>
+          <div class="capability-list">
+            <article class="capability-row" id="capability-row-random-values" data-capability-row="randomValues" data-state="checking">
+              <div>
+                <h3>Required randomness</h3>
+                <p>The warm shell and cold realm must both expose <code>crypto.getRandomValues</code>. There is no fallback.</p>
+              </div>
+              <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-random-values">Checking</span></div>
+              <p class="capability-row-detail" id="capability-detail-random-values">Checking both realms.</p>
+            </article>
+            <article class="capability-row" id="capability-row-crypto-subtle" data-capability-row="cryptoSubtle" data-state="checking">
+              <div>
+                <h3>WebCrypto</h3>
+                <p>Reports whether <code>crypto.subtle</code> is exposed; cryptographic known-answer tests arrive with P0.10.</p>
+              </div>
+              <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-crypto-subtle">Checking</span></div>
+              <p class="capability-row-detail" id="capability-detail-crypto-subtle">Checking both realms.</p>
+            </article>
+            <article class="capability-row" id="capability-row-wasm" data-capability-row="wasm" data-state="checking">
+              <div>
+                <h3>WebAssembly</h3>
+                <p>Runs a harmless empty-module probe so CSP or platform restrictions are visible.</p>
+              </div>
+              <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-wasm">Checking</span></div>
+              <p class="capability-row-detail" id="capability-detail-wasm">Checking both realms.</p>
+            </article>
+            <article class="capability-row" id="capability-row-workers" data-capability-row="workers" data-state="checking">
+              <div>
+                <h3>Web Workers</h3>
+                <p>Creates and terminates a local blob worker; long tasks can fall back to chunked main-thread work.</p>
+              </div>
+              <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-workers">Checking</span></div>
+              <p class="capability-row-detail" id="capability-detail-workers">Checking both realms.</p>
+            </article>
+            <article class="capability-row" id="capability-row-camera" data-capability-row="camera" data-state="checking">
+              <div>
+                <h3>Camera access</h3>
+                <p>Reports camera API availability without requesting permission at boot.</p>
+              </div>
+              <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-camera">Checking</span></div>
+              <p class="capability-row-detail" id="capability-detail-camera">Checking the warm shell.</p>
+            </article>
+            <article class="capability-row" id="capability-row-save-paths" data-capability-row="savePaths" data-state="checking">
+              <div>
+                <h3>Save paths</h3>
+                <p>Detects File System Access, blob download, and manual text export without writing a file.</p>
+              </div>
+              <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-save-paths">Checking</span></div>
+              <p class="capability-row-detail" id="capability-detail-save-paths">Checking the warm shell.</p>
+            </article>
+          </div>
+        </section>
+
         <section class="page" id="page-dashboard" data-page="dashboard" aria-labelledby="page-title-dashboard">
           <header class="page-header">
             <p class="eyebrow">Workspace / Warm shell</p>

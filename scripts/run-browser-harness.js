@@ -218,6 +218,35 @@ function createCspStrippedFixture(kind) {
   return { kind, path: strippedPath, temporaryRoot };
 }
 
+function createMissingRandomnessFixture() {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-browser-capability-'));
+  for (const directory of ['scripts', 'src', 'vendor']) {
+    fs.cpSync(
+      path.join(projectRoot, directory),
+      path.join(temporaryRoot, directory),
+      { recursive: true }
+    );
+  }
+  const capabilityPath = path.join(temporaryRoot, 'src', 'capabilities.js');
+  const original = fs.readFileSync(capabilityPath, 'utf8');
+  const disabled = original.replace(
+    /  function hasRandomValues\(\) \{[\s\S]*?^  \}\r?\n\r?\n  function hasSubtle/m,
+    '  function hasRandomValues() {\n    return false;\n  }\n\n  function hasSubtle'
+  );
+  assert.notEqual(disabled, original, 'Missing-randomness fixture did not alter the capability probe');
+  fs.writeFileSync(capabilityPath, disabled, 'utf8');
+  const result = spawnSync(process.execPath, [path.join(temporaryRoot, 'scripts', 'build.js')], {
+    cwd: temporaryRoot,
+    encoding: 'utf8',
+    env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' }
+  });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  return {
+    path: path.join(temporaryRoot, 'build', 'coldbox.html'),
+    temporaryRoot
+  };
+}
+
 async function openPage(browser, file) {
   const page = await browser.newPage();
   const harness = await createHarness(page);
@@ -284,7 +313,13 @@ async function verifyBuiltFile(browser, engine) {
     await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible' });
     await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible' });
     await page.locator('#airgap-banner[data-airgap-state="amber"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#capability-panel[data-capability-state="ready"], #capability-panel[data-capability-state="ready-with-warnings"]').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await page.locator('html').getAttribute('data-csp-canary'), 'passed');
+    assert.ok(['ready', 'ready-with-warnings'].includes(await page.locator('html').getAttribute('data-capability-state')));
+    assert.equal(await page.locator('html').getAttribute('data-capability-warm-randomValues'), 'true');
+    assert.equal(await page.locator('html').getAttribute('data-capability-cold-randomValues'), 'true');
+    await page.locator('#capability-row-random-values[data-state="available"]').waitFor({ state: 'visible' });
+    await page.locator('#capability-row-save-paths[data-state="available"]').waitFor({ state: 'visible' });
     assert.equal(await page.locator('#app').getAttribute('data-lockdown-state'), 'none');
     assert.equal(await page.locator('#app').getAttribute('data-vault-operations'), 'guarded');
     const sandbox = await page.locator('#cold-frame').getAttribute('sandbox');
@@ -610,6 +645,44 @@ async function verifyCspStrippedLockdown(browser, engine, kind) {
   }
 }
 
+async function verifyMissingRandomnessLockdown(browser, engine) {
+  const fixture = createMissingRandomnessFixture();
+  try {
+    const { harness, page } = await openPage(browser, fixture.path);
+    try {
+      await page.locator('#app[data-capability-state="failed"]').waitFor({ state: 'visible', timeout: 5000 });
+      await page.locator('#capability-panel[data-capability-state="failed"]').waitFor({ state: 'visible' });
+      assert.equal(
+        await page.locator('html').getAttribute('data-capability-warm-randomValues'),
+        'false',
+        `${engine}: missing-randomness fixture did not fail the warm capability check`
+      );
+      assert.equal(
+        await page.locator('#app').getAttribute('data-lockdown-state'),
+        'full',
+        `${engine}: missing-randomness fixture did not enter full lockdown`
+      );
+      assert.equal(
+        await page.locator('#app').getAttribute('data-vault-operations'),
+        'refused',
+        `${engine}: missing-randomness fixture did not refuse vault operations`
+      );
+      assert.equal(await page.locator('#cold-frame').count(), 0, `${engine}: missing-randomness fixture left a cold frame active`);
+      await harness.expectCspViolation('connect-src');
+      await harness.expectNoConsoleErrors({
+        allowedFragments: [CANARY_ERROR_FRAGMENT, COLD_CANARY_ERROR_FRAGMENT]
+      });
+      const failureText = await page.locator('#cold-realm-failure').textContent();
+      assert.match(failureText, /never substitutes Math\.random/);
+      console.log(`${engine}: missing getRandomValues entered full lockdown and refused vault operations`);
+    } finally {
+      await closePage(page);
+    }
+  } finally {
+    fs.rmSync(fixture.temporaryRoot, { force: true, recursive: true });
+  }
+}
+
 async function verifyTamperedBuiltFile(browser, engine) {
   const tampered = createTamperedBuildFixture();
   try {
@@ -770,6 +843,7 @@ async function run() {
       await verifyCspStrippedLockdown(browser, engine, 'cold-only');
       await verifyCspStrippedLockdown(browser, engine, 'warm-only');
       await verifyCspStrippedLockdown(browser, engine, 'both');
+      await verifyMissingRandomnessLockdown(browser, engine);
       await verifyTamperedBuiltFile(browser, engine);
       await verifyCspFixture(browser, engine);
       await verifyUntamperedFixture(browser, engine);

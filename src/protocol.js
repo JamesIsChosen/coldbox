@@ -184,7 +184,12 @@
       'workers',
       'opaqueOrigin',
       'cspCanary',
-      'runtimeNeutering'
+      'runtimeNeutering',
+      'randomValues',
+      'camera',
+      'fileSystemAccess',
+      'blobDownload',
+      'manualExport'
     ].forEach(function (key) {
       if (typeof value[key] === 'boolean') {
         result[key] = value[key];

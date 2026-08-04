@@ -104,6 +104,14 @@ Foundation work in progress. Wallet, vault, and cryptographic features are not a
 - Checking/green/amber/red airgap banner states driven by `navigator.onLine`, `navigator.connection`, focus, online/offline events, connection changes, and a five-second refresh interval
 - Chromium/Firefox browser-harness coverage for offline emulation, warm-only/cold-only/both-policy stripping, exact canary URLs, prototype restoration, and all five runtime network primitives
 
+### Added — P0.9 (2026-08-03)
+
+- Boot-time capability self-check panel covering `crypto.getRandomValues`, `crypto.subtle`, WASM, Workers, camera API availability, and the three documented save-path capabilities
+- Hard fail and full lockdown when required `crypto.getRandomValues` is missing in either realm; no `Math.random` substitution is present or permitted
+- Capability-specific lint and build regression guard rejects executable `Math.random()` substitutions in the required randomness path
+- Warm/cold capability reporting, optional-capability warnings, worker-capability CSP support, and visible save-path availability summary
+- Chromium/Firefox browser-harness coverage for normal capability reporting and the missing-randomness refusal path; physical Safari/mobile confirmation remains P0.19
+
 ### Added — P0.5 (2026-08-03)
 
 - Responsive warm-shell skeleton with desktop navigation rail, mobile tab bar, overflow menu, hash routing, and dark/light mode

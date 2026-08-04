@@ -47,9 +47,13 @@ function assemble() {
   let document = readSource('index.html');
   const protocolSource = readSource('protocol.js');
   const airgapSource = readSource('airgap.js');
-  const coldRealmDocument = injectColdCspHashes(assembleColdRealm(protocolSource, airgapSource));
+  const capabilitiesSource = readSource('capabilities.js');
+  const coldRealmDocument = injectColdCspHashes(
+    assembleColdRealm(protocolSource, airgapSource, capabilitiesSource)
+  );
   let mainScript = injectOnce(readSource('main.js'), '__COLDBOX_PROTOCOL__', protocolSource);
   mainScript = injectOnce(mainScript, '__COLDBOX_AIRGAP__', airgapSource);
+  mainScript = injectOnce(mainScript, '__COLDBOX_CAPABILITIES__', capabilitiesSource);
   mainScript = injectOnce(
     mainScript,
     '__COLDBOX_COLD_REALM_DOCUMENT__',
@@ -96,10 +100,14 @@ function assemble() {
   return ensureTrailingLf(document);
 }
 
-function assembleColdRealm(protocolSource, airgapSource) {
+function assembleColdRealm(protocolSource, airgapSource, capabilitiesSource) {
   let document = readSource('cold/index.html');
   const coldMainScript = injectOnce(
-    injectOnce(readSource('cold/main.js'), '__COLDBOX_AIRGAP__', airgapSource),
+    injectOnce(
+      injectOnce(readSource('cold/main.js'), '__COLDBOX_AIRGAP__', airgapSource),
+      '__COLDBOX_CAPABILITIES__',
+      capabilitiesSource
+    ),
     '__COLDBOX_PROTOCOL__',
     protocolSource
   );
@@ -120,7 +128,8 @@ function assembleColdRealm(protocolSource, airgapSource) {
     '__COLDBOX_COLD_STYLES__',
     '__COLDBOX_COLD_SCRIPT__',
     '__COLDBOX_PROTOCOL__',
-    '__COLDBOX_AIRGAP__'
+    '__COLDBOX_AIRGAP__',
+    '__COLDBOX_CAPABILITIES__'
   ]) {
     if (document.includes(placeholder)) {
       throw new Error(`Unresolved cold-realm source placeholder: ${placeholder}`);

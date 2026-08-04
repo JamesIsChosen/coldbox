@@ -91,11 +91,11 @@ Nothing above this phase is safe to build until the container is trustworthy.
   **Accept:** both exact canaries fire independently; warm-only, cold-only, and both-policy CSP stripping go to full lockdown and refuse vault operations; banner reflects actual network state within 5 s.
   🌐 *Verified by the P0.3a harness in headless Chromium and Firefox, including Playwright offline emulation, asymmetric/both-policy CSP lockdown, exact canary URL checks, prototype restoration checks, and all five cold-realm network primitives. Real-device confirmation is P0.19.*
 
-- [ ] **P0.9 — Capability self-check panel**
+- [x] **P0.9 — Capability self-check panel**
   *Deps: P0.8*
   Boot-time detection of `getRandomValues`, `crypto.subtle`, WASM, Workers, camera, and available save paths.
   **Accept:** accurate on every platform in the device matrix; **hard-fails with an explanation if `getRandomValues` is absent**, never substituting `Math.random`.
-  🌐 *Harness covers Chromium and Firefox. Safari and mobile accuracy is confirmed at P0.19 — do not mark those platforms verified without real devices.*
+  🌐 *Verified by the P0.3a harness in headless Chromium and Firefox, including the missing-`getRandomValues` lockdown fixture. Safari and mobile accuracy is confirmed at P0.19 — no real-device platform result is inferred here.*
 
 ### Cryptography and vault
 
