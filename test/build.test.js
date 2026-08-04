@@ -189,6 +189,19 @@ test('cold iframe sandbox rejects an extra permission token in a negative fixtur
   }
 });
 
+test('airgap canary and lockdown markers are embedded in both realms', () => {
+  runBuild();
+  const html = fs.readFileSync(htmlPath, 'utf8');
+
+  assert.ok((html.match(/coldbox\.invalid\/csp-canary/g) || []).length >= 2);
+  assert.ok((html.match(/localhost:9\/cold-csp-canary/g) || []).length >= 2);
+  assert.match(html, /data-csp-canary/);
+  assert.match(html, /data-runtime-neutering/);
+  assert.match(html, /data-vault-operations/);
+  assert.match(html, /navigatorObject\.onLine/);
+  assert.match(html, /navigatorObject\.connection/);
+});
+
 test('CSP hash injection covers multiple inline blocks and detects script tampering', () => {
   const root = createBuildRoot();
   try {

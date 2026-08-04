@@ -1,10 +1,12 @@
 
 __COLDBOX_PROTOCOL__
+__COLDBOX_AIRGAP__
 (function () {
   'use strict';
 
   var coldRealmDocument = __COLDBOX_COLD_REALM_DOCUMENT__;
   var protocol = window.__coldboxProtocol;
+  var airgap = window.__coldboxAirgap;
   var root = document.documentElement;
   var app = document.getElementById('app');
   var main = document.getElementById('main-content');
@@ -23,6 +25,10 @@ __COLDBOX_PROTOCOL__
   var coldRealmFailure = document.getElementById('cold-realm-failure');
   var protocolWarning = document.getElementById('protocol-warning');
   var coldRealmHost = document.getElementById('cold-realm-host');
+  var airgapBanner = document.getElementById('airgap-banner');
+  var airgapBannerTitle = document.getElementById('airgap-banner-title');
+  var airgapBannerCopy = document.getElementById('airgap-banner-copy');
+  var airgapBannerLabel = document.getElementById('airgap-banner-label');
   var coldFrame = null;
   var coldBootTimer = null;
   var coldRealmFailed = false;
@@ -30,6 +36,9 @@ __COLDBOX_PROTOCOL__
   var handshakeState = 'starting';
   var globalAnomalyCount = 0;
   var channelAnomalyCount = 0;
+  var airgapFailure = false;
+  var warmCanaryPassed = false;
+  var coldCanaryPassed = false;
   var pages = Array.prototype.slice.call(document.querySelectorAll('[data-page]'));
   var routeLinks = Array.prototype.slice.call(document.querySelectorAll('[data-route]'));
 
@@ -133,7 +142,90 @@ __COLDBOX_PROTOCOL__
     }
   }
 
-  function setColdRealmFailure(reason) {
+  function setAirgapBanner(state, title, copy, label) {
+    root.setAttribute('data-airgap-state', state);
+    app.setAttribute('data-airgap-state', state);
+    if (!airgapBanner) {
+      return;
+    }
+    airgapBanner.setAttribute('data-airgap-state', state);
+    if (airgapBannerTitle) {
+      airgapBannerTitle.textContent = title;
+    }
+    if (airgapBannerCopy) {
+      airgapBannerCopy.textContent = copy;
+    }
+    if (airgapBannerLabel) {
+      airgapBannerLabel.textContent = label;
+    }
+  }
+
+  function updateAirgapBanner() {
+    if (!airgap) {
+      return;
+    }
+    var snapshot = airgap.getNetworkSnapshot();
+    root.setAttribute(
+      'data-network-online',
+      snapshot.online === null ? 'unknown' : String(snapshot.online)
+    );
+    root.setAttribute('data-network-connection', snapshot.connection);
+    if (airgapFailure) {
+      setAirgapBanner(
+        'red',
+        'CSP failure / locked down',
+        'The CSP canary or runtime network guard failed. Vault operations are refused until a verified build is loaded.',
+        'Locked down'
+      );
+      return;
+    }
+    if (!warmCanaryPassed || !coldCanaryPassed || handshakeState !== 'ready') {
+      setAirgapBanner(
+        'checking',
+        'Checking the airgap guard',
+        'Coldbox is confirming both CSP policies and the private cold-realm channel before vault operations can be considered.',
+        'Checking'
+      );
+      return;
+    }
+    root.setAttribute('data-lockdown-state', 'none');
+    root.setAttribute('data-vault-operations', 'guarded');
+    app.setAttribute('data-lockdown-state', 'none');
+    app.setAttribute('data-vault-operations', 'guarded');
+    if (snapshot.online === false) {
+      setAirgapBanner(
+        'green',
+        'Airgapped / guard verified',
+        'No network interface is reported. The cold realm remains sealed by CSP and its runtime network guard.',
+        'Airgapped'
+      );
+      return;
+    }
+    setAirgapBanner(
+      'amber',
+      snapshot.online === true ? 'Online / secrets sealed' : 'Network state unknown / secrets sealed',
+      snapshot.online === true
+        ? 'The warm shell may use its documented public network allowlist. Secret-capable work remains inside the airgapped cold realm.'
+        : 'The browser did not expose a definitive network state. The cold realm remains sealed by CSP and its runtime network guard.',
+      snapshot.online === true ? 'Online' : 'Unknown'
+    );
+  }
+
+  function setAirgapFailure(reason, keepColdFrame) {
+    if (airgapFailure) {
+      return;
+    }
+    airgapFailure = true;
+    coldRealmFailed = true;
+    handshakeState = 'failed';
+    root.setAttribute('data-lockdown-state', 'full');
+    root.setAttribute('data-vault-operations', 'refused');
+    root.setAttribute('data-cold-state', 'failed');
+    root.setAttribute('data-handshake-state', 'failed');
+    app.setAttribute('data-lockdown-state', 'full');
+    app.setAttribute('data-vault-operations', 'refused');
+    app.setAttribute('data-cold-state', 'failed');
+    app.setAttribute('data-handshake-state', 'failed');
     if (coldBootTimer !== null) {
       window.clearTimeout(coldBootTimer);
       coldBootTimer = null;
@@ -142,36 +234,45 @@ __COLDBOX_PROTOCOL__
       try {
         coldMessagePort.close();
       } catch (error) {
-        // A failed handshake must remain terminal even if the port is already closed.
+        // Lockdown remains terminal even if the port is already closed.
       }
       coldMessagePort = null;
     }
-    coldRealmFailed = true;
-    handshakeState = 'failed';
     window.removeEventListener('message', handleColdRealmMessage);
-    if (coldFrame && coldFrame.parentNode) {
+    if (!keepColdFrame && coldFrame && coldFrame.parentNode) {
       coldFrame.parentNode.removeChild(coldFrame);
+      coldFrame = null;
     }
-    coldFrame = null;
     if (coldRealmStatus) {
       coldRealmStatus.setAttribute('data-cold-state', 'failed');
     }
     if (coldRealmStatusTitle) {
-      coldRealmStatusTitle.textContent = 'The sealed realm is unavailable';
+      coldRealmStatusTitle.textContent = 'The airgap guard is unavailable';
     }
     if (coldRealmStatusCopy) {
-      coldRealmStatusCopy.textContent = reason === 'handshake-timeout'
-        ? 'The sealed realm started, but its private channel did not complete. Coldbox refuses to continue without a validated protocol.'
-        : 'The isolated frame did not establish its boot signal. Coldbox refuses to continue as a single-realm app.';
+      coldRealmStatusCopy.textContent = reason;
     }
     if (coldRealmStatusLabel) {
       coldRealmStatusLabel.textContent = 'Locked down';
     }
     if (coldRealmFailure) {
+      coldRealmFailure.textContent = 'Coldbox is locked down because its airgap guarantee could not be established. No vault operation is available in this state.';
       coldRealmFailure.hidden = false;
     }
-    app.setAttribute('data-cold-state', 'failed');
-    app.setAttribute('data-handshake-state', 'failed');
+    setAirgapBanner(
+      'red',
+      'CSP failure / locked down',
+      'The CSP canary or runtime network guard failed. Vault operations are refused until a verified build is loaded.',
+      'Locked down'
+    );
+  }
+
+  function setColdRealmFailure(reason) {
+    setAirgapFailure(
+      reason === 'handshake-timeout'
+        ? 'The sealed realm started, but its private channel did not complete. Coldbox refuses to continue without a validated protocol.'
+        : 'The isolated frame did not establish its boot signal. Coldbox refuses to continue as a single-realm app.'
+    );
   }
 
   function setColdRealmReady() {
@@ -190,6 +291,7 @@ __COLDBOX_PROTOCOL__
     if (coldRealmStatusLabel) {
       coldRealmStatusLabel.textContent = 'Ready';
     }
+    updateAirgapBanner();
     if (coldRealmFailure) {
       coldRealmFailure.hidden = true;
     }
@@ -251,15 +353,37 @@ __COLDBOX_PROTOCOL__
 
   function handleProtocolPortMessage(event) {
     var message = protocol.validateMessage('cold-to-warm', event.data);
-    if (!message || handshakeState !== 'pending' || message.type !== 'ready') {
+    if (!message) {
       recordChannelAnomaly();
       return;
     }
-    setHandshakeReady();
+    if (handshakeState === 'pending' && message.type === 'ready') {
+      var capabilities = message.payload.capabilities;
+      if (!capabilities.cspCanary || !capabilities.runtimeNeutering) {
+        setAirgapFailure('The cold realm airgap guard did not pass its CSP canary or runtime-neutering check. Vault operations are refused.');
+        return;
+      }
+      coldCanaryPassed = true;
+      root.setAttribute('data-cold-csp-canary', 'passed');
+      root.setAttribute('data-cold-runtime-neutering', 'installed');
+      setHandshakeReady();
+      updateAirgapBanner();
+      return;
+    }
+    if (handshakeState === 'ready'
+      && message.type === 'status'
+      && message.payload.locked
+      && message.payload.warnings.indexOf('airgap-violation') !== -1) {
+      setAirgapFailure('The cold realm runtime network guard blocked an unexpected request. Vault operations are refused.', true);
+      return;
+    }
+    recordChannelAnomaly();
   }
 
   function beginHandshake() {
-    if (handshakeState !== 'starting' || typeof window.MessageChannel !== 'function') {
+    if (airgapFailure
+      || handshakeState !== 'starting'
+      || typeof window.MessageChannel !== 'function') {
       setColdRealmFailure('handshake-unavailable');
       return;
     }
@@ -273,6 +397,50 @@ __COLDBOX_PROTOCOL__
     } catch (error) {
       setColdRealmFailure('handshake-failed');
     }
+  }
+
+  function handleWarmCanaryResult(result) {
+    warmCanaryPassed = Boolean(result && result.passed);
+    root.setAttribute('data-csp-canary', warmCanaryPassed ? 'passed' : 'failed');
+    root.setAttribute(
+      'data-csp-canary-reason',
+      result && result.reason ? result.reason : 'unknown'
+    );
+    if (!warmCanaryPassed) {
+      setAirgapFailure('The warm shell CSP canary did not fire. Coldbox refuses to continue without a verified policy.');
+      return;
+    }
+    updateAirgapBanner();
+  }
+
+  function startWarmCanary() {
+    root.setAttribute('data-csp-canary', 'checking');
+    if (!airgap) {
+      handleWarmCanaryResult({ passed: false, reason: 'airgap-guard-unavailable' });
+      return;
+    }
+    airgap.runCanary().then(handleWarmCanaryResult, function () {
+      handleWarmCanaryResult({ passed: false, reason: 'canary-error' });
+    });
+  }
+
+  function startNetworkMonitor() {
+    if (!airgap) {
+      return;
+    }
+    var connection = window.navigator && (
+      window.navigator.connection
+      || window.navigator.mozConnection
+      || window.navigator.webkitConnection
+    );
+    window.addEventListener('online', updateAirgapBanner);
+    window.addEventListener('offline', updateAirgapBanner);
+    window.addEventListener('focus', updateAirgapBanner);
+    if (connection && typeof connection.addEventListener === 'function') {
+      connection.addEventListener('change', updateAirgapBanner);
+    }
+    window.setInterval(updateAirgapBanner, 5000);
+    updateAirgapBanner();
   }
 
   function handleColdRealmMessage(event) {
@@ -294,7 +462,7 @@ __COLDBOX_PROTOCOL__
   }
 
   function startColdRealm() {
-    if (!coldRealmHost) {
+    if (airgapFailure || !coldRealmHost) {
       setColdRealmFailure();
       return;
     }
@@ -365,6 +533,9 @@ __COLDBOX_PROTOCOL__
   app.setAttribute('data-routing-ready', 'true');
   app.setAttribute('data-cold-state', 'starting');
   app.setAttribute('data-handshake-state', 'starting');
+  app.setAttribute('data-airgap-state', 'checking');
+  app.setAttribute('data-lockdown-state', 'checking');
+  app.setAttribute('data-vault-operations', 'refused');
   renderRoute(false);
 
   if (themeToggle) {
@@ -393,5 +564,7 @@ __COLDBOX_PROTOCOL__
   window.addEventListener('hashchange', function () {
     renderRoute(true);
   });
+  startNetworkMonitor();
+  startWarmCanary();
   startColdRealm();
 }());

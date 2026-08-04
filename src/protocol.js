@@ -53,6 +53,7 @@
     'csp-active',
     'online',
     'offline',
+    'airgap-violation',
     'webcrypto-unavailable',
     'worker-unavailable'
   ]);
@@ -176,7 +177,15 @@
       return null;
     }
     var result = {};
-    ['messageChannel', 'cryptoSubtle', 'wasm', 'workers', 'opaqueOrigin'].forEach(function (key) {
+    [
+      'messageChannel',
+      'cryptoSubtle',
+      'wasm',
+      'workers',
+      'opaqueOrigin',
+      'cspCanary',
+      'runtimeNeutering'
+    ].forEach(function (key) {
       if (typeof value[key] === 'boolean') {
         result[key] = value[key];
       }

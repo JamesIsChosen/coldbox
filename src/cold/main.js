@@ -1,14 +1,20 @@
 __COLDBOX_PROTOCOL__
+__COLDBOX_AIRGAP__
 (function () {
   'use strict';
 
   var protocol = window.__coldboxProtocol;
+  var airgap = window.__coldboxAirgap;
   var readyMarker = document.getElementById('cold-ready');
   var protocolWarning = document.getElementById('cold-protocol-warning');
+  var details = document.getElementById('cold-realm-details');
   var messagePort = null;
   var handshakeState = 'starting';
   var globalAnomalyCount = 0;
   var channelAnomalyCount = 0;
+  var canaryPassed = false;
+  var runtimeNeuteringInstalled = false;
+  var runtimeViolationCount = 0;
 
   function recordGlobalMessageAnomaly() {
     globalAnomalyCount += 1;
@@ -26,6 +32,84 @@ __COLDBOX_PROTOCOL__
       protocolWarning.hidden = false;
     }
     console.warn('Coldbox discarded an invalid channel message.');
+  }
+
+  function setAirgapFailure(reason) {
+    document.documentElement.setAttribute('data-airgap-state', 'red');
+    document.documentElement.setAttribute('data-lockdown-state', 'full');
+    document.documentElement.setAttribute('data-vault-operations', 'refused');
+    if (details) {
+      details.textContent = reason;
+    }
+  }
+
+  function recordRuntimeViolation(name) {
+    runtimeViolationCount += 1;
+    document.documentElement.setAttribute(
+      'data-runtime-neutering-violations',
+      String(runtimeViolationCount)
+    );
+    setAirgapFailure('Airgap guard blocked ' + name + '. Vault operations remain refused.');
+    console.warn('Coldbox runtime airgap blocked ' + name + '.');
+    if (messagePort) {
+      var status = protocol.createMessage(
+        'cold-to-warm',
+        'cold-airgap-violation-' + String(runtimeViolationCount),
+        'status',
+        {
+          locked: true,
+          mode: 'cold',
+          warnings: ['airgap-violation']
+        }
+      );
+      if (status) {
+        messagePort.postMessage(status);
+      }
+    }
+  }
+
+  function completeBootstrap(result) {
+    canaryPassed = Boolean(result && result.passed);
+    document.documentElement.setAttribute(
+      'data-csp-canary',
+      canaryPassed ? 'passed' : 'failed'
+    );
+    document.documentElement.setAttribute(
+      'data-csp-canary-reason',
+      result && result.reason ? result.reason : 'unknown'
+    );
+    if (!canaryPassed) {
+      setAirgapFailure('The cold realm CSP canary did not fire. Vault operations are refused.');
+    }
+
+    var neutering = airgap.neuterNetwork(recordRuntimeViolation);
+    runtimeNeuteringInstalled = neutering.installed;
+    document.documentElement.setAttribute(
+      'data-runtime-neutering',
+      runtimeNeuteringInstalled ? 'installed' : 'failed'
+    );
+    document.documentElement.setAttribute(
+      'data-runtime-neutering-failures',
+      neutering.failed.join(',')
+    );
+    if (!runtimeNeuteringInstalled) {
+      setAirgapFailure('The cold realm network guard could not be installed. Vault operations are refused.');
+    }
+
+    document.documentElement.setAttribute(
+      'data-cold-state',
+      canaryPassed && runtimeNeuteringInstalled ? 'ready' : 'failed'
+    );
+    if (canaryPassed && runtimeNeuteringInstalled) {
+      document.documentElement.setAttribute('data-airgap-state', 'green');
+      if (readyMarker) {
+        readyMarker.textContent = 'Cold realm sealed';
+      }
+      if (details) {
+        details.textContent = 'CSP canary passed and runtime network guard installed.';
+      }
+    }
+    window.parent.postMessage({ type: 'cold.ready' }, '*');
   }
 
   function handleChannelMessage(event) {
@@ -65,7 +149,9 @@ __COLDBOX_PROTOCOL__
       {
         capabilities: {
           messageChannel: true,
-          opaqueOrigin: true
+          opaqueOrigin: true,
+          cspCanary: canaryPassed,
+          runtimeNeutering: runtimeNeuteringInstalled
         }
       }
     );
@@ -76,7 +162,7 @@ __COLDBOX_PROTOCOL__
     messagePort.postMessage(readyMessage);
   }
 
-  if (!readyMarker || !window.parent || !protocol) {
+  if (!readyMarker || !window.parent || !protocol || !airgap) {
     return;
   }
 
@@ -141,6 +227,9 @@ __COLDBOX_PROTOCOL__
 
   installThrowContract();
   window.addEventListener('message', handleGlobalMessage);
-  document.documentElement.setAttribute('data-cold-state', 'ready');
-  window.parent.postMessage({ type: 'cold.ready' }, '*');
+  document.documentElement.setAttribute('data-cold-state', 'checking');
+  document.documentElement.setAttribute('data-airgap-state', 'checking');
+  airgap.runCanary(airgap.coldCanaryUrl).then(completeBootstrap, function () {
+    completeBootstrap({ passed: false, reason: 'canary-error' });
+  });
 }());

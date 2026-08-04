@@ -85,11 +85,11 @@ Nothing above this phase is safe to build until the container is trustworthy.
   **Accept:** schema rejects unknown types and strips unknown fields; a test asserts **no message type can carry a mnemonic, private key, xprv, passphrase, or secret-compartment plaintext**; messages injected on the global handler post-handshake are discarded and logged.
   🌐 *Verified by the P0.3a harness in headless Chromium and Firefox. Real-device confirmation is P0.19.*
 
-- [ ] **P0.8 — CSP canary and airgap guard**
+- [x] **P0.8 — CSP canary and airgap guard**
   *Deps: P0.7*
-  Deliberate policy-violating request as a canary; `navigator.onLine` and `connection` signals; banner states green/amber/red; runtime neutering of network primitives inside the cold realm.
-  **Accept:** canary fires correctly in both realms; a build with CSP stripped goes to full lockdown and refuses vault operations; banner reflects actual network state within 5 s.
-  🌐 *Verified by the P0.3a harness. Network-state simulation uses Playwright's offline emulation.*
+  Deliberate exact-URL policy-violating requests as warm and cold canaries; `navigator.onLine` and `connection` signals; checking/green/amber/red banner states; prototype-safe runtime neutering of network primitives inside the cold realm.
+  **Accept:** both exact canaries fire independently; warm-only, cold-only, and both-policy CSP stripping go to full lockdown and refuse vault operations; banner reflects actual network state within 5 s.
+  🌐 *Verified by the P0.3a harness in headless Chromium and Firefox, including Playwright offline emulation, asymmetric/both-policy CSP lockdown, exact canary URL checks, prototype restoration checks, and all five cold-realm network primitives. Real-device confirmation is P0.19.*
 
 - [ ] **P0.9 — Capability self-check panel**
   *Deps: P0.8*

@@ -373,6 +373,81 @@ a:focus-visible {
   border-color: #d97777;
 }
 
+.airgap-banner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.9rem 1rem;
+  max-width: 78rem;
+  margin: 0.75rem auto 0;
+  padding: 0.85rem 1.15rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.airgap-banner-copy h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(0.92rem, 1.8vw, 1.15rem);
+  letter-spacing: -0.02em;
+}
+
+.airgap-banner-copy p:last-child {
+  max-width: 52rem;
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.airgap-banner-state {
+  display: inline-flex;
+  align-items: center;
+  align-self: start;
+  gap: 0.45rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.airgap-banner[data-airgap-state="green"] {
+  border-color: var(--success);
+}
+
+.airgap-banner[data-airgap-state="green"] .status-dot {
+  background: var(--success);
+  box-shadow: 0 0 0 0.2rem rgba(110, 231, 183, 0.16);
+  box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--success) 16%, transparent);
+}
+
+.airgap-banner[data-airgap-state="amber"] {
+  border-color: #d6a84f;
+}
+
+.airgap-banner[data-airgap-state="amber"] .status-dot {
+  background: #e7b75d;
+  box-shadow: 0 0 0 0.2rem rgba(231, 183, 93, 0.16);
+}
+
+.airgap-banner[data-airgap-state="red"] {
+  border-color: #d97777;
+  background: #3a1e2a;
+}
+
+.airgap-banner[data-airgap-state="red"] .status-dot {
+  background: #f08c8c;
+  box-shadow: 0 0 0 0.2rem rgba(240, 140, 140, 0.16);
+}
+
+.airgap-banner[data-airgap-state="checking"] .status-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 0.2rem rgba(125, 211, 252, 0.16);
+}
+
 .breadcrumbs {
   display: flex;
   align-items: center;
@@ -633,7 +708,18 @@ a:focus-visible {
     padding: 0.9rem;
   }
 
+  .airgap-banner {
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: 0.7rem;
+    padding: 0.85rem 0.9rem;
+  }
+
   .realm-status-state {
+    align-self: start;
+    justify-self: start;
+  }
+
+  .airgap-banner-state {
     align-self: start;
     justify-self: start;
   }

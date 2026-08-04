@@ -127,7 +127,10 @@ The public projection deliberately contains no free-form text fields. It permits
 |---|---|
 | Cold realm iframe won't instantiate | **Hard fail.** Explain, refuse to open a vault. No single-realm fallback |
 | Handshake times out | Hard fail with diagnostics |
-| CSP canary succeeds (policy not active) | Full lockdown, refuse vault operations |
+| CSP canary fails (the exact policy violation is not observed) | Full lockdown, refuse vault operations |
+| CSP canary passes (the exact policy violation is observed) | Continue only after the matching cold capability and private handshake pass |
+| Cold runtime network guard cannot be installed | Full lockdown, refuse vault operations |
+| Cold runtime network violation is reported | Full lockdown, refuse vault operations and surface the airgap warning |
 | `getRandomValues` missing | Hard fail; dice entropy still available for offline use |
 | `crypto.subtle` missing | Silent, expected. Use pure-JS, report in capability panel |
 | Workers unavailable | Silent. Chunked main-thread |

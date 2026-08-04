@@ -232,11 +232,11 @@ The allowlist is **pinned at build time** and visible in the Reference → Prove
 
 ### 6.3 Runtime neutering and lockout
 
-Inside the cold realm: overwrite `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `navigator.sendBeacon` with throwing stubs, then freeze. Defense in depth behind the CSP, not instead of it.
+Inside the cold realm: overwrite `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, and `navigator.sendBeacon` with throwing stubs on both the exposed objects and their prototype owners, then freeze the replacement properties. Defense in depth behind the CSP, not instead of it.
 
 Live signals: `navigator.onLine`, `navigator.connection`, and a CSP canary — a request the policy must reject. If it *isn't* rejected, CSP isn't active and the app goes to full lockdown and refuses to open the vault.
 
-Banner states: green **airgapped** · amber **online — secrets sealed** · red **CSP failure — locked down**. Re-evaluated on `online`/`offline` events, tab focus, and a 5-second interval.
+Banner states: **checking** while the airgap is being established; green **airgapped**; amber **online — secrets sealed** or **network state unknown — secrets sealed**; red **CSP failure / locked down**. Re-evaluated on `online`/`offline` events, tab focus, connection changes, and a 5-second interval.
 
 **Honesty note shown in the UI:** `navigator.onLine` reports whether a network interface exists, not whether the internet is reachable. It catches Wi-Fi-left-on; a blackholed link can read as offline. Mode detection is a convenience. The actual guarantee is the cold realm's CSP, which does not depend on detection being correct.
 
