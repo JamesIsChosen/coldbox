@@ -34,6 +34,7 @@ function baseContext() {
     console,
     crypto: crypto.webcrypto,
     document,
+    navigator: { onLine: false },
     setTimeout
   };
   context.window = context;
@@ -118,8 +119,19 @@ function createPublicTrackingContext() {
   return { context, infos };
 }
 
+function createTrackingContext() {
+  return createPublicTrackingContext();
+}
+
 function cloneBytes(value) {
   return new Uint8Array(value);
+}
+
+function compartmentNonce(vault, header, secret) {
+  const publicNonceOffset = header.wrappedDekLength + 65;
+  const secretNonceOffset = publicNonceOffset + 12 + header.publicLength;
+  const offset = secret ? secretNonceOffset : publicNonceOffset;
+  return vault.slice(offset, offset + 12);
 }
 
 async function expectAuthenticationFailure(operation) {
@@ -197,6 +209,58 @@ test('P0.12 all Argon2id profiles round-trip and remain stored in the header', a
     assert.equal(opened.publicData.profile, profile);
     assert.equal(opened.secretData, null);
   }
+});
+
+test('P0.11 online opening never derives or decrypts the secret compartment', async () => {
+  const tracked = createTrackingContext();
+  const context = tracked.context;
+  const passphrase = 'online mode passphrase';
+  const vault = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fallback',
+    publicData: { wallets: [] },
+    secretData: { seeds: [{ mnemonic: 'test only' }] }
+  });
+  context.navigator.onLine = true;
+  tracked.infos.length = 0;
+  const opened = await context.__coldboxVault.open(vault, passphrase);
+  assert.equal(opened.secretData, null);
+  assert.deepEqual(tracked.infos, ['cbx/public/v1']);
+  await expectAuthenticationFailure(
+    () => context.__coldboxVault.open(vault, passphrase, 'offline')
+  );
+});
+
+test('P0.13 vault sessions rotate re-encrypted nonces and preserve online secret bytes', async () => {
+  const context = createFormatContext();
+  const passphrase = 'session save passphrase';
+  const vault = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fallback',
+    publicData: { wallets: [{ id: 'public' }] },
+    secretData: { seeds: [{ mnemonic: 'test only' }] }
+  });
+  const header = context.__coldboxVault.inspectHeader(vault);
+
+  const offlineSession = await context.__coldboxVault.openSession(vault, passphrase, 'offline');
+  const offlineFirst = await offlineSession.save();
+  const offlineSecond = await offlineSession.save();
+  assert.notDeepEqual(
+    compartmentNonce(offlineFirst, header, false),
+    compartmentNonce(offlineSecond, header, false)
+  );
+  assert.notDeepEqual(
+    compartmentNonce(offlineFirst, header, true),
+    compartmentNonce(offlineSecond, header, true)
+  );
+  offlineSession.close();
+
+  context.navigator.onLine = true;
+  const onlineSession = await context.__coldboxVault.openSession(vault, passphrase, 'online');
+  const onlineSaved = await onlineSession.save();
+  const secretOffset = 65 + header.wrappedDekLength + 12 + header.publicLength;
+  assert.deepEqual(onlineSaved.slice(secretOffset), vault.slice(secretOffset));
+  onlineSession.close();
 });
 
 test('P0.11 authenticates every header byte and keeps corruption errors indistinguishable', async () => {
