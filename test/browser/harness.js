@@ -12,11 +12,14 @@ const NETWORK_PRIMITIVES = Object.freeze([
 
 async function createHarness(page) {
   const consoleErrors = [];
+  const consoleWarnings = [];
   const pageErrors = [];
 
   page.on('console', (message) => {
     if (message.type() === 'error') {
       consoleErrors.push(message.text());
+    } else if (message.type() === 'warning') {
+      consoleWarnings.push(message.text());
     }
   });
   page.on('pageerror', (error) => {
@@ -65,6 +68,14 @@ async function createHarness(page) {
         ...pageErrors.map((message) => `pageerror: ${message}`)
       ];
       assert.equal(details.length, 0, details.join('\n'));
+    },
+
+    async expectConsoleWarning(fragment) {
+      assert.equal(typeof fragment, 'string');
+      assert.ok(
+        consoleWarnings.some((message) => message.includes(fragment)),
+        `Expected console warning containing ${fragment}; observed ${JSON.stringify(consoleWarnings)}`
+      );
     },
 
     async expectNoCspViolations() {

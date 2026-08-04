@@ -164,6 +164,31 @@ Append-only, vault-local. Never leaves the vault.
 
 ---
 
+## Public protocol collection identifiers
+
+The P0.7 `publicData.request` message refers to these public projections by stable collection identifier. The identifier list is explicit so a new entity cannot be silently omitted from cross-realm reads.
+
+| Identifier | Entity |
+|---|---|
+| `seeds` | Seed public metadata (never `storedSecret`) |
+| `wallets` | Wallet |
+| `accounts` | Account |
+| `addresses` | Address |
+| `notes` | Note public records |
+| `devices` | Device |
+| `transactions` | Transaction |
+| `lots` | Lot |
+| `disposals` | Disposal |
+| `basisAllocations` | BasisAllocation |
+| `prices` | PriceSnapshot |
+| `backups` | BackupRecord public location/schedule fields |
+| `contacts` | Contact |
+| `auditLog` | AuditEvent |
+
+UI settings are not a vault entity and are not a public-compartment collection. They are therefore not accepted in `publicData.request`.
+
+---
+
 ## Relationships
 
 ```

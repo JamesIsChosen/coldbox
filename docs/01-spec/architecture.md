@@ -103,6 +103,10 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 2. Payloads are validated against the schema on receipt. Extra fields are stripped, not passed through.
 3. Adding a message type requires review. This is written in [CONTRIBUTING.md](../../CONTRIBUTING.md) because it's the one change that could quietly dismantle the model.
 
+The `publicData.request.collections` allowlist is the public projection of [data-model.md](data-model.md): `seeds`, `wallets`, `accounts`, `addresses`, `notes`, `devices`, `transactions`, `lots`, `disposals`, `basisAllocations`, `prices`, `backups`, `contacts`, and `auditLog`. `settings` is not a vault collection and is rejected rather than silently accepted.
+
+The public projection deliberately contains no free-form text fields. It permits only structurally typed public values: UUIDs, eight-hex-digit fingerprints, validated extended public keys, validated public addresses, and numeric accounting values. Any string-bearing field outside that closed projection, including labels, notes, names, tags, locations, and unknown nested records, is rejected rather than forwarded. Recognizable extended-private-key forms, WIF forms, mnemonic-shaped phrases, and raw 32-byte private-key hex are also rejected. This is the only honest way to enforce the literal no-passphrase/no-secret-plaintext invariant; arbitrary prose cannot be distinguished from a secret by regex. All non-vault messages have a 4 MiB aggregate sanitized-payload limit, and encrypted `vault.open`/`vault.bytes` payloads have a 64 MiB byte limit.
+
 ---
 
 ## Capability assumptions inside the sandbox
@@ -127,7 +131,7 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 | `getRandomValues` missing | Hard fail; dice entropy still available for offline use |
 | `crypto.subtle` missing | Silent, expected. Use pure-JS, report in capability panel |
 | Workers unavailable | Silent. Chunked main-thread |
-| Message on global handler post-handshake | Discard, log, surface a warning |
+| Message on global handler post-handshake | Discard, log, surface a visible warning |
 
 **The governing principle is fail closed.** If the guarantee cannot be established, the app refuses to handle secrets rather than proceeding without it. A tool that silently degrades from "cannot leak" to "probably won't leak" is worse than one that stops, because the user's behaviour doesn't change to match.
 

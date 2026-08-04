@@ -1,8 +1,10 @@
 
+__COLDBOX_PROTOCOL__
 (function () {
   'use strict';
 
   var coldRealmDocument = __COLDBOX_COLD_REALM_DOCUMENT__;
+  var protocol = window.__coldboxProtocol;
   var root = document.documentElement;
   var app = document.getElementById('app');
   var main = document.getElementById('main-content');
@@ -19,11 +21,15 @@
   var coldRealmStatusCopy = document.getElementById('cold-realm-status-copy');
   var coldRealmStatusLabel = document.getElementById('cold-realm-status-label');
   var coldRealmFailure = document.getElementById('cold-realm-failure');
+  var protocolWarning = document.getElementById('protocol-warning');
   var coldRealmHost = document.getElementById('cold-realm-host');
   var coldFrame = null;
   var coldBootTimer = null;
-  var coldRealmReady = false;
   var coldRealmFailed = false;
+  var coldMessagePort = null;
+  var handshakeState = 'starting';
+  var globalAnomalyCount = 0;
+  var channelAnomalyCount = 0;
   var pages = Array.prototype.slice.call(document.querySelectorAll('[data-page]'));
   var routeLinks = Array.prototype.slice.call(document.querySelectorAll('[data-route]'));
 
@@ -127,13 +133,21 @@
     }
   }
 
-  function setColdRealmFailure() {
+  function setColdRealmFailure(reason) {
     if (coldBootTimer !== null) {
       window.clearTimeout(coldBootTimer);
       coldBootTimer = null;
     }
-    coldRealmReady = false;
+    if (coldMessagePort) {
+      try {
+        coldMessagePort.close();
+      } catch (error) {
+        // A failed handshake must remain terminal even if the port is already closed.
+      }
+      coldMessagePort = null;
+    }
     coldRealmFailed = true;
+    handshakeState = 'failed';
     window.removeEventListener('message', handleColdRealmMessage);
     if (coldFrame && coldFrame.parentNode) {
       coldFrame.parentNode.removeChild(coldFrame);
@@ -146,7 +160,9 @@
       coldRealmStatusTitle.textContent = 'The sealed realm is unavailable';
     }
     if (coldRealmStatusCopy) {
-      coldRealmStatusCopy.textContent = 'The isolated frame did not establish its boot signal. Coldbox refuses to continue as a single-realm app.';
+      coldRealmStatusCopy.textContent = reason === 'handshake-timeout'
+        ? 'The sealed realm started, but its private channel did not complete. Coldbox refuses to continue without a validated protocol.'
+        : 'The isolated frame did not establish its boot signal. Coldbox refuses to continue as a single-realm app.';
     }
     if (coldRealmStatusLabel) {
       coldRealmStatusLabel.textContent = 'Locked down';
@@ -155,17 +171,13 @@
       coldRealmFailure.hidden = false;
     }
     app.setAttribute('data-cold-state', 'failed');
+    app.setAttribute('data-handshake-state', 'failed');
   }
 
   function setColdRealmReady() {
     if (coldRealmFailed) {
       return;
     }
-    if (coldBootTimer !== null) {
-      window.clearTimeout(coldBootTimer);
-      coldBootTimer = null;
-    }
-    coldRealmReady = true;
     if (coldRealmStatus) {
       coldRealmStatus.setAttribute('data-cold-state', 'ready');
     }
@@ -184,15 +196,101 @@
     app.setAttribute('data-cold-state', 'ready');
   }
 
-  function handleColdRealmMessage(event) {
-    if (coldRealmReady || coldRealmFailed || !coldFrame || event.source !== coldFrame.contentWindow) {
+  function recordGlobalMessageAnomaly() {
+    globalAnomalyCount += 1;
+    root.setAttribute('data-global-message-anomalies', String(globalAnomalyCount));
+    if (protocolWarning) {
+      protocolWarning.hidden = false;
+    }
+    console.warn('Coldbox discarded a global message after handshake.');
+  }
+
+  function recordChannelAnomaly() {
+    channelAnomalyCount += 1;
+    root.setAttribute('data-channel-anomalies', String(channelAnomalyCount));
+    if (protocolWarning) {
+      protocolWarning.hidden = false;
+    }
+    console.warn('Coldbox discarded an invalid channel message.');
+  }
+
+  function setHandshakePending() {
+    handshakeState = 'pending';
+    app.setAttribute('data-handshake-state', 'pending');
+    if (coldRealmStatusTitle) {
+      coldRealmStatusTitle.textContent = 'Opening the private message channel';
+    }
+    if (coldRealmStatusCopy) {
+      coldRealmStatusCopy.textContent = 'The sealed realm is active. Coldbox is completing its private channel before any protocol message is accepted.';
+    }
+    if (coldRealmStatusLabel) {
+      coldRealmStatusLabel.textContent = 'Connecting';
+    }
+  }
+
+  function setHandshakeReady() {
+    if (coldRealmFailed || handshakeState !== 'pending') {
       return;
     }
-    if (!event.data || event.data.type !== 'cold.ready') {
+    if (coldBootTimer !== null) {
+      window.clearTimeout(coldBootTimer);
+      coldBootTimer = null;
+    }
+    handshakeState = 'ready';
+    app.setAttribute('data-handshake-state', 'ready');
+    if (coldRealmStatusTitle) {
+      coldRealmStatusTitle.textContent = 'The private channel is established';
+    }
+    if (coldRealmStatusCopy) {
+      coldRealmStatusCopy.textContent = 'Secret-capable work will remain inside this sandbox. Only validated public protocol messages may cross the private channel.';
+    }
+    if (coldRealmStatusLabel) {
+      coldRealmStatusLabel.textContent = 'Ready';
+    }
+  }
+
+  function handleProtocolPortMessage(event) {
+    var message = protocol.validateMessage('cold-to-warm', event.data);
+    if (!message || handshakeState !== 'pending' || message.type !== 'ready') {
+      recordChannelAnomaly();
+      return;
+    }
+    setHandshakeReady();
+  }
+
+  function beginHandshake() {
+    if (handshakeState !== 'starting' || typeof window.MessageChannel !== 'function') {
+      setColdRealmFailure('handshake-unavailable');
+      return;
+    }
+    setHandshakePending();
+    try {
+      var channel = new MessageChannel();
+      coldMessagePort = channel.port1;
+      coldMessagePort.addEventListener('message', handleProtocolPortMessage);
+      coldMessagePort.start();
+      coldFrame.contentWindow.postMessage(protocol.handshakeMessage(), '*', [channel.port2]);
+    } catch (error) {
+      setColdRealmFailure('handshake-failed');
+    }
+  }
+
+  function handleColdRealmMessage(event) {
+    if (handshakeState === 'ready') {
+      recordGlobalMessageAnomaly();
+      return;
+    }
+    if (coldRealmFailed || !coldFrame || event.source !== coldFrame.contentWindow) {
+      return;
+    }
+    if (handshakeState !== 'starting'
+      || !protocol.isReadySignal(event.data)
+      || !event.ports
+      || event.ports.length !== 0) {
       return;
     }
     setColdRealmReady();
-    window.removeEventListener('message', handleColdRealmMessage);
+    beginHandshake();
   }
 
   function startColdRealm() {
@@ -214,8 +312,8 @@
       }
       coldRealmHost.appendChild(coldFrame);
       coldBootTimer = window.setTimeout(function () {
-        if (!coldRealmReady) {
-          setColdRealmFailure();
+        if (handshakeState !== 'ready') {
+          setColdRealmFailure(handshakeState === 'pending' ? 'handshake-timeout' : 'boot-timeout');
         }
       }, 1500);
       coldFrame.srcdoc = coldRealmDocument;
@@ -266,6 +364,7 @@
   app.setAttribute('data-build-state', 'warm-shell');
   app.setAttribute('data-routing-ready', 'true');
   app.setAttribute('data-cold-state', 'starting');
+  app.setAttribute('data-handshake-state', 'starting');
   renderRoute(false);
 
   if (themeToggle) {
