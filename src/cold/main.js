@@ -229,7 +229,7 @@ __COLDBOX_AIRGAP__
   window.addEventListener('message', handleGlobalMessage);
   document.documentElement.setAttribute('data-cold-state', 'checking');
   document.documentElement.setAttribute('data-airgap-state', 'checking');
-  airgap.runCanary().then(completeBootstrap, function () {
+  airgap.runCanary(airgap.coldCanaryUrl).then(completeBootstrap, function () {
     completeBootstrap({ passed: false, reason: 'canary-error' });
   });
 }());

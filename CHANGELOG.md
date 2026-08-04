@@ -99,10 +99,10 @@ Foundation work in progress. Wallet, vault, and cryptographic features are not a
 
 ### Added — P0.8 (2026-08-03)
 
-- Native CSP canaries in the warm shell and cold realm, with exact `connect-src` violation matching and fail-closed behavior when a policy is missing or modified
-- Cold-realm runtime neutering for `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, and `navigator.sendBeacon`, with non-configurable, non-writable blockers and typed runtime-violation lockdown
-- Green/amber/red airgap banner states driven by `navigator.onLine`, `navigator.connection`, focus, online/offline events, and a one-second refresh interval
-- Chromium/Firefox browser-harness coverage for offline emulation, stripped-CSP full lockdown, canary failures, and all five built-artifact network primitives
+- Native CSP canaries in the warm shell and cold realm, with exact `connect-src` violation matching, an inherited-policy-safe cold target, and fail-closed behavior when a policy is missing or modified
+- Cold-realm runtime neutering for `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, and `navigator.sendBeacon`, including their prototype owners, with non-configurable, non-writable blockers and typed runtime-violation lockdown
+- Checking/green/amber/red airgap banner states driven by `navigator.onLine`, `navigator.connection`, focus, online/offline events, connection changes, and a five-second refresh interval
+- Chromium/Firefox browser-harness coverage for offline emulation, warm-only/cold-only/both-policy stripping, exact canary URLs, prototype restoration, and all five runtime network primitives
 
 ### Added — P0.5 (2026-08-03)
 

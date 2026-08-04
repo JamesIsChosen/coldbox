@@ -1,7 +1,8 @@
 (function (global) {
   'use strict';
 
-  var CANARY_URL = 'https://coldbox.invalid/csp-canary';
+  var WARM_CANARY_URL = 'https://coldbox.invalid/csp-canary';
+  var COLD_CANARY_URL = 'http://localhost:9/cold-csp-canary';
   var NETWORK_PRIMITIVES = Object.freeze([
     'fetch',
     'XMLHttpRequest',
@@ -18,17 +19,20 @@
       || event.violatedDirective === 'connect-src';
   }
 
-  function isCanaryViolation(event) {
+  function isCanaryViolation(event, expectedUrl) {
+    var canaryUrl = expectedUrl || WARM_CANARY_URL;
     return isConnectViolation(event)
-      && String(event.blockedURI || '') === CANARY_URL;
+      && String(event.blockedURI || '') === canaryUrl;
   }
 
-  function runCanary() {
+  function runCanary(expectedUrl) {
+    var canaryUrl = expectedUrl || WARM_CANARY_URL;
     return new Promise(function (resolve) {
       var settled = false;
       var sawViolation = false;
       var timeout = null;
       var rejectionTimer = null;
+      var documentObject = global.document;
 
       function finish(passed, reason) {
         if (settled) {
@@ -41,12 +45,14 @@
         if (rejectionTimer !== null) {
           global.clearTimeout(rejectionTimer);
         }
-        document.removeEventListener('securitypolicyviolation', onViolation, true);
+        if (documentObject && typeof documentObject.removeEventListener === 'function') {
+          documentObject.removeEventListener('securitypolicyviolation', onViolation, true);
+        }
         resolve({ passed: passed, reason: reason });
       }
 
       function onViolation(event) {
-        if (!isCanaryViolation(event)) {
+        if (!isCanaryViolation(event, canaryUrl)) {
           return;
         }
         sawViolation = true;
@@ -62,7 +68,11 @@
         }, 100);
       }
 
-      document.addEventListener('securitypolicyviolation', onViolation, true);
+      if (!documentObject || typeof documentObject.addEventListener !== 'function') {
+        finish(false, 'document-unavailable');
+        return;
+      }
+      documentObject.addEventListener('securitypolicyviolation', onViolation, true);
       timeout = global.setTimeout(function () {
         finish(
           sawViolation,
@@ -76,7 +86,7 @@
       }
 
       try {
-        var request = global.fetch(CANARY_URL, {
+        var request = global.fetch(canaryUrl, {
           method: 'GET',
           cache: 'no-store'
         });
@@ -105,18 +115,43 @@
     return Object.freeze(blocker);
   }
 
-  function defineBlocked(target, key, name, onAttempt) {
+  function findPropertyOwner(target, key) {
+    var current = target;
+    while (current) {
+      if (Object.prototype.hasOwnProperty.call(current, key)) {
+        return current;
+      }
+      try {
+        current = Object.getPrototypeOf(current);
+      } catch (error) {
+        return target;
+      }
+    }
+    return target;
+  }
+
+  function defineOwnBlocked(target, key, blocker) {
     try {
       Object.defineProperty(target, key, {
         configurable: false,
         enumerable: false,
-        value: createBlocker(name, onAttempt),
+        value: blocker,
         writable: false
       });
       return true;
     } catch (error) {
       return false;
     }
+  }
+
+  function defineBlocked(target, key, name, onAttempt) {
+    var blocker = createBlocker(name, onAttempt);
+    var owner = findPropertyOwner(target, key);
+    var installedOnTarget = defineOwnBlocked(target, key, blocker);
+    var installedOnOwner = owner === target
+      ? installedOnTarget
+      : defineOwnBlocked(owner, key, blocker);
+    return installedOnTarget && installedOnOwner;
   }
 
   function neuterNetwork(onAttempt) {
@@ -163,9 +198,13 @@
   }
 
   var api = Object.freeze({
-    canaryUrl: CANARY_URL,
+    canaryUrl: WARM_CANARY_URL,
+    warmCanaryUrl: WARM_CANARY_URL,
+    coldCanaryUrl: COLD_CANARY_URL,
+    canaryUrls: Object.freeze({ warm: WARM_CANARY_URL, cold: COLD_CANARY_URL }),
     getNetworkSnapshot: getNetworkSnapshot,
     isConnectViolation: isConnectViolation,
+    isCanaryViolation: isCanaryViolation,
     networkPrimitives: NETWORK_PRIMITIVES,
     neuterNetwork: neuterNetwork,
     runCanary: runCanary

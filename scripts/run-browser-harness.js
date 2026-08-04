@@ -16,6 +16,9 @@ const buildScript = path.join(projectRoot, 'scripts', 'build.js');
 const buildPath = path.join(projectRoot, 'build', 'coldbox.html');
 const fixtureRoot = path.join(projectRoot, 'test', 'browser', 'fixtures');
 const CANARY_ERROR_FRAGMENT = 'coldbox.invalid/csp-canary';
+const COLD_CANARY_ERROR_FRAGMENT = 'localhost:9/cold-csp-canary';
+const WARM_CANARY_URL = 'https://coldbox.invalid/csp-canary';
+const COLD_CANARY_URL = 'http://localhost:9/cold-csp-canary';
 
 function fileUrl(file) {
   return pathToFileURL(file).href;
@@ -164,12 +167,14 @@ function createHandshakeResponseSuppressedFixture() {
   };
 }
 
-function createCspStrippedFixture() {
-  const original = fs.readFileSync(buildPath, 'utf8');
-  let stripped = original.replace(
-    /<meta http-equiv="Content-Security-Policy"[^>]*>/g,
-    ''
-  );
+function stripWarmCsp(document) {
+  const matches = document.match(/<meta http-equiv="Content-Security-Policy"[^>]*>/g) || [];
+  assert.equal(matches.length, 1, 'Expected exactly one warm CSP meta tag');
+  return document.replace(matches[0], '');
+}
+
+function stripColdCsp(document) {
+  let stripped = document;
   const childStart = '\\u003cmeta http-equiv=\\"Content-Security-Policy\\" content=\\"';
   const childEnd = '\\"\\u003e';
   const childStartIndex = stripped.indexOf(childStart);
@@ -178,11 +183,39 @@ function createCspStrippedFixture() {
   assert.notEqual(childEndIndex, -1, 'Embedded cold CSP end was not found');
   stripped = stripped.slice(0, childStartIndex)
     + stripped.slice(childEndIndex + childEnd.length);
-  assert.notEqual(stripped, original, 'CSP-stripped fixture did not remove a policy');
-  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-browser-csp-stripped-'));
+  return stripped;
+}
+
+function refreshWarmScriptHash(document) {
+  const scriptMatches = [...document.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)];
+  assert.equal(scriptMatches.length, 1, 'Expected exactly one warm inline script');
+  const warmMeta = document.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/i);
+  assert.ok(warmMeta, 'Warm CSP meta tag was required for hash refresh');
+  const refreshedPolicy = warmMeta[1].replace(
+    /(script-src\s+)'sha256-[^']+'/,
+    `$1${cspHash(scriptMatches[0][1])}`
+  );
+  assert.notEqual(refreshedPolicy, warmMeta[1], 'Warm script hash was not found');
+  return document.replace(warmMeta[1], refreshedPolicy);
+}
+
+function createCspStrippedFixture(kind) {
+  const original = fs.readFileSync(buildPath, 'utf8');
+  let stripped = original;
+  if (kind === 'warm-only' || kind === 'both') {
+    stripped = stripWarmCsp(stripped);
+  }
+  if (kind === 'cold-only' || kind === 'both') {
+    stripped = stripColdCsp(stripped);
+  }
+  if (kind === 'cold-only') {
+    stripped = refreshWarmScriptHash(stripped);
+  }
+  assert.notEqual(stripped, original, `${kind} CSP fixture did not remove a policy`);
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), `coldbox-browser-csp-${kind}-`));
   const strippedPath = path.join(temporaryRoot, 'coldbox.html');
   fs.writeFileSync(strippedPath, stripped, 'utf8');
-  return { path: strippedPath, temporaryRoot };
+  return { kind, path: strippedPath, temporaryRoot };
 }
 
 async function openPage(browser, file) {
@@ -206,6 +239,41 @@ async function getColdFrame(page, engine) {
   const frame = frames[0];
   await frame.locator('#cold-ready').waitFor({ state: 'visible' });
   return frame;
+}
+
+async function createCspProbeFrame(page, engine) {
+  const frameId = 'csp-probe-frame';
+  await page.evaluate((id) => {
+    const iframe = document.createElement('iframe');
+    iframe.id = id;
+    iframe.setAttribute('sandbox', 'allow-scripts');
+    iframe.setAttribute('title', 'CSP probe frame');
+    iframe.srcdoc = [
+      '<!doctype html><html><head>',
+      '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; connect-src \'none\'">',
+      '</head><body><p id="csp-probe-ready">CSP probe ready</p></body></html>'
+    ].join('');
+    document.body.appendChild(iframe);
+  }, frameId);
+  await page.waitForFunction((id) => {
+    const iframe = document.getElementById(id);
+    return iframe && iframe.contentWindow;
+  }, frameId);
+  let frame = null;
+  for (let attempt = 0; attempt < 100 && !frame; attempt += 1) {
+    for (const candidate of page.frames()) {
+      if (candidate.parentFrame() && await candidate.locator('#csp-probe-ready').count()) {
+        frame = candidate;
+        break;
+      }
+    }
+    if (!frame) {
+      await page.waitForTimeout(50);
+    }
+  }
+  assert.ok(frame, `${engine}: CSP probe frame was not created`);
+  await frame.locator('#csp-probe-ready').waitFor({ state: 'visible' });
+  return { frame, frameId };
 }
 
 async function verifyBuiltFile(browser, engine) {
@@ -236,9 +304,15 @@ async function verifyBuiltFile(browser, engine) {
     assert.equal(await coldFrame.locator('html').getAttribute('data-csp-canary'), 'passed');
     assert.equal(await coldFrame.locator('html').getAttribute('data-runtime-neutering'), 'installed');
     await harness.expectParentCannotReadFrame();
-    await harness.expectCspViolation('connect-src');
-    await harness.expectCspViolationInFrame(coldFrame, 'connect-src');
-    await harness.expectNoConsoleErrors({ allowedFragments: [CANARY_ERROR_FRAGMENT] });
+    await harness.expectCspViolation('connect-src', { blockedURI: WARM_CANARY_URL });
+    await harness.expectCspViolationInFrame(
+      coldFrame,
+      'connect-src',
+      { blockedURI: COLD_CANARY_URL }
+    );
+    await harness.expectNoConsoleErrors({
+      allowedFragments: [CANARY_ERROR_FRAGMENT, COLD_CANARY_ERROR_FRAGMENT]
+    });
     await page.context().setOffline(true);
     await page.locator('#airgap-banner[data-airgap-state="green"]').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await page.locator('html').getAttribute('data-network-online'), 'false');
@@ -269,18 +343,66 @@ async function verifyBuiltFile(browser, engine) {
     ));
     await coldFrame.locator('#cold-protocol-warning').waitFor({ state: 'visible' });
     await harness.expectConsoleWarning('discarded a global message after handshake');
+    const cspProbe = await createCspProbeFrame(page, engine);
+    for (const primitive of ['fetch', 'XMLHttpRequest', 'WebSocket']) {
+      const result = await harness.expectNetworkPrimitiveBlocked(
+        primitive,
+        cspProbe.frame,
+        { requireCspViolation: true }
+      );
+      console.log(`${engine}: CSP probe ${primitive} reported blocked (${result.signal})`);
+    }
+    await page.locator(`#${cspProbe.frameId}`).evaluate((iframe) => iframe.remove());
     for (const primitive of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'sendBeacon']) {
       const result = await harness.expectNetworkPrimitiveBlocked(
         primitive,
         coldFrame,
-        { requireCspViolation: true, requireRuntimeBlock: true }
+        { requireRuntimeBlock: true }
       );
       assert.equal(result.signal, 'threw', `${engine}: ${primitive} did not satisfy the literal throw contract`);
       console.log(`${engine}: cold realm ${primitive} reported blocked (${result.signal})`);
+      console.log(`${engine}: cold realm ${primitive} reported runtime-blocked (${result.signal})`);
     }
+    const prototypeResults = await coldFrame.evaluate(() => {
+      const deepestOwner = (target, key) => {
+        let owner = null;
+        let current = target;
+        while (current) {
+          if (Object.prototype.hasOwnProperty.call(current, key)) {
+            owner = current;
+          }
+          current = Object.getPrototypeOf(current);
+        }
+        return owner;
+      };
+      const result = {};
+      const fetchOwner = deepestOwner(window, 'fetch');
+      const beaconOwner = deepestOwner(navigator, 'sendBeacon');
+      try {
+        fetchOwner.fetch.call(window, 'https://coldbox.invalid/prototype-fetch');
+        result.fetch = { blocked: false, error: '' };
+      } catch (error) {
+        result.fetch = { blocked: true, error: String(error) };
+      }
+      try {
+        beaconOwner.sendBeacon.call(navigator, 'https://coldbox.invalid/prototype-beacon', 'coldbox');
+        result.sendBeacon = { blocked: false, error: '' };
+      } catch (error) {
+        result.sendBeacon = { blocked: true, error: String(error) };
+      }
+      return result;
+    });
+    assert.equal(prototypeResults.fetch.blocked, true, `${engine}: prototype fetch restoration bypassed the guard`);
+    assert.match(prototypeResults.fetch.error, /Coldbox airgap blocked fetch/);
+    assert.equal(prototypeResults.sendBeacon.blocked, true, `${engine}: prototype sendBeacon restoration bypassed the guard`);
+    assert.match(prototypeResults.sendBeacon.error, /Coldbox airgap blocked sendBeacon/);
     await page.locator('#airgap-banner[data-airgap-state="red"]').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await page.locator('#app').getAttribute('data-vault-operations'), 'refused');
-    await harness.expectCspViolationInFrame(coldFrame, 'connect-src');
+    await harness.expectCspViolationInFrame(
+      coldFrame,
+      'connect-src',
+      { blockedURI: COLD_CANARY_URL }
+    );
     await harness.expectElementVisible('#nav-rail');
     await harness.expectElementVisible('#theme-toggle');
     await harness.expectElementVisible('#nav-rail .nav-link[aria-current="page"]');
@@ -335,7 +457,11 @@ async function verifyBuiltFile(browser, engine) {
     assert.equal(await page.locator('#mobile-more-menu').isVisible(), false);
 
     await harness.expectOnlyCspViolations(['connect-src']);
-    await harness.expectCspViolationInFrame(coldFrame, 'connect-src');
+    await harness.expectCspViolationInFrame(
+      coldFrame,
+      'connect-src',
+      { blockedURI: COLD_CANARY_URL }
+    );
     console.log(`${engine}: warm shell routes, theme switch, responsive navigation, and cold boundary passed over file://`);
   } finally {
     await closePage(page);
@@ -364,7 +490,7 @@ async function verifyColdRealmFailure(browser, engine) {
       'failed',
       `${engine}: failed bootstrap did not lock the app`
     );
-    await harness.expectCspViolation('connect-src');
+    await harness.expectCspViolation('connect-src', { blockedURI: WARM_CANARY_URL });
     await harness.expectNoConsoleErrors({ allowedFragments: [CANARY_ERROR_FRAGMENT] });
     console.log(`${engine}: cold realm creation failure produced an explicit lockdown state`);
   } finally {
@@ -390,8 +516,11 @@ async function verifyColdRealmTimeout(browser, engine) {
       'failed',
       `${engine}: readiness timeout did not lock the app`
     );
-    await harness.expectNoConsoleErrors();
-    await harness.expectNoCspViolations();
+    await harness.expectNoConsoleErrors({
+      allowedFragments: [CANARY_ERROR_FRAGMENT, COLD_CANARY_ERROR_FRAGMENT]
+    });
+    await harness.expectOnlyCspViolations(['connect-src']);
+    await harness.expectCspViolation('connect-src', { blockedURI: WARM_CANARY_URL });
     console.log(`${engine}: cold realm readiness timeout removed the frame and locked down`);
   } finally {
     await page.close();
@@ -417,16 +546,20 @@ async function verifyHandshakeTimeout(browser, engine) {
       0,
       `${engine}: handshake timeout left a cold frame attached`
     );
-    await harness.expectNoConsoleErrors();
-    await harness.expectNoCspViolations();
+    await harness.expectNoConsoleErrors({
+      allowedFragments: [CANARY_ERROR_FRAGMENT, COLD_CANARY_ERROR_FRAGMENT]
+    });
+    await harness.expectOnlyCspViolations(['connect-src']);
+    await harness.expectCspViolation('connect-src', { blockedURI: WARM_CANARY_URL });
     console.log(`${engine}: typed handshake timeout used distinct copy and locked down`);
   } finally {
     await page.close();
     fs.rmSync(fixture.temporaryRoot, { force: true, recursive: true });
+  }
 }
 
-async function verifyCspStrippedLockdown(browser, engine) {
-  const stripped = createCspStrippedFixture();
+async function verifyCspStrippedLockdown(browser, engine, kind) {
+  const stripped = createCspStrippedFixture(kind);
   try {
     const { harness, page } = await openPage(browser, stripped.path);
     try {
@@ -435,28 +568,40 @@ async function verifyCspStrippedLockdown(browser, engine) {
       assert.equal(
         await page.locator('#app').getAttribute('data-vault-operations'),
         'refused',
-        `${engine}: stripped-CSP build did not refuse vault operations`
+        `${engine}: ${kind} CSP build did not refuse vault operations`
       );
       assert.equal(
         await page.locator('#cold-frame').count(),
         0,
-        `${engine}: stripped-CSP build left a cold frame active`
+        `${engine}: ${kind} CSP build left a cold frame active`
       );
-      assert.equal(
-        await page.locator('html').getAttribute('data-csp-canary'),
-        'failed',
-        `${engine}: stripped-CSP canary did not fail closed`
-      );
-      assert.deepEqual(await page.evaluate(() => window.__coldboxCspViolations || []), []);
+      if (kind === 'cold-only') {
+        assert.equal(
+          await page.locator('html').getAttribute('data-csp-canary'),
+          'passed',
+          `${engine}: warm canary did not remain healthy when only the cold CSP was stripped`
+        );
+        await harness.expectCspViolation('connect-src', { blockedURI: WARM_CANARY_URL });
+      } else {
+        assert.equal(
+          await page.locator('html').getAttribute('data-csp-canary'),
+          'failed',
+          `${engine}: ${kind} warm canary did not fail closed`
+        );
+        assert.deepEqual(await page.evaluate(() => window.__coldboxCspViolations || []), []);
+      }
       await harness.expectNoConsoleErrors({
         allowedFragments: [
           CANARY_ERROR_FRAGMENT,
+          COLD_CANARY_ERROR_FRAGMENT,
           'ERR_NAME_NOT_RESOLVED',
           'NS_ERROR_UNKNOWN_HOST',
+          'ERR_CONNECTION_REFUSED',
+          'net::ERR_',
           'Failed to load resource'
         ]
       });
-      console.log(`${engine}: stripped-CSP build entered full lockdown and refused vault operations`);
+      console.log(`${engine}: ${kind} CSP build entered full lockdown and refused vault operations`);
     } finally {
       await closePage(page);
     }
@@ -542,7 +687,7 @@ async function verifyReusableAssertions(browser, engine) {
     assert.ok(frame, `${engine}: harness target did not create a child frame`);
     await frame.locator('#cold-ready').waitFor({ state: 'visible' });
     await harness.expectParentCannotReadFrame();
-    for (const primitive of ['fetch', 'XMLHttpRequest', 'WebSocket']) {
+    for (const primitive of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'sendBeacon']) {
       const result = await harness.expectNetworkPrimitiveBlocked(
         primitive,
         frame,
@@ -551,7 +696,11 @@ async function verifyReusableAssertions(browser, engine) {
       assert.equal(result.cspViolation, true, `${engine}: standalone native CSP probe lost exact evidence for ${primitive}`);
       console.log(`${engine}: ${primitive} reported blocked (${result.signal})`);
     }
-    await harness.expectCspViolationInFrame(frame, 'connect-src');
+    await harness.expectCspViolationInFrame(
+      frame,
+      'connect-src',
+      { blockedURI: 'https://coldbox.invalid/network-primitive-test' }
+    );
     console.log(`${engine}: reusable frame and viewport assertions passed`);
   } finally {
     await closePage(page);
@@ -618,7 +767,9 @@ async function run() {
       await verifyColdRealmFailure(browser, engine);
       await verifyColdRealmTimeout(browser, engine);
       await verifyHandshakeTimeout(browser, engine);
-      await verifyCspStrippedLockdown(browser, engine);
+      await verifyCspStrippedLockdown(browser, engine, 'cold-only');
+      await verifyCspStrippedLockdown(browser, engine, 'warm-only');
+      await verifyCspStrippedLockdown(browser, engine, 'both');
       await verifyTamperedBuiltFile(browser, engine);
       await verifyCspFixture(browser, engine);
       await verifyUntamperedFixture(browser, engine);

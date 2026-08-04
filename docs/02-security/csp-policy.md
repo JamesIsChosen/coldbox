@@ -127,7 +127,7 @@ Not strictly a CSP issue, but it arises from the same sandbox. An opaque origin 
 
 Defense in depth *behind* the CSP, never instead of it.
 
-P0.6's cold bootstrap normalizes its three acceptance probes: the native XHR send and WebSocket construction are attempted under `connect-src 'none'` and then produce a labelled throw, while native `fetch` rejection is reported as a thrown probe result. P0.8 runs its own native `fetch` canary first, then adds the broader runtime guard for `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, and `navigator.sendBeacon`, with visible alarms and frozen replacement properties. Any failed canary or failed installation enters full lockdown before the warm shell accepts the private-channel readiness response.
+P0.6's cold bootstrap normalizes its three acceptance probes: the native XHR send and WebSocket construction are attempted under `connect-src 'none'` and then produce a labelled throw, while native `fetch` rejection is reported as a thrown probe result. P0.8 runs its own native `fetch` canary first using `http://localhost:9/cold-csp-canary`, which the inherited warm allowlist permits while the cold policy must deny; the warm realm uses `https://coldbox.invalid/csp-canary`. Once the cold canary settles, P0.8 overwrites `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, and `navigator.sendBeacon` with functions that throw a labelled error and raise a visible alarm. The blockers are installed on both the exposed object and the prototype that originally owns the WebIDL member, then made non-configurable and non-writable. Any failed canary or failed installation enters full lockdown before the warm shell accepts the private-channel readiness response.
 
 If any of these ever fires, the CSP has failed and something is badly wrong — the alarm exists to make that loud rather than silent.
 
@@ -135,9 +135,11 @@ If any of these ever fires, the CSP has failed and something is badly wrong — 
 
 ## The CSP canary
 
-The app deliberately attempts a request the policy must reject.
+The app deliberately attempts a request the policy must reject. The warm shell attempts `https://coldbox.invalid/csp-canary`. The cold realm attempts `http://localhost:9/cold-csp-canary`; `http://localhost:*` is permitted by the warm policy, so a matching cold `connect-src` violation cannot be supplied solely by the inherited warm policy.
 
-- **Rejected** — CSP is active. Normal operation.
+The result is accepted only when the browser reports an exact `connect-src` violation whose `blockedURI` equals the realm's expected canary URL. A generic rejected request, a near-match URL, or another CSP directive is not sufficient.
+
+- **Exact `connect-src` violation** — CSP is active. Normal operation.
 - **Not rejected** — CSP is not active. **Full lockdown**: refuse to open any vault, display a red banner, explain what happened.
 
 This catches the scenario where a browser doesn't support meta-tag CSP, or a modified build stripped the policy. Without the canary, that failure would be invisible.
