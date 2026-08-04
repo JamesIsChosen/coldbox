@@ -25,6 +25,7 @@ const sourceManifest = Object.freeze([
 const coldRealmManifest = Object.freeze([
   Object.freeze({ file: 'index.html', token: '__COLDBOX_CRYPTO_VENDOR_SOURCE__', content: 'crypto-vendor.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_CRYPTO_LAYER__', content: 'crypto.js' }),
+  Object.freeze({ file: 'index.html', token: '__COLDBOX_VAULT_LAYER__', content: 'vault.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_COLD_STYLES__', content: 'styles.css' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_COLD_SCRIPT__', content: 'main.js' })
 ]);
@@ -117,6 +118,7 @@ function assembleColdRealm(protocolSource, airgapSource, capabilitiesSource) {
   const components = new Map([
     ['crypto-vendor.js', createCryptoVendorSource(projectRoot)],
     ['crypto.js', readSource('cold/crypto.js')],
+    ['vault.js', readSource('cold/vault.js')],
     ['styles.css', readSource('cold/styles.css')],
     ['main.js', coldMainScript]
   ]);
@@ -134,6 +136,7 @@ function assembleColdRealm(protocolSource, airgapSource, capabilitiesSource) {
     '__COLDBOX_COLD_SCRIPT__',
     '__COLDBOX_CRYPTO_VENDOR_SOURCE__',
     '__COLDBOX_CRYPTO_LAYER__',
+    '__COLDBOX_VAULT_LAYER__',
     '__COLDBOX_PROTOCOL__',
     '__COLDBOX_AIRGAP__',
     '__COLDBOX_CAPABILITIES__'

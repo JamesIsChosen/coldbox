@@ -82,7 +82,7 @@ test('RFC 9106 Argon2id failure is visible as an explicit PBKDF2 fallback', asyn
   assert.equal(report.kdf.id, 'pbkdf2-sha512-fallback');
   assert.match(report.kdf.label, /PBKDF2-HMAC-SHA512/);
 
-  const derived = await context.__coldboxCrypto.deriveKey('test passphrase', new Uint8Array(16));
+  const derived = await context.__coldboxCrypto.deriveKey('test passphrase', new Uint8Array(16), 'fallback');
   assert.equal(derived.length, 32);
   assert.equal(context.__coldboxCrypto.getKdfDetails().id, 'pbkdf2-sha512-fallback');
 });

@@ -296,6 +296,9 @@
 
   function deriveKey(passphrase, salt, profileName) {
     return selfTest().then(function () {
+      if (profileName === 'fallback' || profileName === profiles.fallback.id) {
+        return deriveWithFallback(passphrase, salt);
+      }
       if (noble && typeof noble.pbkdf2Async === 'function' && argon2Healthy) {
         var profile = profiles[profileName] || profiles.standard;
         setActiveKdf(profile, `Pure-JS @noble AES-GCM remains the default cipher path. Argon2id WASM is active with ${profile.memoryKiB.toLocaleString('en-US')} KiB, ${profile.iterations} passes, and ${profile.parallelism} lane.`);

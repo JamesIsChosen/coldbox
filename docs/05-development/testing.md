@@ -65,6 +65,8 @@ Wrong things must fail, and fail *loudly*:
 
 Every fixed bug gets a test. Particularly: **a vault written by any previous format version must still open.**
 
+P0.11 additionally checks a real v1 round-trip, a zero-secret vault, every header byte as an authentication boundary, generic wrong-passphrase/corruption errors, and 64 KiB compartment padding.
+
 ---
 
 ## Security tests — mandatory
@@ -97,7 +99,7 @@ These verify the claims the project makes. If one fails, the central promise is 
 ✓ Built script hash matches the meta tag
 ```
 
-That fourth line matters: a missing `'wasm-unsafe-eval'` silently downgrades every vault to weaker key derivation with no visible error. Only an explicit test catches it.
+The KDF status must remain explicit: a missing `'wasm-unsafe-eval'` causes the Argon2 KAT to fail, and the visible PBKDF2 fallback must never be mistaken for the standard profile.
 
 ### Secret handling
 
