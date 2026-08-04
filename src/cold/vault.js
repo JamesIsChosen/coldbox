@@ -69,6 +69,26 @@
     }
   }
 
+  function networkState() {
+    if (!global.navigator || typeof global.navigator.onLine !== 'boolean') {
+      return 'unknown';
+    }
+    return global.navigator.onLine ? 'online' : 'offline';
+  }
+
+  function resolveMode(mode) {
+    if (mode === 'online') {
+      return 'online';
+    }
+    if (mode === 'offline') {
+      if (networkState() !== 'offline') {
+        throw authenticationError();
+      }
+      return 'offline';
+    }
+    return networkState() === 'offline' ? 'offline' : 'online';
+  }
+
   function writeUint16(output, offset, value) {
     output[offset] = (value >>> 8) & 0xff;
     output[offset + 1] = value & 0xff;
@@ -349,6 +369,9 @@
       }
       var publicData = options.publicData === undefined ? {} : options.publicData;
       var hasSecret = options.secretData !== undefined && options.secretData !== null;
+      if (hasSecret && networkState() !== 'offline') {
+        throw serializationError();
+      }
       var profileName = normalizedProfile(options.profile || options.profileName);
       var salt = cryptoLayer.randomBytes(SALT_LENGTH);
       dek = cryptoLayer.randomBytes(DEK_LENGTH);
@@ -427,13 +450,14 @@
     }
   }
 
-  async function openVault(value, passphrase) {
+  async function openVault(value, passphrase, mode) {
     var dek = null;
     var publicKey = null;
     var secretKey = null;
     var publicPlain = null;
     var secretPlain = null;
     try {
+      var resolvedMode = resolveMode(mode);
       var bytes = ensureVaultBytes(value);
       var header = parseHeader(bytes);
       var expectedLength = HEADER_LENGTH
@@ -459,7 +483,7 @@
       publicPlain = await aesGcm('decrypt', publicKey, publicNonce, publicCiphertext, header.bytes);
       var publicData = parsePaddedJson(publicPlain);
       var secretData = null;
-      if (header.secretLength > 0) {
+      if (resolvedMode === 'offline' && header.secretLength > 0) {
         secretKey = hkdfSubkey(dek, 'cbx/secret/v1');
         secretPlain = await aesGcm('decrypt', secretKey, secretNonce, secretCiphertext, header.bytes);
         secretData = parsePaddedJson(secretPlain);
@@ -479,6 +503,190 @@
       zeroBytes(publicPlain);
       zeroBytes(secretPlain);
     }
+  }
+
+  async function openPublicVault(value, passphrase) {
+    return openVault(value, passphrase, 'online');
+  }
+
+  function createVaultSession(state) {
+    var closed = false;
+
+    async function save() {
+      if (closed) {
+        throw serializationError();
+      }
+      var publicNonce = null;
+      var publicCiphertext = null;
+      var secretNonce = null;
+      var secretCiphertext = null;
+      try {
+        publicNonce = cryptoLayer.randomBytes(NONCE_LENGTH);
+        publicCiphertext = await aesGcm(
+          'encrypt',
+          state.publicKey,
+          publicNonce,
+          state.publicPlain,
+          state.headerBytes
+        );
+        if (state.mode === 'online' && state.secretLength > 0) {
+          secretNonce = new Uint8Array(state.secretNonce);
+          secretCiphertext = new Uint8Array(state.secretCiphertext);
+        } else {
+          secretNonce = cryptoLayer.randomBytes(NONCE_LENGTH);
+          if (state.secretLength > 0) {
+            secretCiphertext = await aesGcm(
+              'encrypt',
+              state.secretKey,
+              secretNonce,
+              state.secretPlain,
+              state.headerBytes
+            );
+          } else {
+            secretCiphertext = new Uint8Array(0);
+          }
+        }
+        return concatBytes([
+          state.headerBytes,
+          state.wrappedBlock,
+          publicNonce,
+          publicCiphertext,
+          secretNonce,
+          secretCiphertext
+        ]);
+      } catch (error) {
+        throw serializationError();
+      } finally {
+        zeroBytes(publicNonce);
+        zeroBytes(publicCiphertext);
+        zeroBytes(secretNonce);
+        zeroBytes(secretCiphertext);
+      }
+    }
+
+    function close() {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      zeroBytes(state.dek);
+      zeroBytes(state.publicKey);
+      zeroBytes(state.secretKey);
+      zeroBytes(state.publicPlain);
+      zeroBytes(state.secretPlain);
+      zeroBytes(state.secretNonce);
+      zeroBytes(state.secretCiphertext);
+      zeroBytes(state.headerBytes);
+      zeroBytes(state.wrappedBlock);
+      state.dek = null;
+      state.publicKey = null;
+      state.secretKey = null;
+      state.publicPlain = null;
+      state.secretPlain = null;
+      state.secretNonce = null;
+      state.secretCiphertext = null;
+      state.headerBytes = null;
+      state.wrappedBlock = null;
+    }
+
+    return Object.freeze({
+      formatVersion: FORMAT_VERSION,
+      header: state.header,
+      publicData: state.publicData,
+      save: save,
+      close: close
+    });
+  }
+
+  async function openVaultSession(value, passphrase, mode) {
+    var bytes = null;
+    var headerBytes = null;
+    var wrappedBlock = null;
+    var dek = null;
+    var publicKey = null;
+    var secretKey = null;
+    var publicPlain = null;
+    var secretPlain = null;
+    var secretNonce = null;
+    var secretCiphertext = null;
+    var session = null;
+    try {
+      var resolvedMode = resolveMode(mode);
+      bytes = ensureVaultBytes(value);
+      var header = parseHeader(bytes);
+      var expectedLength = HEADER_LENGTH
+        + header.wrappedDekLength
+        + NONCE_LENGTH
+        + header.publicLength
+        + NONCE_LENGTH
+        + header.secretLength;
+      if (expectedLength !== bytes.length || expectedLength > MAX_VAULT_BYTES) {
+        throw authenticationError();
+      }
+      headerBytes = bytes.slice(0, HEADER_LENGTH);
+      header.bytes = headerBytes;
+      var records = parseWrappedRecords(bytes, HEADER_LENGTH, header.wrappedDekLength);
+      wrappedBlock = bytes.slice(HEADER_LENGTH, HEADER_LENGTH + header.wrappedDekLength);
+      var publicNonceOffset = HEADER_LENGTH + header.wrappedDekLength;
+      var publicNonce = bytes.slice(publicNonceOffset, publicNonceOffset + NONCE_LENGTH);
+      var publicCipherOffset = publicNonceOffset + NONCE_LENGTH;
+      var publicCiphertext = bytes.slice(publicCipherOffset, publicCipherOffset + header.publicLength);
+      var secretNonceOffset = publicCipherOffset + header.publicLength;
+      secretNonce = bytes.slice(secretNonceOffset, secretNonceOffset + NONCE_LENGTH);
+      secretCiphertext = bytes.slice(secretNonceOffset + NONCE_LENGTH);
+      dek = await unwrapDek(records, passphrase, header);
+      publicKey = hkdfSubkey(dek, 'cbx/public/v1');
+      publicPlain = await aesGcm('decrypt', publicKey, publicNonce, publicCiphertext, headerBytes);
+      var publicData = parsePaddedJson(publicPlain);
+      if (resolvedMode === 'offline' && header.secretLength > 0) {
+        secretKey = hkdfSubkey(dek, 'cbx/secret/v1');
+        secretPlain = await aesGcm('decrypt', secretKey, secretNonce, secretCiphertext, headerBytes);
+        parsePaddedJson(secretPlain);
+      }
+      session = createVaultSession({
+        mode: resolvedMode,
+        header: publicHeader(header),
+        headerBytes: headerBytes,
+        wrappedBlock: wrappedBlock,
+        publicData: publicData,
+        publicPlain: publicPlain,
+        publicKey: publicKey,
+        secretLength: header.secretLength,
+        secretNonce: secretNonce,
+        secretCiphertext: secretCiphertext,
+        secretPlain: secretPlain,
+        secretKey: secretKey,
+        dek: dek
+      });
+      bytes = null;
+      headerBytes = null;
+      wrappedBlock = null;
+      dek = null;
+      publicKey = null;
+      publicPlain = null;
+      secretKey = null;
+      secretPlain = null;
+      secretNonce = null;
+      secretCiphertext = null;
+      return session;
+    } catch (error) {
+      throw authenticationError();
+    } finally {
+      zeroBytes(bytes);
+      zeroBytes(headerBytes);
+      zeroBytes(wrappedBlock);
+      zeroBytes(dek);
+      zeroBytes(publicKey);
+      zeroBytes(secretKey);
+      zeroBytes(publicPlain);
+      zeroBytes(secretPlain);
+      zeroBytes(secretNonce);
+      zeroBytes(secretCiphertext);
+    }
+  }
+
+  async function openSession(value, passphrase, mode) {
+    return openVaultSession(value, passphrase, mode);
   }
 
   function inspectHeader(value) {
@@ -504,6 +712,8 @@
     create: createVault,
     serialize: createVault,
     open: openVault,
+    openPublic: openPublicVault,
+    openSession: openSession,
     parse: openVault,
     inspectHeader: inspectHeader
   });
