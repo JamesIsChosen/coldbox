@@ -4,7 +4,7 @@ Every primitive, why it was chosen, and what was rejected.
 
 Parameter recommendations move as attack hardware improves. See the review triggers at the end.
 
-*Last reviewed: 2026-08-02 · Max age: 12 months · See [doc-hygiene.md](../05-development/doc-hygiene.md)*
+*Last reviewed: 2026-08-03 · Max age: 12 months · See [doc-hygiene.md](../05-development/doc-hygiene.md)*
 
 ---
 
@@ -106,6 +106,8 @@ The cold realm runs in a sandboxed iframe with an opaque origin, which may not q
 So the cold realm **defaults to pure-JS `@noble` implementations** and uses WebCrypto only after an affirmative known-answer test. Pure-JS AES-GCM runs at a few MB/s — irrelevant for vault-sized payloads.
 
 Assuming WebCrypto and discovering at runtime that it's missing would mean either a hard failure on a common platform or a silent fallback nobody reviewed.
+
+P0.10 implements this contract in the cold realm. The default AES-GCM path is the selected pure-JS `@noble/ciphers` code; WebCrypto AES-GCM is callable only after its NIST known-answer test passes. `argon2-browser` 1.18.0 is vendored from its official npm tarball and the bundled distribution carries the WASM bytes inside the single HTML artifact, so Argon2id does not need a network or a relative file. Boot runs the RFC 9106 Argon2id vector (32 KiB, 3 passes, 4 lanes, with the RFC secret and associated data) and exposes the actual KDF as `data-kdf-active` and in the visible vault-details panel. If that test fails, PBKDF2-HMAC-SHA512 with 1,000,000 iterations is an explicitly labelled fallback rather than a silent downgrade.
 
 ---
 

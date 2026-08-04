@@ -457,6 +457,15 @@ a:focus-visible {
   background: var(--surface-raised);
 }
 
+.capability-crypto-summary {
+  margin: 0.8rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
 .capability-panel-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

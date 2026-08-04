@@ -10,7 +10,14 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
-Foundation work in progress. Wallet, vault, and cryptographic features are not available yet. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
+Foundation work in progress. Wallet and vault workflows are not available yet; the P0.10 cryptographic layer is now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
+
+### Added — P0.10 (2026-08-03)
+
+- Vendored `argon2-browser` 1.18.0 with its embedded Argon2id WASM distribution, plus a deterministic build-time bundle of the selected `@noble/ciphers` and `@noble/hashes` modules.
+- Pure-JS `@noble` AES-GCM as the default path, WebCrypto AES-GCM gated by an affirmative NIST known-answer test, and RFC 9106 Argon2id boot verification.
+- Explicit KDF reporting in the cold realm and warm-shell capability summary; a PBKDF2-HMAC-SHA512 fallback is labelled with its active profile and iteration count whenever Argon2id cannot load.
+- Node vector tests, protocol coverage for the cryptographic capability report, deterministic-build coverage, and Chromium/Firefox browser verification of the sealed realm.
 
 ### Changed — workflow (2026-08-03)
 

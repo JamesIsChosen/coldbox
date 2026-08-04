@@ -327,6 +327,26 @@ test('airgap capabilities and runtime violation status use the typed schema', ()
     }
   }));
 
+  const cryptoReady = protocol.validateMessage('cold-to-warm', {
+    id: 'crypto-ready-1',
+    type: 'ready',
+    payload: {
+      capabilities: {
+        nobleAesGcm: true,
+        argon2id: true,
+        webCryptoKat: true,
+        kdfActive: 'argon2id-standard',
+        unknownKdf: 'discarded'
+      }
+    }
+  });
+  assert.equal(JSON.stringify(cryptoReady.payload.capabilities), JSON.stringify({
+    nobleAesGcm: true,
+    argon2id: true,
+    webCryptoKat: true,
+    kdfActive: 'argon2id-standard'
+  }));
+
   const violation = protocol.validateMessage('cold-to-warm', {
     id: 'airgap-violation-1',
     type: 'status',

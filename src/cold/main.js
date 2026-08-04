@@ -7,6 +7,7 @@ __COLDBOX_CAPABILITIES__
   var protocol = window.__coldboxProtocol;
   var airgap = window.__coldboxAirgap;
   var capabilities = window.__coldboxCapabilities;
+  var cryptoLayer = window.__coldboxCrypto;
   var readyMarker = document.getElementById('cold-ready');
   var protocolWarning = document.getElementById('cold-protocol-warning');
   var details = document.getElementById('cold-realm-details');
@@ -18,6 +19,7 @@ __COLDBOX_CAPABILITIES__
   var runtimeNeuteringInstalled = false;
   var runtimeViolationCount = 0;
   var capabilityReport = {};
+  var cryptoReport = {};
 
   function recordGlobalMessageAnomaly() {
     globalAnomalyCount += 1;
@@ -76,6 +78,47 @@ __COLDBOX_CAPABILITIES__
     }
   }
 
+  function setCryptoAttributes(report) {
+    cryptoReport = report || {};
+    var kdf = cryptoReport.kdf || {};
+    var cryptoState = cryptoReport.nobleAesGcm === true
+      ? (cryptoReport.argon2id && cryptoReport.argon2id.passed === true ? 'ready' : 'fallback')
+      : 'failed';
+    document.documentElement.setAttribute('data-crypto-state', cryptoState);
+    document.documentElement.setAttribute(
+      'data-webcrypto-kat',
+      cryptoReport.webCrypto && cryptoReport.webCrypto.passed === true ? 'passed' : 'not-active'
+    );
+    document.documentElement.setAttribute(
+      'data-argon2id-kat',
+      cryptoReport.argon2id && cryptoReport.argon2id.passed === true ? 'passed' : 'failed'
+    );
+    document.documentElement.setAttribute('data-kdf-active', kdf.id || 'unknown');
+    var kdfPanel = document.getElementById('cold-kdf-details');
+    var kdfActive = document.getElementById('cold-kdf-active');
+    var cryptoPath = document.getElementById('cold-crypto-path');
+    if (kdfPanel) {
+      kdfPanel.setAttribute('data-kdf-active', kdf.id || 'unknown');
+    }
+    if (kdfActive) {
+      kdfActive.textContent = kdf.label ? 'Active KDF: ' + kdf.label + '.' : 'Active KDF: unknown.';
+    }
+    if (cryptoPath) {
+      cryptoPath.textContent = kdf.implementation || 'Crypto self-test did not report an active path.';
+    }
+  }
+
+  function setCryptoFailure(reason) {
+    document.documentElement.setAttribute('data-crypto-state', 'failed');
+    document.documentElement.setAttribute('data-cold-state', 'failed');
+    document.documentElement.setAttribute('data-airgap-state', 'red');
+    document.documentElement.setAttribute('data-lockdown-state', 'full');
+    document.documentElement.setAttribute('data-vault-operations', 'refused');
+    if (details) {
+      details.textContent = reason;
+    }
+  }
+
   function recordRuntimeViolation(name) {
     runtimeViolationCount += 1;
     document.documentElement.setAttribute(
@@ -101,8 +144,9 @@ __COLDBOX_CAPABILITIES__
     }
   }
 
-  function completeBootstrap(result, detectedCapabilities) {
+  function completeBootstrap(result, detectedCapabilities, detectedCrypto) {
     capabilityReport = detectedCapabilities || {};
+    setCryptoAttributes(detectedCrypto || {});
     setCapabilityAttributes(capabilityReport);
     canaryPassed = Boolean(result && result.passed);
     document.documentElement.setAttribute(
@@ -133,20 +177,24 @@ __COLDBOX_CAPABILITIES__
     if (capabilityReport.randomValues !== true) {
       setCapabilityFailure('Required crypto.getRandomValues is unavailable in the cold realm. Coldbox refuses all vault operations and never substitutes Math.random.');
     }
+    if (cryptoReport.nobleAesGcm !== true) {
+      setCryptoFailure('The pure-JS @noble AES-GCM known-answer test failed. Coldbox refuses all vault operations.');
+    }
 
     document.documentElement.setAttribute(
       'data-cold-state',
-      canaryPassed && runtimeNeuteringInstalled && capabilityReport.randomValues === true
+      canaryPassed && runtimeNeuteringInstalled && capabilityReport.randomValues === true && cryptoReport.nobleAesGcm === true
         ? 'ready'
         : 'failed'
     );
-    if (canaryPassed && runtimeNeuteringInstalled && capabilityReport.randomValues === true) {
+    if (canaryPassed && runtimeNeuteringInstalled && capabilityReport.randomValues === true && cryptoReport.nobleAesGcm === true) {
       document.documentElement.setAttribute('data-airgap-state', 'green');
       if (readyMarker) {
         readyMarker.textContent = 'Cold realm sealed';
       }
       if (details) {
-        details.textContent = 'CSP canary passed and runtime network guard installed.';
+        details.textContent = 'CSP canary passed and runtime network guard installed. Active KDF: '
+          + (cryptoReport.kdf && cryptoReport.kdf.label ? cryptoReport.kdf.label : 'unknown') + '.';
       }
     }
     window.parent.postMessage({ type: 'cold.ready' }, '*');
@@ -199,7 +247,11 @@ __COLDBOX_CAPABILITIES__
           camera: capabilityReport.camera === true,
           fileSystemAccess: capabilityReport.fileSystemAccess === true,
           blobDownload: capabilityReport.blobDownload === true,
-          manualExport: capabilityReport.manualExport === true
+          manualExport: capabilityReport.manualExport === true,
+          nobleAesGcm: cryptoReport.nobleAesGcm === true,
+          argon2id: cryptoReport.argon2id && cryptoReport.argon2id.passed === true,
+          webCryptoKat: cryptoReport.webCrypto && cryptoReport.webCrypto.passed === true,
+          kdfActive: cryptoReport.kdf && cryptoReport.kdf.id ? cryptoReport.kdf.id : 'unknown'
         }
       }
     );
@@ -210,7 +262,7 @@ __COLDBOX_CAPABILITIES__
     messagePort.postMessage(readyMessage);
   }
 
-  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities) {
+  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer) {
     return;
   }
 
@@ -278,12 +330,20 @@ __COLDBOX_CAPABILITIES__
   document.documentElement.setAttribute('data-cold-state', 'checking');
   document.documentElement.setAttribute('data-airgap-state', 'checking');
   document.documentElement.setAttribute('data-capability-state', 'checking');
-  Promise.all([airgap.runCanary(airgap.coldCanaryUrl), capabilities.detect()]).then(function (results) {
-    completeBootstrap(results[0], results[1]);
+  document.documentElement.setAttribute('data-crypto-state', 'checking');
+  document.documentElement.setAttribute('data-kdf-active', 'checking');
+  Promise.all([airgap.runCanary(airgap.coldCanaryUrl), capabilities.detect(), cryptoLayer.selfTest()]).then(function (results) {
+    completeBootstrap(results[0], results[1], results[2]);
   }, function () {
     completeBootstrap(
       { passed: false, reason: 'bootstrap-error' },
-      { randomValues: false }
+      { randomValues: false },
+      {
+        nobleAesGcm: false,
+        argon2id: { passed: false },
+        webCrypto: { passed: false },
+        kdf: { id: 'unknown', label: 'Unknown', implementation: 'Crypto bootstrap failed.' }
+      }
     );
   });
 }());

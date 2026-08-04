@@ -99,10 +99,11 @@ Nothing above this phase is safe to build until the container is trustworthy.
 
 ### Cryptography and vault
 
-- [ ] **P0.10 — Crypto layer**
+- [x] **P0.10 — Crypto layer**
   *Deps: P0.9*
   Pure-JS `@noble` as the default path; WebCrypto used only after an affirmative known-answer test; Argon2id WASM loading.
   **Accept:** RFC 9106 Argon2 vectors and NIST AES-GCM vectors pass on both paths; **vault details display which KDF is actually active**, so a silent PBKDF2 fallback is impossible.
+  🌐 *Verified by independent Node vectors plus the Chromium/Firefox browser harness; device-specific KDF allocation behavior remains part of P0.19.*
 
 - [ ] **P0.11 — Vault format v1**
   *Deps: P0.10*

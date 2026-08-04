@@ -55,6 +55,15 @@
       "size": 82073,
       "sha256": "04a6e2bb040301954373f543e44c352137f14dff58f942782769984ef5ea8e1c",
       "integrity": "sha512-T/Bj/YvYMNkIPq6EENO6/rcs2e7qTNuyoUXf0KBFDmp0ZDu0H2X4Lq6yC3i0c8PcWkov5EbW+yQZZbdMmk154A=="
+    },
+    {
+      "name": "argon2-browser",
+      "version": "1.18.0",
+      "path": "vendor/npm/argon2-browser/1.18.0/package.tgz",
+      "url": "https://registry.npmjs.org/argon2-browser/-/argon2-browser-1.18.0.tgz",
+      "size": 44952,
+      "sha256": "cdb11795a4971bde095fe6b836aa424de50c4558ed4b9505bc74111eee7f6d35",
+      "integrity": "sha512-ImVAGIItnFnvET1exhsQB7apRztcoC5TnlSqernMJDUjbc/DLq3UEYeXFrLPrlaIl8cVfwnXb6wX2KpFf2zxHw=="
     }
   ]
 }

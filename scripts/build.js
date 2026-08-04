@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
+const { createCryptoVendorSource } = require('./crypto-bundle.js');
 
 // These values are part of the reproducibility contract. Set them rather than
 // trusting the caller's environment, so the build behaves the same everywhere.
@@ -22,6 +23,8 @@ const sourceManifest = Object.freeze([
 ]);
 
 const coldRealmManifest = Object.freeze([
+  Object.freeze({ file: 'index.html', token: '__COLDBOX_CRYPTO_VENDOR_SOURCE__', content: 'crypto-vendor.js' }),
+  Object.freeze({ file: 'index.html', token: '__COLDBOX_CRYPTO_LAYER__', content: 'crypto.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_COLD_STYLES__', content: 'styles.css' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_COLD_SCRIPT__', content: 'main.js' })
 ]);
@@ -40,7 +43,7 @@ function injectOnce(template, token, contents) {
   if (occurrences !== 1) {
     throw new Error(`Expected exactly one ${token} placeholder, found ${occurrences}`);
   }
-  return template.replace(token, contents);
+  return template.replace(token, () => contents);
 }
 
 function assemble() {
@@ -112,6 +115,8 @@ function assembleColdRealm(protocolSource, airgapSource, capabilitiesSource) {
     protocolSource
   );
   const components = new Map([
+    ['crypto-vendor.js', createCryptoVendorSource(projectRoot)],
+    ['crypto.js', readSource('cold/crypto.js')],
     ['styles.css', readSource('cold/styles.css')],
     ['main.js', coldMainScript]
   ]);
@@ -127,6 +132,8 @@ function assembleColdRealm(protocolSource, airgapSource, capabilitiesSource) {
   for (const placeholder of [
     '__COLDBOX_COLD_STYLES__',
     '__COLDBOX_COLD_SCRIPT__',
+    '__COLDBOX_CRYPTO_VENDOR_SOURCE__',
+    '__COLDBOX_CRYPTO_LAYER__',
     '__COLDBOX_PROTOCOL__',
     '__COLDBOX_AIRGAP__',
     '__COLDBOX_CAPABILITIES__'

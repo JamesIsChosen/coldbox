@@ -38,3 +38,22 @@ body {
   color: #aabbd2;
   font-size: 0.75rem;
 }
+
+#cold-kdf-details {
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(134, 197, 255, 0.2);
+}
+
+#cold-kdf-active {
+  margin: 0.3rem 0 0;
+  color: #f2d58c;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+#cold-crypto-path {
+  margin: 0.25rem 0 0;
+  color: #aabbd2;
+  font-size: 0.7rem;
+}

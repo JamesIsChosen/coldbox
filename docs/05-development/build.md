@@ -41,7 +41,7 @@ The browser download is explicit and separate from `npm ci`; the application bui
 1. **Verify vendor** — every file in `vendor/` is hashed and compared against the upstream release hashes in [dependencies.md](dependencies.md). Any mismatch aborts the build.
 2. **Lint for forbidden constructs** — `eval`, `new Function`, `import`, and `require` are rejected throughout application source. `src/cold/` is the secret-handling path; it additionally rejects external URLs and `localStorage`. Any hit aborts.
 3. **Compile help content** — markdown from `docs/00-overview/glossary.md` and `docs/03-guides/` is converted and embedded. There is one copy of every explanation; in-app help and repo docs cannot drift.
-4. **Assemble the cold realm** — its HTML, CSS, and JS are built and serialized into a string for `srcdoc`.
+4. **Assemble the cold realm** — its HTML, CSS, crypto vendor bundle, crypto layer, and bootstrap JS are built and serialized into a string for `srcdoc`. The bundle is generated only from the committed vendor tarballs; it never imports a module or fetches a runtime dependency.
 5. **Compute cold CSP hashes** — SHA-256 of the exact UTF-8 text in each cold inline script and style block, injected into the child policy and then into the parent policy because `srcdoc` inherits the parent's CSP. The parent and child policies still combine restrictively; the parent hashes only authorize the exact child blocks.
 6. **Compute warm CSP hashes and assemble the shell** — the warm script receives the serialized child document, the parent receives the exact child hashes, and the outer script/style hashes are injected last. Missing hash placeholders or inline blocks abort the build. **This is why the build must be deterministic**: a nondeterministic build produces a hash mismatch and nothing runs.
 7. **Emit** `build/coldbox.html` and `build/coldbox.html.sha256`.
@@ -152,4 +152,4 @@ CI builds the tag independently and publishes an attestation. **Three hashes mus
 
 **CSP hash mismatch at runtime.** The build produced different bytes than the hash it embedded. Almost always nondeterminism in the assembly step.
 
-**Argon2 fails to load in the built file.** `'wasm-unsafe-eval'` is missing from the cold realm CSP. Without it, Chrome blocks WASM and every vault silently drops to PBKDF2 — treat this as a build failure, not a runtime degradation.
+**Argon2 fails to load in the built file.** Check the visible **Vault details / P0.10** panel and the `data-kdf-active` attribute. The cold realm runs the RFC 9106 vector during boot; if Argon2id WASM cannot load, it labels the active PBKDF2-HMAC-SHA512 fallback and never hides that downgrade. A missing `'wasm-unsafe-eval'` token is still a build/security defect because it forces the fallback on browsers that support WASM.
