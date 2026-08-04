@@ -372,6 +372,9 @@ async function verifyBuiltFile(browser, engine) {
 
     await page.locator('#nav-rail a[data-route="vault"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    await page.context().setOffline(true);
+    await page.locator('#airgap-banner[data-airgap-state="green"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('html[data-warm-network-online="false"]').waitFor({ state: 'attached', timeout: 5000 });
     await coldFrame.locator('#cold-vault-passphrase').fill('browser round-trip phrase');
     await coldFrame.locator('#cold-vault-create').click();
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
@@ -381,18 +384,49 @@ async function verifyBuiltFile(browser, engine) {
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#vault-save-download').click();
     const download = await downloadPromise;
-    assert.equal(download.suggestedFilename(), 'coldbox-vault.cbxvault');
+    assert.equal(download.suggestedFilename(), 'coldbox-vault.cbx');
 
     await page.locator('#vault-save-manual').click();
     await page.waitForFunction(() => document.querySelector('#vault-manual-data').value.length > 0);
     const manualVaultText = await page.locator('#vault-manual-data').inputValue();
     assert.ok(manualVaultText.length > 100, `${engine}: manual export should contain encrypted vault bytes`);
     assert.equal(await page.locator('#vault-manual-copy').isDisabled(), false);
+    assert.equal(await page.locator('#vault-manual-share').isDisabled(), true);
+    await page.locator('#vault-manual-qr-data').waitFor({ state: 'visible' });
+    assert.match(await page.locator('#vault-manual-qr-data').inputValue(), /^CBX-QR\/1\/1\/\d+\//);
+    const qrCountText = await page.locator('#vault-manual-qr-count').textContent();
+    const qrCountMatch = /^QR frame 1 of (\d+)\./.exec(qrCountText);
+    assert.ok(qrCountMatch, `${engine}: QR frame count should be rendered`);
+    const qrFrameCount = Number(qrCountMatch[1]);
+    assert.ok(qrFrameCount > 1, `${engine}: offline vault should exercise multipart QR output`);
+    await page.locator('#vault-manual-qr-image').waitFor({ state: 'visible' });
+
+    await page.locator('#vault-save-manual').click();
+    await page.waitForFunction((previous) => {
+      const value = document.querySelector('#vault-manual-data').value;
+      return value.length > 0 && value !== previous;
+    }, manualVaultText);
+    const secondManualVaultText = await page.locator('#vault-manual-data').inputValue();
+    assert.notEqual(secondManualVaultText, manualVaultText, `${engine}: repeated saves must rotate the public nonce`);
 
     await page.locator('#vault-lock').click();
     await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible' });
     await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible' });
-    await page.locator('#vault-manual-data').fill(manualVaultText);
+    const qrFrames = await page.evaluate((value) => {
+      const payloadLength = 650;
+      const total = Math.ceil(value.length / payloadLength);
+      return Array.from({ length: total }, (_, index) => (
+        'CBX-QR/1/' + String(index + 1) + '/' + String(total) + '/'
+          + value.slice(index * payloadLength, (index + 1) * payloadLength)
+      ));
+    }, manualVaultText);
+    assert.equal(qrFrames.length, qrFrameCount, `${engine}: QR frame count should match reassembly input`);
+    const incompleteQrFrames = qrFrames.slice();
+    incompleteQrFrames.splice(1, 1);
+    await page.locator('#vault-manual-data').fill(incompleteQrFrames.join('\n'));
+    await page.locator('#vault-load-manual').click();
+    await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible' });
+    await page.locator('#vault-manual-data').fill(qrFrames.join('\n'));
     await page.locator('#vault-load-manual').click();
     await page.locator('#vault-status[data-state="pending"]').waitFor({ state: 'visible' });
     await coldFrame.locator('#cold-vault-status[data-state="pending"]').waitFor({ state: 'visible' });
@@ -589,16 +623,57 @@ async function verifyPanicHide(browser, engine) {
   const { harness, page } = await openPage(browser, buildPath);
   try {
     await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    let coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-vault-passphrase').fill('panic session phrase');
+    await coldFrame.locator('#cold-vault-create').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     await page.keyboard.press('Escape');
     await page.keyboard.press('Escape');
     await page.locator('#panic-screen:not([hidden])').waitFor({ state: 'visible' });
     assert.equal(await page.locator('#app').isHidden(), true, `${engine}: panic hide left the warm app visible`);
     assert.equal(await page.locator('#panic-screen').isVisible(), true, `${engine}: panic hide did not show its recovery screen`);
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached' });
+    assert.equal(
+      await coldFrame.locator('html').getAttribute('data-cold-working-bytes'),
+      'cleared',
+      `${engine}: warm panic did not clear cold working bytes`
+    );
+    assert.equal(
+      await coldFrame.locator('#cold-vault-passphrase').inputValue(),
+      '',
+      `${engine}: warm panic did not clear the cold passphrase field`
+    );
+
+    await page.reload({ waitUntil: 'load' });
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-vault-passphrase').fill('cold panic session phrase');
+    await coldFrame.locator('#cold-vault-create').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('body').press('Escape');
+    await page.locator('#panic-screen:not([hidden])').waitFor({ state: 'visible' });
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached' });
+    assert.equal(
+      await coldFrame.locator('html').getAttribute('data-cold-working-bytes'),
+      'cleared',
+      `${engine}: cold panic did not clear cold working bytes`
+    );
+    assert.equal(
+      await coldFrame.locator('#cold-vault-passphrase').inputValue(),
+      '',
+      `${engine}: cold panic did not clear the cold passphrase field`
+    );
     await harness.expectCspViolation('connect-src', { blockedURI: WARM_CANARY_URL });
     await harness.expectNoConsoleErrors({
       allowedFragments: [CANARY_ERROR_FRAGMENT, COLD_CANARY_ERROR_FRAGMENT]
     });
-    console.log(`${engine}: Escape Escape locked and concealed the warm app`);
+    console.log(`${engine}: warm and cold Escape Escape paths locked, cleared, and concealed the app`);
   } finally {
     await closePage(page);
   }

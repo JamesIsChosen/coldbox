@@ -230,7 +230,7 @@ __COLDBOX_STYLES__
               <span class="card-icon" aria-hidden="true">01</span>
               <h2>Load an encrypted vault</h2>
               <p>Open a vault from the device. File System Access is used when available; the file input is the fallback.</p>
-              <input class="sr-only" id="vault-file-input" type="file" accept=".cbxvault,application/octet-stream">
+              <input class="sr-only" id="vault-file-input" type="file" accept=".cbx,application/octet-stream">
               <div class="vault-actions">
                 <button class="vault-button" id="vault-load-file" type="button">Load from device</button>
               </div>
@@ -249,15 +249,32 @@ __COLDBOX_STYLES__
             <article class="info-card vault-card vault-card-manual">
               <span class="card-icon" aria-hidden="true">03</span>
               <h2>Manual base64 / QR handoff</h2>
-              <p>Export the encrypted bytes as text for iOS Safari or an airgapped handoff. Paste the same text here to load it again.</p>
+              <p>Export the encrypted bytes as text for iOS Safari or an airgapped handoff. Share the text, or use numbered QR frames with count and reassembly instructions. Paste the text or frames here to load it again.</p>
               <label class="vault-label" for="vault-manual-data">Encrypted vault base64</label>
               <textarea id="vault-manual-data" rows="7" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Exported encrypted bytes appear here."></textarea>
               <div class="vault-actions">
                 <button class="vault-button" id="vault-save-manual" type="button">Prepare export</button>
                 <button class="vault-button" id="vault-manual-copy" type="button" disabled>Copy text</button>
+                <button class="vault-button" id="vault-manual-share" type="button" disabled>Share text</button>
                 <button class="vault-button" id="vault-load-manual" type="button">Load pasted text</button>
               </div>
-              <p class="vault-help" id="vault-manual-help">If clipboard access is unavailable, focus the text and use the browser's Copy command.</p>
+              <p class="vault-help" id="vault-manual-help">If clipboard or share access is unavailable, focus the text and use the browser's Copy command. QR frames are numbered and must be reassembled in order before loading.</p>
+              <div class="vault-manual-qr" aria-live="polite">
+                <label class="vault-label" for="vault-manual-qr-data">Numbered QR frame</label>
+                <textarea id="vault-manual-qr-data" rows="4" spellcheck="false" autocapitalize="off" autocomplete="off" readonly placeholder="Prepare QR frames to render a numbered frame."></textarea>
+                <div class="vault-actions">
+                  <button class="vault-button" id="vault-manual-qr-prepare" type="button" disabled>Prepare QR frames</button>
+                  <button class="vault-button" id="vault-manual-qr-copy" type="button" disabled>Copy frame</button>
+                  <button class="vault-button" id="vault-manual-qr-copy-all" type="button" disabled>Copy all frames</button>
+                  <button class="vault-button" id="vault-manual-qr-previous" type="button" disabled>Previous</button>
+                  <label class="vault-qr-index-label" for="vault-manual-qr-index">Frame
+                    <input id="vault-manual-qr-index" type="number" min="1" value="1" inputmode="numeric" disabled>
+                  </label>
+                  <button class="vault-button" id="vault-manual-qr-next" type="button" disabled>Next</button>
+                </div>
+                <p class="vault-help" id="vault-manual-qr-count">No QR frames prepared.</p>
+                <img id="vault-manual-qr-image" class="vault-manual-qr-image" alt="" hidden>
+              </div>
             </article>
           </div>
 

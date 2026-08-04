@@ -69,7 +69,7 @@ P0.11 additionally checks a real v1 round-trip, a zero-secret vault, every heade
 
 P0.12 additionally runs real Fast, Standard, and Paranoid Argon2id profile round-trips, measures the three profiles sequentially with fixed non-secret benchmark inputs, warns that Paranoid may fail to allocate on iOS, and verifies the benchmark control is offered only inside the cold frame.
 
-P0.13 additionally verifies that mode signaling selects public-only unlock online and full unlock offline, that the cold session clears the passphrase field and encrypted working bytes on lock, that the idle timer and `Esc Esc` concealment are installed, and that Chromium/Firefox complete blob-download and manual-base64 save/load round-trips. The iOS Safari manual path remains unverified until the P0.19 device pass.
+P0.13 additionally verifies that mode signaling selects public-only unlock online and full unlock offline, that the cold session clears the passphrase field and encrypted working bytes on lock, that repeated saves rotate re-encrypted nonces, that online secret ciphertext is copied opaquely, that the idle timer and both warm/cold `Esc Esc` concealment paths lock the session, and that Chromium/Firefox complete `.cbx` blob-download, manual-base64, share-surface, and numbered QR-frame rendering checks. The iOS Safari manual path remains unverified until the P0.19 device pass.
 
 ---
 

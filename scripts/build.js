@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const zlib = require('node:zlib');
 const { spawnSync } = require('node:child_process');
 const { createCryptoVendorSource } = require('./crypto-bundle.js');
 
@@ -14,6 +15,14 @@ process.env.TZ = 'UTC';
 const projectRoot = path.resolve(__dirname, '..');
 const sourceRoot = path.join(projectRoot, 'src');
 const buildRoot = path.join(projectRoot, 'build');
+const qrVendorTarball = path.join(
+  projectRoot,
+  'vendor',
+  'npm',
+  'qrcode-generator',
+  '1.4.4',
+  'package.tgz'
+);
 
 // Keep the assembly manifest explicit and ordered. The output must never depend
 // on filesystem enumeration order.
@@ -33,6 +42,28 @@ const coldRealmManifest = Object.freeze([
 function readSource(file) {
   const contents = fs.readFileSync(path.join(sourceRoot, file), 'utf8');
   return normalizeLineEndings(contents);
+}
+
+function readQrEncoderSource() {
+  const archive = zlib.gunzipSync(fs.readFileSync(qrVendorTarball));
+  const target = 'package/qrcode.js';
+  for (let offset = 0; offset + 512 <= archive.length; ) {
+    const name = archive.subarray(offset, offset + 100).toString('utf8').replace(/\0.*$/, '');
+    if (!name) {
+      break;
+    }
+    const sizeText = archive.subarray(offset + 124, offset + 136)
+      .toString('ascii')
+      .replace(/\0.*$/, '')
+      .trim();
+    const size = sizeText ? Number.parseInt(sizeText, 8) : 0;
+    const contentStart = offset + 512;
+    if (name === target) {
+      return normalizeLineEndings(archive.subarray(contentStart, contentStart + size).toString('utf8'));
+    }
+    offset = contentStart + Math.ceil(size / 512) * 512;
+  }
+  throw new Error(`Missing ${target} in ${qrVendorTarball}`);
 }
 
 function normalizeLineEndings(contents) {
@@ -55,7 +86,8 @@ function assemble() {
   const coldRealmDocument = injectColdCspHashes(
     assembleColdRealm(protocolSource, airgapSource, capabilitiesSource)
   );
-  let mainScript = injectOnce(readSource('main.js'), '__COLDBOX_PROTOCOL__', protocolSource);
+  let mainScript = injectOnce(readSource('main.js'), '__COLDBOX_QR_ENCODER__', readQrEncoderSource());
+  mainScript = injectOnce(mainScript, '__COLDBOX_PROTOCOL__', protocolSource);
   mainScript = injectOnce(mainScript, '__COLDBOX_AIRGAP__', airgapSource);
   mainScript = injectOnce(mainScript, '__COLDBOX_CAPABILITIES__', capabilitiesSource);
   mainScript = injectOnce(

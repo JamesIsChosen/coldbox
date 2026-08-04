@@ -33,6 +33,7 @@ __COLDBOX_CAPABILITIES__
   var vaultBusy = false;
   var vaultUnlocked = false;
   var currentVaultBytes = null;
+  var currentVaultSession = null;
   var pendingVaultBytes = null;
   var pendingOpenId = null;
   var idleTimer = null;
@@ -62,6 +63,14 @@ __COLDBOX_CAPABILITIES__
     if (value && typeof value.fill === 'function') {
       value.fill(0);
     }
+  }
+
+  function setSessionEvidence(state) {
+    document.documentElement.setAttribute('data-cold-session-state', state);
+    document.documentElement.setAttribute(
+      'data-cold-working-bytes',
+      currentVaultBytes ? 'present' : 'cleared'
+    );
   }
 
   function setVaultStatus(state, text) {
@@ -132,13 +141,17 @@ __COLDBOX_CAPABILITIES__
     postVaultMessage(id || nextVaultMessageId('error'), 'error', { code: code });
   }
 
-  function sendVaultOpened(id) {
+  function sendVaultOpened(id, publicData) {
     postVaultMessage(id || nextVaultMessageId('opened'), 'vault.opened', {
-      publicCompartment: {}
+      publicCompartment: publicData && typeof publicData === 'object' ? publicData : {}
     });
   }
 
   function clearVaultSession(clearPending) {
+    if (currentVaultSession && typeof currentVaultSession.close === 'function') {
+      currentVaultSession.close();
+    }
+    currentVaultSession = null;
     zeroBytes(currentVaultBytes);
     currentVaultBytes = null;
     vaultUnlocked = false;
@@ -154,6 +167,7 @@ __COLDBOX_CAPABILITIES__
     if (passphraseInput) {
       passphraseInput.value = '';
     }
+    setSessionEvidence('locked');
     updateVaultControls();
   }
 
@@ -182,7 +196,10 @@ __COLDBOX_CAPABILITIES__
   }
 
   function createEmptyVault() {
-    if (!vaultLayer || typeof vaultLayer.create !== 'function' || !passphraseInput) {
+    if (!vaultLayer
+      || typeof vaultLayer.create !== 'function'
+      || typeof vaultLayer.openSession !== 'function'
+      || !passphraseInput) {
       setVaultStatus('locked', 'Vault creation is unavailable in this build.');
       return;
     }
@@ -204,24 +221,34 @@ __COLDBOX_CAPABILITIES__
       createOptions.secretData = {};
     }
     vaultLayer.create(createOptions).then(function (bytes) {
-      currentVaultBytes = new Uint8Array(bytes);
-      zeroBytes(pendingVaultBytes);
-      pendingVaultBytes = null;
-      pendingOpenId = null;
-      vaultUnlocked = true;
-      passphrase = '';
-      if (passphraseInput) {
-        passphraseInput.value = '';
-      }
-      setVaultStatus(
-        'unlocked',
-        onlineMode
-          ? 'New public-only vault created in online mode.'
-          : 'New encrypted vault created and unlocked.'
-      );
-      sendVaultOpened(nextVaultMessageId('created'));
-      sendVaultStatus(false);
-      scheduleIdleLock();
+      return vaultLayer.openSession(bytes, passphrase, onlineMode ? 'online' : 'offline').then(function (session) {
+        currentVaultSession = session;
+        currentVaultBytes = new Uint8Array(bytes);
+        zeroBytes(pendingVaultBytes);
+        pendingVaultBytes = null;
+        pendingOpenId = null;
+        vaultUnlocked = true;
+        passphrase = '';
+        if (passphraseInput) {
+          passphraseInput.value = '';
+        }
+        setSessionEvidence('unlocked');
+        setVaultStatus(
+          'unlocked',
+          onlineMode
+            ? 'New public-only vault created in online mode.'
+            : 'New encrypted vault created and unlocked.'
+        );
+        sendVaultOpened(nextVaultMessageId('created'), session.publicData);
+        sendVaultStatus(false);
+        scheduleIdleLock();
+      }, function (error) {
+        zeroBytes(bytes);
+        passphrase = '';
+        setVaultStatus('locked', 'Vault creation failed; no session was opened.');
+        sendVaultError(nextVaultMessageId('create'), 'operation-failed');
+        throw error;
+      });
     }, function () {
       passphrase = '';
       setVaultStatus('locked', 'Vault creation failed; no session was opened.');
@@ -236,7 +263,10 @@ __COLDBOX_CAPABILITIES__
   }
 
   function unlockLoadedVault() {
-    if (!vaultLayer || typeof vaultLayer.open !== 'function' || !pendingVaultBytes || !passphraseInput) {
+    if (!vaultLayer
+      || typeof vaultLayer.openSession !== 'function'
+      || !pendingVaultBytes
+      || !passphraseInput) {
       setVaultStatus('locked', 'Load an encrypted vault before unlocking it.');
       return;
     }
@@ -248,13 +278,6 @@ __COLDBOX_CAPABILITIES__
     }
     var bytes = pendingVaultBytes;
     var responseId = pendingOpenId || nextVaultMessageId('opened');
-    var openOperation = onlineMode ? vaultLayer.openPublic : vaultLayer.open;
-    if (typeof openOperation !== 'function') {
-      passphrase = '';
-      setVaultStatus('pending', 'This build cannot open the vault in the current network mode.');
-      sendVaultError(responseId, 'unsupported');
-      return;
-    }
     vaultBusy = true;
     updateVaultControls();
     setVaultStatus(
@@ -263,8 +286,8 @@ __COLDBOX_CAPABILITIES__
         ? 'Opening only the public compartment; secrets remain sealed online...'
         : 'Authenticating the encrypted vault inside the sealed realm...'
     );
-    openOperation(bytes, passphrase).then(function (opened) {
-      opened = null;
+    vaultLayer.openSession(bytes, passphrase, onlineMode ? 'online' : 'offline').then(function (session) {
+      currentVaultSession = session;
       currentVaultBytes = new Uint8Array(bytes);
       zeroBytes(pendingVaultBytes);
       pendingVaultBytes = null;
@@ -274,13 +297,14 @@ __COLDBOX_CAPABILITIES__
       if (passphraseInput) {
         passphraseInput.value = '';
       }
+      setSessionEvidence('unlocked');
       setVaultStatus(
         'unlocked',
         onlineMode
           ? 'Vault opened in online public-only mode; secrets remain sealed.'
           : 'Encrypted vault opened and unlocked.'
       );
-      sendVaultOpened(responseId);
+      sendVaultOpened(responseId, session.publicData);
       sendVaultStatus(false);
       scheduleIdleLock();
     }, function () {
@@ -315,12 +339,25 @@ __COLDBOX_CAPABILITIES__
       return;
     }
     if (message.type === 'vault.saveRequest') {
-      if (!vaultUnlocked || !currentVaultBytes) {
+      if (!vaultUnlocked || !currentVaultBytes || !currentVaultSession) {
         sendVaultError(message.id, 'vault-locked');
         return;
       }
-      postVaultMessage(message.id, 'vault.bytes', { bytes: new Uint8Array(currentVaultBytes) });
-      recordVaultActivity();
+      var saveSession = currentVaultSession;
+      saveSession.save().then(function (bytes) {
+        if (!vaultUnlocked || saveSession !== currentVaultSession) {
+          zeroBytes(bytes);
+          sendVaultError(message.id, 'vault-locked');
+          return;
+        }
+        zeroBytes(currentVaultBytes);
+        currentVaultBytes = new Uint8Array(bytes);
+        postVaultMessage(message.id, 'vault.bytes', { bytes: new Uint8Array(bytes) });
+        zeroBytes(bytes);
+        recordVaultActivity();
+      }, function () {
+        sendVaultError(message.id, 'operation-failed');
+      });
       return;
     }
     if (message.type === 'vault.lock') {
@@ -331,8 +368,8 @@ __COLDBOX_CAPABILITIES__
       var wasOnline = onlineMode;
       onlineMode = message.payload.online;
       document.documentElement.setAttribute('data-warm-network-online', String(message.payload.online));
-      if (!wasOnline && onlineMode && vaultUnlocked) {
-        lockVaultSession(null, 'Vault locked because warm mode is online.', true);
+      if (wasOnline !== onlineMode && vaultUnlocked) {
+        lockVaultSession(null, 'Vault locked because network mode changed.', true);
       }
       return;
     }
@@ -661,6 +698,7 @@ __COLDBOX_CAPABILITIES__
     }
     lastEscapeAt = now;
   });
+  setSessionEvidence('locked');
   setVaultStatus('locked', 'Vault is locked. Unlocking stays in this sealed realm.');
   updateVaultControls();
 

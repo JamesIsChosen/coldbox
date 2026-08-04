@@ -150,7 +150,8 @@ The public projection deliberately contains no free-form text fields. It permits
 | Public compartment | Read/write | Read/write (or sealed under `strict`) |
 | Secret compartment | Available | **Never decrypted** |
 | Tools | All | All — inside the cold realm |
-| Vault save | Full | Public re-encrypted; secret copied as opaque ciphertext |
+| Vault save | Full offline | Public and secret compartments re-encrypted with fresh nonces |
+| Vault save | Online-safe | Public re-encrypted; secret nonce and ciphertext copied as opaque bytes |
 
 Detection uses `navigator.onLine`, `navigator.connection`, and the CSP canary.
 
