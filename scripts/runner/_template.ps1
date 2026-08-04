@@ -24,7 +24,9 @@ param(
     [string] $ExpectedBranch = 'REPLACE-ME',
     [string] $ExpectedHead   = 'REPLACE-ME',          # full or short SHA
     [switch] $Discovery,                              # include repo/ archive
-    [string] $OutDir         = (Join-Path $HOME 'Downloads')
+    # $HOME is not always the Windows profile - it can be inherited from a host
+    # process, which sends bundles somewhere surprising. Prefer USERPROFILE.
+    [string] $OutDir         = (Join-Path ($(if ($env:USERPROFILE) { $env:USERPROFILE } else { $HOME })) 'Downloads')
 )
 
 Set-StrictMode -Version Latest
@@ -255,7 +257,10 @@ function New-Bundle {
         afterBranch    = $afterBranch
         afterHead      = $afterHead
         rolledBack     = $script:RolledBack
-        preTag         = $script:PreTag
+        # Only report a recovery tag that actually exists. A preflight abort
+        # creates none, and naming one would send the reader to a ref that is
+        # not there.
+        preTag         = $(if ($script:NetCreated) { $script:PreTag } else { $null })
         nodeVersion    = $script:NodeVersion
         culture        = (Get-Culture).Name
         timezone       = [System.TimeZoneInfo]::Local.Id
@@ -279,13 +284,17 @@ function New-Bundle {
     ) -join "`n"
     Set-Content -LiteralPath (Join-Path $script:Stage 'git-state.txt') -Value $gitState -Encoding UTF8
 
-    # What this runner changed, relative to its own starting point.
-    try {
-        $patch = & git diff "$script:BeforeHead..HEAD" 2>&1 | Out-String
-        if ($patch.Trim()) {
-            Set-Content -LiteralPath (Join-Path $script:Stage 'changes.patch') -Value $patch -Encoding UTF8
-        }
-    } catch { Write-Log "could not produce changes.patch: $($_.Exception.Message)" 'WARN' }
+    # What this runner changed, relative to its own starting point. Skipped
+    # when preflight aborted, since there is no starting point to diff from and
+    # attempting it only emits a confusing 'ambiguous argument' warning.
+    if ($script:BeforeHead -ne 'unknown') {
+        try {
+            $patch = & git diff "$script:BeforeHead..HEAD" 2>&1 | Out-String
+            if ($patch.Trim()) {
+                Set-Content -LiteralPath (Join-Path $script:Stage 'changes.patch') -Value $patch -Encoding UTF8
+            }
+        } catch { Write-Log "could not produce changes.patch: $($_.Exception.Message)" 'WARN' }
+    }
 
     # Discovery only: tracked content, never a directory copy (see flow doc 5).
     if ($Discovery) {

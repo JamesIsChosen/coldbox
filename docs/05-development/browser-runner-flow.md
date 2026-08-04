@@ -124,6 +124,21 @@ coldbox-runner-<id>.zip
 
 `manifest.json` is what the agent reads first. It is machine-shaped on purpose: the agent should never have to infer success from prose.
 
+**`preTag` is `null` when preflight aborted** — no recovery tag was created, because nothing was mutated. A non-null `preTag` always names a ref that exists.
+
+**Zip entries use backslash separators.** `Compress-Archive` on Windows PowerShell 5.1 writes `repo\src\main.js`, not `repo/src/main.js`. `unzip` warns about it and some tooling mis-splits the paths, so anything reading a bundle should normalise separators before matching on them.
+
+### Verified
+
+Both paths were executed against this repository on 2026-08-04 under Windows PowerShell 5.1.26100.8875, Node v24.16.0:
+
+| Run | Result |
+|---|---|
+| `-Discovery`, correct expected state | `verdict: PASS`, 144 entries, 139 files under `repo/`, 1.29 MB, secret scan CLEAN |
+| Deliberate `-ExpectedHead deadbeef` | `verdict: FAIL`, aborted in preflight, `rolledBack: false`, nothing mutated, **bundle still written** |
+
+The second case is the one that matters — a runner that fails without producing a bundle leaves the agent blind.
+
 ---
 
 ## 5. Secret safety
