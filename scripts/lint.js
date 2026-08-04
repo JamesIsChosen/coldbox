@@ -25,6 +25,7 @@ const forbiddenConstructs = Object.freeze([
 const externalUrlPattern = /\b[a-z][a-z0-9+.-]{1,31}:\/\/[^\s"'<>]+/gi;
 const protocolRelativeUrlPattern = /(?<![:\w])\/\/[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}(?::\d+)?(?:[/?#][^\s"'<>]*)?/gi;
 const localStoragePattern = /\blocalStorage\b/g;
+const executableMathRandomPattern = /\bMath\.random\s*\(/g;
 
 function parseArgs() {
   let root = projectRoot;
@@ -132,6 +133,10 @@ function scanSourceFile(root, file, source, findings) {
     addFindings(findings, root, file, source, 'external URL', externalUrlPattern);
     addFindings(findings, root, file, source, 'external URL', protocolRelativeUrlPattern);
     addFindings(findings, root, file, source, 'localStorage', localStoragePattern);
+  }
+
+  if (relative === 'src/capabilities.js') {
+    addFindings(findings, root, file, source, 'Math.random', executableMathRandomPattern);
   }
 
   if (extension === '.js') {
