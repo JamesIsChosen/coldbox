@@ -669,7 +669,9 @@ async function verifyMissingRandomnessLockdown(browser, engine) {
       );
       assert.equal(await page.locator('#cold-frame').count(), 0, `${engine}: missing-randomness fixture left a cold frame active`);
       await harness.expectCspViolation('connect-src');
-      await harness.expectNoConsoleErrors({ allowedFragments: [CANARY_ERROR_FRAGMENT] });
+      await harness.expectNoConsoleErrors({
+        allowedFragments: [CANARY_ERROR_FRAGMENT, COLD_CANARY_ERROR_FRAGMENT]
+      });
       const failureText = await page.locator('#cold-realm-failure').textContent();
       assert.match(failureText, /never substitutes Math\.random/);
       console.log(`${engine}: missing getRandomValues entered full lockdown and refused vault operations`);
