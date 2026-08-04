@@ -10,7 +10,12 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
-Foundation work in progress. Wallet and vault workflows are not available yet; the P0.10 cryptographic layer and P0.11 vault format are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
+Foundation work in progress. Wallet and vault workflows are not available yet; the P0.10 cryptographic layer, P0.11 vault format, and P0.12 KDF benchmark are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
+
+### Added — P0.12 (2026-08-03)
+
+- Cold-only KDF profile benchmark for Fast, Standard, and Paranoid, with sequential timings before vault creation and an explicit iOS allocation warning for the 256 MiB profile.
+- Real Argon2id round-trips for all three stored header profiles, likely-iOS Paranoid skip coverage, and browser verification that the benchmark offer remains inside the sealed realm.
 
 ### Added — P0.10 (2026-08-03)
 

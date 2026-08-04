@@ -338,6 +338,8 @@ async function verifyBuiltFile(browser, engine) {
     assert.match(coldPolicy, new RegExp(escapedRegExp(cspHash(coldStyle))));
     assert.equal(await coldFrame.locator('html').getAttribute('data-csp-canary'), 'passed');
     assert.equal(await coldFrame.locator('html').getAttribute('data-runtime-neutering'), 'installed');
+    assert.equal(await page.evaluate(() => typeof window.__coldboxCrypto), 'undefined');
+    assert.equal(await coldFrame.evaluate(() => typeof window.__coldboxCrypto.benchmarkProfiles), 'function');
     assert.equal(await page.evaluate(() => typeof window.__coldboxVault), 'undefined');
     assert.equal(await coldFrame.evaluate(() => typeof window.__coldboxVault), 'object');
     assert.equal(await coldFrame.evaluate(() => window.__coldboxVault.formatVersion), 1);
@@ -346,6 +348,8 @@ async function verifyBuiltFile(browser, engine) {
     await coldFrame.locator('#cold-kdf-details[data-kdf-active="argon2id-standard"]').waitFor({ state: 'visible' });
     assert.match(await coldFrame.locator('#cold-kdf-active').textContent(), /Argon2id WASM/);
     assert.match(await coldFrame.locator('#cold-crypto-path').textContent(), /RFC 9106/);
+    assert.equal(await coldFrame.locator('#cold-kdf-benchmark-run').isDisabled(), false);
+    assert.equal(await coldFrame.locator('#cold-kdf-benchmark-result').textContent(), 'Benchmark not run.');
     await page.locator('#capability-crypto-summary').waitFor({ state: 'visible' });
     assert.match(await page.locator('#capability-crypto-summary').textContent(), /argon2id-standard/);
     await harness.expectParentCannotReadFrame();

@@ -57,3 +57,35 @@ body {
   color: #aabbd2;
   font-size: 0.7rem;
 }
+
+#cold-kdf-benchmark {
+  margin-top: 0.6rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(134, 197, 255, 0.12);
+}
+
+#cold-kdf-benchmark-copy,
+#cold-kdf-benchmark-result {
+  margin: 0.25rem 0 0;
+  color: #aabbd2;
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+#cold-kdf-benchmark-run {
+  margin-top: 0.45rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid rgba(143, 240, 195, 0.55);
+  border-radius: 0.35rem;
+  background: #183b3c;
+  color: #dfffea;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#cold-kdf-benchmark-run:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}

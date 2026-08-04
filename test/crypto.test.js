@@ -11,7 +11,7 @@ const { createCryptoVendorSource } = require('../scripts/crypto-bundle.js');
 const projectRoot = path.resolve(__dirname, '..');
 const cryptoSource = fs.readFileSync(path.join(projectRoot, 'src', 'cold', 'crypto.js'), 'utf8');
 
-function createContext(withArgon2 = true) {
+function createContext(withArgon2 = true, navigatorValue) {
   const nodes = new Map();
   const document = {
     documentElement: { setAttribute() {} },
@@ -33,6 +33,8 @@ function createContext(withArgon2 = true) {
     console,
     crypto: crypto.webcrypto,
     document,
+    performance,
+    navigator: navigatorValue,
     setTimeout
   };
   context.window = context;
@@ -85,4 +87,36 @@ test('RFC 9106 Argon2id failure is visible as an explicit PBKDF2 fallback', asyn
   const derived = await context.__coldboxCrypto.deriveKey('test passphrase', new Uint8Array(16), 'fallback');
   assert.equal(derived.length, 32);
   assert.equal(context.__coldboxCrypto.getKdfDetails().id, 'pbkdf2-sha512-fallback');
+});
+
+test('KDF benchmark measures all profiles sequentially and warns about Paranoid on iOS', async () => {
+  const context = createContext();
+  const report = await context.__coldboxCrypto.benchmarkProfiles();
+
+  assert.deepEqual(Array.from(report.profiles, (profile) => profile.profile), ['fast', 'standard', 'paranoid']);
+  for (const profile of report.profiles) {
+    assert.equal(profile.status, 'passed');
+    assert.equal(typeof profile.durationMs, 'number');
+    assert.ok(profile.durationMs >= 0);
+  }
+  assert.match(report.profiles[2].warning, /256 MiB/);
+  assert.match(report.profiles[2].warning, /iOS/);
+
+  const second = await context.__coldboxCrypto.benchmarkProfiles();
+  assert.equal(second.profiles.length, 3);
+});
+
+test('KDF benchmark skips the Paranoid allocation on a likely iOS device', async () => {
+  const context = createContext(true, {
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)',
+    platform: 'iPhone',
+    maxTouchPoints: 5
+  });
+  const report = await context.__coldboxCrypto.benchmarkProfiles();
+  const paranoid = report.profiles.find((profile) => profile.profile === 'paranoid');
+
+  assert.equal(paranoid.status, 'skipped');
+  assert.equal(paranoid.durationMs, null);
+  assert.match(paranoid.warning, /skipped/);
+  assert.match(paranoid.warning, /iOS/);
 });

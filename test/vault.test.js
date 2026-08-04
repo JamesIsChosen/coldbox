@@ -136,6 +136,31 @@ test('P0.11 vault round-trip uses real P0.10 crypto and 64 KiB compartments', as
   assert.equal(publicOnlyOpened.secretData, null);
 });
 
+test('P0.12 all Argon2id profiles round-trip and remain stored in the header', async () => {
+  const context = createRealContext();
+  const expected = {
+    fast: { memoryKiB: 19456, iterations: 2, parallelism: 1 },
+    standard: { memoryKiB: 65536, iterations: 3, parallelism: 1 },
+    paranoid: { memoryKiB: 262144, iterations: 4, parallelism: 1 }
+  };
+
+  for (const profile of Object.keys(expected)) {
+    const vault = await context.__coldboxVault.create({
+      passphrase: 'profile round-trip passphrase',
+      profile,
+      publicData: { profile }
+    });
+    const header = context.__coldboxVault.inspectHeader(vault);
+    assert.equal(header.kdfId, 1);
+    assert.equal(header.memoryKiB, expected[profile].memoryKiB);
+    assert.equal(header.iterations, expected[profile].iterations);
+    assert.equal(header.parallelism, expected[profile].parallelism);
+    const opened = await context.__coldboxVault.open(vault, 'profile round-trip passphrase');
+    assert.equal(opened.publicData.profile, profile);
+    assert.equal(opened.secretData, null);
+  }
+});
+
 test('P0.11 authenticates every header byte and keeps corruption errors indistinguishable', async () => {
   const context = createFormatContext();
   const vault = await context.__coldboxVault.create({

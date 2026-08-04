@@ -7,6 +7,7 @@
   var webCryptoState = 'not-tested';
   var argon2Healthy = false;
   var selfTestPromise = null;
+  var benchmarkPromise = null;
   var activeKdf = {
     id: 'checking',
     label: 'Checking the KDF',
@@ -112,6 +113,118 @@
       profiles.fallback,
       `Argon2id WASM was unavailable, so Coldbox is explicitly using the ${profiles.fallback.label} with ${profiles.fallback.iterations.toLocaleString('en-US')} iterations. ${reason}`
     );
+  }
+
+  function zeroBytes(value) {
+    if (value && typeof value.fill === 'function') {
+      value.fill(0);
+    }
+  }
+
+  function monotonicNow() {
+    if (global.performance && typeof global.performance.now === 'function') {
+      return global.performance.now();
+    }
+    return Date.now();
+  }
+
+  function roundedMilliseconds(value) {
+    return Math.max(0, Math.round(value * 10) / 10);
+  }
+
+  function likelyIosDevice() {
+    var navigator = global.navigator;
+    if (!navigator) {
+      return false;
+    }
+    var userAgent = typeof navigator.userAgent === 'string' ? navigator.userAgent : '';
+    var platform = typeof navigator.platform === 'string' ? navigator.platform : '';
+    return /iPad|iPhone|iPod/i.test(userAgent)
+      || (platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+
+  function profileWarning(profileName) {
+    return profileName === 'paranoid'
+      ? 'Paranoid uses 256 MiB and may fail to allocate on iOS.'
+      : null;
+  }
+
+  function benchmarkResult(profileName, status, durationMs, warning) {
+    var profile = profiles[profileName];
+    return {
+      profile: profileName,
+      id: profile.id,
+      memoryKiB: profile.memoryKiB,
+      iterations: profile.iterations,
+      parallelism: profile.parallelism,
+      status: status,
+      durationMs: durationMs,
+      warning: warning || profileWarning(profileName)
+    };
+  }
+
+  function unavailableBenchmark(profileName) {
+    var warning = profileWarning(profileName);
+    var reason = 'Argon2id is unavailable, so this profile was not benchmarked.';
+    return benchmarkResult(profileName, 'unavailable', null, warning ? reason + ' ' + warning : reason);
+  }
+
+  function runArgon2Benchmark(profileName) {
+    if (!argon2Healthy) {
+      return Promise.resolve(unavailableBenchmark(profileName));
+    }
+    if (profileName === 'paranoid' && likelyIosDevice()) {
+      return Promise.resolve(benchmarkResult(
+        profileName,
+        'skipped',
+        null,
+        'Paranoid uses 256 MiB and may fail to allocate on iOS; skipped on this likely iOS device.'
+      ));
+    }
+
+    var profile = profiles[profileName];
+    var passphrase = new Uint8Array(32).fill(0x42);
+    var salt = new Uint8Array(16).fill(0x24);
+    var secret = new Uint8Array(8).fill(0x13);
+    var associatedData = new Uint8Array(12).fill(0x07);
+    var started = monotonicNow();
+    var cleanup = function (result) {
+      zeroBytes(passphrase);
+      zeroBytes(salt);
+      zeroBytes(secret);
+      zeroBytes(associatedData);
+      if (result && result.hash) {
+        zeroBytes(result.hash);
+      }
+    };
+    var operation;
+    try {
+      operation = argon2.hash({
+        pass: passphrase,
+        salt: salt,
+        secret: secret,
+        ad: associatedData,
+        time: profile.iterations,
+        mem: profile.memoryKiB,
+        parallelism: profile.parallelism,
+        hashLen: 32,
+        type: argon2.ArgonType.Argon2id
+      });
+    } catch (error) {
+      cleanup();
+      return Promise.resolve(unavailableBenchmark(profileName));
+    }
+    return Promise.resolve(operation).then(function (result) {
+      var valid = Boolean(result && result.hash && result.hash.length === 32);
+      var durationMs = roundedMilliseconds(monotonicNow() - started);
+      cleanup(result);
+      return valid
+        ? benchmarkResult(profileName, 'passed', durationMs)
+        : unavailableBenchmark(profileName);
+    }, function () {
+      cleanup();
+      return unavailableBenchmark(profileName);
+    });
   }
 
   function randomBytes(length) {
@@ -283,6 +396,41 @@
     return selfTestPromise;
   }
 
+  function benchmarkProfiles() {
+    if (benchmarkPromise) {
+      return benchmarkPromise;
+    }
+    var names = ['fast', 'standard', 'paranoid'];
+    var results = [];
+    var work = selfTest().then(function () {
+      var sequence = Promise.resolve();
+      names.forEach(function (name) {
+        sequence = sequence.then(function () {
+          return runArgon2Benchmark(name);
+        }).then(function (result) {
+          results.push(result);
+        });
+      });
+      return sequence.then(function () {
+        return {
+          activeKdf: getKdfDetails(),
+          profiles: results
+        };
+      });
+    });
+    benchmarkPromise = work.then(function (report) {
+      benchmarkPromise = null;
+      return report;
+    }, function () {
+      benchmarkPromise = null;
+      return {
+        activeKdf: getKdfDetails(),
+        profiles: names.map(unavailableBenchmark)
+      };
+    });
+    return benchmarkPromise;
+  }
+
   function deriveWithFallback(passphrase, salt) {
     if (!noble || typeof noble.pbkdf2Async !== 'function' || typeof noble.sha512 !== 'function') {
       return Promise.reject(new Error('The PBKDF2 fallback path is unavailable.'));
@@ -325,6 +473,7 @@
   global.__coldboxCrypto = Object.freeze({
     profiles: profiles,
     selfTest: selfTest,
+    benchmarkProfiles: benchmarkProfiles,
     randomBytes: randomBytes,
     aesGcm: aesGcm,
     deriveKey: deriveKey,

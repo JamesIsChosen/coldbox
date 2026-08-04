@@ -67,6 +67,8 @@ Every fixed bug gets a test. Particularly: **a vault written by any previous for
 
 P0.11 additionally checks a real v1 round-trip, a zero-secret vault, every header byte as an authentication boundary, generic wrong-passphrase/corruption errors, and 64 KiB compartment padding.
 
+P0.12 additionally runs real Fast, Standard, and Paranoid Argon2id profile round-trips, measures the three profiles sequentially with fixed non-secret benchmark inputs, warns that Paranoid may fail to allocate on iOS, and verifies the benchmark control is offered only inside the cold frame.
+
 ---
 
 ## Security tests — mandatory
