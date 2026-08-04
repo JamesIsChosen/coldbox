@@ -1,6 +1,6 @@
 # ADR-0008: Treat CSP network blocking as a browser signal, not a throw contract
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2026-08-03
 
 ## Context
