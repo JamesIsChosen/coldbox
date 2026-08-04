@@ -7,6 +7,10 @@ const vm = require('node:vm');
 const test = require('node:test');
 
 const projectRoot = path.resolve(__dirname, '..');
+const SAFE_ID = '550e8400-e29b-41d4-a716-446655440000';
+const SAFE_FINGERPRINT = 'deadbeef';
+const SAFE_XPUB = `xpub${'1'.repeat(107)}`;
+const SAFE_ADDRESS = `bc1q${'q'.repeat(56)}`;
 
 function loadProtocol() {
   const source = fs.readFileSync(path.join(projectRoot, 'src', 'protocol.js'), 'utf8');
@@ -91,8 +95,7 @@ test('protocol strips unknown fields and preserves only safe values', () => {
     type: 'vault.opened',
     payload: {
       publicCompartment: {
-        wallets: [{ id: 'wallet-1', label: 'Public', mnemonic: 'discarded' }],
-        secretCompartment: 'discarded',
+        wallets: [{ id: SAFE_ID, fingerprint: SAFE_FINGERPRINT, unknownNumber: 7 }],
         unknownCollection: [{ privateKey: 'discarded' }]
       },
       passphrase: 'discarded'
@@ -102,9 +105,14 @@ test('protocol strips unknown fields and preserves only safe values', () => {
   assert.equal(JSON.stringify(publicData), JSON.stringify({
     id: 'opened-1',
     type: 'vault.opened',
-    payload: { publicCompartment: { wallets: [{ id: 'wallet-1', label: 'Public' }] } }
+    payload: { publicCompartment: { wallets: [{ id: SAFE_ID, fingerprint: SAFE_FINGERPRINT }] } }
   }));
   assert.equal(containsSensitiveKey(publicData), false);
+  assert.equal(protocol.validateMessage('cold-to-warm', {
+    id: 'opened-unsafe',
+    type: 'vault.opened',
+    payload: { publicCompartment: { wallets: [{ label: 'Public' }] } }
+  }), null);
 });
 
 test('every cold-to-warm message rejects secret-bearing fields', () => {
@@ -116,7 +124,7 @@ test('every cold-to-warm message rejects secret-bearing fields', () => {
     },
     {
       type: 'vault.opened',
-      payload: { publicCompartment: { notes: [{ passphrase: 'discarded' }] } }
+      payload: { publicCompartment: { wallets: [{ id: SAFE_ID }] } }
     },
     {
       type: 'vault.bytes',
@@ -124,7 +132,7 @@ test('every cold-to-warm message rejects secret-bearing fields', () => {
     },
     {
       type: 'derive.result',
-      payload: { addresses: ['bc1public'], xpub: 'xpub-public', fingerprint: '1234', privateKey: 'discarded' }
+      payload: { addresses: [SAFE_ADDRESS], xpub: SAFE_XPUB, fingerprint: SAFE_FINGERPRINT, privateKey: 'discarded' }
     },
     {
       type: 'status',
@@ -209,18 +217,51 @@ test('recognizable secret content is rejected from allowed public fields', () =>
   assert.equal(protocol.validateMessage('cold-to-warm', {
     id: 'content-1',
     type: 'derive.result',
-    payload: { addresses: ['bc1public'], xpub: xprv, fingerprint: '1234' }
+    payload: { addresses: [SAFE_ADDRESS], xpub: xprv, fingerprint: SAFE_FINGERPRINT }
   }), null);
   assert.equal(protocol.validateMessage('cold-to-warm', {
     id: 'content-2',
     type: 'derive.result',
-    payload: { addresses: [wif], xpub: 'xpub-public', fingerprint: '1234' }
+    payload: { addresses: [wif], xpub: SAFE_XPUB, fingerprint: SAFE_FINGERPRINT }
   }), null);
   assert.equal(protocol.validateMessage('cold-to-warm', {
     id: 'content-3',
     type: 'vault.opened',
     payload: { publicCompartment: { notes: [{ notes: mnemonic }] } }
   }), null);
+});
+
+test('public projection rejects every free-form text carrier structurally', () => {
+  const protocol = loadProtocol();
+  const carriers = [
+    ['id', 'TREZOR'],
+    ['name', 'correct horse battery staple'],
+    ['label', 'my secret note from the decrypted compartment'],
+    ['tags', ['TREZOR']],
+    ['notes', 'my secret note from the decrypted compartment'],
+    ['address', 'correct horse battery staple'],
+    ['addresses', ['correct horse battery staple']],
+    ['chain', 'TREZOR'],
+    ['network', 'correct horse battery staple'],
+    ['accountRef', 'my secret note from the decrypted compartment'],
+    ['scriptType', 'TREZOR'],
+    ['fingerprint', 'correct horse battery staple'],
+    ['xpub', 'a'.repeat(64)],
+    ['location', 'my secret note from the decrypted compartment'],
+    ['vendor', 'TREZOR'],
+    ['model', 'correct horse battery staple'],
+    ['serial', 'my secret note from the decrypted compartment'],
+    ['firmware', 'TREZOR'],
+    ['lifecycle', 'correct horse battery staple']
+  ];
+
+  for (const [field, value] of carriers) {
+    assert.equal(protocol.validateMessage('cold-to-warm', {
+      id: `carrier-${field}`,
+      type: 'vault.opened',
+      payload: { publicCompartment: { notes: [{ [field]: value }] } }
+    }), null, `${field} remained a free-form cold-to-warm carrier`);
+  }
 });
 
 test('protocol rejects aggregate payloads above the documented limits', () => {

@@ -92,6 +92,9 @@
     if (/(?:^|\s)[5KLc9][1-9A-HJ-NP-Za-km-z]{50,51}(?:$|\s)/.test(text)) {
       return true;
     }
+    if (/^[0-9a-fA-F]{64}$/.test(text)) {
+      return true;
+    }
     var words = text.split(/\s+/);
     if ([12, 15, 18, 21, 24].includes(words.length)
       && words.every(function (word) { return /^[a-z]{2,12}$/.test(word); })) {
@@ -181,36 +184,77 @@
     return result;
   }
 
+  function cleanUuid(value) {
+    return typeof value === 'string'
+      && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+      ? value
+      : null;
+  }
+
+  function cleanFingerprint(value) {
+    return typeof value === 'string' && /^[0-9a-f]{8}$/i.test(value) ? value : null;
+  }
+
+  function cleanXpub(value) {
+    return typeof value === 'string'
+      && /^(?:xpub|ypub|zpub|tpub|upub|vpub)[1-9A-HJ-NP-Za-km-z]{90,120}$/.test(value)
+      ? value
+      : null;
+  }
+
+  function cleanPublicAddress(value) {
+    if (typeof value !== 'string' || value.length > 256 || isSecretContent(value)) {
+      return null;
+    }
+    return /^(?:bc1|tb1|bcrt1|0x|[13mn2])[A-Za-z0-9]{20,130}$/.test(value) ? value : null;
+  }
+
+  function cleanPublicAddressArray(value) {
+    if (!Array.isArray(value) || value.length > 10000) {
+      return null;
+    }
+    var result = [];
+    for (var index = 0; index < value.length; index += 1) {
+      var address = cleanPublicAddress(value[index]);
+      if (address === null) {
+        return null;
+      }
+      result.push(address);
+    }
+    return result;
+  }
+
+  function containsText(value, seen) {
+    if (typeof value === 'string') {
+      return true;
+    }
+    if (!value || typeof value !== 'object') {
+      return false;
+    }
+    var visited = seen || [];
+    if (visited.indexOf(value) !== -1) {
+      return false;
+    }
+    visited.push(value);
+    var keys = Object.keys(value);
+    for (var index = 0; index < keys.length; index += 1) {
+      if (containsText(value[keys[index]], visited)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   var PUBLIC_FIELD_RULES = Object.freeze({
-    id: 'text',
-    type: 'text',
-    name: 'text',
-    label: 'text',
-    tags: 'strings',
-    notes: 'text',
-    address: 'text',
-    addresses: 'strings',
-    chain: 'text',
-    network: 'text',
-    accountRef: 'text',
-    scriptType: 'text',
-    fingerprint: 'text',
-    xpub: 'text',
-    asOf: 'text',
+    id: 'uuid',
+    fingerprint: 'fingerprint',
+    xpub: 'xpub',
+    address: 'address',
+    addresses: 'addresses',
     amount: 'number',
     quantity: 'number',
     costBasis: 'number',
-    price: 'number',
-    timestamp: 'text',
-    createdAt: 'text',
-    updatedAt: 'text',
-    location: 'text',
-    status: 'text',
-    vendor: 'text',
-    model: 'text',
-    serial: 'text',
-    firmware: 'text',
-    lifecycle: 'text'
+    price: 'number'
   });
 
   function cleanPublicRecord(value) {
@@ -218,10 +262,16 @@
       return null;
     }
     var result = {};
-    var keys = Object.keys(PUBLIC_FIELD_RULES);
-    for (var index = 0; index < keys.length; index += 1) {
-      var key = keys[index];
-      if (!hasOwn(value, key) || hasOwn(SECRET_KEYS, key)) {
+    var inputKeys = Object.keys(value);
+    for (var index = 0; index < inputKeys.length; index += 1) {
+      var key = inputKeys[index];
+      if (hasOwn(SECRET_KEYS, key)) {
+        return null;
+      }
+      if (!hasOwn(PUBLIC_FIELD_RULES, key)) {
+        if (containsText(value[key])) {
+          return null;
+        }
         continue;
       }
       var rule = PUBLIC_FIELD_RULES[key];
@@ -229,10 +279,16 @@
       if (isSecretContent(value[key])) {
         return null;
       }
-      if (rule === 'text') {
-        cleaned = cleanText(value[key], 512);
-      } else if (rule === 'strings') {
-        cleaned = cleanStringArray(value[key], 64, 128);
+      if (rule === 'uuid') {
+        cleaned = cleanUuid(value[key]);
+      } else if (rule === 'fingerprint') {
+        cleaned = cleanFingerprint(value[key]);
+      } else if (rule === 'xpub') {
+        cleaned = cleanXpub(value[key]);
+      } else if (rule === 'address') {
+        cleaned = cleanPublicAddress(value[key]);
+      } else if (rule === 'addresses') {
+        cleaned = cleanPublicAddressArray(value[key]);
       } else {
         cleaned = cleanNumber(value[key]);
       }
@@ -261,6 +317,9 @@
 
   function cleanPublicCompartment(value) {
     if (!isRecord(value)) {
+      return null;
+    }
+    if (Object.keys(value).some(function (key) { return hasOwn(SECRET_KEYS, key); })) {
       return null;
     }
     var result = {};
@@ -394,9 +453,9 @@
     if (!isRecord(value)) {
       return null;
     }
-    var addresses = cleanStringArray(value.addresses, 10000, 256);
-    var xpub = cleanText(value.xpub, 512);
-    var fingerprint = cleanText(value.fingerprint, 64);
+    var addresses = cleanPublicAddressArray(value.addresses);
+    var xpub = cleanXpub(value.xpub);
+    var fingerprint = cleanFingerprint(value.fingerprint);
     if (addresses === null || xpub === null || fingerprint === null) {
       return null;
     }

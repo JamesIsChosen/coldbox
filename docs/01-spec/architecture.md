@@ -105,7 +105,7 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 
 The `publicData.request.collections` allowlist is the public projection of [data-model.md](data-model.md): `seeds`, `wallets`, `accounts`, `addresses`, `notes`, `devices`, `transactions`, `lots`, `disposals`, `basisAllocations`, `prices`, `backups`, `contacts`, and `auditLog`. `settings` is not a vault collection and is rejected rather than silently accepted.
 
-The validator also rejects recognizable secret content in any allowed text field: extended-private-key forms, WIF forms, and mnemonic-shaped 12/15/18/21/24-word phrases. Arbitrary passphrases remain prohibited by field/schema design; they are not safely distinguishable from ordinary prose. All non-vault messages have a 4 MiB aggregate sanitized-payload limit, and encrypted `vault.open`/`vault.bytes` payloads have a 64 MiB byte limit.
+The public projection deliberately contains no free-form text fields. It permits only structurally typed public values: UUIDs, eight-hex-digit fingerprints, validated extended public keys, validated public addresses, and numeric accounting values. Any string-bearing field outside that closed projection, including labels, notes, names, tags, locations, and unknown nested records, is rejected rather than forwarded. Recognizable extended-private-key forms, WIF forms, mnemonic-shaped phrases, and raw 32-byte private-key hex are also rejected. This is the only honest way to enforce the literal no-passphrase/no-secret-plaintext invariant; arbitrary prose cannot be distinguished from a secret by regex. All non-vault messages have a 4 MiB aggregate sanitized-payload limit, and encrypted `vault.open`/`vault.bytes` payloads have a 64 MiB byte limit.
 
 ---
 
