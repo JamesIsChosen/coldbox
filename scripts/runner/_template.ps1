@@ -192,8 +192,12 @@ function Invoke-SecretScan {
             foreach ($p in $keyPrefix) {
                 if ($text -cmatch "\b$p[0-9A-HJ-NP-Za-km-z]{50,}") { $findings.Add("extended private key shape in $rel"); break }
             }
-            if ($text -cmatch '(?m)^\s*(?:[a-z]{3,8}\s+){23}[a-z]{3,8}\s*$') {
-                $findings.Add("24-word mnemonic shape in $rel")
+            # Single line only. \s would match newlines in .NET regex, so a
+            # word-per-line file (a BIP-39 wordlist, a glossary) would false
+            # positive and abort every bundle. A written-out mnemonic is on one
+            # line; use [ \t] so this stays true.
+            if ($text -cmatch '(?m)^[ \t]*(?:[a-z]{3,8}[ \t]+){11,23}[a-z]{3,8}[ \t]*$') {
+                $findings.Add("mnemonic-shaped word run (12-24 words, one line) in $rel")
             }
         }
 
