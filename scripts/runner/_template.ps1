@@ -198,14 +198,58 @@ function New-SafetyNet {
     Write-Log "Recoverable at any time with: git reset --hard $script:PreTag"
 }
 
+function Invoke-RollbackGit {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)][string[]] $Arguments
+    )
+
+    $display = "git $($Arguments -join ' ')"
+    $previousPreference = $ErrorActionPreference
+    try {
+        # Windows PowerShell 5.1 wraps native stderr as ErrorRecord objects.
+        # Rollback success is determined by Git's process exit code, not by the
+        # mere presence of stderr such as "Already on '<branch>'".
+        $ErrorActionPreference = 'Continue'
+        $output = & git @Arguments 2>&1 | Out-String
+        $code = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousPreference
+    }
+
+    if ($output.Trim()) {
+        [void] $script:Transcript.AppendLine($output.TrimEnd())
+    }
+    [void] $script:Transcript.AppendLine("-- rollback git exit $code")
+    Write-Log "rollback `$ $display -> exit $code" $(if ($code -eq 0) { 'INFO' } else { 'ERROR' })
+
+    if ($code -ne 0) {
+        throw "Rollback command failed with exit ${code}: $display"
+    }
+
+    [pscustomobject]@{
+        Output = $output
+        ExitCode = $code
+    }
+}
+
 function Invoke-Rollback {
     Write-Log '=== ROLLBACK ===' 'WARN'
     try {
-        & git reset --hard $script:PreTag 2>&1 | Out-String | ForEach-Object { Write-Log $_.TrimEnd() }
-        if ($LASTEXITCODE -ne 0) { throw 'git reset failed' }
+        # Restore the original branch first if a runner step moved elsewhere.
+        # -f intentionally discards only tracked working-tree changes made by
+        # the failed runner; preflight guarantees there was no pre-existing
+        # dirty tracked state to preserve.
+        $currentBranch = (Invoke-RollbackGit -Arguments @('rev-parse','--abbrev-ref','HEAD')).Output.Trim()
+        if ($currentBranch -ne $script:BeforeBranch) {
+            [void](Invoke-RollbackGit -Arguments @('checkout','-f',$script:BeforeBranch))
+        }
+
+        [void](Invoke-RollbackGit -Arguments @('reset','--hard',$script:PreTag))
 
         # Remove ONLY untracked files this runner introduced.
-        $nowUntracked = Get-GitLines @('ls-files','--others','--exclude-standard')
+        $nowUntracked = @(Get-GitLines @('ls-files','--others','--exclude-standard'))
         foreach ($f in $nowUntracked) {
             if ($script:PreUntracked -notcontains $f) {
                 Write-Log "removing runner-created untracked file: $f"
@@ -213,24 +257,37 @@ function Invoke-Rollback {
             }
         }
 
-        & git checkout $script:BeforeBranch 2>&1 | Out-Null
+        $afterBranch = (Invoke-RollbackGit -Arguments @('rev-parse','--abbrev-ref','HEAD')).Output.Trim()
+        $afterHead = (Invoke-RollbackGit -Arguments @('rev-parse','HEAD')).Output.Trim()
+        $afterStatus = (Invoke-RollbackGit -Arguments @('status','--porcelain=v1','-uall')).Output.Trim()
+
+        if ($afterBranch -ne $script:BeforeBranch) {
+            throw "Rollback branch verification failed. Expected '$($script:BeforeBranch)', found '$afterBranch'."
+        }
+        if ($afterHead -ne $script:BeforeHead) {
+            throw "Rollback HEAD verification failed. Expected '$($script:BeforeHead)', found '$afterHead'."
+        }
+        if ($afterStatus) {
+            throw "Rollback tree verification failed; repository is not clean.`n$afterStatus"
+        }
+
         $script:RolledBack = $true
         Write-Log "Rolled back to $script:BeforeHead on $script:BeforeBranch. Tree is clean." 'WARN'
     }
     catch {
+        $script:RolledBack = $false
         Write-Log "ROLLBACK FAILED: $($_.Exception.Message)" 'ERROR'
-        Write-Log "Tree may be inconsistent. Recover manually with: git reset --hard $script:PreTag" 'ERROR'
+        Write-Log "Tree may be inconsistent. Recover manually with: git checkout -f $script:BeforeBranch; git reset --hard $script:PreTag" 'ERROR'
         Write-Log 'Do not run another runner until this is resolved.' 'ERROR'
     }
 }
-
 # ----------------------------------------------------------------- secret scan
-function Import-SecretScanner {
+function Get-SecretScannerPath {
     $scanner = Join-Path $RepoPath 'scripts\runner\secret-scan.ps1'
     if (-not (Test-Path -LiteralPath $scanner -PathType Leaf)) {
         throw 'Secret scanner helper is missing; refusing to build an unscanned bundle.'
     }
-    . $scanner
+    return $scanner
 }
 # --------------------------------------------------------------------- bundle
 
@@ -307,18 +364,27 @@ function New-Bundle {
             & tar -xf $tar -C $repoDir 2>&1 | Out-Null
             Remove-Item -LiteralPath $tar -Force
 
-            Import-SecretScanner
+            . (Get-SecretScannerPath)
             $screenedRepo = Protect-ColdboxDiscoverySnapshot -Root $repoDir -RepoPath $RepoPath
-            if ($screenedRepo.RedactedRunCount -gt 0) {
+            $unexpectedCount = @($screenedRepo.UnexpectedFindings).Count
+            if ($screenedRepo.RedactedFindingCount -gt 0 -or $unexpectedCount -gt 0) {
                 $screeningLines = @(
-                    'Tracked discovery copy sanitized before upload.'
-                    'Mnemonic-shaped runs were replaced only in the staged copy; source files were not modified.'
-                    "redactedRunCount: $($screenedRepo.RedactedRunCount)"
-                    'paths:'
-                ) + @($screenedRepo.RedactedPaths)
+                    'Tracked discovery-copy screening completed.'
+                    'Only explicit known-public fixture paths may be sanitized; source files are never modified.'
+                    "redactedFindingCount: $($screenedRepo.RedactedFindingCount)"
+                    "unexpectedFindingCount: $unexpectedCount"
+                    'redacted path/category:'
+                ) + @($screenedRepo.RedactedFindings) + @(
+                    'unexpected path/category left untouched for final fail-closed scan:'
+                ) + @($screenedRepo.UnexpectedFindings)
+
                 Set-Content -LiteralPath (Join-Path $script:Stage 'repo-screening-report.txt') `
                     -Value ($screeningLines -join "`n") -Encoding UTF8
-                Write-Log "Discovery snapshot sanitized: $($screenedRepo.RedactedRunCount) mnemonic-shaped run(s) across $(@($screenedRepo.RedactedPaths).Count) path(s)."
+
+                Write-Log "Discovery fixture screening: $($screenedRepo.RedactedFindingCount) allowlisted finding(s) sanitized; $unexpectedCount unexpected finding(s) left untouched."
+                if ($unexpectedCount -gt 0) {
+                    Write-Log 'Unexpected tracked secret-shaped content remains; final bundle scan must redact/fail closed.' 'WARN'
+                }
             }
         } else {
             Write-Log 'git archive failed; discovery bundle will omit repo/' 'WARN'
@@ -332,7 +398,7 @@ function New-Bundle {
                     -Value "bytes: $($b.Length)`nsha256: $h" -Encoding UTF8
     }
 
-    Import-SecretScanner
+    . (Get-SecretScannerPath)
 
     if (-not (Test-Path -LiteralPath $OutDir)) { New-Item -ItemType Directory -Path $OutDir -Force | Out-Null }
     $zip = Join-Path $OutDir "coldbox-runner-$RunnerId.zip"
@@ -383,7 +449,8 @@ catch {
 }
 finally {
     try { New-Bundle }
-    catch { Write-Host "BUNDLE FAILED: $($_.Exception.Message)" -ForegroundColor Red }
+    catch { Write-Host "BUNDLE FAILED: $($_.Exception.Message)" -ForegroundColor Red
+        exit 1 }
 }
 
 if ($script:Verdict -ne 'PASS') { exit 1 }

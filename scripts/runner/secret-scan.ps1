@@ -114,6 +114,28 @@ function Redact-ColdboxMnemonicRuns {
     }
 }
 
+function Redact-ColdboxExtendedPrivateKeyShapes {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)][AllowEmptyString()][string]$Text
+    )
+
+    $pattern = '\b(?:xprv|yprv|zprv|tprv|uprv|vprv)[0-9A-HJ-NP-Za-km-z]{50,}'
+    $matches = @([regex]::Matches($Text,$pattern))
+    $updated = $Text
+
+    foreach ($match in @($matches | Sort-Object Index -Descending)) {
+        $updated = $updated.Substring(0,$match.Index) +
+            '[EXTENDED-PRIVATE-KEY-FIXTURE-REDACTED]' +
+            $updated.Substring($match.Index + $match.Length)
+    }
+
+    [pscustomobject]@{
+        Text = $updated
+        RedactedCount = $matches.Count
+    }
+}
+
 function Protect-ColdboxDiscoverySnapshot {
     [CmdletBinding()]
     param(
@@ -123,41 +145,90 @@ function Protect-ColdboxDiscoverySnapshot {
 
     $wordSet = Get-ColdboxBip39EnglishWordSet -RepoPath $RepoPath
     $binaryExtensions = @('.png','.jpg','.jpeg','.gif','.ico','.pdf','.zip','.wasm','.woff','.woff2','.tgz')
+    $extendedKeyPattern = '\b(?:xprv|yprv|zprv|tprv|uprv|vprv)[0-9A-HJ-NP-Za-km-z]{50,}'
+
+    # Only these already-reviewed, known-public fixtures may be scrubbed in the
+    # staged discovery copy. Any secret-shaped content in any other tracked
+    # path remains untouched so the final bundle scanner fails closed.
+    $allowed = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    [void]$allowed.Add('test/protocol.test.js')
+    [void]$allowed.Add('docs/05-development/packets/p0.7-message-handshake.review.md')
+
     $redactedPaths = @()
-    $runCount = 0
+    $redactedFindings = @()
+    $unexpectedFindings = @()
+    $redactedCount = 0
 
     Get-ChildItem -LiteralPath $Root -Recurse -File -ErrorAction SilentlyContinue |
         ForEach-Object {
             if ($binaryExtensions -contains $_.Extension.ToLowerInvariant()) { return }
-            $raw = try { [IO.File]::ReadAllText($_.FullName) } catch { return }
-            if (-not (Test-ColdboxMnemonicShape -Text $raw -WordSet $wordSet)) { return }
 
-            $result = Redact-ColdboxMnemonicRuns -Text $raw -WordSet $wordSet
-            if ($result.RedactedRunCount -lt 1) {
-                throw 'Discovery mnemonic detector and sanitizer disagreed; refusing to emit a discovery bundle.'
+            $raw = try { [IO.File]::ReadAllText($_.FullName) } catch { return }
+            $rel = $_.FullName.Substring($Root.Length).TrimStart('\','/').Replace('\','/')
+
+            $hasMnemonic = Test-ColdboxMnemonicShape -Text $raw -WordSet $wordSet
+            $hasExtendedKey = [regex]::IsMatch($raw,$extendedKeyPattern)
+            if (-not $hasMnemonic -and -not $hasExtendedKey) { return }
+
+            $categories = @()
+            if ($hasMnemonic) { $categories += 'bip39-mnemonic-shape' }
+            if ($hasExtendedKey) { $categories += 'extended-private-key-shape' }
+
+            if (-not $allowed.Contains($rel)) {
+                foreach ($category in $categories) {
+                    $unexpectedFindings += "$rel :: $category"
+                }
+                return
+            }
+
+            $updated = $raw
+
+            if ($hasMnemonic) {
+                $mnemonic = Redact-ColdboxMnemonicRuns -Text $updated -WordSet $wordSet
+                if ($mnemonic.RedactedRunCount -lt 1) {
+                    throw "Allowlisted mnemonic detector/sanitizer disagreement at $rel"
+                }
+                $updated = $mnemonic.Text
+                $redactedCount += $mnemonic.RedactedRunCount
+                $redactedFindings += "$rel :: bip39-mnemonic-shape"
+            }
+
+            if ($hasExtendedKey) {
+                $extended = Redact-ColdboxExtendedPrivateKeyShapes -Text $updated
+                if ($extended.RedactedCount -lt 1) {
+                    throw "Allowlisted extended-key detector/sanitizer disagreement at $rel"
+                }
+                $updated = $extended.Text
+                $redactedCount += $extended.RedactedCount
+                $redactedFindings += "$rel :: extended-private-key-shape"
             }
 
             [IO.File]::WriteAllText(
                 $_.FullName,
-                $result.Text,
+                $updated,
                 (New-Object Text.UTF8Encoding($false))
             )
 
-            if (Test-ColdboxMnemonicShape -Text ([IO.File]::ReadAllText($_.FullName)) -WordSet $wordSet) {
-                throw 'Discovery mnemonic sanitization left a detectable mnemonic-shaped run.'
+            $after = [IO.File]::ReadAllText($_.FullName)
+            if (Test-ColdboxMnemonicShape -Text $after -WordSet $wordSet) {
+                throw "Allowlisted discovery sanitization left a mnemonic-shaped run at $rel"
+            }
+            if ([regex]::IsMatch($after,$extendedKeyPattern)) {
+                throw "Allowlisted discovery sanitization left an extended-private-key shape at $rel"
             }
 
-            $rel = $_.FullName.Substring($Root.Length).TrimStart('\','/').Replace('\','/')
             $redactedPaths += $rel
-            $runCount += $result.RedactedRunCount
         }
 
     [pscustomobject]@{
-        RedactedPaths = @($redactedPaths)
-        RedactedRunCount = $runCount
+        # Backward-compatible property name used by the template.
+        RedactedRunCount = $redactedCount
+        RedactedFindingCount = $redactedCount
+        RedactedPaths = @($redactedPaths | Sort-Object -Unique)
+        RedactedFindings = @($redactedFindings)
+        UnexpectedFindings = @($unexpectedFindings)
     }
 }
-
 function Invoke-ColdboxSecretScan {
     [CmdletBinding()]
     param(

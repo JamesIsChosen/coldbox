@@ -19,6 +19,21 @@ function Assert-True {
     if (-not $Condition) { throw $Message }
 }
 
+$templatePath = Join-Path $RepoPath 'scripts\runner\_template.ps1'
+$templateSource = [IO.File]::ReadAllText($templatePath).Replace("`r`n","`n").Replace("`r","`n")
+Assert-True (-not $templateSource.Contains('function Import-SecretScanner')) 'Template still imports scanner helpers inside a short-lived helper-function scope.'
+Assert-True $templateSource.Contains('function Get-SecretScannerPath') 'Template scanner-path helper is missing.'
+Assert-True ([regex]::Matches($templateSource,'(?m)^[ \t]*\. \(Get-SecretScannerPath\)[ \t]*$').Count -eq 2) 'Template must dot-source the scanner exactly twice in New-Bundle caller scope.'
+Assert-True ([regex]::IsMatch($templateSource,'Write-Host "BUNDLE FAILED: \$\(\$_\.Exception\.Message\)" -ForegroundColor Red\s*\n\s*exit 1')) 'Bundle-construction failure must terminate the runner with exit 1.'
+Write-Host 'PASS: template scanner helpers live in New-Bundle scope and bundle-construction failure exits non-zero.'
+$templatePathForRollback = Join-Path $RepoPath 'scripts\runner\_template.ps1'
+$templateRollbackSource = [IO.File]::ReadAllText($templatePathForRollback).Replace("`r`n","`n").Replace("`r","`n")
+Assert-True $templateRollbackSource.Contains('function Invoke-RollbackGit') 'Template rollback-native wrapper is missing.'
+Assert-True (-not $templateRollbackSource.Contains('& git checkout $script:BeforeBranch 2>&1 | Out-Null')) 'Template still performs rollback checkout through PowerShell 5.1 stderr-sensitive direct invocation.'
+Assert-True $templateRollbackSource.Contains('Invoke-RollbackGit -Arguments @(''reset'',''--hard'',$script:PreTag)') 'Template rollback reset does not use the safe native wrapper.'
+Assert-True $templateRollbackSource.Contains("Invoke-RollbackGit -Arguments @('status','--porcelain=v1','-uall')") 'Template rollback does not verify the final clean tree.'
+Assert-True $templateRollbackSource.Contains('$afterHead -ne $script:BeforeHead') 'Template rollback does not verify exact pre-run HEAD.'
+Write-Host 'PASS: rollback Git commands are stderr-safe and rollback success requires exact branch/HEAD/clean-tree verification.'
 function Get-ZipEntryNames {
     param([string]$Path)
     Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -142,6 +157,80 @@ try {
         }
     }
 
+    $knownFixtureStage = Join-Path ([IO.Path]::GetTempPath()) ('coldbox-secret-scan-known-fixtures-' + [guid]::NewGuid().ToString('N'))
+    $knownFixtureZip = "$knownFixtureStage.zip"
+    $unexpectedFixtureStage = Join-Path ([IO.Path]::GetTempPath()) ('coldbox-secret-scan-unexpected-fixture-' + [guid]::NewGuid().ToString('N'))
+    $unexpectedFixtureZip = "$unexpectedFixtureStage.zip"
+
+    $reviewFixturePath = Join-Path $RepoPath 'docs\05-development\packets\p0.7-message-handshake.review.md'
+    $extendedKeyPattern = '\b(?:xprv|yprv|zprv|tprv|uprv|vprv)[0-9A-HJ-NP-Za-km-z]{50,}'
+    Assert-True (Test-Path -LiteralPath $reviewFixturePath -PathType Leaf) 'Known P0.7 review fixture is missing.'
+    $reviewFixtureRaw = [IO.File]::ReadAllText($reviewFixturePath)
+    Assert-True ([regex]::IsMatch($reviewFixtureRaw,$extendedKeyPattern)) 'Known P0.7 review fixture no longer contains the extended-private-key positive control.'
+
+    try {
+        New-Item -ItemType Directory -Path (Join-Path $knownFixtureStage 'repo\test') -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $knownFixtureStage 'repo\docs\05-development\packets') -Force | Out-Null
+        Copy-Item -LiteralPath $protocolPath -Destination (Join-Path $knownFixtureStage 'repo\test\protocol.test.js')
+        Copy-Item -LiteralPath $reviewFixturePath -Destination (Join-Path $knownFixtureStage 'repo\docs\05-development\packets\p0.7-message-handshake.review.md')
+        '{"runnerId":"known-fixture-allowlist-selftest","verdict":"TEST"}' |
+            Set-Content -LiteralPath (Join-Path $knownFixtureStage 'manifest.json') -Encoding UTF8
+
+        $protocolSourceHashBefore = (Get-FileHash -LiteralPath $protocolPath -Algorithm SHA256).Hash
+        $reviewSourceHashBefore = (Get-FileHash -LiteralPath $reviewFixturePath -Algorithm SHA256).Hash
+
+        $knownScreened = Protect-ColdboxDiscoverySnapshot -Root (Join-Path $knownFixtureStage 'repo') -RepoPath $RepoPath
+
+        Assert-True ($knownScreened.RedactedPaths -contains 'test/protocol.test.js') 'Protocol positive-control path was not allowlisted for staged-copy sanitization.'
+        Assert-True ($knownScreened.RedactedPaths -contains 'docs/05-development/packets/p0.7-message-handshake.review.md') 'P0.7 review positive-control path was not allowlisted for staged-copy sanitization.'
+        Assert-True (@($knownScreened.UnexpectedFindings).Count -eq 0) 'Known allowlisted fixtures unexpectedly produced an unallowlisted finding.'
+
+        $stagedReview = [IO.File]::ReadAllText((Join-Path $knownFixtureStage 'repo\docs\05-development\packets\p0.7-message-handshake.review.md'))
+        Assert-True (-not [regex]::IsMatch($stagedReview,$extendedKeyPattern)) 'Allowlisted staged P0.7 review still contains an extended-private-key shape.'
+        Assert-True (-not (Test-ColdboxMnemonicShape -Text $stagedReview -WordSet $wordSet)) 'Allowlisted staged P0.7 review still contains a mnemonic-shaped run.'
+
+        Assert-True ((Get-FileHash -LiteralPath $protocolPath -Algorithm SHA256).Hash -eq $protocolSourceHashBefore) 'Allowlist screening modified source protocol.test.js.'
+        Assert-True ((Get-FileHash -LiteralPath $reviewFixturePath -Algorithm SHA256).Hash -eq $reviewSourceHashBefore) 'Allowlist screening modified source P0.7 review.'
+
+        $knownPublished = Publish-ColdboxScannedBundle -Root $knownFixtureStage -RepoPath $RepoPath -ZipPath $knownFixtureZip
+        Assert-True $knownPublished.Clean 'Allowlisted known-fixture discovery bundle did not scan clean after staged sanitization.'
+        Assert-True (-not $knownPublished.Redacted) 'Allowlisted known-fixture discovery bundle was unexpectedly redacted.'
+        Write-Host 'PASS: explicit known-public discovery fixtures sanitize mnemonic/private-key shapes only in the staged copy.'
+
+        New-Item -ItemType Directory -Path (Join-Path $unexpectedFixtureStage 'repo\docs') -Force | Out-Null
+        Copy-Item -LiteralPath $reviewFixturePath -Destination (Join-Path $unexpectedFixtureStage 'repo\docs\unexpected-review-fixture.md')
+        '{"runnerId":"unexpected-fixture-selftest","verdict":"TEST"}' |
+            Set-Content -LiteralPath (Join-Path $unexpectedFixtureStage 'manifest.json') -Encoding UTF8
+
+        $unexpectedScreened = Protect-ColdboxDiscoverySnapshot -Root (Join-Path $unexpectedFixtureStage 'repo') -RepoPath $RepoPath
+        Assert-True (-not ($unexpectedScreened.RedactedPaths -contains 'docs/unexpected-review-fixture.md')) 'Unallowlisted secret-shaped path was incorrectly sanitized.'
+        Assert-True (@($unexpectedScreened.UnexpectedFindings).Count -ge 1) 'Unallowlisted secret-shaped path was not reported as unexpected.'
+
+        $unexpectedStaged = [IO.File]::ReadAllText((Join-Path $unexpectedFixtureStage 'repo\docs\unexpected-review-fixture.md'))
+        Assert-True ([regex]::IsMatch($unexpectedStaged,$extendedKeyPattern) -or (Test-ColdboxMnemonicShape -Text $unexpectedStaged -WordSet $wordSet)) 'Unallowlisted secret-shaped staged file was unexpectedly scrubbed.'
+
+        $unexpectedPublished = Publish-ColdboxScannedBundle -Root $unexpectedFixtureStage -RepoPath $RepoPath -ZipPath $unexpectedFixtureZip
+        Assert-True (-not $unexpectedPublished.Clean) 'Unallowlisted secret-shaped tracked path unexpectedly passed the final scanner.'
+        Assert-True $unexpectedPublished.Redacted 'Unallowlisted secret-shaped tracked path did not force a redacted fail-closed bundle.'
+
+        $unexpectedEntries = Get-ZipEntryNames -Path $unexpectedFixtureZip
+        Assert-True ($unexpectedEntries.Count -eq 2) 'Unallowlisted fail-closed bundle must contain exactly manifest.json + scan-report.txt.'
+        Assert-True ($unexpectedEntries -contains 'manifest.json') 'Unallowlisted fail-closed bundle is missing manifest.json.'
+        Assert-True ($unexpectedEntries -contains 'scan-report.txt') 'Unallowlisted fail-closed bundle is missing scan-report.txt.'
+        Write-Host 'PASS: unallowlisted tracked secret-shaped content is never sanitized and forces final fail-closed redaction.'
+    }
+    finally {
+        foreach ($p in @($knownFixtureStage,$unexpectedFixtureStage)) {
+            if (Test-Path -LiteralPath $p) {
+                Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+        foreach ($p in @($knownFixtureZip,$unexpectedFixtureZip)) {
+            if (Test-Path -LiteralPath $p) {
+                Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
     New-Item -ItemType Directory -Path $cleanRoot -Force | Out-Null
     '{"runnerId":"secret-scan-clean-selftest","verdict":"TEST"}' |
         Set-Content -LiteralPath (Join-Path $cleanRoot 'manifest.json') -Encoding UTF8
