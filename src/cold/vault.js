@@ -187,11 +187,31 @@
     return 'standard';
   }
 
-  function profileFromDetails(details) {
-    if (!details || typeof details.id !== 'string') {
+  // Strict counterpart to normalizedProfile, for the paths where guessing is
+  // unsafe. normalizedProfile defaults an unknown name to 'standard', which is
+  // right for a user-supplied request but wrong when writing a header: silently
+  // recording 'standard' over a key derived some other way yields a vault that
+  // cannot be opened. Fail closed instead.
+  function strictProfile(value) {
+    if (typeof value !== 'string') {
       throw serializationError();
     }
-    return normalizedProfile(details.id);
+    if (value === 'fast' || value === 'standard' || value === 'paranoid' || value === 'fallback') {
+      return value;
+    }
+    if (value === 'argon2id-fast') {
+      return 'fast';
+    }
+    if (value === 'argon2id-standard') {
+      return 'standard';
+    }
+    if (value === 'argon2id-paranoid') {
+      return 'paranoid';
+    }
+    if (value === 'pbkdf2-sha512-fallback') {
+      return 'fallback';
+    }
+    throw serializationError();
   }
 
   function profileFromHeader(header) {
@@ -214,8 +234,11 @@
     throw authenticationError();
   }
 
-  function makeHeader(details, salt, wrappedLength, publicLength, secretLength) {
-    var profileName = profileFromDetails(details);
+  // profileId is the KDF identifier reported by the derivation that produced
+  // the key this header will authenticate. It is never inferred from module
+  // state. An unrecognized id is a serialization failure, not a default.
+  function makeHeader(profileId, salt, wrappedLength, publicLength, secretLength) {
+    var profileName = strictProfile(profileId);
     var profile = PROFILES[profileName];
     var header = new Uint8Array(HEADER_LENGTH);
     header.set(MAGIC, 0);
@@ -363,8 +386,7 @@
     var secretPlain = null;
     try {
       if (!options || options.passphrase === undefined || !cryptoLayer
-        || typeof cryptoLayer.deriveKey !== 'function'
-        || typeof cryptoLayer.getKdfDetails !== 'function') {
+        || typeof cryptoLayer.deriveKey !== 'function') {
         throw serializationError();
       }
       var publicData = options.publicData === undefined ? {} : options.publicData;
@@ -379,10 +401,15 @@
       secretPlain = hasSecret ? paddedJson(options.secretData) : null;
       var publicNonce = cryptoLayer.randomBytes(NONCE_LENGTH);
       var secretNonce = cryptoLayer.randomBytes(NONCE_LENGTH);
-      kek = await cryptoLayer.deriveKey(options.passphrase, salt, profileName);
-      var details = cryptoLayer.getKdfDetails();
+      // The header records the KDF the derivation actually used, reported by
+      // deriveKey itself. Reading cryptoLayer.getKdfDetails() here would read
+      // mutable module state that a concurrent derivation or a silent PBKDF2
+      // fallback can change, producing a header that disagrees with the key
+      // and therefore a permanently unopenable vault.
+      var derived = await cryptoLayer.deriveKey(options.passphrase, salt, profileName);
+      kek = derived.key;
       var header = makeHeader(
-        details,
+        derived.profileId,
         salt,
         64,
         publicPlain.length + TAG_LENGTH,
@@ -428,7 +455,8 @@
     var profileName = profileFromHeader(header);
     var kek = null;
     try {
-      kek = await cryptoLayer.deriveKey(passphrase, header.salt, profileName);
+      var derived = await cryptoLayer.deriveKey(passphrase, header.salt, profileName);
+      kek = derived.key;
       for (var index = 0; index < records.length; index += 1) {
         var record = records[index];
         if (record.methodId !== METHOD_PASSPHRASE || record.flags !== 0 || record.methodData.length !== 0) {

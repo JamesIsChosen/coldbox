@@ -57,6 +57,11 @@ function createFormatContext() {
   const realContext = createRealContext();
   const realCrypto = realContext.__coldboxCrypto;
   let activeProfile = 'fast';
+  // When set, deriveKey silently derives with this profile instead of the one
+  // requested - the shape of a real Argon2id-to-PBKDF2 fallback. getKdfDetails()
+  // is deliberately left reporting the stale value so a regression that reads
+  // module state instead of the derivation's own result is caught.
+  let deriveOverride = null;
   const profileDetails = {
     fast: { id: 'argon2id-fast', memoryKiB: 19456, iterations: 2, parallelism: 1 },
     standard: { id: 'argon2id-standard', memoryKiB: 65536, iterations: 3, parallelism: 1 },
@@ -69,13 +74,22 @@ function createFormatContext() {
       return toFakeBytes(realCrypto.randomBytes(length));
     },
     async deriveKey(passphrase, salt, profileName) {
-      activeProfile = profileName === 'fallback' ? 'fallback' : profileName || 'fast';
+      const requested = profileName === 'fallback' ? 'fallback' : profileName || 'fast';
+      const used = deriveOverride || requested;
+      // Module state records the REQUESTED profile, mirroring the real layer,
+      // where setActiveKdf() runs before an Argon2id failure falls through to
+      // PBKDF2. When an override is active these deliberately diverge, which is
+      // precisely the condition the header must not be built from.
+      activeProfile = requested;
       const pass = typeof passphrase === 'string' ? passphrase : Buffer.from(passphrase).toString('hex');
       const digest = crypto.createHash('sha256')
         .update(pass)
         .update(Buffer.from(salt))
         .digest();
-      return toFakeBytes(digest);
+      // Reports the profile actually used, exactly as the real layer does.
+      // An unknown override name passes through verbatim so the strict header
+      // path can be exercised.
+      return { key: toFakeBytes(digest), profileId: (profileDetails[used] || { id: used }).id };
     },
     getKdfDetails() {
       return { ...profileDetails[activeProfile] };
@@ -92,6 +106,7 @@ function createFormatContext() {
     }
   };
   context.__coldboxCrypto = fakeCrypto;
+  context.__forceDerivedProfile = (name) => { deriveOverride = name; };
   assert.equal(typeof nobleLayer.hkdf, 'function');
   vm.runInNewContext(vaultSource, context);
   return context;
@@ -132,6 +147,47 @@ function compartmentNonce(vault, header, secret) {
 async function expectAuthenticationFailure(operation) {
   await assert.rejects(operation, (error) => error && error.message === 'Vault authentication failed.');
 }
+
+test('header records the KDF that actually derived the key, not module state', async () => {
+  const context = createFormatContext();
+  const vaultApi = context.__coldboxVault;
+
+  // Request paranoid, but make the derivation silently fall back to PBKDF2 -
+  // the shape of a real Argon2id allocation failure. getKdfDetails() is left
+  // reporting the stale paranoid values on purpose.
+  context.__forceDerivedProfile('fallback');
+  const vault = await vaultApi.create({
+    passphrase: 'correct horse battery staple',
+    publicData: { note: 'kdf provenance' },
+    profile: 'paranoid'
+  });
+  context.__forceDerivedProfile(null);
+
+  const header = vaultApi.inspectHeader(vault);
+  assert.equal(header.kdfId, 2, 'header must record PBKDF2, the KDF actually used');
+  assert.equal(header.memoryKiB, 0);
+  assert.equal(header.iterations, 1000000);
+  assert.notEqual(header.memoryKiB, 262144, 'must not record the requested paranoid profile');
+
+  // The decisive property: a vault whose header disagrees with its key is
+  // unopenable forever, so prove it still opens.
+  context.__forceDerivedProfile('fallback');
+  const opened = await vaultApi.open(vault, 'correct horse battery staple');
+  context.__forceDerivedProfile(null);
+  // Compared field-wise: publicData is constructed inside the VM context, so
+  // deepEqual fails on prototype identity rather than on content.
+  assert.equal(opened.publicData.note, 'kdf provenance');
+});
+
+test('an unrecognized derived profile fails closed instead of defaulting', async () => {
+  const context = createFormatContext();
+  context.__forceDerivedProfile('argon2id-nonexistent');
+  await assert.rejects(
+    context.__coldboxVault.create({ passphrase: 'pw', publicData: {} }),
+    (error) => error && error.message === 'Vault serialization failed.'
+  );
+  context.__forceDerivedProfile(null);
+});
 
 test('P0.11 vault round-trip uses real P0.10 crypto and 64 KiB compartments', async () => {
   const context = createRealContext();

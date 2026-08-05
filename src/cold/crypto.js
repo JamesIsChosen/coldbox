@@ -291,9 +291,19 @@
     return noble.pbkdf2Async(noble.sha512, asBytes(passphrase, 'Passphrase'), asBytes(salt, 'Salt'), {
       c: profiles.fallback.iterations,
       dkLen: 32
+    }).then(function (key) {
+      return { key: new Uint8Array(key), profileId: profiles.fallback.id };
     });
   }
 
+  // Returns { key, profileId } where profileId names the KDF that ACTUALLY
+  // produced the key.
+  //
+  // Callers must never infer the KDF from getKdfDetails(): that reads mutable
+  // module state, so a concurrent derivation or a silent Argon2id-to-PBKDF2
+  // fallback would let a caller record header parameters that do not match the
+  // key it holds. A vault written that way is unopenable, so the derivation
+  // reports its own result and the caller uses nothing else.
   function deriveKey(passphrase, salt, profileName) {
     return selfTest().then(function () {
       if (profileName === 'fallback' || profileName === profiles.fallback.id) {
@@ -311,8 +321,10 @@
           hashLen: 32,
           type: argon2.ArgonType.Argon2id
         }).then(function (result) {
-          return new Uint8Array(result.hash);
+          return { key: new Uint8Array(result.hash), profileId: profile.id };
         }).catch(function (error) {
+          // The fallback reports profiles.fallback.id, so the header records
+          // PBKDF2 rather than the Argon2id profile that was requested.
           return deriveWithFallback(passphrase, salt).catch(function (fallbackError) {
             throw new Error(`Argon2id failed: ${error.message}; PBKDF2 fallback failed: ${fallbackError.message}`);
           });
