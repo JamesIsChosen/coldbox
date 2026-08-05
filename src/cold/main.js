@@ -585,6 +585,8 @@ __COLDBOX_CAPABILITIES__
     if (canaryPassed && runtimeNeuteringInstalled && capabilityReport.randomValues === true && cryptoReport.nobleAesGcm === true) {
       vaultCryptoReady = true;
       document.documentElement.setAttribute('data-airgap-state', 'green');
+      document.documentElement.setAttribute('data-lockdown-state', 'none');
+      document.documentElement.setAttribute('data-vault-operations', 'guarded');
       document.documentElement.setAttribute('data-idle-timeout-ms', String(IDLE_TIMEOUT_MS));
       if (readyMarker) {
         readyMarker.textContent = 'Cold realm sealed';

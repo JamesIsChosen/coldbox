@@ -34,7 +34,7 @@ The app enforces the distinction: when a network connection exists, the secret h
 
 ## 3. Open it
 
-Double-click on a supported desktop browser. On Android, open from the Files app. Direct local HTML execution from iOS Files is currently a blocked portability target; see [ADR-0009](../05-development/adr/0009-ios-local-html-execution.md).
+Double-click on a supported desktop browser. On Android, open from the Files app. Direct local HTML execution from iOS Files is currently a blocked portability target; see [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md).
 
 Check the banner across the top:
 

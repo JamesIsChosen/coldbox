@@ -36,7 +36,7 @@ A self-modifying HTML file has a hash that changes on every save, so it can neve
 
 - Two files to manage instead of one.
 - Users must remember to save — mitigated by loud unsaved-change indicators and a close warning.
-- Saving from supported `file://` execution contexts can require three fallback paths (§8.5); direct iOS local-HTML execution from Files is a separate blocked portability target under [ADR-0009](0009-ios-local-html-execution.md).
+- Saving from supported `file://` execution contexts can require three fallback paths (§8.5); direct iOS local-HTML execution from Files is a separate blocked portability target under [ADR-0010](0010-ios-local-html-execution.md).
 - Slightly more onboarding friction.
 
 ## Alternatives considered
@@ -52,7 +52,7 @@ Rejected. Record-keeping is a core requirement, and the backup/inheritance featu
 
 ## Notes
 
-Vault saving needs three paths because no single save API works across supported `file://` execution contexts: File System Access API, blob download, and manual base64/QR export. The manual path is built as a first-class flow, not a fallback — for a phone-primary user in a supported running context it may be the normal one. Direct iOS local execution from Files is not implied; see [ADR-0009](0009-ios-local-html-execution.md).
+Vault saving needs three paths because no single save API works across supported `file://` execution contexts: File System Access API, blob download, and manual base64/QR export. The manual path is built as a first-class flow, not a fallback — for a phone-primary user in a supported running context it may be the normal one. Direct iOS local execution from Files is not implied; see [ADR-0010](0010-ios-local-html-execution.md).
 
 ## References
 

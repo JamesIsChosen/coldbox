@@ -1,4 +1,4 @@
-# ADR-0009: iOS local-HTML execution is a portability gate, not a preview-equivalence claim
+# ADR-0010: iOS local-HTML execution is a portability gate, not a preview-equivalence claim
 
 **Status:** Accepted
 **Date:** 2026-08-04

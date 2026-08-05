@@ -7,7 +7,7 @@ Markers: `👤 human-required` — an agent cannot complete it (physical hardwar
 · `⚠️` — agent-implementable, but something is needed from the human before it fully works
 · `🌐` — has acceptance criteria only a browser can verify; use the P0.3a harness and mark `[~]` until it confirms them
 
-**An item whose criteria you cannot verify is `[~]`, never `[x]`.** Nine Phase 0 items have browser-dependent criteria; the P0.3a harness makes eight of them agent-verifiable. The ninth, P0.19, needs real devices for the supported execution matrix and records the deferred iOS target separately under [ADR-0009](adr/0009-ios-local-html-execution.md).
+**An item whose criteria you cannot verify is `[~]`, never `[x]`.** Nine Phase 0 items have browser-dependent criteria; the P0.3a harness makes eight of them agent-verifiable. The ninth, P0.19, needs real devices for the supported execution matrix and records the deferred iOS target separately under [ADR-0010](adr/0010-ios-local-html-execution.md).
 
 Every PR must update this file in the same commit as the work it completes.
 
@@ -120,8 +120,8 @@ Nothing above this phase is safe to build until the container is trustworthy.
 - [~] **P0.13 — Lock, unlock, save, load**
   *Deps: P0.12*
   Three save paths (File System Access, blob download, manual base64/QR); symmetric load; idle auto-lock; `Esc Esc` panic hide.
-  **Accept:** the three save/load paths are complete browser flows, and the manual base64/QR path is usable without File System Access or blob-download support. At least one save path must work on every platform in the currently supported execution matrix. **The unresolved iOS Files-to-Safari launch path is not waived by this criterion. P0.13 remains `[~]` pending the roadmap re-baseline required by [ADR-0009](adr/0009-ios-local-html-execution.md).**
-  🌐 *Harness verifies the blob and manual paths in Chromium/Firefox, including a create → save → lock → manual-load → unlock round-trip. A physical iPhone test reached Quick Look rather than Safari. Under [ADR-0009](adr/0009-ios-local-html-execution.md), Quick Look is not a pass and no iOS execution claim is inferred. P0.13 remains `[~]` until the roadmap owner explicitly resolves the dependency ordering.*
+  **Accept:** the three save/load paths are complete browser flows, and the manual base64/QR path is usable without File System Access or blob-download support. At least one save path must work on every platform in the currently supported execution matrix. **The unresolved iOS Files-to-Safari launch path is not waived by this criterion. P0.13 remains `[~]` pending the roadmap re-baseline required by [ADR-0010](adr/0010-ios-local-html-execution.md).**
+  🌐 *Harness verifies the blob and manual paths in Chromium/Firefox, including a create → save → lock → manual-load → unlock round-trip. A physical iPhone test reached Quick Look rather than Safari. Under [ADR-0010](adr/0010-ios-local-html-execution.md), Quick Look is not a pass and no iOS execution claim is inferred. P0.13 remains `[~]` until the roadmap owner explicitly resolves the dependency ordering.*
 
 - [ ] **P0.14 — Save integrity**
   *Deps: P0.13*
@@ -155,7 +155,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
 - [ ] **P0.19 — Device matrix pass** 👤 **human-required**
   *Deps: P0.18*
   Full manual pass per [testing.md](testing.md) across the currently supported execution matrix; record the deferred iOS local-execution target separately.
-  **Accept:** every platform in the currently supported execution matrix passes the seven per-platform checks and the results are recorded in the PR packet. The iOS local-execution target is recorded separately as **PASS, BLOCKED, or UNSUPPORTED** with the exact device and iOS version. Under [ADR-0009](adr/0009-ios-local-html-execution.md), Quick Look, a third-party viewer, localhost, a renamed file, or another execution context cannot be recorded as a Safari-from-Files PASS unless a later accepted ADR explicitly qualifies that context.
+  **Accept:** every platform in the currently supported execution matrix passes the seven per-platform checks and the results are recorded in the PR packet. The iOS local-execution target is recorded separately as **PASS, BLOCKED, or UNSUPPORTED** with the exact device and iOS version. Under [ADR-0010](adr/0010-ios-local-html-execution.md), Quick Look, a third-party viewer, localhost, a renamed file, or another execution context cannot be recorded as a Safari-from-Files PASS unless a later accepted ADR explicitly qualifies that context.
   Requires physically opening the file on real devices. An agent must not mark this complete, and must not infer a platform's result from a similar one.
 
 ---

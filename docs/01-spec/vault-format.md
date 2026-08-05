@@ -106,6 +106,12 @@ Without padding, file size reveals roughly how many wallets and transactions you
 
 **Compression is deliberately not used.** Compressing before encrypting leaks plaintext information through ciphertext length — the general failure behind CRIME and BREACH. Padding costs disk space; compression costs confidentiality.
 
+### Implementation size limit
+
+The v1 Coldbox implementation refuses any complete vault file larger than **64 MiB (67,108,864 bytes)**. It also refuses a compartment whose padded plaintext alone would exceed that bound. This is an implementation safety limit, not an authentication result and not a new wire-format field.
+
+An over-size refusal is reported distinctly as **`Vault exceeds the 64 MiB size limit.`** File size is already observable, so separating this condition leaks no secret and prevents a valid-but-too-large file from being mislabeled as a wrong passphrase or damaged vault.
+
 ---
 
 ## Nonces
@@ -139,7 +145,7 @@ Chosen at creation, stored in the header, changeable later (rewraps the DEK; com
 |---|---|---|
 | File System Access | Chrome/Edge desktop | `showSaveFilePicker()` — overwrite in place |
 | Blob download | Desktop, most Android | `<a download>` + `createObjectURL` |
-| Manual export | Any supported running Coldbox browser context | Base64 textarea, `navigator.share`, multi-part QR; iOS Safari-from-Files is not currently claimed (see [ADR-0009](../05-development/adr/0009-ios-local-html-execution.md)) |
+| Manual export | Any supported running Coldbox browser context | Base64 textarea, `navigator.share`, multi-part QR; iOS Safari-from-Files is not currently claimed (see [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md)) |
 
 Detected at boot. Manual export is a first-class flow with chunk counts and reassembly instructions, not a fallback, whenever Coldbox reaches a supported execution context. Quick Look is not an execution context.
 

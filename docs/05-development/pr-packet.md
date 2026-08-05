@@ -81,7 +81,7 @@ Required for anything touching bootstrap, CSP, storage, or rendering.
 | macOS Safari | | |
 | macOS Chrome | | |
 | Linux Firefox | | |
-| **iOS local-execution target** | | Record PASS, BLOCKED, or UNSUPPORTED with the exact device and iOS build; Quick Look is not a Safari pass. See [ADR-0009](adr/0009-ios-local-html-execution.md). |
+| **iOS local-execution target** | | Record PASS, BLOCKED, or UNSUPPORTED with the exact device and iOS build; Quick Look is not a Safari pass. See [ADR-0010](adr/0010-ios-local-html-execution.md). |
 | Android Chrome (Files) | | |
 | Tor Browser | | |
 
@@ -91,7 +91,7 @@ Untested platforms are marked untested. Never inferred from a similar one.
 
 Every decision not settled by the spec. This is where a reviewer finds the real risk.
 
-> **Portability boundary:** Direct local execution from iOS Files is governed by [ADR-0009](adr/0009-ios-local-html-execution.md). Do not infer Safari execution from Quick Look, a third-party viewer, localhost, a renamed file, or another execution context.
+> **Portability boundary:** Direct local execution from iOS Files is governed by [ADR-0010](adr/0010-ios-local-html-execution.md). Do not infer Safari execution from Quick Look, a third-party viewer, localhost, a renamed file, or another execution context.
 > **Record:** the exact device and iOS build, the Files location and acquisition path, the launch path, and whether the target is PASS, BLOCKED, or UNSUPPORTED.
 
 ### 9. What to scrutinise

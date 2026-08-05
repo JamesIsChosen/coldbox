@@ -10,11 +10,11 @@ Date: 2026-08-02 · Supersedes v0.3 · *"Coldbox" is a working name — see §22
 
 ## 1. What this is
 
-One HTML file you copy to a USB stick, a phone, or a laptop, open in a supported browser/file-launch context, and use with no install, no server, and no runtime. It replaces the ~15 separate tools in this folder, adds an encrypted registry of your wallets and addresses, and adds a portfolio manager with live prices and on-chain balance lookups. Direct local execution from iOS Files is not currently claimed; see [ADR-0009](../05-development/adr/0009-ios-local-html-execution.md).
+One HTML file you copy to a USB stick, a phone, or a laptop, open in a supported browser/file-launch context, and use with no install, no server, and no runtime. It replaces the ~15 separate tools in this folder, adds an encrypted registry of your wallets and addresses, and adds a portfolio manager with live prices and on-chain balance lookups. Direct local execution from iOS Files is not currently claimed; see [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md).
 
 ### 1.1 Design axioms
 
-1. **Runs from one local file on supported platforms.** Open the byte-stable HTML artifact directly in a supported browser/file-launch context, with no build step and no localhost server. Direct local execution from Files on iOS is not currently claimed: Safari is not a documented or demonstrated handler for the Coldbox HTML artifact, and Quick Look is not an equivalent execution context. iOS remains a portability target under [ADR-0009](../05-development/adr/0009-ios-local-html-execution.md).
+1. **Runs from one local file on supported platforms.** Open the byte-stable HTML artifact directly in a supported browser/file-launch context, with no build step and no localhost server. Direct local execution from Files on iOS is not currently claimed: Safari is not a documented or demonstrated handler for the Coldbox HTML artifact, and Quick Look is not an equivalent execution context. iOS remains a portability target under [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md).
 2. **Secrets cannot leak, by construction.** All secret handling happens inside a sandboxed realm whose Content Security Policy forbids every form of network access. This is a browser-enforced boundary, not a promise.
 3. **Online is a supported mode, not a failure state.** Tools work online. Prices and balances require online. Only *secrets* are gated.
 4. **The HTML file never changes.** Byte-stable, so its SHA-256 verifies against a published hash forever. Your data lives in a separate encrypted file.
@@ -140,7 +140,7 @@ Note the vault-save nuance: in Warm Mode the secret compartment is copied throug
 | **Sandboxed iframe must work from `file://`** | The whole security model depends on it | Boot self-check verifies the cold realm instantiated and its CSP is active; **hard-fail with an explanation if not** — no silent fallback to an insecure single-realm mode |
 | **Target ≤ 3 MB, hard cap 4.5 MB** | Must open fast on a phone | Drives chain-tier scoping |
 
-**Field test matrix:** Chrome/Edge + Firefox on Windows; Safari + Chrome on macOS; Firefox on Linux; Chrome on Android from Files; Tails/Tor Browser. **iOS local execution remains a blocked portability target under [ADR-0009](../05-development/adr/0009-ios-local-html-execution.md) and is not counted as supported until a documented and security-qualified execution flow exists.** A boot-time capability panel reports what's present whenever Coldbox can actually execute.
+**Field test matrix:** Chrome/Edge + Firefox on Windows; Safari + Chrome on macOS; Firefox on Linux; Chrome on Android from Files; Tails/Tor Browser. **iOS local execution remains a blocked portability target under [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md) and is not counted as supported until a documented and security-qualified execution flow exists.** A boot-time capability panel reports what's present whenever Coldbox can actually execute.
 
 ---
 
@@ -391,7 +391,7 @@ Three save paths, because this is the weakest link in "any device":
 |---|---|---|
 | **File System Access** | Chrome/Edge desktop | `showSaveFilePicker()` — true overwrite in place |
 | **Blob download** | Desktop, most Android | `<a download>` + `createObjectURL` |
-| **Manual export** | Any supported running Coldbox browser context | Base64 in a select-all textarea, `navigator.share` where available, multi-part QR for locked-down devices. iOS Safari-from-Files is not currently claimed; see [ADR-0009](../05-development/adr/0009-ios-local-html-execution.md). |
+| **Manual export** | Any supported running Coldbox browser context | Base64 in a select-all textarea, `navigator.share` where available, multi-part QR for locked-down devices. iOS Safari-from-Files is not currently claimed; see [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md). |
 
 The app detects available paths at boot. Manual export is not an afterthought — for a phone-primary user in a supported running context it may be the normal flow, so it gets a real UI with chunk counts and reassembly instructions. Loading is symmetric: picker, drag-and-drop, or paste. A file that never reaches a supported execution context has no save-path claim; Quick Look is not a substitute.
 
@@ -743,7 +743,9 @@ Per-device setup checklist, tamper check on arrival, firmware update log with re
 
 ## 15. UI and interaction
 
-Dense, monospace-leaning, high-contrast dark by default with a light mode for printing. No decorative animation. Status colors carry meaning: green = airgapped/verified, amber = online/attention, red = danger/secret-visible.
+> **[design-system.md](design-system.md) is authoritative for anything a user can see** — tokens, typography, components, the copy contract, and the accessibility floors. It supersedes the visual direction originally given in this section. Rationale in [ADR-0009](../05-development/adr/0009-comic-visual-language.md). The rules below that are *not* purely visual — secret display, mobile, accessibility, onboarding — remain in force.
+
+High-contrast dark by default with a light mode for printing, rendered in the comic visual language: heavy outlines, flat fills, hard offset shadows, halftone field. **Security surfaces take the shell and none of the behaviour** — no tilt, no animation, no stickers — and the display face never carries a seed word, address, key, hash, path, or amount. Data is always monospace. Status colors carry meaning: green = airgapped/verified, amber = online/attention, red = danger/secret-visible, and color is never the only channel.
 
 **Secret display rules, no exceptions:** masked by default; press-and-hold or explicit toggle with 30 s auto-remask; red border and "secret visible" indicator; word-by-word numbered display for mnemonics with a large-print mode for transcription; per-field opt-in copy with a visible 30-second clipboard countdown; no secret ever in the URL, page title, `localStorage`, or session-restore data.
 

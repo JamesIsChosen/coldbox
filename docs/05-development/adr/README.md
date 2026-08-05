@@ -16,7 +16,8 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0006](0006-companion-not-replacement.md) | A companion to hardware wallets, not a replacement | Accepted |
 | [0007](0007-headless-browser-harness.md) | Headless browser harness as a dev dependency | Accepted |
 | [0008](0008-csp-blocked-network-signals.md) | CSP-blocked network signals are not a throw contract | Accepted |
-| [0009](0009-ios-local-html-execution.md) | iOS local-HTML execution is a portability gate, not a preview-equivalence claim | Accepted |
+| [0009](0009-comic-visual-language.md) | Comic visual language, with security surfaces exempted | Accepted |
+| [0010](0010-ios-local-html-execution.md) | iOS local-HTML execution is a portability gate, not a preview-equivalence claim | Accepted |
 
 ## When to write one
 

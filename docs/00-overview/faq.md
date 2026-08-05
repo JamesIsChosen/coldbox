@@ -6,7 +6,7 @@
 No. It doesn't hold coins, connect to blockchains to move them, or sign transactions. It creates and verifies keys, manages backups, and keeps records. Your hardware wallet remains the thing that spends.
 
 **Why one HTML file?**
-Because it runs in supported browser/file-launch contexts with no install, it's small enough to audit, it can be copied to a USB stick and opened in ten years without a working package manager, and its integrity can be verified with a single hash. iOS local execution from Files is currently deferred under [ADR-0009](../05-development/adr/0009-ios-local-html-execution.md).
+Because it runs in supported browser/file-launch contexts with no install, it's small enough to audit, it can be copied to a USB stick and opened in ten years without a working package manager, and its integrity can be verified with a single hash. iOS local execution from Files is currently deferred under [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md).
 
 **Why not a desktop app?**
 Three separate builds, three signing processes, three sets of platform bugs, and an installer with system access. A single file you can read is a smaller thing to trust.
@@ -44,13 +44,13 @@ Your vault encryption is fine — AES-256 is symmetric, and quantum attacks only
 ## Practical
 
 **Which devices does it work on?**
-Windows, macOS, Linux, and Android in supported local-file/browser contexts. Direct local execution from iOS Files is currently a blocked portability target under [ADR-0009](../05-development/adr/0009-ios-local-html-execution.md); Quick Look is only a preview, not a Coldbox execution environment.
+Windows, macOS, Linux, and Android in supported local-file/browser contexts. Direct local execution from iOS Files is currently a blocked portability target under [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md); Quick Look is only a preview, not a Coldbox execution environment.
 
 **Does it work offline?**
 That's the design. Only prices and balance lookups need a connection, and they degrade to last-known values with visible timestamps.
 
 **Can I use it on my phone?**
-On supported phone/browser contexts, yes. Saving may use a base64/QR export rather than a file download, and that path is built as a proper feature, not a fallback. iOS local execution from Files is not currently claimed; see [ADR-0009](../05-development/adr/0009-ios-local-html-execution.md).
+On supported phone/browser contexts, yes. Saving may use a base64/QR export rather than a file download, and that path is built as a proper feature, not a fallback. iOS local execution from Files is not currently claimed; see [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md).
 
 **How do I move my vault between devices?**
 Copy the `.cbx` file. It's encrypted and self-contained. Sync services work but reveal file size and modification times; the file is size-padded to blunt that.

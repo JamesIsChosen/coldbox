@@ -18,11 +18,11 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 - File System Access save/load when available with normative `.cbx` filenames, portable blob download, and a first-class manual base64/share flow with numbered multi-part QR frames, local QR rendering, and ordered reassembly in supported running browser contexts.
 - Cold session saves now re-encrypt public data with a fresh nonce every time, re-encrypt the secret compartment offline, and preserve the encrypted secret compartment opaquely online without deriving its key.
 - Explicit mode signaling: online unlock uses a public-only opener that never derives the secret subkey; full compartment unlock is available only after the warm shell reports offline.
-- Chromium/Firefox browser coverage for blob and manual round-trips, panic hide, and the existing cold boundary. Direct iOS local execution from Files is a blocked portability target under ADR-0009.
+- Chromium/Firefox browser coverage for blob and manual round-trips, panic hide, and the existing cold boundary. Direct iOS local execution from Files is a blocked portability target under ADR-0010.
 
 ### Changed — portability decision (2026-08-04)
 
-- **ADR-0009 accepted Choice 3:** Coldbox no longer claims that an arbitrary local `coldbox.html` file executes in Safari from iOS Files. Quick Look, third-party viewers, localhost, renamed files, and wrapped formats are not equivalent execution evidence.
+- **ADR-0010 accepted Choice 3:** Coldbox no longer claims that an arbitrary local `coldbox.html` file executes in Safari from iOS Files. Quick Look, third-party viewers, localhost, renamed files, and wrapped formats are not equivalent execution evidence.
 - P0.13 remains `[~]`; P0.14 remains paused pending a separate roadmap-owner decision about the dependency re-baseline. The security model and single-file/no-server constraints are unchanged.
 
 ### Added — P0.12 (2026-08-03)
@@ -41,6 +41,26 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 
 - Vault format v1 serializer/parser in the cold realm: authenticated header, multi-record wrapped-DEK structure, AES-GCM public/secret compartments, HKDF domain separation, and 64 KiB random padding.
 - Real P0.10-backed round-trip coverage, all-65-header-byte tamper coverage, indistinguishable authentication failures, zero-secret compartments, and a warm/cold vault API boundary check.
+- Independent-review remediation makes the vault API fail closed on cold-health/CSP failure, consumes the shared airgap network snapshot, rejects unknown KDF profile names, uses the crypto layer as the single KDF-profile source, documents a distinct 64 MiB size refusal, and removes the premature P0.13 session/save primitive from P0.11.
+
+### Added — review audit trail (2026-08-04)
+
+- **Three independent review reports recovered and committed.** The reviews of P0.6, P0.7 and P0.8 were written, stashed, and never landed. All three are FAIL, together carrying 27 findings of which 8 are blocking, against the cold realm bootstrap, the message handshake, and the CSP canary. Remediation had happened without them visible in the tree.
+- **Every one of the 27 findings dispositioned** against current `main`, with evidence, in a "Disposition of findings" section appended to each report. Reviewer text and verdicts are unmodified. Result: **25 Resolved, 2 open — both environmental** (upstream `verify-vendor` needs registry access; verification ran on Node 22 against a pinned 24.16.0).
+- **One live defect surfaced.** `docs/05-development/adr/README.md` links to ADR-0008, which `c6d6cc2` deleted from `main` when the literal CSP throw contract replaced it. The file survives only on the unmerged `p0.13-lock-save-load` branch, so the two branches disagree about whether ADR-0008 exists. Recorded, not patched — withdrawing or reinstating an ADR is a structural decision.
+- **P0.3a and P0.4 reviews** each contain two stacked reviews, an original FAIL and a later PASS re-review. A navigation banner now says so at the top; neither verdict was altered.
+- **Independent review coverage is now tracked** in [packets/README.md](docs/05-development/packets/README.md). It records that **P0.5 and P0.9 have never been independently reviewed** — the `BATCH-2026-08-03.md` claim of a P0.5 independent PASS has no artifact behind it, and P0.9's reviewer-reserved path briefly held a self-review instead.
+
+### Added — design system (2026-08-04)
+
+- **Comic visual language** across the warm shell: heavy outlines, flat saturated fills, hard offset shadows, halftone dot field, comic display lettering. Recorded in [ADR-0009](docs/05-development/adr/0009-comic-visual-language.md); the full contract is [docs/01-spec/design-system.md](docs/01-spec/design-system.md), which is now authoritative for anything a user can see and supersedes the visual direction in SPEC §15.
+- **The calm rule.** Security surfaces — realm status, airgap banner, capability self-check, the entire sealed realm, and everything Phase 1+ adds to the secret-handling routes — take the comic shell and none of the comic behaviour: no tilt, no animation, no stickers. The line is *reporting live boundary state* versus *explaining the design*. The display face is barred from seed words, addresses, keys, hashes, paths, and amounts, which stay monospace.
+- **Yellow app bar** across every route: knocked-out cyan wordmark, rotated pink status badge reading `Pre-release · Not audited`, and quick links. The mockup's `LOCK ALL` is deliberately absent — there is no lock to engage until P0.13, and a prominent red control that does nothing is worse than no control. The theme toggle moved here from the content bar; its `id` is unchanged, so `main.js` binds as before.
+- **3D card stage** on the dashboard: three comic-paper panels in perspective with pointer-tilt and scroll parallax, driven by two CSS custom properties from `startStageMotion()` in `src/main.js`. It renders no live data and exposes no controls. Below `62rem` the cards stack with no 3D; `prefers-reduced-motion` suppresses the listeners entirely.
+- **Vendored display typefaces.** `@fontsource/bangers@5.3.0` and `@fontsource/comic-neue@5.3.0` (both SIL OFL 1.1) committed as pinned npm tarballs with SHA-256 and integrity in `vendor-manifest.json`, added to `requiredPackages`, and inlined as base64 `data:` URIs by the new `scripts/font-bundle.js` at the `__COLDBOX_FONT_FACES__` build token. Nothing is fetched at build or run time; a corrupted or unmanifested font tarball fails the build like any other vendored artifact. Cost ≈ 83 KB.
+- Dashboard copy now states plainly that Coldbox is a toolkit that holds no keys and signs nothing, and the design system carries a say/never-say table so the "not a wallet" boundary is reviewable rather than a matter of taste.
+- `scripts/crypto-bundle.js` and `scripts/font-bundle.js` are both covered by the lint tooling-syntax check; `crypto-bundle.js` had been missing from that list.
+- Verified against the built artifact: two clean builds byte-identical across path, locale, and timezone; 49/49 node tests including the contrast floor; `npm run test:browser` green in Chromium and Firefox over `file://`. Real-hardware rendering — mobile in particular — remains untested; see [the packet](docs/05-development/packets/ui-comic-design-system.md) §7.
 
 ### Changed — workflow (2026-08-03)
 
