@@ -65,7 +65,7 @@ Wrong things must fail, and fail *loudly*:
 
 Every fixed bug gets a test. Particularly: **a vault written by any previous format version must still open.**
 
-P0.11 additionally checks a real v1 round-trip, a zero-secret vault, every header byte as an authentication boundary, generic wrong-passphrase/corruption errors, and 64 KiB compartment padding.
+P0.11 additionally checks a real v1 round-trip, a zero-secret vault, every header byte as an authentication boundary, generic wrong-passphrase/corruption errors, 64 KiB compartment padding, fail-closed cold-health/CSP gating, canonical airgap mode detection, strict KDF-profile names, the shared crypto-layer profile table, the 64 MiB size refusal, and the absence of P0.13 session/save APIs.
 
 ---
 

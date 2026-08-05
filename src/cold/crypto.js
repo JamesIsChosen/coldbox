@@ -38,6 +38,7 @@
     fallback: Object.freeze({
       id: 'pbkdf2-sha512-fallback',
       label: 'PBKDF2-HMAC-SHA512 fallback',
+      memoryKiB: 0,
       iterations: 1000000,
       parallelism: 1
     })
