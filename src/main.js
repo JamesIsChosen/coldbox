@@ -34,6 +34,7 @@ __COLDBOX_CAPABILITIES__
   var capabilityPanel = document.getElementById('capability-panel');
   var capabilityPanelLabel = document.getElementById('capability-panel-label');
   var capabilitySummary = document.getElementById('capability-summary');
+  var capabilityCryptoSummary = document.getElementById('capability-crypto-summary');
   var capabilityRows = {
     randomValues: document.getElementById('capability-row-random-values'),
     cryptoSubtle: document.getElementById('capability-row-crypto-subtle'),
@@ -229,6 +230,28 @@ __COLDBOX_CAPABILITIES__
     }
   }
 
+  function renderCryptoSummary() {
+    if (!capabilityCryptoSummary) {
+      return;
+    }
+    if (!coldCapabilityReport) {
+      capabilityCryptoSummary.textContent = 'Vault crypto: waiting for the sealed realm to report its active KDF.';
+      capabilityCryptoSummary.setAttribute('data-kdf-active', 'checking');
+      return;
+    }
+    var activeKdf = coldCapabilityReport.kdfActive || 'unknown';
+    capabilityCryptoSummary.setAttribute('data-kdf-active', activeKdf);
+    if (coldCapabilityReport.nobleAesGcm !== true) {
+      capabilityCryptoSummary.textContent = 'Vault crypto: pure-JS AES-GCM self-test failed; vault operations are refused.';
+      return;
+    }
+    if (coldCapabilityReport.argon2id === true) {
+      capabilityCryptoSummary.textContent = 'Vault crypto: active KDF is ' + activeKdf + '. Pure-JS @noble AES-GCM is the default cipher path.';
+      return;
+    }
+    capabilityCryptoSummary.textContent = 'Vault crypto: active KDF is ' + activeKdf + '. Argon2id WASM failed its test, so the visible PBKDF2 fallback is active.';
+  }
+
   function setCapabilityRow(name, state, label, detail) {
     var row = capabilityRows[name];
     if (row) {
@@ -265,6 +288,7 @@ __COLDBOX_CAPABILITIES__
   }
 
   function renderCapabilityPanel() {
+    renderCryptoSummary();
     setCapabilityRootAttributes(warmCapabilityReport, 'warm');
     setCapabilityRootAttributes(coldCapabilityReport, 'cold');
     if (capabilityFailure) {
@@ -622,6 +646,10 @@ __COLDBOX_CAPABILITIES__
         setAirgapFailure('The cold realm airgap guard did not pass its CSP canary or runtime-neutering check. Vault operations are refused.');
         return;
       }
+      if (capabilities.nobleAesGcm !== true) {
+        setAirgapFailure('The cold realm pure-JS AES-GCM known-answer test did not pass. Vault operations are refused.');
+        return;
+      }
       coldCapabilityReport = {
         randomValues: capabilities.randomValues === true,
         cryptoSubtle: capabilities.cryptoSubtle === true,
@@ -630,8 +658,14 @@ __COLDBOX_CAPABILITIES__
         camera: capabilities.camera === true,
         fileSystemAccess: capabilities.fileSystemAccess === true,
         blobDownload: capabilities.blobDownload === true,
-        manualExport: capabilities.manualExport === true
+        manualExport: capabilities.manualExport === true,
+        nobleAesGcm: capabilities.nobleAesGcm === true,
+        argon2id: capabilities.argon2id === true,
+        webCryptoKat: capabilities.webCryptoKat === true,
+        kdfActive: typeof capabilities.kdfActive === 'string' ? capabilities.kdfActive : 'unknown'
       };
+      root.setAttribute('data-cold-crypto-state', coldCapabilityReport.argon2id ? 'ready' : 'fallback');
+      root.setAttribute('data-cold-kdf-active', coldCapabilityReport.kdfActive);
       setCapabilityRootAttributes(coldCapabilityReport, 'cold');
       if (coldCapabilityReport.randomValues !== true) {
         setCapabilityFailure('Required crypto.getRandomValues is unavailable in the cold realm. Coldbox refuses all vault operations and never substitutes Math.random.');
@@ -640,6 +674,7 @@ __COLDBOX_CAPABILITIES__
       coldCanaryPassed = true;
       root.setAttribute('data-cold-csp-canary', 'passed');
       root.setAttribute('data-cold-runtime-neutering', 'installed');
+      renderCryptoSummary();
       renderCapabilityPanel();
       setHandshakeReady();
       updateAirgapBanner();

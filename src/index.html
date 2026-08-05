@@ -135,7 +135,7 @@ __COLDBOX_STYLES__
             <article class="capability-row" id="capability-row-crypto-subtle" data-capability-row="cryptoSubtle" data-state="checking">
               <div>
                 <h3>WebCrypto</h3>
-                <p>Reports whether <code>crypto.subtle</code> is exposed; cryptographic known-answer tests arrive with P0.10.</p>
+                <p>Reports whether <code>crypto.subtle</code> is exposed; the cold realm uses it only after its AES-GCM known-answer test passes.</p>
               </div>
               <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-crypto-subtle">Checking</span></div>
               <p class="capability-row-detail" id="capability-detail-crypto-subtle">Checking both realms.</p>
@@ -173,6 +173,7 @@ __COLDBOX_STYLES__
               <p class="capability-row-detail" id="capability-detail-save-paths">Checking the warm shell.</p>
             </article>
           </div>
+          <p class="capability-crypto-summary" id="capability-crypto-summary" data-kdf-active="checking" aria-live="polite">Vault crypto: waiting for the sealed realm to report its active KDF.</p>
         </section>
 
         <section class="page" id="page-dashboard" data-page="dashboard" aria-labelledby="page-title-dashboard">

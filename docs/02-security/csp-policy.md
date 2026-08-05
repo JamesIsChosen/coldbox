@@ -95,7 +95,7 @@ These were found during design. Each would have caused a silent, hard-to-diagnos
 
 ### `'wasm-unsafe-eval'` is mandatory
 
-Under a strict CSP, Chrome blocks `WebAssembly.instantiate()` without it. Argon2id is a WASM module. Omitting the directive means Argon2 silently fails to load and **every vault falls back to the weaker PBKDF2 path** — with no error, just quietly reduced security.
+Under a strict CSP, Chrome blocks `WebAssembly.instantiate()` without it. Argon2id is a WASM module. Omitting the directive makes the Argon2 known-answer test fail; the cold realm then exposes the weaker PBKDF2 path as an explicit, labelled fallback rather than silently reducing security. The build and browser checks must still treat a missing directive as a defect.
 
 It permits WASM compilation only. It does **not** re-enable `eval()` or `new Function()`. A build-time lint asserts neither appears in our source.
 

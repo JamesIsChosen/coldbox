@@ -16,8 +16,15 @@ __COLDBOX_COLD_STYLES__
     <p id="cold-ready">Cold realm checking</p>
     <p id="cold-realm-details">The CSP canary and runtime network guard are starting inside this sandbox.</p>
     <p id="cold-protocol-warning" role="alert" hidden>Unexpected protocol traffic was discarded and logged. No message was accepted.</p>
+    <section id="cold-kdf-details" data-kdf-active="checking" aria-label="Vault cryptography">
+      <p class="eyebrow">Vault details / P0.10</p>
+      <p id="cold-kdf-active">Active KDF: checking.</p>
+      <p id="cold-crypto-path">Pure-JS @noble crypto and Argon2id WASM are running their known-answer tests.</p>
+    </section>
   </main>
   <script>
+__COLDBOX_CRYPTO_VENDOR_SOURCE__
+__COLDBOX_CRYPTO_LAYER__
 __COLDBOX_COLD_SCRIPT__
   </script>
 </body>
