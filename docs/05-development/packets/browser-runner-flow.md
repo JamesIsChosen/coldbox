@@ -1,233 +1,229 @@
-# PR packet — Browser runner flow
+# PR packet - Browser runner flow
 
 ## 1. Summary
 
-This is an **off-roadmap developer-workflow PR**; it completes no roadmap checkbox. It defines the browser-mediated runner workflow, a guarded PowerShell 5.1 template, and fail-closed secret screening for evidence bundles so an agent without shell access can work through one human-executed runner at a time.
+This is an off-roadmap developer-workflow PR. It completes no roadmap checkbox and does not change application runtime behavior.
 
-The implementation was remediated against the independent FAIL review of PR #22 before this packet was written.
+The PR defines the browser-mediated runner workflow, a guarded Windows PowerShell 5.1 template, and fail-closed evidence-bundle screening for sessions where the agent has no shell and the human executes one runner at a time.
+
+The independent exact-tip re-review of PR #22 at `d3a7f7288548601139fa99e9523b74830a8bfd30` returned FAIL with five findings (N1-N5). The preserved reviewer report is:
+
+- `docs/05-development/packets/browser-runner-flow.review.md`
+- SHA-256 `e2dc5e161e08508df5b17b5212aa1ce106140d0ce25f9ebbdd1326b45df7194d`
+
+That report is reviewer-owned remediation input, not author evidence. It remains external/untracked during author remediation and must remain byte-for-byte unchanged.
 
 ## 2. Scope
 
-**In scope**
+In scope:
 
 - browser-runner workflow documentation and prompts;
-- the generic PowerShell 5.1 runner template;
-- exact branch/HEAD and clean-tree preflight;
+- generic PowerShell 5.1 runner template;
+- exact branch/HEAD and configuration-independent clean-tree preflight;
 - non-overwriting recovery tags and bounded rollback;
 - ordered command/exit-code evidence in `manifest.json`;
-- persisted preflight untracked paths;
-- BIP-39 wordlist-backed secret screening, CRLF handling, >2 MiB text handling, redacted diagnostic bundles, and staged discovery-copy sanitization;
-- explicit launch-command documentation;
-- current-tip evidence for successful and deliberately failing native-command execution.
+- diagnostic recording of untracked paths when preflight refuses to run;
+- BIP-39 wordlist-backed secret screening and explicit known-public discovery-fixture sanitization;
+- fail-closed discovery archive/extraction behavior;
+- full staging/partial-output cleanup for bundle-construction failures;
+- accurate failure-phase diagnostics;
+- end-to-end template contract regressions.
 
-**Not in scope**
+Not in scope:
 
 - no roadmap item is completed or reinterpreted;
-- no cold/warm runtime source, CSP, message schema, vault format, KDF, randomness, or dependency version changes;
-- the previously separable cross-workflow triage prompt was removed from this PR.
+- no cold/warm runtime source, CSP, message schema, vault format, KDF, randomness, or runtime dependency version changes;
+- no force push, merge, rebase, or deployment behavior.
 
-## 3. How to verify
+## 3. Evidence provenance
 
-The permanent source template is `scripts/runner/_template.ps1`. For execution evidence, the documented `STEPS` block was replaced in disposable clones only; scaffolding above and below it was unchanged.
+This tracked packet intentionally does not embed or call a parent commit "current-tip" evidence.
 
-### Successful real-command run
+The remediation workflow constructs the complete proposed Git tree first, including this packet and all regression sources. The immutable independent FAIL report remains reviewer-owned external/untracked workspace evidence and is copied byte-for-byte into the external remediation evidence bundle instead of being added to the author remediation commit. The workflow then commits the proposed Git tree in a disposable clone and executes author-side verification against that disposable committed candidate.
 
-The derived success runner used:
+The exact disposable candidate commit and tree SHA are recorded in the external remediation evidence bundle. They are not embedded here because a tracked packet cannot embed its own final commit SHA without changing that commit.
+
+Before source closeout, the final source commit must be created without content changes and its Git tree SHA must equal the externally recorded, already-tested candidate tree SHA. Fresh independent re-review must still verify and execute the exact final PR tip itself. Author evidence is never a substitute for independent exact-tip review.
+
+Historical execution evidence from parent commit `d34495cc4a29449741a17fe2e857492f3d2717a5` is historical only and is not described as current-tip evidence.
+
+## 4. How to verify
+
+Read:
+
+- `AGENTS.md`
+- `docs/05-development/review-protocol.md`
+- `docs/05-development/browser-runner-flow.md`
+- this packet
+- the preserved independent FAIL report
+- `scripts/runner/_template.ps1`
+- `scripts/runner/secret-scan.ps1`
+- `scripts/runner/test-secret-scan.ps1`
+- `scripts/runner/test-template-contract.ps1`
+
+Run at minimum:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File <derived-from-_template.ps1> -RepoPath <disposable-clone> -RunnerId pr22-template-success-current-tip -ExpectedBranch docs-browser-runner-flow -ExpectedHead d34495cc4a29449741a17fe2e857492f3d2717a5 -Discovery -OutDir <evidence-dir>
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\runner\test-secret-scan.ps1 -RepoPath .
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\runner\test-template-contract.ps1 -RepoPath .
+npm ci --no-audit --no-fund
+npm run verify-vendor
+npm run lint
+npm test
+npm run build
+npm run test:browser
 ```
 
-Manifest step output:
+Then exercise the actual `_template.ps1` in disposable clones by replacing only its documented `STEPS` block.
 
-- `cmd.exe /d /c echo benign-native-stderr 1>&2 & exit /b 0` -> exit `0`
-- `npm.cmd ci --no-audit --no-fund` -> exit `0`
-- `npm.cmd run verify-vendor` -> exit `0`
-- `npm.cmd run lint` -> exit `0`
-- `npm.cmd test` -> exit `0`
-- `npm.cmd run build` -> exit `0`
-- `npm.cmd run test:browser` -> exit `0`
+Successful real-command sequence:
 
-Runner verdict: `PASS`.
+1. native command writes benign stderr and exits `0`;
+2. `npm ci --no-audit --no-fund`;
+3. networked `npm run verify-vendor`;
+4. `npm run lint`;
+5. `npm test`;
+6. `npm run build`;
+7. `npm run test:browser`.
 
-The run used a fresh disposable clone and executed `npm ci`, networked `npm run verify-vendor`, lint, all unit tests, a build, and `npm run test:browser`. The first step deliberately wrote benign text to native stderr while exiting `0`, proving Windows PowerShell 5.1 did not turn stderr alone into a false failure.
+Required success semantics:
 
-### Deliberate native failure
+- runner process exit `0`;
+- manifest verdict `PASS`;
+- all seven manifest step exit codes `0`;
+- discovery bundle exists;
+- `repo/` exists and contains the tracked snapshot;
+- final scan `CLEAN`;
+- bundle is not redacted;
+- checkout remains clean.
 
-The failure runner was derived from the same exact template and used one step that writes to stderr and exits `23`.
+Deliberate native failure:
 
-- `cmd.exe /d /c echo deliberate-native-stderr 1>&2 & exit /b 23` -> exit `23`
+- exercise branch restoration;
+- create one runner-owned untracked file;
+- write to native stderr;
+- exit exactly `23`.
 
-Observed outer runner exit: `1`.
-Manifest verdict: `FAIL`.
-Manifest `rolledBack`: `true`.
-The disposable clone returned to the exact expected HEAD with a clean tree.
+Required failure semantics:
 
-### Secret scanner regression
+- manifest step exit `23`;
+- process exit non-zero;
+- verdict `FAIL`;
+- `rolledBack: true`;
+- exact starting branch restored;
+- exact starting HEAD restored;
+- runner-created untracked file removed;
+- final checkout clean;
+- evidence bundle scan `CLEAN`.
 
-```text
-PASS: template scanner helpers live in New-Bundle scope and bundle-construction failure exits non-zero.
-PASS: rollback Git commands are stderr-safe and rollback success requires exact branch/HEAD/clean-tree verification.
-PASS: vendored English BIP-39 wordlist parsed to 2048 unique words.
-PASS: repository protocol.test.js is detected as the positive control without printing matched content.
-PASS: CRLF text larger than 2 MiB is scanned and secret-shaped content yields manifest + scan-report only.
-PASS: a finding inside manifest.json cannot re-enter through the redacted manifest.
-PASS: tracked positive-control mnemonic is detected at source, sanitized only in the discovery copy, and the final discovery payload remains usable.
-PASS: explicit known-public discovery fixtures sanitize mnemonic/private-key shapes only in the staged copy.
-PASS: unallowlisted tracked secret-shaped content is never sanitized and forces final fail-closed redaction.
-PASS: clean bundle retains ordinary payload plus scan-report.
-PASS: secret scanner regression suite complete.
-```
+## 5. N1-N5 remediation disposition
 
-### Reproducible build / bundle impact
-
-Candidate build A:
-- path: disposable `candidate-a`
-- environment: `TZ=UTC`, `LANG=en-US`, `LC_ALL=en-US`
-- SHA-256: `49694b68007140a56ca404ff1cf6aeff22ed6764aacbaca5b87e1adf3d400737`
-- bytes: `456208`
-
-Candidate build B:
-- path: separate disposable `candidate-b`
-- environment: `TZ=Pacific/Honolulu`, `LANG=de-DE`, `LC_ALL=de-DE`
-- SHA-256: `49694b68007140a56ca404ff1cf6aeff22ed6764aacbaca5b87e1adf3d400737`
-- bytes: `456208`
-
-Base `main` build:
-- detached commit: `c2fec78323209c2cc5944e35e900466b196ad83f`
-- environment: `TZ=Asia/Tokyo`, `LANG=ja-JP`, `LC_ALL=ja-JP`
-- SHA-256: `49694b68007140a56ca404ff1cf6aeff22ed6764aacbaca5b87e1adf3d400737`
-- bytes: `456208`
-
-All three outputs are byte-identical. Bundle delta: **0 bytes**.
-
-### Discovery evidence
-
-Implementation-tip discovery bundle before adding this packet:
-- `repo/` files: `153`
-- total ZIP entries: `173`
-- produced ZIP bytes: `1826479`
-- final scan: `CLEAN`
-- allowlisted staged positive-control paths recorded in `repo-screening-report.txt`: `test/protocol.test.js` and `docs/05-development/packets/p0.7-message-handshake.review.md`
-
-After this packet file was added, current-tip discovery was required to report:
-- `repo/` files: `154`
-- total ZIP entries: `174`
-
-Those are stable file/entry counts. Compressed ZIP byte size is deliberately **not** turned into a documentation contract: the packet itself is inside the discovery archive, so embedding its own compressed byte count would be recursively self-referential. A current-tip discovery pass after tracking this packet confirmed these stable counts; the runner then reruns discovery after the packet amendment and fails unless they remain exact.
-
-## 4. Acceptance criteria
-
-There is no roadmap acceptance row for this off-roadmap workflow PR. This PR does **not** mark or complete any roadmap item.
-
-Its acceptance basis is the repository governance contract plus disposition of the independent PR #22 findings:
-
-| Finding | Disposition |
+| Finding | Required closure in this remediation |
 |---|---|
-| F1 | Resolved: this packet exists and carries real execution evidence. |
-| F2 | Resolved: mnemonic detection uses the vendored English BIP-39 wordlist and catches the repository positive control without printing matched content. |
-| F3 | Resolved: CRLF is normalized; a CRLF fixture >2 MiB is a required regression. |
-| F4 | Resolved: text is not silently skipped by size; binary-extension skips are path-recorded. |
-| F5 | Resolved: documentation now describes the implemented wordlist-backed scanner. |
-| F6 | Resolved: docs distinguish discovery `git archive` content from generated step-bundle content. |
-| F7 | Resolved: a finding gates payload inclusion; only a newly generated content-free manifest plus scan report are uploaded, and staging is cleaned in `finally`. |
-| F8 | Resolved: manifest includes ordered `{command, exitCode}` steps; the impossible dirty-preflight flag was dropped. |
-| F9 | Resolved: preflight untracked paths are persisted in `manifest.json`. |
-| F10 | Resolved: volatile branch-specific figures were removed from normative workflow prose; current evidence lives here. |
-| F11 | Resolved: `RepoPath`, `RunnerId`, `ExpectedBranch`, and full 40-hex `ExpectedHead` are mandatory; no `REPLACE-ME` bypass remains. |
-| F12 | Resolved: the workflow documents an exact unsigned-PowerShell launch command. |
-| F13 | Resolved: the real template scaffolding was exercised with native stderr, `npm ci`, real npm commands, browser harness, and a deliberate exit-23 failure. |
-| F14 | Resolved: CHANGELOG/docs index were updated and the separable triage prompt was removed from this PR. |
-| F15 | Resolved: Node pin handling, rollback documentation, and non-overwriting recovery tags match code. |
+| N1 - discovery construction fails open | `git archive` and `tar -xf` are checked through an stderr-safe native wrapper. Any non-zero exit throws. A requested discovery can never return ordinary PASS with missing/empty `repo/`. Bundle construction is part of the runner transaction: if construction fails after the safety net and STEPS mutated the checkout, exact rollback runs before failure returns. The legacy scanner regression now requires a bundle-construction `exit 1` after any required rollback/verification instead of requiring adjacency to the `BUNDLE FAILED` log. End-to-end regressions force archive exit `17` after tracked/untracked/branch mutation and post-extraction tar exit `19`, require runner exit non-zero, exact branch/HEAD/clean-tree restoration, and no ordinary output ZIP. |
+| N2 - Git-config-dependent clean-tree preflight | Untracked paths are collected first for refusal diagnostics, then cleanliness is checked with explicit `git status --porcelain=v1 -uall`. Any tracked or untracked path aborts before safety tag/steps. Regression sets `status.showUntrackedFiles=no` and proves the untracked path is still refused and persisted in the failure manifest. |
+| N3 - pre-publication staging can survive | The complete `New-Bundle` lifecycle is protected by `finally`. Any construction failure removes staging and any partial/stale output ZIP. The tar regression performs real extraction first, then forces non-zero exit and requires populated staging and output to be absent afterward. |
+| N4 - parent evidence called current-tip | This packet no longer makes that claim. It states the candidate-tree evidence model explicitly, records historical parent evidence only as historical, and reserves final exact-tip verification for external closeout evidence and fresh independent re-review. |
+| N5 - tag collision mislabeled as preflight | The runner tracks `failurePhase`. Tag collision reports `safety-net`, never `preflight`. An end-to-end collision regression checks both tag non-overwrite and diagnostic text. |
 
-## 5. Security impact
+## 6. Prior F1-F15 status
 
-This PR does **not** change the application realm boundary, message schema, CSP, vault format, derivation, randomness, or runtime dependency set.
+The prior F1-F15 remediation remains part of the current PR. The new N1-N5 fixes do not weaken it.
 
-It **does** handle repository/evidence material that may contain secret-shaped text. If the scanner is wrong, a mnemonic or private-key-shaped value could be uploaded in a browser-runner evidence ZIP. The implementation therefore fails closed at final bundle publication, prints paths only, sanitizes only two explicit known-public discovery fixture paths in the staged copy, and leaves the source checkout unchanged.
+In particular:
 
-New `connect-src` hosts: none.
-New protocol message types: none.
+- PR packet exists;
+- BIP-39 detection uses the vendored English wordlist;
+- real tracked mnemonic positive control is detected without printing matched content;
+- CRLF and >2 MiB text are scanned;
+- binary exclusions are path-recorded;
+- unsafe original manifests cannot re-enter redacted bundles;
+- ordered `{command, exitCode}` step records are persisted;
+- mandatory `RepoPath`, `RunnerId`, `ExpectedBranch`, and 40-hex `ExpectedHead` remain enforced;
+- exact launch-command documentation remains present;
+- Node pin handling remains present;
+- recovery tags remain non-overwriting;
+- scanner helpers remain in `New-Bundle` caller scope;
+- bundle-construction exceptions remain non-zero;
+- rollback remains stderr-safe and verifies exact starting branch/HEAD/clean tree;
+- known discovery fixture sanitization remains limited to the two documented allowlisted paths;
+- equivalent secret-shaped content at an unallowlisted path remains untouched and forces final fail-closed redaction.
 
-## 6. Test evidence
+## 7. Security impact
 
-Required scanner regressions prove:
+The PR does not change application realm boundaries, CSP, message schemas, vault format, cryptography, randomness, dependencies, or user-facing runtime behavior.
 
-- the vendored English BIP-39 wordlist parses to exactly 2048 unique words;
-- the real `test/protocol.test.js` vector is detected without printing its contents;
-- CRLF text larger than 2 MiB is scanned;
-- a finding yields manifest + scan-report only;
-- secret-shaped content in the original manifest cannot re-enter through the redacted manifest;
-- discovery sanitizes only the two explicit known-public fixture paths in the staged copy, including mnemonic and extended-private-key shapes, while preserving source files byte-for-byte;
-- the same secret-shaped fixture moved to an unallowlisted tracked path remains untouched and forces final fail-closed redaction;
-- scanner helper functions are imported in `New-Bundle` caller scope;
-- rollback Git commands tolerate benign native stderr and declare success only after exact starting branch/HEAD/clean-tree verification;
-- a bundle-construction exception exits non-zero;
-- a harmless bundle remains intact.
+Security-sensitive workflow rules:
 
-Negative runner evidence additionally proves a native command that writes to stderr and exits `23` causes runner exit `1`, records exit `23`, and rolls back cleanly.
+1. Mutable runners start only from an explicitly clean tracked-and-untracked tree.
+2. `.git/index.lock` is never deleted.
+3. Discovery `repo/` is required when `-Discovery` is requested; archive/extraction failure is fatal.
+4. Only the two explicit known-public fixture paths may be sanitized in the staged discovery copy.
+5. Any other secret-shaped tracked content remains untouched and causes final payload redaction.
+6. The complete bundle stage is cleanup-protected, including failures before the publisher is entered.
+7. A failed construction removes partial/stale ordinary output ZIPs rather than leaving evidence that could be mistaken for the current run.
+8. Findings print path/category only, never matched secret-shaped content.
 
-Anything not tested: no macOS/Linux PowerShell execution was claimed. The target human workflow is Windows PowerShell 5.1; reviewers should still inspect cross-platform assumptions in the documentation.
+## 8. Template contract regression
 
-## 7. Device matrix
+`scripts/runner/test-template-contract.ps1` is an end-to-end Windows PowerShell 5.1 contract suite. It uses disposable local clones and independently exercises:
 
-Not applicable to this PR. It changes development tooling/documentation only and does not touch bootstrap, CSP, storage, or rendering behavior. The application browser harness was nevertheless run as part of the successful template evidence.
+- `status.showUntrackedFiles=no` with a pre-existing untracked file;
+- recovery-tag collision and phase labeling;
+- forced `git archive` exit `17`;
+- real tar extraction followed by forced exit `19`;
+- staging cleanup after the post-extraction failure;
+- stale/partial output ZIP removal.
 
-## 8. Assumptions made
+The source repository is read-only to this regression.
 
-**Assumed:** the vendored `@scure/bip39` 2.2.0 English wordlist is the canonical local source for mnemonic-word membership during bundle screening.
+## 9. Reproducibility / application bundle
 
-**Basis:** it is already pinned and vendored by the repository; the scanner validates that exactly 2048 unique words parse with the expected first/last markers.
+The remediation is developer tooling/documentation only. Author closeout must still rebuild candidate and current `main` under different path/locale/timezone conditions and verify byte identity.
 
-**If wrong:** scanner establishment fails closed instead of silently skipping mnemonic analysis.
+The expected unchanged application artifact from the independently reviewed parent tip is:
 
-**Assumed:** only the two explicit known-public fixture paths named by the workflow may have mnemonic/private-key-shaped fixture values replaced in the staged discovery copy, provided the source checkout is unchanged and the final bundle scan still runs.
+- bytes: `456208`
+- SHA-256: `49694b68007140a56ca404ff1cf6aeff22ed6764aacbaca5b87e1adf3d400737`
 
-**Basis:** both allowlisted paths are pre-existing public test/review evidence. A regression copies the same secret-shaped review fixture to an unallowlisted path and proves it is not sanitized and the final bundle fails closed.
+The remediation runner must independently reproduce that result before closeout. If it does not, the remediation fails.
 
-**If wrong:** discovery would self-redact permanently because its required positive-control file is tracked.
+## 10. Discovery evidence
 
-## 9. What to scrutinise
+The proposed remediation tree adds one tracked file relative to the previously reviewed tip:
 
-Pay particular attention to:
+- `scripts/runner/test-template-contract.ps1`.
 
-1. `Protect-ColdboxDiscoverySnapshot` versus `Invoke-ColdboxSecretScan`: only the two explicit known-public fixture paths may be sanitized; any other secret-shaped tracked path must remain untouched and fail closed in the final scan.
-2. `Publish-ColdboxScannedBundle`: an unsafe original manifest must never be copied into a redacted upload.
-3. PowerShell 5.1 native stderr handling in `Invoke-Step`.
-4. Recovery-tag non-overwrite behavior, stderr-safe native Git rollback, exact branch/HEAD/clean-tree verification, and rollback of runner-created untracked paths.
-5. Scanner helper scope: `secret-scan.ps1` must be dot-sourced in `New-Bundle` caller scope, not inside a short-lived importer function.
-6. Bundle construction failure must terminate the runner non-zero rather than printing `BUNDLE FAILED` and returning success.
-7. The exact boundary between generic template scaffolding and the replaceable `STEPS` block.
+The independent FAIL report remains reviewer-owned external workspace/evidence and is deliberately not absorbed into the author remediation commit.
 
-## 10. Self-assessment
+Therefore the author remediation gate expects current candidate discovery to contain:
 
-The most subtle area is the distinction between a **known tracked public test fixture** and secret-shaped content generated or introduced during a runner execution. The implementation handles that distinction by sanitizing only the staged discovery copy and then running the same final scanner over the complete staged bundle.
+- `155` `repo/` files;
+- `175` total ZIP entries;
+- this packet and `scripts/runner/test-template-contract.ps1`;
+- final scanner `CLEAN`;
+- bundle not redacted.
 
-No application runtime behavior is changed.
+These figures are candidate-tree expectations, not a self-referential final commit SHA claim.
 
-The final independent reviewer must not trust this packet: re-run the template in a fresh clone, deliberately fail a native command, inspect both manifests/transcripts, and re-run the scanner regressions.
+## 11. What to scrutinise
 
-## 11. Bundle impact
+Fresh independent re-review should focus on:
 
-`build/coldbox.html` is unchanged relative to current `main`.
+1. all `New-Bundle` construction subprocess exit codes;
+2. whether any requested discovery can report PASS without a valid `repo/`;
+3. whether bundle-construction failure after successful mutations rolls the checkout back atomically before returning non-zero;
+4. cleanup after failures before `Publish-ColdboxScannedBundle`;
+5. explicit `--porcelain=v1 -uall` preflight behavior under hostile Git display configuration;
+6. coherence of untracked-path diagnostics versus mutable-run clean-tree policy;
+7. failure-phase labeling around safety-tag collision;
+8. preservation of the two-path discovery fixture allowlist and unallowlisted fail-closed behavior;
+9. whether the final source commit tree exactly matches the externally tested candidate tree;
+10. reproducible zero-byte application bundle impact.
 
-- main: `456208` bytes, SHA-256 `49694b68007140a56ca404ff1cf6aeff22ed6764aacbaca5b87e1adf3d400737`
-- PR: `456208` bytes, SHA-256 `49694b68007140a56ca404ff1cf6aeff22ed6764aacbaca5b87e1adf3d400737`
-- delta: **0 bytes**
+## 12. Changed paths in the PR
 
-## 12. Docs updated
-
-Changed documentation in this PR includes:
-
-- `docs/05-development/browser-runner-flow.md`
-- `docs/05-development/prompts.md`
-- `docs/README.md`
-- `CHANGELOG.md`
-- this packet
-
-The runtime Help content is unaffected because this is developer workflow tooling, not a user-facing application feature.
-
-## Changed paths in the PR
+The complete PR remains limited to developer workflow/documentation paths:
 
 - `CHANGELOG.md`
 - `docs/05-development/browser-runner-flow.md`
@@ -237,3 +233,6 @@ The runtime Help content is unaffected because this is developer workflow toolin
 - `scripts/runner/_template.ps1`
 - `scripts/runner/secret-scan.ps1`
 - `scripts/runner/test-secret-scan.ps1`
+- `scripts/runner/test-template-contract.ps1`
+
+`docs/05-development/ROADMAP.md` remains untouched.

@@ -50,6 +50,8 @@ $script:NodePin      = $null
 $script:NodePinSource = $null
 $script:Steps        = @()
 $script:NetCreated   = $false
+$script:Phase        = 'initialising'
+$script:FailurePhase = $null
 
 function Write-Log {
     param([string] $Text, [string] $Level = 'INFO')
@@ -135,9 +137,13 @@ function Invoke-Preflight {
         throw "index.lock present. Another git process may be running. Aborting without touching anything. Do not delete it manually."
     }
 
-    $status = Get-GitOut @('status','--porcelain')
+    # Capture untracked paths before deciding cleanliness so a refused preflight
+    # can still report them. Explicit -uall makes this independent of
+    # status.showUntrackedFiles and other display configuration.
+    $script:PreUntracked = @(Get-GitLines @('ls-files','--others','--exclude-standard'))
+    $status = Get-GitOut @('status','--porcelain=v1','-uall')
     if ($status) {
-        throw "Working tree is not clean. Uncommitted changes belong to you or a previous run and will not be absorbed. Commit, stash, or discard them yourself, then re-run.`n$status"
+        throw "Working tree is not clean. Tracked or untracked changes belong to you or a previous run and will not be absorbed. Commit, stash, or discard them yourself, then re-run.`n$status"
     }
 
     $branch = Get-GitOut @('rev-parse','--abbrev-ref','HEAD')
@@ -152,7 +158,6 @@ function Invoke-Preflight {
 
     $script:BeforeBranch = $branch
     $script:BeforeHead   = $head
-    $script:PreUntracked = Get-GitLines @('ls-files','--others','--exclude-standard')
 
     try   { $script:NodeVersion = (& node --version 2>&1 | Out-String).Trim() }
     catch { $script:NodeVersion = 'not found' }
@@ -289,80 +294,102 @@ function Get-SecretScannerPath {
     }
     return $scanner
 }
+
+# Bundle-construction subprocesses are not normal runner STEPS, but they need
+# the same PowerShell 5.1 stderr treatment and explicit exit-code checking.
+function Invoke-BundleNative {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)][string] $Exe,
+        [Parameter(Mandatory=$true)][string[]] $Arguments
+    )
+
+    $display = "$Exe $($Arguments -join ' ')"
+    $previousPreference = $ErrorActionPreference
+    $output = ''
+    $code = $null
+    $invokeFailure = $null
+
+    try {
+        $ErrorActionPreference = 'Continue'
+        try {
+            $output = & $Exe @Arguments 2>&1 | Out-String
+            $code = $LASTEXITCODE
+        }
+        catch {
+            $invokeFailure = $_.Exception.Message
+        }
+    }
+    finally {
+        $ErrorActionPreference = $previousPreference
+    }
+
+    if ($output.Trim()) {
+        [void] $script:Transcript.AppendLine($output.TrimEnd())
+    }
+
+    if ($invokeFailure) {
+        [void] $script:Transcript.AppendLine("-- bundle command could not start")
+        throw "Bundle command could not start: $display :: $invokeFailure"
+    }
+
+    [void] $script:Transcript.AppendLine("-- bundle command exit $code")
+    Write-Log "bundle `$ $display -> exit $code" $(if ($code -eq 0) { 'INFO' } else { 'ERROR' })
+
+    if ($code -ne 0) {
+        throw "Bundle command failed with exit ${code}: $display"
+    }
+
+    [pscustomobject]@{
+        Output = $output
+        ExitCode = $code
+    }
+}
+
 # --------------------------------------------------------------------- bundle
 
 function New-Bundle {
-    if (Test-Path -LiteralPath $script:Stage) { Remove-Item -LiteralPath $script:Stage -Recurse -Force }
-    New-Item -ItemType Directory -Path $script:Stage -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $script:Stage 'evidence') -Force | Out-Null
+    $zip = $null
+    $bundleComplete = $false
 
-    $afterBranch = Get-GitOrNa @('rev-parse','--abbrev-ref','HEAD')
-    $afterHead   = Get-GitOrNa @('rev-parse','HEAD')
+    try {
+        if (-not (Test-Path -LiteralPath $OutDir)) {
+            New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
+        }
+        $zip = Join-Path $OutDir "coldbox-runner-$RunnerId.zip"
 
-    [pscustomobject]@{
-        runnerId       = $RunnerId
-        verdict        = $script:Verdict
-        utc            = (Get-Date).ToUniversalTime().ToString('o')
-        repoPath       = $RepoPath
-        expectedBranch = $ExpectedBranch
-        expectedHead   = $ExpectedHead
-        beforeBranch   = $script:BeforeBranch
-        beforeHead     = $script:BeforeHead
-        afterBranch    = $afterBranch
-        afterHead      = $afterHead
-        rolledBack     = $script:RolledBack
-        # Only report a recovery tag that actually exists. A preflight abort
-        # creates none, and naming one would send the reader to a ref that is
-        # not there.
-        preTag         = $(if ($script:NetCreated) { $script:PreTag } else { $null })
-        preUntracked   = @($script:PreUntracked)
-        nodeVersion    = $script:NodeVersion
-        nodePin        = $script:NodePin
-        nodePinSource  = $script:NodePinSource
-        culture        = (Get-Culture).Name
-        timezone       = [System.TimeZoneInfo]::Local.Id
-        discovery      = [bool] $Discovery
-        psVersion      = $PSVersionTable.PSVersion.ToString()
-        steps          = @($script:Steps)
-    } | ConvertTo-Json -Depth 4 |
-        Set-Content -LiteralPath (Join-Path $script:Stage 'manifest.json') -Encoding UTF8
+        # A rerun with the same id must never leave an old output looking like
+        # the result of this run if construction later fails.
+        if (Test-Path -LiteralPath $zip) {
+            Remove-Item -LiteralPath $zip -Force
+        }
 
-    Set-Content -LiteralPath (Join-Path $script:Stage 'transcript.txt') `
-                -Value $script:Transcript.ToString() -Encoding UTF8
+        if (Test-Path -LiteralPath $script:Stage) {
+            Remove-Item -LiteralPath $script:Stage -Recurse -Force
+        }
+        New-Item -ItemType Directory -Path $script:Stage -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $script:Stage 'evidence') -Force | Out-Null
 
-    $gitState = @(
-        '--- status --porcelain ---'
-        Get-GitOrNa @('status','--porcelain')
-        ''
-        '--- log --oneline -20 ---'
-        Get-GitOrNa @('log','--oneline','-20')
-        ''
-        '--- branch -vv ---'
-        Get-GitOrNa @('branch','-vv')
-    ) -join "`n"
-    Set-Content -LiteralPath (Join-Path $script:Stage 'git-state.txt') -Value $gitState -Encoding UTF8
+        # Discovery is a required payload when requested. Archive/extraction
+        # failures are bundle-construction failures, never a PASS-without-repo.
+        if ($Discovery) {
+            $repoDir = Join-Path $script:Stage 'repo'
+            New-Item -ItemType Directory -Path $repoDir -Force | Out-Null
+            $tar = Join-Path $script:Stage 'repo.tar'
 
-    # What this runner changed, relative to its own starting point. Skipped
-    # when preflight aborted, since there is no starting point to diff from and
-    # attempting it only emits a confusing 'ambiguous argument' warning.
-    if ($script:BeforeHead -ne 'unknown') {
-        try {
-            $patch = & git diff "$script:BeforeHead..HEAD" 2>&1 | Out-String
-            if ($patch.Trim()) {
-                Set-Content -LiteralPath (Join-Path $script:Stage 'changes.patch') -Value $patch -Encoding UTF8
+            [void](Invoke-BundleNative -Exe 'git' -Arguments @('archive','--format=tar','-o',$tar,'HEAD'))
+            if (-not (Test-Path -LiteralPath $tar -PathType Leaf)) {
+                throw 'git archive exited 0 but did not create repo.tar.'
             }
-        } catch { Write-Log "could not produce changes.patch: $($_.Exception.Message)" 'WARN' }
-    }
 
-    # Discovery only: tracked content, never a directory copy (see flow doc 5).
-    if ($Discovery) {
-        $repoDir = Join-Path $script:Stage 'repo'
-        New-Item -ItemType Directory -Path $repoDir -Force | Out-Null
-        $tar = Join-Path $script:Stage 'repo.tar'
-        & git archive --format=tar -o $tar HEAD 2>&1 | Out-Null
-        if ($LASTEXITCODE -eq 0) {
-            & tar -xf $tar -C $repoDir 2>&1 | Out-Null
+            [void](Invoke-BundleNative -Exe 'tar' -Arguments @('-xf',$tar,'-C',$repoDir))
             Remove-Item -LiteralPath $tar -Force
+
+            $firstRepoFile = Get-ChildItem -LiteralPath $repoDir -Recurse -File -ErrorAction SilentlyContinue |
+                Select-Object -First 1
+            if (-not $firstRepoFile) {
+                throw 'Discovery extraction completed but repo/ contains no tracked files.'
+            }
 
             . (Get-SecretScannerPath)
             $screenedRepo = Protect-ColdboxDiscoverySnapshot -Root $repoDir -RepoPath $RepoPath
@@ -386,42 +413,118 @@ function New-Bundle {
                     Write-Log 'Unexpected tracked secret-shaped content remains; final bundle scan must redact/fail closed.' 'WARN'
                 }
             }
+        }
+
+        $afterBranch = Get-GitOrNa @('rev-parse','--abbrev-ref','HEAD')
+        $afterHead   = Get-GitOrNa @('rev-parse','HEAD')
+
+        [pscustomobject]@{
+            runnerId       = $RunnerId
+            verdict        = $script:Verdict
+            failurePhase   = $script:FailurePhase
+            utc            = (Get-Date).ToUniversalTime().ToString('o')
+            repoPath       = $RepoPath
+            expectedBranch = $ExpectedBranch
+            expectedHead   = $ExpectedHead
+            beforeBranch   = $script:BeforeBranch
+            beforeHead     = $script:BeforeHead
+            afterBranch    = $afterBranch
+            afterHead      = $afterHead
+            rolledBack     = $script:RolledBack
+            preTag         = $(if ($script:NetCreated) { $script:PreTag } else { $null })
+            # Successful mutable runs always start with this empty. A refused
+            # preflight can still report the untracked paths that caused refusal.
+            preUntracked   = @($script:PreUntracked)
+            nodeVersion    = $script:NodeVersion
+            nodePin        = $script:NodePin
+            nodePinSource  = $script:NodePinSource
+            culture        = (Get-Culture).Name
+            timezone       = [System.TimeZoneInfo]::Local.Id
+            discovery      = [bool] $Discovery
+            psVersion      = $PSVersionTable.PSVersion.ToString()
+            steps          = @($script:Steps)
+        } | ConvertTo-Json -Depth 4 |
+            Set-Content -LiteralPath (Join-Path $script:Stage 'manifest.json') -Encoding UTF8
+
+        Set-Content -LiteralPath (Join-Path $script:Stage 'transcript.txt') `
+                    -Value $script:Transcript.ToString() -Encoding UTF8
+
+        $gitState = @(
+            '--- status --porcelain=v1 -uall ---'
+            Get-GitOrNa @('status','--porcelain=v1','-uall')
+            ''
+            '--- log --oneline -20 ---'
+            Get-GitOrNa @('log','--oneline','-20')
+            ''
+            '--- branch -vv ---'
+            Get-GitOrNa @('branch','-vv')
+        ) -join "`n"
+        Set-Content -LiteralPath (Join-Path $script:Stage 'git-state.txt') -Value $gitState -Encoding UTF8
+
+        if ($script:BeforeHead -ne 'unknown') {
+            try {
+                $patch = & git diff "$script:BeforeHead..HEAD" 2>&1 | Out-String
+                if ($patch.Trim()) {
+                    Set-Content -LiteralPath (Join-Path $script:Stage 'changes.patch') -Value $patch -Encoding UTF8
+                }
+            } catch { Write-Log "could not produce changes.patch: $($_.Exception.Message)" 'WARN' }
+        }
+
+        if (Test-Path (Join-Path $RepoPath 'build\coldbox.html')) {
+            $b = Get-Item (Join-Path $RepoPath 'build\coldbox.html')
+            $h = (Get-FileHash -LiteralPath $b.FullName -Algorithm SHA256).Hash
+            Set-Content -LiteralPath (Join-Path $script:Stage 'evidence\build.txt') `
+                        -Value "bytes: $($b.Length)`nsha256: $h" -Encoding UTF8
+        }
+
+        . (Get-SecretScannerPath)
+
+        $published = Publish-ColdboxScannedBundle -Root $script:Stage -RepoPath $RepoPath -ZipPath $zip
+        $bundleComplete = $true
+
+        if ($published.Redacted) {
+            Write-Log "Secret scan found $($published.FindingCount) finding(s); unsafe payload omitted. Bundle contains manifest + scan-report only." 'WARN'
         } else {
-            Write-Log 'git archive failed; discovery bundle will omit repo/' 'WARN'
+            Write-Log "Secret scan CLEAN; skipped binary paths recorded: $($published.SkippedCount)."
+        }
+
+        Write-Host ''
+        Write-Host "  Bundle: $zip"
+        Write-Host "  Verdict: $script:Verdict"
+        Write-Host "  Redacted: $($published.Redacted)"
+        Write-Host '  Upload that zip back to the chat.'
+        Write-Host ''
+    }
+    finally {
+        # Publish-ColdboxScannedBundle cleans its own Root, but construction can
+        # fail before the publisher is entered. Cover the entire lifecycle here.
+        if (Test-Path -LiteralPath $script:Stage) {
+            Remove-Item -LiteralPath $script:Stage -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        if (Test-Path -LiteralPath $script:Stage) {
+            throw "Bundle staging cleanup failed: $script:Stage"
+        }
+
+        # A construction failure must not leave a partial or stale output ZIP.
+        if (-not $bundleComplete -and $zip -and (Test-Path -LiteralPath $zip)) {
+            Remove-Item -LiteralPath $zip -Force -ErrorAction SilentlyContinue
+        }
+        if (-not $bundleComplete -and $zip -and (Test-Path -LiteralPath $zip)) {
+            throw "Partial bundle cleanup failed: $zip"
         }
     }
-
-    if (Test-Path (Join-Path $RepoPath 'build\coldbox.html')) {
-        $b = Get-Item (Join-Path $RepoPath 'build\coldbox.html')
-        $h = (Get-FileHash -LiteralPath $b.FullName -Algorithm SHA256).Hash
-        Set-Content -LiteralPath (Join-Path $script:Stage 'evidence\build.txt') `
-                    -Value "bytes: $($b.Length)`nsha256: $h" -Encoding UTF8
-    }
-
-    . (Get-SecretScannerPath)
-
-    if (-not (Test-Path -LiteralPath $OutDir)) { New-Item -ItemType Directory -Path $OutDir -Force | Out-Null }
-    $zip = Join-Path $OutDir "coldbox-runner-$RunnerId.zip"
-    $published = Publish-ColdboxScannedBundle -Root $script:Stage -RepoPath $RepoPath -ZipPath $zip
-
-    if ($published.Redacted) {
-        Write-Log "Secret scan found $($published.FindingCount) finding(s); unsafe payload omitted. Bundle contains manifest + scan-report only." 'WARN'
-    } else {
-        Write-Log "Secret scan CLEAN; skipped binary paths recorded: $($published.SkippedCount)."
-    }
-
-    Write-Host ''
-    Write-Host "  Bundle: $zip"
-    Write-Host "  Verdict: $script:Verdict"
-    Write-Host "  Redacted: $($published.Redacted)"
-    Write-Host '  Upload that zip back to the chat.'
-    Write-Host ''
 }
+
 # ----------------------------------------------------------------------- main
 
 try {
+    $script:Phase = 'preflight'
     Invoke-Preflight
+
+    $script:Phase = 'safety-net'
     New-SafetyNet
+
+    $script:Phase = 'steps'
 
     # =====================================================================
     # STEPS - the agent replaces this block. Everything above and below is
@@ -437,21 +540,46 @@ try {
     # =====================================================================
 
     $script:Verdict = 'PASS'
-    Write-Log '=== RUNNER PASSED ==='
+    $script:Phase = 'bundle'
+    Write-Log '=== STEPS PASSED; BUILDING BUNDLE ==='
 }
 catch {
     $script:Verdict = 'FAIL'
-    Write-Log "FAILURE: $($_.Exception.Message)" 'ERROR'
-    # Roll back only if we got far enough to create the safety net. A preflight
-    # abort mutates nothing, so there is deliberately nothing to undo.
-    if ($script:NetCreated) { Invoke-Rollback }
-    else { Write-Log 'Failed during preflight - nothing was mutated, tree untouched.' 'WARN' }
+    $script:FailurePhase = $script:Phase
+    Write-Log "FAILURE during $($script:FailurePhase): $($_.Exception.Message)" 'ERROR'
+
+    if ($script:NetCreated) {
+        Invoke-Rollback
+    }
+    else {
+        Write-Log "Failed during $($script:FailurePhase) before mutation; no rollback required, tree untouched." 'WARN'
+    }
 }
-finally {
-    try { New-Bundle }
-    catch { Write-Host "BUNDLE FAILED: $($_.Exception.Message)" -ForegroundColor Red
-        exit 1 }
+
+try {
+    $script:Phase = 'bundle'
+    New-Bundle
+}
+catch {
+    $script:Verdict = 'FAIL'
+    $script:FailurePhase = 'bundle-construction'
+    Write-Host "BUNDLE FAILED: $($_.Exception.Message)" -ForegroundColor Red
+
+    # Bundle construction is part of the atomic runner transaction. If STEPS
+    # succeeded and mutated the checkout before construction failed, restore
+    # the exact pre-run branch/HEAD/tree before returning failure. A prior step
+    # failure may already have rolled back; do not run rollback twice.
+    if ($script:NetCreated -and -not $script:RolledBack) {
+        Write-Log 'Bundle construction failed after the safety net; rolling back step mutations.' 'WARN'
+        Invoke-Rollback
+    }
+
+    if ($script:NetCreated -and -not $script:RolledBack) {
+        Write-Host "BUNDLE FAILURE ROLLBACK FAILED. Recover manually with: git checkout -f $script:BeforeBranch; git reset --hard $script:PreTag" -ForegroundColor Red
+    }
+    exit 1
 }
 
 if ($script:Verdict -ne 'PASS') { exit 1 }
+Write-Log '=== RUNNER PASSED ==='
 exit 0

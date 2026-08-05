@@ -24,7 +24,8 @@ $templateSource = [IO.File]::ReadAllText($templatePath).Replace("`r`n","`n").Rep
 Assert-True (-not $templateSource.Contains('function Import-SecretScanner')) 'Template still imports scanner helpers inside a short-lived helper-function scope.'
 Assert-True $templateSource.Contains('function Get-SecretScannerPath') 'Template scanner-path helper is missing.'
 Assert-True ([regex]::Matches($templateSource,'(?m)^[ \t]*\. \(Get-SecretScannerPath\)[ \t]*$').Count -eq 2) 'Template must dot-source the scanner exactly twice in New-Bundle caller scope.'
-Assert-True ([regex]::IsMatch($templateSource,'Write-Host "BUNDLE FAILED: \$\(\$_\.Exception\.Message\)" -ForegroundColor Red\s*\n\s*exit 1')) 'Bundle-construction failure must terminate the runner with exit 1.'
+$bundleFailurePattern = '(?s)Write-Host "BUNDLE FAILED: \$\(\$_\.Exception\.Message\)" -ForegroundColor Red.*?\n[ \t]*exit 1[ \t]*\n[ \t]*\}'
+Assert-True ([regex]::IsMatch($templateSource,$bundleFailurePattern)) 'Bundle-construction failure must terminate the runner with exit 1 after any required rollback/verification.'
 Write-Host 'PASS: template scanner helpers live in New-Bundle scope and bundle-construction failure exits non-zero.'
 $templatePathForRollback = Join-Path $RepoPath 'scripts\runner\_template.ps1'
 $templateRollbackSource = [IO.File]::ReadAllText($templatePathForRollback).Replace("`r`n","`n").Replace("`r","`n")

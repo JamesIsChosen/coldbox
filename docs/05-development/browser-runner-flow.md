@@ -72,47 +72,58 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\Downlo
 
 `-Discovery` is added only for discovery runners. `-OutDir` is optional; it defaults to the current Windows profile's Downloads folder.
 
-### Preflight — changes nothing, and can abort freely
+### Preflight - changes nothing, and can abort freely
 
 1. `$ErrorActionPreference = 'Stop'`, strict mode on.
 2. Resolve and verify the repo path. Abort if it is not a git work tree.
 3. Abort if `.git/index.lock` exists.
-4. Abort if `git status --porcelain` is non-empty. **A dirty tree is never absorbed** — it belongs to you or to a previous run, and `AGENTS.md` §6a forbids sweeping it up.
-5. Abort if the current branch ≠ `ExpectedBranch`.
-6. Abort if `git rev-parse HEAD` ≠ `ExpectedHead`.
-7. Record `Node --version` and compare against `.nvmrc` / `package.json` engines. Mismatch is a warning, not an abort — but it goes in the manifest, because build evidence produced under the wrong Node is weaker evidence.
+4. Record untracked paths with `git ls-files --others --exclude-standard` so a refused preflight can report them.
+5. Abort if explicit `git status --porcelain=v1 -uall` is non-empty. The explicit `-uall` is required so `status.showUntrackedFiles=no` or similar Git display configuration cannot hide a dirty tree. Any tracked or untracked path refuses the mutable run.
+6. Abort if the current branch differs from `ExpectedBranch`.
+7. Abort if `git rev-parse HEAD` differs from `ExpectedHead`.
+8. Record `node --version` and compare against `.nvmrc` / `package.json` engines. Mismatch is a warning recorded in the manifest.
 
-Any abort exits non-zero, writes a bundle explaining why, and **mutates nothing**.
+A refused preflight exits non-zero, writes a safe diagnostic bundle when bundle construction itself is available, and mutates nothing. `preUntracked` is diagnostic evidence for the refusal; it is not permission to start a mutable run from a dirty tree.
 
-### Safety net — before the first mutation
+### Safety net - before the first mutation
 
 ```powershell
 git tag "runner/$RunnerId/pre" HEAD
 ```
 
-A real ref, not a variable. It survives a crashed shell, a closed window, and a reboot. If that exact tag already exists, the safety-net step fails closed; a runner never overwrites an earlier recovery ref. Untracked files present at preflight are persisted in `manifest.json` so rollback evidence can distinguish yours from the runner's.
+A real ref, not a variable. It survives a crashed shell, a closed window, and a reboot. If that exact tag already exists, the safety-net step fails closed; a runner never overwrites an earlier recovery ref.
+
+Because mutable execution starts only after an explicit clean tracked-and-untracked preflight, `preUntracked` is empty for every run that reaches this phase. A non-empty `preUntracked` can appear only in a preflight-refusal diagnostic bundle.
 
 ### Execute
 
 Steps run in order. After every external command the runner checks `$LASTEXITCODE` explicitly — **never `$?` after a pipeline**, which reports the last element of the pipe, not the command you care about (`AGENTS.md` §6a). All output is tee'd to the transcript with its exit code.
 
-### Rollback — on any failure
+### Rollback - on any failure after the safety net
 
 ```powershell
 # if a step changed branches:
 git checkout -f $script:BeforeBranch
 git reset --hard "runner/$RunnerId/pre"
-# delete only untracked paths that did NOT exist at preflight
-# verify exact starting branch + HEAD + clean status before reporting rollback success
+# remove runner-created untracked paths
+# verify exact starting branch + exact starting HEAD + clean `git status --porcelain=v1 -uall`
 ```
 
-Untracked files you already had are left alone. The `pre` tag is **kept**, not deleted, so the state before any runner in the session is always recoverable by name. Closeout deletes them (§7).
+Pre-existing tracked or untracked paths never enter a mutable run; they cause preflight refusal. Therefore every untracked path created after the clean preflight is runner-owned and may be removed during rollback.
+
+The `pre` tag is kept, not deleted, so the state before the runner is always recoverable by name. Closeout deletes session tags (section 7).
 
 Rollback failure is the one unrecoverable case: the runner says so loudly, names the `pre` tag, and stops. It does not attempt a second repair.
 
-### Always — bundle and report
+### Always - bundle and report
 
-The bundle is written whether the run succeeded or failed. A failed run's bundle is *more* important than a successful one.
+Normal successful runs, preflight refusals, safety-net failures, and step failures produce a scanned evidence bundle.
+
+Bundle construction itself is also fail-closed. If a required construction subprocess such as `git archive` or `tar -xf` exits non-zero, or any exception occurs after staging begins but before publication, the runner exits non-zero. It removes the entire staging directory and any stale or partial ordinary output ZIP. It never converts a requested discovery into a PASS bundle with an omitted or empty `repo/`.
+
+Bundle construction is part of the same atomic transaction as STEPS. If construction fails after the safety net and STEPS changed the checkout, the runner restores the exact starting branch and HEAD, removes runner-created untracked paths, and verifies a clean tree before returning failure. If an earlier step failure already rolled back, construction failure does not run rollback a second time.
+
+A construction failure may therefore produce no uploadable bundle rather than emit misleading or incompletely scanned evidence. The console must identify the bundle-construction failure and return non-zero.
 
 ---
 
@@ -124,7 +135,7 @@ coldbox-runner-<id>.zip
 │                        with command + exit code, branch + HEAD before/after,
 │                        preflight untracked paths, node pin/version, rollback y/n
 ├── transcript.txt       every command, its full output, its exit code
-├── git-state.txt        status --porcelain, log --oneline -20, branch -vv
+├── git-state.txt        status --porcelain=v1 -uall, log --oneline -20, branch -vv
 ├── evidence/            build hash + byte size, test counts, lint,
 │                        verify-vendor, any harness output
 ├── changes.patch        git diff of what the runner changed  (step runners)
@@ -134,13 +145,15 @@ coldbox-runner-<id>.zip
 
 `manifest.json` is what the agent reads first. It is machine-shaped on purpose: the agent should never have to infer success from prose.
 
-**`preTag` is `null` when preflight aborted** — no recovery tag was created, because nothing was mutated. A non-null `preTag` always names a ref that exists.
+**`preTag` is `null` whenever this run created no recovery tag** - for example a preflight refusal or a safety-tag collision. A non-null `preTag` names the recovery ref created by this run.
 
 **Zip entries use backslash separators.** `Compress-Archive` on Windows PowerShell 5.1 writes `repo\src\main.js`, not `repo/src/main.js`. `unzip` warns about it and some tooling mis-splits the paths, so anything reading a bundle should normalise separators before matching on them.
 
-### Current-tip evidence
+### Evidence provenance
 
-Execution counts, bundle listings, deliberate failure runs, and environment details are recorded in the PR packet at [`packets/browser-runner-flow.md`](packets/browser-runner-flow.md). Keeping current-tip evidence there avoids hard-coding figures in this contract document that become stale as the repository grows.
+Execution counts, bundle listings, deliberate failure runs, and environment details belong in the PR packet at [`packets/browser-runner-flow.md`](packets/browser-runner-flow.md), but a tracked packet must not call a parent-commit run "current-tip" evidence.
+
+Author remediation evidence records the exact committed candidate tree externally. Final exact-tip provenance is established by closeout verification and fresh independent re-review. This avoids a self-referential packet SHA claim while keeping evidence provenance explicit.
 
 ---
 
@@ -162,6 +175,8 @@ The scanner also rejects:
 - `xprv`, `yprv`, `zprv`, `tprv`, `uprv`, `vprv` private-key prefixes
 
 A finding never prints matched content. It **gates payload inclusion**: the unsafe staging directory is deleted and the zip contains only a newly generated content-free `manifest.json` and `scan-report.txt`. The redacted manifest records only fixed diagnostic flags/counts (`bundleRedacted: true`, `scanClean: false`) and never copies fields from the rejected original manifest, because the finding itself may have originated there. A clean scan keeps the normal payload and adds `scan-report.txt`.
+
+The complete New-Bundle staging lifecycle is cleanup-protected. Any failure before final publication removes populated staging and any stale or partial ordinary output ZIP before the process exits non-zero.
 
 ---
 ## 6. Independence of verification
@@ -219,7 +234,7 @@ The closeout bundle is the proof that the loop actually closed. Without it the n
 
 **Weaker evidence of environment.** The agent only knows what the transcript says. This is why `manifest.json` records Node version, locale, and timezone: so the agent can state honestly in the packet what the evidence was produced under.
 
-**The dirty-tree stop is strict and will occasionally annoy you.** If you edited a file mid-session, the next runner aborts. That is correct — the alternative is your edit landing in a commit that claims to be one roadmap item.
+**The dirty-tree stop is strict and will occasionally annoy you.** It applies to both tracked and untracked paths, regardless of Git display configuration. If you edited or created a file mid-session, the next mutable runner refuses to start.
 
 **Bundle upload limits.** Discovery is ≈ 1.4 MB. If a chat rejects it, the agent falls back to a metadata-only discovery bundle (no `repo/`) plus targeted file requests — slower, and it should say so rather than proceeding on partial context.
 
