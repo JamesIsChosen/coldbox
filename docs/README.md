@@ -59,6 +59,7 @@ Everything about Coldbox lives here. Guides and the glossary compile into the ap
 | [Roadmap](05-development/ROADMAP.md) | **What to build next, and current status.** Authoritative |
 | [PR packet](05-development/pr-packet.md) | The independent-review deliverable |
 | [Review protocol](05-development/review-protocol.md) | Binary PASS/FAIL. Any advisory is a FAIL |
+| [Browser runner flow](05-development/browser-runner-flow.md) | Safe development/review loop when the agent has no shell |
 | [Batch runs](05-development/batch-run.md) | Working several items unattended, safely |
 | [Packets](05-development/packets/README.md) | The permanent evidence trail |
 | [Doc hygiene](05-development/doc-hygiene.md) | How docs are kept from going stale |

@@ -64,6 +64,14 @@ These exist because the alternative silently corrupts something.
 
 Every runner — without exception — follows this sequence. The reference implementation is [`scripts/runner/_template.ps1`](../../scripts/runner/_template.ps1).
 
+`RepoPath`, `RunnerId`, `ExpectedBranch`, and the full 40-hex `ExpectedHead` are mandatory. A browser agent hands the human the exact invocation; for an unsigned runner on Windows PowerShell 5.1 the shape is:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\Downloads\coldbox-runner-p0.17-01.ps1" -RepoPath "C:\Users\you\Projects\coldbox" -RunnerId "p0.17-01" -ExpectedBranch "p0.17-example" -ExpectedHead "0123456789abcdef0123456789abcdef01234567"
+```
+
+`-Discovery` is added only for discovery runners. `-OutDir` is optional; it defaults to the current Windows profile's Downloads folder.
+
 ### Preflight — changes nothing, and can abort freely
 
 1. `$ErrorActionPreference = 'Stop'`, strict mode on.
@@ -82,7 +90,7 @@ Any abort exits non-zero, writes a bundle explaining why, and **mutates nothing*
 git tag "runner/$RunnerId/pre" HEAD
 ```
 
-A real ref, not a variable. It survives a crashed shell, a closed window, and a reboot. Untracked files present at preflight are recorded to a manifest so rollback can tell yours from the runner's.
+A real ref, not a variable. It survives a crashed shell, a closed window, and a reboot. If that exact tag already exists, the safety-net step fails closed; a runner never overwrites an earlier recovery ref. Untracked files present at preflight are persisted in `manifest.json` so rollback evidence can distinguish yours from the runner's.
 
 ### Execute
 
@@ -93,7 +101,7 @@ Steps run in order. After every external command the runner checks `$LASTEXITCOD
 ```powershell
 git reset --hard "runner/$RunnerId/pre"
 # delete only untracked paths that did NOT exist at preflight
-git checkout $ExpectedBranch
+git checkout $script:BeforeBranch
 ```
 
 Untracked files you already had are left alone. The `pre` tag is **kept**, not deleted, so the state before any runner in the session is always recoverable by name. Closeout deletes them (§7).
@@ -110,9 +118,9 @@ The bundle is written whether the run succeeded or failed. A failed run's bundle
 
 ```
 coldbox-runner-<id>.zip
-├── manifest.json        runner id, UTC timestamp, verdict, exit codes,
-│                        branch + HEAD before and after, node version,
-│                        dirty-at-preflight flag, rollback performed y/n
+├── manifest.json        runner id, UTC timestamp, verdict, ordered steps
+│                        with command + exit code, branch + HEAD before/after,
+│                        preflight untracked paths, node pin/version, rollback y/n
 ├── transcript.txt       every command, its full output, its exit code
 ├── git-state.txt        status --porcelain, log --oneline -20, branch -vv
 ├── evidence/            build hash + byte size, test counts, lint,
@@ -128,16 +136,9 @@ coldbox-runner-<id>.zip
 
 **Zip entries use backslash separators.** `Compress-Archive` on Windows PowerShell 5.1 writes `repo\src\main.js`, not `repo/src/main.js`. `unzip` warns about it and some tooling mis-splits the paths, so anything reading a bundle should normalise separators before matching on them.
 
-### Verified
+### Current-tip evidence
 
-Both paths were executed against this repository on 2026-08-04 under Windows PowerShell 5.1.26100.8875, Node v24.16.0:
-
-| Run | Result |
-|---|---|
-| `-Discovery`, correct expected state | `verdict: PASS`, 144 entries, 139 files under `repo/`, 1.29 MB, secret scan CLEAN |
-| Deliberate `-ExpectedHead deadbeef` | `verdict: FAIL`, aborted in preflight, `rolledBack: false`, nothing mutated, **bundle still written** |
-
-The second case is the one that matters — a runner that fails without producing a bundle leaves the agent blind.
+Execution counts, bundle listings, deliberate failure runs, and environment details are recorded in the PR packet at [`packets/browser-runner-flow.md`](packets/browser-runner-flow.md). Keeping current-tip evidence there avoids hard-coding figures in this contract document that become stale as the repository grows.
 
 ---
 
@@ -158,7 +159,7 @@ The scanner also rejects:
 - `.env`, `.env.*`, any `secrets/` directory
 - `xprv`, `yprv`, `zprv`, `tprv`, `uprv`, `vprv` private-key prefixes
 
-A finding never prints matched content. It **gates payload inclusion**: the unsafe staging directory is deleted and the zip contains only `manifest.json` and `scan-report.txt`, with the manifest marked `bundleRedacted: true` / `scanClean: false`. This preserves diagnostic evidence without uploading the suspect payload. A clean scan keeps the normal payload and adds `scan-report.txt`.
+A finding never prints matched content. It **gates payload inclusion**: the unsafe staging directory is deleted and the zip contains only a newly generated content-free `manifest.json` and `scan-report.txt`. The redacted manifest records only fixed diagnostic flags/counts (`bundleRedacted: true`, `scanClean: false`) and never copies fields from the rejected original manifest, because the finding itself may have originated there. A clean scan keeps the normal payload and adds `scan-report.txt`.
 
 ---
 ## 6. Independence of verification

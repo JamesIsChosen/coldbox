@@ -30,6 +30,20 @@ function Get-ZipEntryNames {
     }
 }
 
+function Get-ZipEntryText {
+    param([string]$Path, [string]$EntryName)
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [IO.Compression.ZipFile]::OpenRead($Path)
+    try {
+        $entry = @($archive.Entries | Where-Object { $_.FullName.Replace('\','/') -eq $EntryName })
+        if ($entry.Count -ne 1) { throw "Expected exactly one zip entry named $EntryName." }
+        $reader = New-Object IO.StreamReader($entry[0].Open())
+        try { return $reader.ReadToEnd() } finally { $reader.Dispose() }
+    } finally {
+        $archive.Dispose()
+    }
+}
+
 $wordSet = Get-ColdboxBip39EnglishWordSet -RepoPath $RepoPath
 Assert-True ($wordSet.Count -eq 2048) 'Expected exactly 2048 English BIP-39 words.'
 Write-Host 'PASS: vendored English BIP-39 wordlist parsed to 2048 unique words.'
@@ -75,6 +89,21 @@ try {
     Assert-True ($entries -contains 'scan-report.txt') 'Redacted bundle is missing scan-report.txt.'
     Assert-True (-not ($entries -contains 'payload-over-2mb.txt')) 'Redacted bundle leaked the payload.'
     Write-Host 'PASS: CRLF text larger than 2 MiB is scanned and secret-shaped content yields manifest + scan-report only.'
+
+    # A scan finding can originate in manifest.json itself. The redacted bundle
+    # must not copy that original manifest back into the upload.
+    New-Item -ItemType Directory -Path $root -Force | Out-Null
+    ([ordered]@{ runnerId='secret-scan-manifest-selftest'; note=$protocol } | ConvertTo-Json -Depth 3) |
+        Set-Content -LiteralPath (Join-Path $root 'manifest.json') -Encoding UTF8
+    $manifestResult = Publish-ColdboxScannedBundle -Root $root -RepoPath $RepoPath -ZipPath $zip
+    Assert-True (-not $manifestResult.Clean) 'Mnemonic-shaped manifest unexpectedly scanned clean.'
+    Assert-True $manifestResult.Redacted 'Mnemonic-shaped manifest did not produce a redacted bundle.'
+    $redactedManifest = Get-ZipEntryText -Path $zip -EntryName 'manifest.json' | ConvertFrom-Json
+    Assert-True ($null -eq $redactedManifest.PSObject.Properties['note']) 'Redacted manifest retained an original unsafe field.'
+    Assert-True ($redactedManifest.bundleRedacted -eq $true) 'Redacted manifest is missing bundleRedacted=true.'
+    Assert-True ($redactedManifest.scanClean -eq $false) 'Redacted manifest is missing scanClean=false.'
+    Assert-True ($redactedManifest.originalManifestOmitted -eq $true) 'Redacted manifest does not record original-manifest omission.'
+    Write-Host 'PASS: a finding inside manifest.json cannot re-enter through the redacted manifest.'
 
     New-Item -ItemType Directory -Path $cleanRoot -Force | Out-Null
     '{"runnerId":"secret-scan-clean-selftest","verdict":"TEST"}' |

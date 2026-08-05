@@ -12,6 +12,10 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 Foundation work in progress. Wallet and vault workflows are not available yet; the P0.10 cryptographic layer and P0.11 vault format are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
+### Added — browser runner workflow (2026-08-05)
+- Browser-only development/review runners now require explicit repository/branch/HEAD state, persist per-step exit codes and preflight untracked paths, preserve recovery tags without overwriting them, and emit scanner-gated evidence bundles.
+- Secret scanning uses the vendored English BIP-39 wordlist, handles CRLF and large text inputs, records skipped binary paths, and emits only a content-free diagnostic manifest plus scan report when a finding is detected.
+
 ### Added — P0.10 (2026-08-03)
 
 - Vendored `argon2-browser` 1.18.0 with its embedded Argon2id WASM distribution, plus a deterministic build-time bundle of the selected `@noble/ciphers` and `@noble/hashes` modules.

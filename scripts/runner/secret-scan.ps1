@@ -50,10 +50,9 @@ function Test-ColdboxMnemonicShape {
     $normalized = $Text.Replace("`r`n", "`n").Replace("`r", "`n")
     foreach ($line in ($normalized -split "`n")) {
         $runLength = 0
-        foreach ($token in ($line -split '[ \t]+')) {
-            if (-not $token) { continue }
-            $word = [regex]::Replace($token, '^[^a-z]+|[^a-z]+$', '')
-            if ($word -cmatch '^[a-z]+$' -and $WordSet.Contains($word)) {
+        foreach ($match in [regex]::Matches($line, '(?<![A-Za-z])[a-z]+(?![A-Za-z])')) {
+            $word = $match.Value
+            if ($WordSet.Contains($word)) {
                 $runLength++
                 if ($runLength -ge 12) { return $true }
             } else {
@@ -63,7 +62,6 @@ function Test-ColdboxMnemonicShape {
     }
     return $false
 }
-
 function Invoke-ColdboxSecretScan {
     [CmdletBinding()]
     param(
@@ -186,28 +184,17 @@ function Publish-ColdboxScannedBundle {
         }
 
         New-Item -ItemType Directory -Path $redactedRoot -Force | Out-Null
-        $manifestPath = Join-Path $Root 'manifest.json'
-        if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
-            throw 'Cannot emit a redacted bundle because manifest.json is missing.'
-        }
-
-        try {
-            $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
-            if ($manifest.PSObject.Properties['bundleRedacted']) {
-                $manifest.bundleRedacted = $true
-            } else {
-                $manifest | Add-Member -NotePropertyName bundleRedacted -NotePropertyValue $true
-            }
-            if ($manifest.PSObject.Properties['scanClean']) {
-                $manifest.scanClean = $false
-            } else {
-                $manifest | Add-Member -NotePropertyName scanClean -NotePropertyValue $false
-            }
-            $manifest | ConvertTo-Json -Depth 8 |
-                Set-Content -LiteralPath (Join-Path $redactedRoot 'manifest.json') -Encoding UTF8
-        } catch {
-            throw 'Could not prepare the redacted manifest.'
-        }
+        # Never copy the original manifest after a scan finding: the finding may
+        # be inside manifest.json itself. Emit a fixed, content-free diagnostic
+        # manifest so the rejected payload cannot re-enter through metadata.
+        [ordered]@{
+            bundleRedacted        = $true
+            scanClean             = $false
+            findingCount          = $scan.FindingCount
+            skippedBinaryCount    = $scan.SkippedCount
+            originalManifestOmitted = $true
+        } | ConvertTo-Json -Depth 4 |
+            Set-Content -LiteralPath (Join-Path $redactedRoot 'manifest.json') -Encoding UTF8
 
         Copy-Item -LiteralPath (Join-Path $Root 'scan-report.txt') -Destination (Join-Path $redactedRoot 'scan-report.txt')
         Compress-Archive -Path (Join-Path $redactedRoot '*') -DestinationPath $ZipPath -CompressionLevel Optimal

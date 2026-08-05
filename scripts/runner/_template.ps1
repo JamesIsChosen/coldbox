@@ -19,10 +19,10 @@
 
 [CmdletBinding()]
 param(
-    [string] $RepoPath       = 'C:\Users\semaj\Projects\coldbox',
-    [string] $RunnerId       = 'REPLACE-ME',          # e.g. p0.17-01
-    [string] $ExpectedBranch = 'REPLACE-ME',
-    [string] $ExpectedHead   = 'REPLACE-ME',          # full or short SHA
+    [Parameter(Mandatory=$true)] [ValidateNotNullOrEmpty()] [string] $RepoPath,
+    [Parameter(Mandatory=$true)] [ValidateNotNullOrEmpty()] [string] $RunnerId,
+    [Parameter(Mandatory=$true)] [ValidateNotNullOrEmpty()] [string] $ExpectedBranch,
+    [Parameter(Mandatory=$true)] [ValidatePattern('^[0-9a-fA-F]{40}$')] [string] $ExpectedHead,
     [switch] $Discovery,                              # include repo/ archive
     # $HOME is not always the Windows profile - it can be inherited from a host
     # process, which sends bundles somewhere surprising. Prefer USERPROFILE.
@@ -46,6 +46,9 @@ $script:BeforeBranch = 'unknown'
 $script:BeforeHead   = 'unknown'
 $script:PreUntracked = @()
 $script:NodeVersion  = 'unknown'
+$script:NodePin      = $null
+$script:NodePinSource = $null
+$script:Steps        = @()
 $script:NetCreated   = $false
 
 function Write-Log {
@@ -65,10 +68,23 @@ function Invoke-Step {
     )
     $display = "$Exe $($Arguments -join ' ')"
     Write-Log "`$ $display"
-    $output = & $Exe @Arguments 2>&1 | Out-String
-    $code   = $LASTEXITCODE
+
+    # Windows PowerShell 5.1 can turn native stderr redirected with 2>&1 into a
+    # terminating NativeCommandError when the script-wide preference is Stop.
+    # Temporarily use Continue for the native invocation, then restore Stop and
+    # decide success solely from the captured native exit code.
+    $previousPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $output = & $Exe @Arguments 2>&1 | Out-String
+        $code = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousPreference
+    }
+
     if ($output.Trim()) { [void] $script:Transcript.AppendLine($output.TrimEnd()) }
     [void] $script:Transcript.AppendLine("-- exit $code")
+    $script:Steps += [pscustomobject]@{ command = $display; exitCode = $code }
     Write-Log "exit $code" $(if ($code -eq 0) { 'INFO' } else { 'ERROR' })
     if ($code -ne 0 -and -not $AllowFailure) {
         throw "Command failed with exit ${code}: $display"
@@ -125,12 +141,12 @@ function Invoke-Preflight {
     }
 
     $branch = Get-GitOut @('rev-parse','--abbrev-ref','HEAD')
-    if ($ExpectedBranch -ne 'REPLACE-ME' -and $branch -ne $ExpectedBranch) {
+    if ($branch -ne $ExpectedBranch) {
         throw "Branch drift. Expected '$ExpectedBranch', found '$branch'. The agent's assumed state is stale - report this rather than forcing it."
     }
 
     $head = Get-GitOut @('rev-parse','HEAD')
-    if ($ExpectedHead -ne 'REPLACE-ME' -and -not $head.StartsWith($ExpectedHead)) {
+    if ($head -ne $ExpectedHead.ToLowerInvariant()) {
         throw "HEAD drift. Expected '$ExpectedHead', found '$head'. The agent's assumed state is stale - report this rather than forcing it."
     }
 
@@ -141,9 +157,27 @@ function Invoke-Preflight {
     try   { $script:NodeVersion = (& node --version 2>&1 | Out-String).Trim() }
     catch { $script:NodeVersion = 'not found' }
     if (-not $script:NodeVersion) { $script:NodeVersion = 'not found' }
-    $pinned = if (Test-Path .nvmrc) { (Get-Content .nvmrc -Raw).Trim() } else { '(unpinned)' }
-    if ($script:NodeVersion -notlike "*$pinned*") {
-        Write-Log "Node $($script:NodeVersion) does not match pinned $pinned. Build evidence is weaker; recorded in manifest." 'WARN'
+
+    if (Test-Path .nvmrc) {
+        $script:NodePin = (Get-Content .nvmrc -Raw).Trim().TrimStart('v')
+        $script:NodePinSource = '.nvmrc'
+    } elseif (Test-Path package.json) {
+        try {
+            $package = Get-Content package.json -Raw | ConvertFrom-Json
+            if ($package.engines -and $package.engines.node) {
+                $script:NodePin = [string] $package.engines.node
+                $script:NodePinSource = 'package.json engines.node'
+            }
+        } catch {
+            Write-Log "Could not read package.json Node engine: $($_.Exception.Message)" 'WARN'
+        }
+    }
+
+    if ($script:NodePin) {
+        $actualNode = $script:NodeVersion.TrimStart('v')
+        if ($actualNode -ne $script:NodePin) {
+            Write-Log "Node $($script:NodeVersion) does not match pinned $($script:NodePin) from $($script:NodePinSource). Build evidence is weaker; recorded in manifest." 'WARN'
+        }
     }
 
     Write-Log "branch=$branch head=$head node=$($script:NodeVersion)"
@@ -154,7 +188,11 @@ function Invoke-Preflight {
 
 function New-SafetyNet {
     Write-Log "=== SAFETY NET: tagging $script:PreTag ==="
-    & git tag -f $script:PreTag HEAD 2>&1 | Out-Null
+    & git show-ref --verify --quiet "refs/tags/$script:PreTag"
+    if ($LASTEXITCODE -eq 0) {
+        throw "Safety tag already exists: $script:PreTag. Choose a new RunnerId; existing recovery refs are never overwritten."
+    }
+    & git tag $script:PreTag HEAD 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Could not create the pre-run tag. Refusing to mutate without a recovery point.' }
     $script:NetCreated = $true
     Write-Log "Recoverable at any time with: git reset --hard $script:PreTag"
@@ -220,11 +258,15 @@ function New-Bundle {
         # creates none, and naming one would send the reader to a ref that is
         # not there.
         preTag         = $(if ($script:NetCreated) { $script:PreTag } else { $null })
+        preUntracked   = @($script:PreUntracked)
         nodeVersion    = $script:NodeVersion
+        nodePin        = $script:NodePin
+        nodePinSource  = $script:NodePinSource
         culture        = (Get-Culture).Name
         timezone       = [System.TimeZoneInfo]::Local.Id
         discovery      = [bool] $Discovery
         psVersion      = $PSVersionTable.PSVersion.ToString()
+        steps          = @($script:Steps)
     } | ConvertTo-Json -Depth 4 |
         Set-Content -LiteralPath (Join-Path $script:Stage 'manifest.json') -Encoding UTF8
 

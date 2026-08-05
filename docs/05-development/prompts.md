@@ -23,34 +23,10 @@ Anything only you can do — a device pass, a credential, a blocked command — 
 
 ---
 
-## Start here when you don't know where things stand
-
-**One prompt, both workflows.** Works whether the agent has your shell or is a browser session running through PowerShell runners. Use it at the start of any session where you're not sure what's outstanding — it changes nothing, it just tells you.
-
-> Read `AGENTS.md`, then tell me where this repository stands. **Change nothing during this triage** — do not merge, do not start a roadmap item, do not mark anything complete, do not commit.
->
-> If you have shell access, run the commands yourself. If you don't, read `docs/05-development/browser-runner-flow.md` and emit **one** read-only runner that gathers everything below, plus its launch command, then wait for my upload.
->
-> Report in this order:
->
-> 1. **Working state** — current branch, is the tree clean, `main`'s tip, and any uncommitted or unpushed work on any branch.
-> 2. **Open PRs** — number, branch, base, head. Flag any whose base has already merged, and any whose local tip differs from its remote.
-> 3. **Review status, per PR** — is there a `<roadmap-id>-<slug>.review.md` in `docs/05-development/packets/`, and what verdict? List unaddressed findings. **A PR with no review report has never been independently reviewed — say that explicitly rather than treating a self-review as a pass.**
-> 4. **Cleanup** — stale local branches whose upstream is `[gone]`, leftover `runner/*` tags, stray worktrees, and whether the build is reproducible right now: `npm run lint`, `npm run verify-vendor -- --offline`, `npm test`, then `npm run build` twice and compare hash and byte size.
-> 5. **Next work** — the first item in `docs/05-development/ROADMAP.md` whose dependencies are all `[x]`. Also name every item that is `[~]`, `👤 human-required`, or blocked by an undecided ADR, and say exactly what unblocks each.
-> 6. **Waiting on me** — anything only I can do: a decision, a credential, a device pass, a push, a merge.
->
-> Finish with **one** recommended next action and the exact commands or the exact prompt to take it. If the honest recommendation is "fix the outstanding findings before anything else," say so plainly rather than proposing new work.
-
-Two things this deliberately does: it treats a missing `.review.md` as *unreviewed* rather than assuming a pass, and it forbids the agent from doing any work while answering. Triage that quietly starts building is how a session ends up with uncommitted changes nobody asked for.
-
----
-
 ## Quick reference
 
 | Mode | Does | Use when |
 |---|---|---|
-| [Where do things stand](#start-here-when-you-dont-know-where-things-stand) | Read-only triage of PRs, reviews, cleanup, next item | Any session start, either workflow |
 | [Single item](#single-item) | One roadmap item, one PR | Default. Highest quality per item |
 | [Batch, ranged](#batch-ranged) | A named span of items | You want a specific unit done |
 | [Batch, until blocked](#batch-until-blocked) | Works forward until a stop condition | Overnight; "get as far as you safely can" |
