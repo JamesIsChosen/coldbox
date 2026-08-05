@@ -34,6 +34,7 @@ __COLDBOX_CAPABILITIES__
   var capabilityPanel = document.getElementById('capability-panel');
   var capabilityPanelLabel = document.getElementById('capability-panel-label');
   var capabilitySummary = document.getElementById('capability-summary');
+  var capabilityCryptoSummary = document.getElementById('capability-crypto-summary');
   var capabilityRows = {
     randomValues: document.getElementById('capability-row-random-values'),
     cryptoSubtle: document.getElementById('capability-row-crypto-subtle'),
@@ -229,6 +230,28 @@ __COLDBOX_CAPABILITIES__
     }
   }
 
+  function renderCryptoSummary() {
+    if (!capabilityCryptoSummary) {
+      return;
+    }
+    if (!coldCapabilityReport) {
+      capabilityCryptoSummary.textContent = 'Vault crypto: waiting for the sealed realm to report its active KDF.';
+      capabilityCryptoSummary.setAttribute('data-kdf-active', 'checking');
+      return;
+    }
+    var activeKdf = coldCapabilityReport.kdfActive || 'unknown';
+    capabilityCryptoSummary.setAttribute('data-kdf-active', activeKdf);
+    if (coldCapabilityReport.nobleAesGcm !== true) {
+      capabilityCryptoSummary.textContent = 'Vault crypto: pure-JS AES-GCM self-test failed; vault operations are refused.';
+      return;
+    }
+    if (coldCapabilityReport.argon2id === true) {
+      capabilityCryptoSummary.textContent = 'Vault crypto: active KDF is ' + activeKdf + '. Pure-JS @noble AES-GCM is the default cipher path.';
+      return;
+    }
+    capabilityCryptoSummary.textContent = 'Vault crypto: active KDF is ' + activeKdf + '. Argon2id WASM failed its test, so the visible PBKDF2 fallback is active.';
+  }
+
   function setCapabilityRow(name, state, label, detail) {
     var row = capabilityRows[name];
     if (row) {
@@ -265,6 +288,7 @@ __COLDBOX_CAPABILITIES__
   }
 
   function renderCapabilityPanel() {
+    renderCryptoSummary();
     setCapabilityRootAttributes(warmCapabilityReport, 'warm');
     setCapabilityRootAttributes(coldCapabilityReport, 'cold');
     if (capabilityFailure) {
@@ -622,6 +646,10 @@ __COLDBOX_CAPABILITIES__
         setAirgapFailure('The cold realm airgap guard did not pass its CSP canary or runtime-neutering check. Vault operations are refused.');
         return;
       }
+      if (capabilities.nobleAesGcm !== true) {
+        setAirgapFailure('The cold realm pure-JS AES-GCM known-answer test did not pass. Vault operations are refused.');
+        return;
+      }
       coldCapabilityReport = {
         randomValues: capabilities.randomValues === true,
         cryptoSubtle: capabilities.cryptoSubtle === true,
@@ -630,8 +658,14 @@ __COLDBOX_CAPABILITIES__
         camera: capabilities.camera === true,
         fileSystemAccess: capabilities.fileSystemAccess === true,
         blobDownload: capabilities.blobDownload === true,
-        manualExport: capabilities.manualExport === true
+        manualExport: capabilities.manualExport === true,
+        nobleAesGcm: capabilities.nobleAesGcm === true,
+        argon2id: capabilities.argon2id === true,
+        webCryptoKat: capabilities.webCryptoKat === true,
+        kdfActive: typeof capabilities.kdfActive === 'string' ? capabilities.kdfActive : 'unknown'
       };
+      root.setAttribute('data-cold-crypto-state', coldCapabilityReport.argon2id ? 'ready' : 'fallback');
+      root.setAttribute('data-cold-kdf-active', coldCapabilityReport.kdfActive);
       setCapabilityRootAttributes(coldCapabilityReport, 'cold');
       if (coldCapabilityReport.randomValues !== true) {
         setCapabilityFailure('Required crypto.getRandomValues is unavailable in the cold realm. Coldbox refuses all vault operations and never substitutes Math.random.');
@@ -640,6 +674,7 @@ __COLDBOX_CAPABILITIES__
       coldCanaryPassed = true;
       root.setAttribute('data-cold-csp-canary', 'passed');
       root.setAttribute('data-cold-runtime-neutering', 'installed');
+      renderCryptoSummary();
       renderCapabilityPanel();
       setHandshakeReady();
       updateAirgapBanner();
@@ -723,6 +758,87 @@ __COLDBOX_CAPABILITIES__
     airgap.runCanary().then(handleWarmCanaryResult, function () {
       handleWarmCanaryResult({ passed: false, reason: 'canary-error' });
     });
+  }
+
+  // The dashboard stage. Purely presentational: it drives two CSS custom
+  // properties and never touches routing, protocol, or realm state. If any part
+  // of it is unavailable the stage simply sits at its resting transform, which
+  // is the same arrangement a narrow viewport gets.
+  function startStageMotion() {
+    var scene = document.getElementById('stage-scene');
+    if (!scene || typeof window.requestAnimationFrame !== 'function') {
+      return;
+    }
+
+    var reduceMotion = typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var wideEnough = typeof window.matchMedia === 'function'
+      && window.matchMedia('(min-width: 62rem)').matches;
+    if (reduceMotion || !wideEnough) {
+      return;
+    }
+
+    var maximumTilt = 7;
+    var maximumDepth = 1.1;
+    var tiltX = 0;
+    var tiltY = 0;
+    var depth = 0;
+    var frameRequested = false;
+
+    function applyStageTransform() {
+      frameRequested = false;
+      scene.style.setProperty('--stage-tilt-x', tiltX.toFixed(2) + 'deg');
+      scene.style.setProperty('--stage-tilt-y', tiltY.toFixed(2) + 'deg');
+      scene.style.setProperty('--stage-depth', depth.toFixed(3) + 'rem');
+    }
+
+    function requestStageFrame() {
+      if (frameRequested) {
+        return;
+      }
+      frameRequested = true;
+      window.requestAnimationFrame(applyStageTransform);
+    }
+
+    function clamp(value, limit) {
+      if (value > limit) {
+        return limit;
+      }
+      if (value < -limit) {
+        return -limit;
+      }
+      return value;
+    }
+
+    function handlePointerMove(event) {
+      var width = window.innerWidth || 1;
+      var height = window.innerHeight || 1;
+      tiltY = clamp(((event.clientX - (width / 2)) / (width / 2)) * maximumTilt, maximumTilt);
+      tiltX = clamp((((height / 2) - event.clientY) / (height / 2)) * maximumTilt, maximumTilt);
+      requestStageFrame();
+    }
+
+    function handlePointerLeave() {
+      tiltX = 0;
+      tiltY = 0;
+      requestStageFrame();
+    }
+
+    // Offset from the scene's distance to the viewport centre, so the cards
+    // drift as the stage passes through the fold rather than accumulating.
+    function handleScroll() {
+      var bounds = scene.getBoundingClientRect();
+      var viewportCentre = (window.innerHeight || 1) / 2;
+      var sceneCentre = bounds.top + (bounds.height / 2);
+      var offset = (sceneCentre - viewportCentre) / viewportCentre;
+      depth = clamp(offset * maximumDepth, maximumDepth);
+      requestStageFrame();
+    }
+
+    document.addEventListener('mousemove', handlePointerMove, { passive: true });
+    document.addEventListener('mouseleave', handlePointerLeave, { passive: true });
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
   }
 
   function startNetworkMonitor() {
@@ -866,6 +982,7 @@ __COLDBOX_CAPABILITIES__
   window.addEventListener('hashchange', function () {
     renderRoute(true);
   });
+  startStageMotion();
   startNetworkMonitor();
   startCapabilities();
   startWarmCanary();

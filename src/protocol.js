@@ -58,6 +58,15 @@
     'worker-unavailable'
   ]);
   var WARNING_SET = makeSet(WARNING_CODES);
+  var KDF_ACTIVE = Object.freeze([
+    'argon2id-standard',
+    'argon2id-fast',
+    'argon2id-paranoid',
+    'pbkdf2-sha512-fallback',
+    'checking',
+    'unknown'
+  ]);
+  var KDF_ACTIVE_SET = makeSet(KDF_ACTIVE);
   var ERROR_MESSAGES = Object.freeze({
     'invalid-message': 'The cold realm rejected a message.',
     'operation-failed': 'The requested operation failed.',
@@ -195,6 +204,18 @@
         result[key] = value[key];
       }
     });
+    [
+      'nobleAesGcm',
+      'argon2id',
+      'webCryptoKat'
+    ].forEach(function (key) {
+      if (typeof value[key] === 'boolean') {
+        result[key] = value[key];
+      }
+    });
+    if (typeof value.kdfActive === 'string' && hasOwn(KDF_ACTIVE_SET, value.kdfActive)) {
+      result.kdfActive = value.kdfActive;
+    }
     return result;
   }
 

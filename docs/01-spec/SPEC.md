@@ -743,7 +743,9 @@ Per-device setup checklist, tamper check on arrival, firmware update log with re
 
 ## 15. UI and interaction
 
-Dense, monospace-leaning, high-contrast dark by default with a light mode for printing. No decorative animation. Status colors carry meaning: green = airgapped/verified, amber = online/attention, red = danger/secret-visible.
+> **[design-system.md](design-system.md) is authoritative for anything a user can see** — tokens, typography, components, the copy contract, and the accessibility floors. It supersedes the visual direction originally given in this section. Rationale in [ADR-0009](../05-development/adr/0009-comic-visual-language.md). The rules below that are *not* purely visual — secret display, mobile, accessibility, onboarding — remain in force.
+
+High-contrast dark by default with a light mode for printing, rendered in the comic visual language: heavy outlines, flat fills, hard offset shadows, halftone field. **Security surfaces take the shell and none of the behaviour** — no tilt, no animation, no stickers — and the display face never carries a seed word, address, key, hash, path, or amount. Data is always monospace. Status colors carry meaning: green = airgapped/verified, amber = online/attention, red = danger/secret-visible, and color is never the only channel.
 
 **Secret display rules, no exceptions:** masked by default; press-and-hold or explicit toggle with 30 s auto-remask; red border and "secret visible" indicator; word-by-word numbered display for mnemonics with a large-print mode for transcription; per-field opt-in copy with a visible 30-second clipboard countdown; no secret ever in the URL, page title, `localStorage`, or session-restore data.
 

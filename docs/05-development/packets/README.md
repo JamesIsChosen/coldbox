@@ -34,6 +34,55 @@ A review report opens with its verdict block. Since **any finding is a FAIL**, a
 
 ---
 
+## Independent review coverage
+
+**Canonical answer to "has this item been independently reviewed?"** A `.self-review.md` is the
+author's own gate and is **not** a review. Only `.review.md` counts, and only when written by a
+session other than the implementing one.
+
+*Reviewed as of 2026-08-04. Update this table in the same commit as any new review report.*
+
+| Item | Independent `.review.md` | Current disposition |
+|---|---|---|
+| P0.2 | none | never independently reviewed |
+| P0.3 | none | never independently reviewed |
+| P0.3a | yes | PASS (re-review; original FAIL retained in the same file) |
+| P0.4 | yes | PASS (re-review; original FAIL retained in the same file) |
+| P0.5 | **none** | **never independently reviewed** — see below |
+| P0.6 | yes | FAIL on `3ba9c661`; 9 findings dispositioned, 8 Resolved, 1 part-open |
+| P0.7 | yes | FAIL on `7360d946`; 9 findings dispositioned, 7 Resolved, 2 open (environmental) |
+| P0.8 | yes | FAIL on `da90258`; 9 findings dispositioned, all 9 Resolved |
+| P0.9 | **none** | **never independently reviewed** — see below |
+| P0.10 | yes | PASS |
+| P0.11 | yes | PASS (re-review; supersedes an earlier FAIL) |
+| P0.12 | none | open PR #20, self-review only |
+| P0.13 | none | open PR #21, self-review only |
+
+### P0.5 and P0.9 — the two gaps
+
+Neither has ever had an independent review report committed, on any branch.
+
+**P0.5** — `BATCH-2026-08-03.md` records "Fresh independent review PASS; no remediation required".
+No artifact backs that claim; no `p0.5-warm-shell-skeleton.review.md` exists in the history of any
+branch. The only committed gate is the author's `.self-review.md`.
+
+**P0.9** — a file *was* briefly committed at the reviewer-reserved path
+`p0.9-capability-self-check.review.md` (commit `0ab8626`, "P0.9: record self-review PASS"), which is
+the same reserved-path violation the P0.6, P0.7 and P0.8 reviewers each raised as F1. It was later
+renamed to `.self-review.md`, correctly — but no independent review replaced it.
+
+**What this means for the current work.** P0.5 is the warm shell skeleton and P0.9 is the capability
+self-check; both are load-bearing for everything above them, and P0.12 and P0.13 stack directly on
+that foundation. Neither gap is evidence of a defect — the P0.9 `Math.random` regression was caught
+and fixed by a later gate (`b929a35`), which suggests the surrounding process worked. But the
+roadmap marks both `[x]`, and under [review-protocol.md](../review-protocol.md) an item with no
+independent review has not cleared the bar the protocol sets.
+
+Whether to review them retrospectively, or to accept the gap explicitly and record that decision, is
+a maintainer call. Recorded here rather than resolved.
+
+---
+
 ## Reading these later
 
 Useful when:

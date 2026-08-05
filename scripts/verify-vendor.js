@@ -9,12 +9,15 @@ const defaultProjectRoot = path.resolve(__dirname, '..');
 const maximumArtifactSize = 10 * 1024 * 1024;
 const maximumUncompressedSize = 20 * 1024 * 1024;
 const requiredPackages = Object.freeze([
+  '@fontsource/bangers',
+  '@fontsource/comic-neue',
   '@noble/ciphers',
   '@noble/curves',
   '@noble/hashes',
   '@scure/base',
   '@scure/bip32',
-  '@scure/bip39'
+  '@scure/bip39',
+  'argon2-browser'
 ]);
 
 function parseArgs() {
@@ -60,7 +63,7 @@ function canonicalNpmTarballUrl(name, version) {
 }
 
 function assertManifestArtifactIdentity(artifact) {
-  if (!/^@[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/.test(artifact.name)) {
+  if (!/^(?:@[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*|[a-z0-9][a-z0-9._-]*)$/.test(artifact.name)) {
     throw new Error(`Unsupported npm package name: ${artifact.name}`);
   }
   if (!/^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(artifact.version)) {

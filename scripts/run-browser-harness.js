@@ -338,6 +338,18 @@ async function verifyBuiltFile(browser, engine) {
     assert.match(coldPolicy, new RegExp(escapedRegExp(cspHash(coldStyle))));
     assert.equal(await coldFrame.locator('html').getAttribute('data-csp-canary'), 'passed');
     assert.equal(await coldFrame.locator('html').getAttribute('data-runtime-neutering'), 'installed');
+    assert.equal(await coldFrame.locator('html').getAttribute('data-vault-operations'), 'guarded');
+    assert.equal(await page.evaluate(() => typeof window.__coldboxVault), 'undefined');
+    assert.equal(await coldFrame.evaluate(() => typeof window.__coldboxVault), 'object');
+    assert.equal(await coldFrame.evaluate(() => window.__coldboxVault.formatVersion), 1);
+    assert.equal(await coldFrame.evaluate(() => typeof window.__coldboxVault.openSession), 'undefined');
+    assert.equal(await coldFrame.locator('html').getAttribute('data-crypto-state'), 'ready');
+    assert.equal(await coldFrame.locator('html').getAttribute('data-kdf-active'), 'argon2id-standard');
+    await coldFrame.locator('#cold-kdf-details[data-kdf-active="argon2id-standard"]').waitFor({ state: 'visible' });
+    assert.match(await coldFrame.locator('#cold-kdf-active').textContent(), /Argon2id WASM/);
+    assert.match(await coldFrame.locator('#cold-crypto-path').textContent(), /RFC 9106/);
+    await page.locator('#capability-crypto-summary').waitFor({ state: 'visible' });
+    assert.match(await page.locator('#capability-crypto-summary').textContent(), /argon2id-standard/);
     await harness.expectParentCannotReadFrame();
     await harness.expectCspViolation('connect-src', { blockedURI: WARM_CANARY_URL });
     await harness.expectCspViolationInFrame(

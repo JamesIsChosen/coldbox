@@ -14,23 +14,23 @@ __COLDBOX_STYLES__
   <div class="app-shell" id="app">
     <a class="skip-link" href="#main-content">Skip to content</a>
 
-    <header class="mobile-header">
-      <a class="brand brand-mobile" href="#dashboard" data-route="dashboard" aria-label="Coldbox dashboard">
-        <span class="brand-mark" aria-hidden="true">CB</span>
+    <header class="app-bar">
+      <a class="brand" href="#dashboard" data-route="dashboard" aria-label="Coldbox dashboard">
         <span class="brand-name">Coldbox</span>
       </a>
+      <p class="brand-badge">Pre-release · Not audited</p>
+      <nav class="app-bar-actions" aria-label="Quick links">
+        <a class="comic-btn" href="#vault" data-route="vault">Vault</a>
+        <a class="comic-btn" href="#seed-forge" data-route="seed-forge">Seed Forge</a>
+        <button class="comic-btn comic-btn-toggle" id="theme-toggle" type="button" aria-pressed="false">
+          <span class="theme-toggle-icon" aria-hidden="true">☼</span>
+          <span id="theme-toggle-label">Light mode</span>
+        </button>
+      </nav>
     </header>
 
     <div class="app-layout">
       <aside class="nav-rail" id="nav-rail" aria-label="Primary navigation">
-        <a class="brand brand-desktop" href="#dashboard" data-route="dashboard" aria-label="Coldbox dashboard">
-          <span class="brand-mark" aria-hidden="true">CB</span>
-          <span>
-            <span class="brand-name">Coldbox</span>
-            <span class="brand-subtitle">Offline-first toolkit</span>
-          </span>
-        </a>
-
         <div class="nav-scroll">
           <nav class="nav-group" aria-label="Workspace">
             <p class="nav-group-title">Workspace</p>
@@ -75,10 +75,6 @@ __COLDBOX_STYLES__
           </div>
           <div class="top-actions">
             <span class="mode-badge"><span class="status-dot" aria-hidden="true"></span> Warm shell</span>
-            <button class="theme-toggle" id="theme-toggle" type="button" aria-pressed="false">
-              <span class="theme-toggle-icon" aria-hidden="true">☼</span>
-              <span id="theme-toggle-label">Light mode</span>
-            </button>
           </div>
         </div>
 
@@ -135,7 +131,7 @@ __COLDBOX_STYLES__
             <article class="capability-row" id="capability-row-crypto-subtle" data-capability-row="cryptoSubtle" data-state="checking">
               <div>
                 <h3>WebCrypto</h3>
-                <p>Reports whether <code>crypto.subtle</code> is exposed; cryptographic known-answer tests arrive with P0.10.</p>
+                <p>Reports whether <code>crypto.subtle</code> is exposed; the cold realm uses it only after its AES-GCM known-answer test passes.</p>
               </div>
               <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-crypto-subtle">Checking</span></div>
               <p class="capability-row-detail" id="capability-detail-crypto-subtle">Checking both realms.</p>
@@ -173,32 +169,109 @@ __COLDBOX_STYLES__
               <p class="capability-row-detail" id="capability-detail-save-paths">Checking the warm shell.</p>
             </article>
           </div>
+          <p class="capability-crypto-summary" id="capability-crypto-summary" data-kdf-active="checking" aria-live="polite">Vault crypto: waiting for the sealed realm to report its active KDF.</p>
         </section>
 
         <section class="page" id="page-dashboard" data-page="dashboard" aria-labelledby="page-title-dashboard">
           <header class="page-header">
             <p class="eyebrow">Workspace / Warm shell</p>
             <h1 id="page-title-dashboard">Dashboard</h1>
-            <p class="page-lede">A calm starting point for the public side of Coldbox. Your balances, labels, and reference material will live here while secret work stays sealed away.</p>
+            <p class="page-lede">A calm starting point for the public side of Coldbox. Your records, labels, and reference material will live here while secret work stays sealed away.</p>
           </header>
-          <div class="hero-panel">
-            <div>
-              <span class="panel-kicker">Foundation complete</span>
-              <h2>The shell is ready for the tools that come next.</h2>
-              <p>Coldbox runs as one local HTML file. This outer document owns navigation and public views; secret-capable work stays inside the isolated realm above.</p>
+          <section class="stage" id="stage" aria-labelledby="stage-title">
+            <div class="stage-intro">
+              <span class="panel-kicker">The two realms</span>
+              <h2 id="stage-title">One file. Two halves that cannot talk freely.</h2>
+              <p class="stage-lede">Move your pointer or scroll to turn the panels. Nothing here is live data — these describe how Coldbox is built.</p>
             </div>
-            <span class="hero-mark" aria-hidden="true">◈</span>
-          </div>
+
+            <div class="stage-viewport">
+              <div class="stage-scene" id="stage-scene">
+                <article class="stage-card stage-card-left" aria-labelledby="stage-card-warm">
+                  <div class="stage-card-head">
+                    <h3 class="stage-card-title" id="stage-card-warm">Warm shell</h3>
+                    <span class="stage-badge stage-badge-cyan">Online OK</span>
+                  </div>
+                  <p class="stage-card-sub">The outer document. This one.</p>
+                  <div class="stage-row">
+                    <span class="stage-mark stage-mark-cyan" aria-hidden="true">$</span>
+                    <span class="stage-row-copy"><span class="stage-row-name">Prices</span><span class="stage-row-note">Median of five sources</span></span>
+                    <span class="stage-row-value">Phase 3</span>
+                  </div>
+                  <div class="stage-row">
+                    <span class="stage-mark stage-mark-cyan" aria-hidden="true">P</span>
+                    <span class="stage-row-copy"><span class="stage-row-name">Portfolio</span><span class="stage-row-note">Lots and cost basis</span></span>
+                    <span class="stage-row-value">Phase 3</span>
+                  </div>
+                  <div class="stage-row">
+                    <span class="stage-mark stage-mark-cyan" aria-hidden="true">R</span>
+                    <span class="stage-row-copy"><span class="stage-row-name">Registry</span><span class="stage-row-note">Addresses and labels</span></span>
+                    <span class="stage-row-value">Phase 1</span>
+                  </div>
+                  <p class="speech-bubble">It can reach the network for public data. It never receives a secret.</p>
+                </article>
+
+                <article class="stage-card stage-card-center" aria-labelledby="stage-card-core">
+                  <p class="sound-effect" aria-hidden="true">Not a wallet!</p>
+                  <div class="stage-card-head">
+                    <h3 class="stage-card-title" id="stage-card-core">Coldbox</h3>
+                    <span class="stage-badge stage-badge-green">Companion</span>
+                  </div>
+                  <p class="stage-card-sub">Toolkit · wallet registry · portfolio manager</p>
+                  <div class="stage-row">
+                    <span class="stage-row-copy"><span class="stage-row-name">Holds your keys</span><span class="stage-row-note">Your hardware wallet does</span></span>
+                    <span class="stage-row-value stage-row-value-no">No</span>
+                  </div>
+                  <div class="stage-row">
+                    <span class="stage-row-copy"><span class="stage-row-name">Signs transactions</span><span class="stage-row-note">Permanent non-goal</span></span>
+                    <span class="stage-row-value stage-row-value-no">No</span>
+                  </div>
+                  <div class="stage-row">
+                    <span class="stage-row-copy"><span class="stage-row-name">Verifies your device</span><span class="stage-row-note">Catches address swaps</span></span>
+                    <span class="stage-row-value stage-row-value-yes">Yes</span>
+                  </div>
+                  <p class="stage-card-foot">It cannot spend your money — so an attacker who compromises it cannot either.</p>
+                </article>
+
+                <article class="stage-card stage-card-right" aria-labelledby="stage-card-cold">
+                  <div class="stage-card-head">
+                    <h3 class="stage-card-title" id="stage-card-cold">Sealed realm</h3>
+                    <span class="stage-badge stage-badge-pink">No network</span>
+                  </div>
+                  <p class="stage-card-sub">A sandboxed iframe with its own policy.</p>
+                  <div class="stage-row">
+                    <span class="stage-mark stage-mark-pink" aria-hidden="true">S</span>
+                    <span class="stage-row-copy"><span class="stage-row-name">Seed Forge</span><span class="stage-row-note">BIP-39 generate and check</span></span>
+                    <span class="stage-row-value">Phase 1</span>
+                  </div>
+                  <div class="stage-row">
+                    <span class="stage-mark stage-mark-pink" aria-hidden="true">B</span>
+                    <span class="stage-row-copy"><span class="stage-row-name">Backup Lab</span><span class="stage-row-note">SLIP-39, codex32, XOR</span></span>
+                    <span class="stage-row-value">Phase 2</span>
+                  </div>
+                  <div class="stage-row">
+                    <span class="stage-mark stage-mark-pink" aria-hidden="true">V</span>
+                    <span class="stage-row-copy"><span class="stage-row-name">Vault</span><span class="stage-row-note">Argon2id + AES-256-GCM</span></span>
+                    <span class="stage-row-value">Active</span>
+                  </div>
+                  <p class="speech-bubble"><code>connect-src 'none'</code> — no fetch, no XHR, no socket. Not disabled. Absent.</p>
+                </article>
+              </div>
+            </div>
+
+            <p class="stage-cue" aria-hidden="true">▼ How the boundary is built ▼</p>
+          </section>
+
           <div class="card-grid card-grid-three">
             <article class="info-card">
               <span class="card-icon" aria-hidden="true">01</span>
-              <h2>Portable by default</h2>
-              <p>The interface is designed for a narrow phone screen up through a desktop window, without a server or install step.</p>
+              <h2>A toolkit, not a wallet</h2>
+              <p>Coldbox holds no coins, reaches no blockchain to move them, and signs nothing. It is a companion to your hardware wallets: it checks their work, manages your backups, and keeps the records.</p>
             </article>
             <article class="info-card">
               <span class="card-icon" aria-hidden="true">02</span>
-              <h2>Public work stays visible</h2>
-              <p>Portfolio and reference screens have a home in the warm shell, so reviewing public information never needs secret access.</p>
+              <h2>Portable by default</h2>
+              <p>One file on a USB stick, opened by double-clicking. The interface is designed for a narrow phone screen up through a desktop window, with no server and no install step.</p>
             </article>
             <article class="info-card">
               <span class="card-icon" aria-hidden="true">03</span>

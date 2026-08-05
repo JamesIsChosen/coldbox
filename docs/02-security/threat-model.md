@@ -58,6 +58,8 @@ Zero runtime dependencies. All libraries vendored, pinned, and hashed, with `ver
 
 Argon2id (64 MiB, t=3) plus AES-256-GCM. Indistinguishable from random after the header; padded so size reveals nothing; KDF parameters in AAD so they can't be downgraded.
 
+P0.11 implements the v1 header as AAD, wraps the random DEK in a record list, derives `cbx/public/v1` and `cbx/secret/v1` with distinct HKDF-SHA-512 info strings, and keeps the vault API inside the cold realm. Vault entry points fail closed until the cold CSP canary, runtime network guard, required randomness, and crypto bootstrap have established the guarded state; mode detection consumes the shared airgap snapshot. Wrong passphrases and damaged ciphertext return the same authentication error, while the public 64 MiB implementation limit is reported distinctly.
+
 *Residual:* a weak passphrase. Argon2id buys time proportional to passphrase entropy. Six Diceware words is beyond reach; a dictionary word isn't.
 
 ### Address-swap malware

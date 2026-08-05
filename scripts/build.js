@@ -4,6 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
+const { createCryptoVendorSource } = require('./crypto-bundle.js');
+const { createFontFaceSource } = require('./font-bundle.js');
 
 // These values are part of the reproducibility contract. Set them rather than
 // trusting the caller's environment, so the build behaves the same everywhere.
@@ -22,6 +24,9 @@ const sourceManifest = Object.freeze([
 ]);
 
 const coldRealmManifest = Object.freeze([
+  Object.freeze({ file: 'index.html', token: '__COLDBOX_CRYPTO_VENDOR_SOURCE__', content: 'crypto-vendor.js' }),
+  Object.freeze({ file: 'index.html', token: '__COLDBOX_CRYPTO_LAYER__', content: 'crypto.js' }),
+  Object.freeze({ file: 'index.html', token: '__COLDBOX_VAULT_LAYER__', content: 'vault.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_COLD_STYLES__', content: 'styles.css' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_COLD_SCRIPT__', content: 'main.js' })
 ]);
@@ -40,7 +45,7 @@ function injectOnce(template, token, contents) {
   if (occurrences !== 1) {
     throw new Error(`Expected exactly one ${token} placeholder, found ${occurrences}`);
   }
-  return template.replace(token, contents);
+  return template.replace(token, () => contents);
 }
 
 function assemble() {
@@ -62,8 +67,13 @@ function assemble() {
       .replace(/>/g, '\\u003e')
       .replace(/&/g, '\\u0026')
   );
+  const warmStyles = injectOnce(
+    readSource('styles.css'),
+    '__COLDBOX_FONT_FACES__',
+    createFontFaceSource(projectRoot)
+  );
   const components = new Map([
-    ['styles.css', readSource('styles.css')],
+    ['styles.css', warmStyles],
     ['main.js', mainScript]
   ]);
 
@@ -89,6 +99,7 @@ function assemble() {
   for (const placeholder of [
     '__COLDBOX_STYLES__',
     '__COLDBOX_SCRIPT__',
+    '__COLDBOX_FONT_FACES__',
     '__COLDBOX_FRAME_SCRIPT_HASHES__',
     '__COLDBOX_FRAME_STYLE_HASHES__'
   ]) {
@@ -112,6 +123,9 @@ function assembleColdRealm(protocolSource, airgapSource, capabilitiesSource) {
     protocolSource
   );
   const components = new Map([
+    ['crypto-vendor.js', createCryptoVendorSource(projectRoot)],
+    ['crypto.js', readSource('cold/crypto.js')],
+    ['vault.js', readSource('cold/vault.js')],
     ['styles.css', readSource('cold/styles.css')],
     ['main.js', coldMainScript]
   ]);
@@ -127,6 +141,9 @@ function assembleColdRealm(protocolSource, airgapSource, capabilitiesSource) {
   for (const placeholder of [
     '__COLDBOX_COLD_STYLES__',
     '__COLDBOX_COLD_SCRIPT__',
+    '__COLDBOX_CRYPTO_VENDOR_SOURCE__',
+    '__COLDBOX_CRYPTO_LAYER__',
+    '__COLDBOX_VAULT_LAYER__',
     '__COLDBOX_PROTOCOL__',
     '__COLDBOX_AIRGAP__',
     '__COLDBOX_CAPABILITIES__'

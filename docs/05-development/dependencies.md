@@ -2,11 +2,11 @@
 
 **Zero runtime dependencies.** Every library is vendored into `vendor/`, committed to the repository, and verified against its upstream release hash. Nothing is fetched at build time or run time. `npm run verify-vendor` is the explicit networked check; normal builds verify the committed artifacts offline.
 
-The six `@noble/*` and `@scure/*` artifacts below are pinned in [vendor/vendor-manifest.json](../../vendor/vendor-manifest.json), which is the machine-readable authority.
+The pinned `@noble/*`, `@scure/*`, and Argon2 artifacts below are recorded in [vendor/vendor-manifest.json](../../vendor/vendor-manifest.json), which is the machine-readable authority.
 
 ---
 
-## Runtime libraries (vendored; bundled by a later build step)
+## Runtime libraries (vendored; bundled by the build)
 
 | Library | Version | Purpose | Upstream SHA-256 |
 |---|---|---|---|
@@ -16,14 +16,25 @@ The six `@noble/*` and `@scure/*` artifacts below are pinned in [vendor/vendor-m
 | `@scure/bip32` | 2.2.0 | HD derivation | `648335439c8bf752209a40cd470aa86858de844d491fb46d9d934cb96073f08b` |
 | `@scure/bip39` | 2.2.0 | Mnemonic encode/decode | `04a6e2bb040301954373f543e44c352137f14dff58f942782769984ef5ea8e1c` |
 | `@scure/base` | 2.2.0 | base58, bech32, bech32m, base64 | `659e1b1eaac82df04e5a4b97ef48779cfd3e7c24dafde5efa4324659a25d70a3` |
-| `argon2-browser` (WASM) | TBD | Argon2id KDF | `TBD` |
+| `argon2-browser` (WASM) | 1.18.0 | Argon2id KDF | `cdb11795a4971bde095fe6b836aa424de50c4558ed4b9505bc74111eee7f6d35` |
 | SLIP-39 implementation | TBD | Shamir mnemonic shares | `TBD` |
 | codex32 implementation | TBD | BIP-93 hand-verifiable shares | `TBD` |
 | `secrets.js` | TBD | Raw Shamir over GF(2^n) | `TBD` |
 | QR encoder | TBD | SVG/PNG generation | `TBD` |
 | `jsQR` | TBD | Camera decoding (optional) | `TBD` |
 
-P0.2 verifies and stores these release artifacts; it does not yet extract or bundle them into the HTML output.
+P0.2 verifies and stores release artifacts. P0.10 now extracts the selected `@noble` modules and the embedded `argon2-browser` WASM bundle into the cold realm; the remaining TBD libraries are still not runtime-ready.
+
+## Fonts (vendored; inlined as `data:` URIs by the build)
+
+Treated exactly like the crypto artifacts — pinned tarball, manifest entry, offline hash verification, build refuses to run on mismatch. There is no CDN option: the CSP is `font-src data:` only, `scripts/lint.js` rejects external URLs, and nothing may be fetched at build or run time.
+
+| Package | Version | Face | Licence | Upstream SHA-256 |
+|---|---|---|---|---|
+| `@fontsource/bangers` | 5.3.0 | Bangers — display/headings | SIL OFL 1.1 | `7200b288ad26e3da1dd0a47dfb6f1712c4c327f038d84afe69a682c63a2c102c` |
+| `@fontsource/comic-neue` | 5.3.0 | Comic Neue 400/700 — body | SIL OFL 1.1 | `0d242660fa8a3e31deb4ba0005b830904db4533ae3366f9c41724ff452662fa6` |
+
+Only the **latin** WOFF2 subsets are extracted — one face from Bangers, two weights from Comic Neue — by `scripts/font-bundle.js`, which asserts the `wOF2` signature and a 512 KB ceiling before base64-encoding. Cost in `build/coldbox.html`: ~83 KB. The sealed realm deliberately does **not** carry these faces; see [design-system.md §7](../01-spec/design-system.md).
 
 ## Data files
 
@@ -71,7 +82,7 @@ The Playwright package does not include browser binaries in npm. After `npm ci`,
 
 ### Pinned release artifacts
 
-The first six runtime libraries are stored as npm release tarballs under `vendor/npm/<scope>/<package>/<version>/package.tgz`. Each manifest entry records the official npm tarball URL, package size, SHA-256, and npm SHA-512 integrity value. The verifier checks the local bytes on every build and, when `npm run verify-vendor` is run, downloads the same official URLs again and checks both digests before passing.
+The pinned runtime libraries are stored as npm release tarballs under `vendor/npm/<scope>/<package>/<version>/package.tgz`. Each manifest entry records the official npm tarball URL, package size, SHA-256, and npm SHA-512 integrity value. The verifier checks the local bytes on every build and, when `npm run verify-vendor` is run, downloads the same official URLs again and checks both digests before passing.
 
 ---
 
