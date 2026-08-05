@@ -52,7 +52,7 @@ These exist because the alternative silently corrupts something.
 
 **Every runner declares the state it expects.** It aborts before touching anything if the branch or HEAD is not what the agent believed. Drift is caught immediately, not three runners later.
 
-**No secret ever enters a bundle.** Bundles are built from `git archive` — tracked content only — and scanned before zipping. See §5.
+**No secret ever enters an uploaded bundle.** Discovery payload comes from `git archive`; step payload also includes generated transcript/diff/evidence files. Every staged file is scanned before zipping. A secret-shaped hit omits the payload and emits only `manifest.json` + `scan-report.txt`. See §5.
 
 **Never delete `.git/index.lock`.** If a runner finds one at preflight it aborts and reports. Another process may be mid-write.
 
@@ -145,22 +145,22 @@ The second case is the one that matters — a runner that fails without producin
 
 This repository handles seed phrases. A bundle is uploaded to a chat window, so this is the highest-consequence rule in the document.
 
-**Bundles are built from `git archive HEAD`, never from a directory copy.** `git archive` emits tracked content only — it cannot pick up `.env`, `node_modules/`, `build/`, or an ignored `.cbx` file, because those are not in the tree.
+**Discovery** payload is built from `git archive HEAD`, so its `repo/` directory contains tracked content only. **Step** bundles are assembled separately and may also contain generated `transcript.txt`, `changes.patch`, and build evidence, so tracked-content provenance alone is not a safety boundary.
 
-Before zipping, the runner scans everything staged for the bundle and **aborts on any match**:
+Before zipping, the runner scans every candidate text file regardless of size. Known binary formats are excluded by extension and every excluded path is listed in `scan-report.txt`; unreadable candidate text is a scan finding rather than a silent skip. CRLF is normalised before mnemonic analysis.
+
+The mnemonic detector loads the English BIP-39 wordlist from the already-vendored `@scure/bip39` 2.2.0 archive and looks for an unanchored run of at least 12 consecutive BIP-39 words within a line. This catches standard 12 / 15 / 18 / 21 / 24-word mnemonics even when source-code, diff, or transcript prefixes/suffixes surround them, while a one-word-per-line wordlist does not self-trigger.
+
+The scanner also rejects:
 
 - `*.cbx`, `*.cbx.bak`, `*.cbw` — vault files
 - `*.key`, `*.pem`, `*.asc`, `*.sig` — key material
-- `.env`, `.env.*`, `secrets/`
-- Anything matching a BIP-39 mnemonic shape: 12 / 15 / 18 / 21 / 24 consecutive lowercase words from the BIP-39 wordlist
-- `xprv`, `yprv`, `zprv`, `tprv`, `uprv`, `vprv` prefixes
+- `.env`, `.env.*`, any `secrets/` directory
+- `xprv`, `yprv`, `zprv`, `tprv`, `uprv`, `vprv` private-key prefixes
 
-A hit aborts the bundle and reports the offending path **without printing the matched content**. Fail closed, per `AGENTS.md` §3.
-
-The scan report is included even when clean, so the agent and the verifier can both see it ran.
+A finding never prints matched content. It **gates payload inclusion**: the unsafe staging directory is deleted and the zip contains only `manifest.json` and `scan-report.txt`, with the manifest marked `bundleRedacted: true` / `scanClean: false`. This preserves diagnostic evidence without uploading the suspect payload. A clean scan keeps the normal payload and adds `scan-report.txt`.
 
 ---
-
 ## 6. Independence of verification
 
 **Verification is a new chat, exactly as it is today.** You open a fresh session, paste the verify prompt from [prompts.md](prompts.md), and that agent produces a PASS or FAIL. Nothing about browser mode changes this, and it needs no special machinery — a new session starts with no memory of the implementation work, which is the whole point.

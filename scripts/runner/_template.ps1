@@ -187,54 +187,13 @@ function Invoke-Rollback {
 }
 
 # ----------------------------------------------------------------- secret scan
-
-function Invoke-SecretScan {
-    param([Parameter(Mandatory)][string] $Root)
-
-    Write-Log '=== SECRET SCAN ==='
-    $findings   = New-Object System.Collections.Generic.List[string]
-    $badGlobs   = '*.cbx','*.cbx.bak','*.cbw','*.key','*.pem','*.asc','*.sig','.env','.env.*'
-    $keyPrefix  = 'xprv','yprv','zprv','tprv','uprv','vprv'
-
-    foreach ($g in $badGlobs) {
-        Get-ChildItem -LiteralPath $Root -Recurse -File -Filter $g -ErrorAction SilentlyContinue |
-            ForEach-Object { $findings.Add("forbidden file: $($_.FullName.Substring($Root.Length))") }
+function Import-SecretScanner {
+    $scanner = Join-Path $RepoPath 'scripts\runner\secret-scan.ps1'
+    if (-not (Test-Path -LiteralPath $scanner -PathType Leaf)) {
+        throw 'Secret scanner helper is missing; refusing to build an unscanned bundle.'
     }
-    if (Test-Path (Join-Path $Root 'secrets')) { $findings.Add('forbidden directory: secrets/') }
-
-    # Extended-key prefixes and mnemonic-shaped runs, in text files only.
-    Get-ChildItem -LiteralPath $Root -Recurse -File -ErrorAction SilentlyContinue |
-        Where-Object { $_.Length -lt 2MB -and $_.Extension -notin '.png','.jpg','.jpeg','.gif','.ico','.pdf','.zip','.wasm','.woff','.woff2','.tgz' } |
-        ForEach-Object {
-            $rel  = $_.FullName.Substring($Root.Length)
-            $text = try { Get-Content -LiteralPath $_.FullName -Raw -ErrorAction Stop } catch { $null }
-            if ($null -eq $text) { return }
-            foreach ($p in $keyPrefix) {
-                if ($text -cmatch "\b$p[0-9A-HJ-NP-Za-km-z]{50,}") { $findings.Add("extended private key shape in $rel"); break }
-            }
-            # Single line only. \s would match newlines in .NET regex, so a
-            # word-per-line file (a BIP-39 wordlist, a glossary) would false
-            # positive and abort every bundle. A written-out mnemonic is on one
-            # line; use [ \t] so this stays true.
-            if ($text -cmatch '(?m)^[ \t]*(?:[a-z]{3,8}[ \t]+){11,23}[a-z]{3,8}[ \t]*$') {
-                $findings.Add("mnemonic-shaped word run (12-24 words, one line) in $rel")
-            }
-        }
-
-    $report = if ($findings.Count -eq 0) {
-        "CLEAN - no vault, key, or mnemonic-shaped content found in the bundle staging area."
-    } else {
-        "FAILED - " + $findings.Count + " finding(s). Paths only; matched content is deliberately not printed.`n" +
-        ($findings -join "`n")
-    }
-    Set-Content -LiteralPath (Join-Path $Root 'scan-report.txt') -Value $report -Encoding UTF8
-    Write-Log $report.Split("`n")[0]
-
-    if ($findings.Count -gt 0) {
-        throw "Secret scan failed - bundle NOT written. Fail closed per AGENTS.md 3."
-    }
+    . $scanner
 }
-
 # --------------------------------------------------------------------- bundle
 
 function New-Bundle {
@@ -317,21 +276,25 @@ function New-Bundle {
                     -Value "bytes: $($b.Length)`nsha256: $h" -Encoding UTF8
     }
 
-    Invoke-SecretScan -Root $script:Stage
+    Import-SecretScanner
 
     if (-not (Test-Path -LiteralPath $OutDir)) { New-Item -ItemType Directory -Path $OutDir -Force | Out-Null }
     $zip = Join-Path $OutDir "coldbox-runner-$RunnerId.zip"
-    if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
-    Compress-Archive -Path (Join-Path $script:Stage '*') -DestinationPath $zip -CompressionLevel Optimal
-    Remove-Item -LiteralPath $script:Stage -Recurse -Force -ErrorAction SilentlyContinue
+    $published = Publish-ColdboxScannedBundle -Root $script:Stage -RepoPath $RepoPath -ZipPath $zip
+
+    if ($published.Redacted) {
+        Write-Log "Secret scan found $($published.FindingCount) finding(s); unsafe payload omitted. Bundle contains manifest + scan-report only." 'WARN'
+    } else {
+        Write-Log "Secret scan CLEAN; skipped binary paths recorded: $($published.SkippedCount)."
+    }
 
     Write-Host ''
     Write-Host "  Bundle: $zip"
     Write-Host "  Verdict: $script:Verdict"
+    Write-Host "  Redacted: $($published.Redacted)"
     Write-Host '  Upload that zip back to the chat.'
     Write-Host ''
 }
-
 # ----------------------------------------------------------------------- main
 
 try {
