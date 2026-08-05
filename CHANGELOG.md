@@ -10,7 +10,7 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
-Foundation work in progress. Wallet and vault workflows are not available yet; the P0.10 cryptographic layer is now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
+Foundation work in progress. Wallet and vault workflows are not available yet; the P0.10 cryptographic layer and P0.11 vault format are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
 ### Added — P0.10 (2026-08-03)
 
@@ -18,6 +18,12 @@ Foundation work in progress. Wallet and vault workflows are not available yet; t
 - Pure-JS `@noble` AES-GCM as the default path, WebCrypto AES-GCM gated by an affirmative NIST known-answer test, and RFC 9106 Argon2id boot verification.
 - Explicit KDF reporting in the cold realm and warm-shell capability summary; a PBKDF2-HMAC-SHA512 fallback is labelled with its active profile and iteration count whenever Argon2id cannot load.
 - Node vector tests, protocol coverage for the cryptographic capability report, deterministic-build coverage, and Chromium/Firefox browser verification of the sealed realm.
+
+### Added — P0.11 (2026-08-03)
+
+- Vault format v1 serializer/parser in the cold realm: authenticated header, multi-record wrapped-DEK structure, AES-GCM public/secret compartments, HKDF domain separation, and 64 KiB random padding.
+- Real P0.10-backed round-trip coverage, all-65-header-byte tamper coverage, indistinguishable authentication failures, zero-secret compartments, and a warm/cold vault API boundary check.
+- Independent-review remediation makes the vault API fail closed on cold-health/CSP failure, consumes the shared airgap network snapshot, rejects unknown KDF profile names, uses the crypto layer as the single KDF-profile source, documents a distinct 64 MiB size refusal, and removes the premature P0.13 session/save primitive from P0.11.
 
 ### Changed — workflow (2026-08-03)
 
