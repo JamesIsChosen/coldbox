@@ -35,6 +35,15 @@ Anything only you can do — a device pass, a credential, a blocked command — 
 | [Review](#review) | Independent PASS/FAIL verdict | After any implementation session |
 | [Re-review](#re-review-after-a-fail) | Fresh verdict after fixes | After a FAIL is addressed |
 
+**Browser mode** — same loop, but the agent has no shell and you run the commands:
+
+| Mode | Does | Use when |
+|---|---|---|
+| [Browser: start](#browser-start-a-session) | Discovery runner, then works the roadmap | Working from a browser chat |
+| [Browser: continue](#browser-continue-after-a-bundle) | Next runner from the last bundle | After uploading any bundle |
+| [Browser: verify](#browser-independent-verification) | Independent PASS/FAIL, own runners | After a browser batch completes |
+| [Browser: closeout](#browser-closeout) | Push, PRs, clean baseline | After a PASS |
+
 ---
 
 ## Single item
@@ -131,6 +140,58 @@ Given to the *author's* session, not the reviewer's:
 > Read the review at `docs/05-development/packets/<roadmap-id>-<slug>.review.md`. Address every finding — fix it, or argue it should be dismissed and say why. Advisory findings must be fixed like any other. Update the packet to describe what changed, push, and hand me the re-review prompt.
 
 The reviewer never fixes findings. That would make them an author and destroy the independence the process exists for.
+
+---
+
+## Browser mode
+
+For working from a browser chat window where the agent has **no shell**. You run every command in PowerShell and upload the resulting zip back.
+
+Full contract: [browser-runner-flow.md](browser-runner-flow.md). Runner template: [`scripts/runner/_template.ps1`](../../scripts/runner/_template.ps1).
+
+The rhythm is always the same: **one runner → you run it → upload the zip → next runner.**
+
+### Browser: start a session
+
+> You have no shell. I am running every command myself in PowerShell on Windows and uploading the results back to you as a zip.
+>
+> Read `docs/05-development/browser-runner-flow.md` and follow it exactly.
+>
+> Emit **one discovery runner** based on `scripts/runner/_template.ps1`, plus the exact launch command. Then wait — do not plan the work until you have read the bundle.
+>
+> After discovery, read `AGENTS.md` and work the next roadmap item. Follow the self-review gate and every stop condition in `docs/05-development/batch-run.md`. Do not merge anything.
+
+For a batch instead of one item, add: *"Run a batch from `<first>` through `<last>`"* or *"Run until you hit a stop condition."*
+
+### Browser: continue after a bundle
+
+Usually unnecessary — the agent should ask for the next upload on its own. Use it if a session stalls or you're resuming cold:
+
+> Here is the bundle from the last runner. Read `manifest.json` first, then the transcript.
+>
+> If the verdict is FAIL, the runner already rolled the tree back to `beforeHead` — do not try to patch forward from a partial state. Diagnose, then emit a fresh runner from the rolled-back state.
+>
+> If PASS, emit the next runner with `ExpectedBranch` and `ExpectedHead` set to the `after*` values in the manifest.
+
+### Browser: independent verification
+
+**Open a new chat** — same as the local flow. That session starts cold with no memory of the implementation work, which is what makes the verdict worth having.
+
+> You have no shell. I run every command in PowerShell and upload the results.
+>
+> Read `docs/05-development/review-protocol.md` and `docs/05-development/browser-runner-flow.md` §6, then independently verify branch `<branch-name>`.
+>
+> **Write your own runners** — do not ask me for the developing agent's bundles or runners to save a round trip. Clone fresh into a temp path, build under a different path, timezone, and locale, deliberately corrupt a vendored dependency and confirm a non-zero exit, and check every acceptance criterion verbatim against the roadmap.
+>
+> Verify every claim in the packet yourself — take nothing on trust. Write your report to `docs/05-development/packets/<roadmap-id>-<slug>.review.md` and end with **PASS or FAIL**. Any finding of any severity, including cosmetic or advisory, is a **FAIL**.
+>
+> On FAIL, write the findings so the developing agent can act on each one without needing to ask you anything.
+
+### Browser: closeout
+
+> The batch passed verification. Emit the closeout runner and commands per `browser-runner-flow.md` §7: push every branch in dependency order, `gh pr create` for each with the **dependency as base**, delete the `runner/*` safety tags, return to a clean `main` with pruned branches, and confirm `git status` is clean.
+>
+> Finish with the handoff block and the exact prompt for my next session.
 
 ---
 
