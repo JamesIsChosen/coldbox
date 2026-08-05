@@ -13,7 +13,7 @@
       - Either fully applies, or fully reverts to the pre-run commit
       - Never absorbs uncommitted work it did not create
       - Never deletes .git/index.lock
-      - Emits a bundle whether it succeeds or fails
+      - Emits a PASS/FAIL bundle when bundle construction succeeds; construction failures fail closed without publishing an incomplete bundle
       - Fails closed if anything secret-shaped would enter the bundle
 #>
 
