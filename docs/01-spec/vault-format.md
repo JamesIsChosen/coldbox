@@ -106,6 +106,12 @@ Without padding, file size reveals roughly how many wallets and transactions you
 
 **Compression is deliberately not used.** Compressing before encrypting leaks plaintext information through ciphertext length — the general failure behind CRIME and BREACH. Padding costs disk space; compression costs confidentiality.
 
+### Implementation size limit
+
+The v1 Coldbox implementation refuses any complete vault file larger than **64 MiB (67,108,864 bytes)**. It also refuses a compartment whose padded plaintext alone would exceed that bound. This is an implementation safety limit, not an authentication result and not a new wire-format field.
+
+An over-size refusal is reported distinctly as **`Vault exceeds the 64 MiB size limit.`** File size is already observable, so separating this condition leaks no secret and prevents a valid-but-too-large file from being mislabeled as a wrong passphrase or damaged vault.
+
 ---
 
 ## Nonces

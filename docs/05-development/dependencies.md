@@ -25,6 +25,17 @@ The pinned `@noble/*`, `@scure/*`, and Argon2 artifacts below are recorded in [v
 
 P0.2 verifies and stores release artifacts. P0.10 now extracts the selected `@noble` modules and the embedded `argon2-browser` WASM bundle into the cold realm; the remaining TBD libraries are still not runtime-ready.
 
+## Fonts (vendored; inlined as `data:` URIs by the build)
+
+Treated exactly like the crypto artifacts — pinned tarball, manifest entry, offline hash verification, build refuses to run on mismatch. There is no CDN option: the CSP is `font-src data:` only, `scripts/lint.js` rejects external URLs, and nothing may be fetched at build or run time.
+
+| Package | Version | Face | Licence | Upstream SHA-256 |
+|---|---|---|---|---|
+| `@fontsource/bangers` | 5.3.0 | Bangers — display/headings | SIL OFL 1.1 | `7200b288ad26e3da1dd0a47dfb6f1712c4c327f038d84afe69a682c63a2c102c` |
+| `@fontsource/comic-neue` | 5.3.0 | Comic Neue 400/700 — body | SIL OFL 1.1 | `0d242660fa8a3e31deb4ba0005b830904db4533ae3366f9c41724ff452662fa6` |
+
+Only the **latin** WOFF2 subsets are extracted — one face from Bangers, two weights from Comic Neue — by `scripts/font-bundle.js`, which asserts the `wOF2` signature and a 512 KB ceiling before base64-encoding. Cost in `build/coldbox.html`: ~83 KB. The sealed realm deliberately does **not** carry these faces; see [design-system.md §7](../01-spec/design-system.md).
+
 ## Data files
 
 | File | Source | Size |

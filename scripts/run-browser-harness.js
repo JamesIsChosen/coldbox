@@ -340,9 +340,11 @@ async function verifyBuiltFile(browser, engine) {
     assert.equal(await coldFrame.locator('html').getAttribute('data-runtime-neutering'), 'installed');
     assert.equal(await page.evaluate(() => typeof window.__coldboxCrypto), 'undefined');
     assert.equal(await coldFrame.evaluate(() => typeof window.__coldboxCrypto.benchmarkProfiles), 'function');
+    assert.equal(await coldFrame.locator('html').getAttribute('data-vault-operations'), 'guarded');
     assert.equal(await page.evaluate(() => typeof window.__coldboxVault), 'undefined');
     assert.equal(await coldFrame.evaluate(() => typeof window.__coldboxVault), 'object');
     assert.equal(await coldFrame.evaluate(() => window.__coldboxVault.formatVersion), 1);
+    assert.equal(await coldFrame.evaluate(() => typeof window.__coldboxVault.openSession), 'undefined');
     assert.equal(await coldFrame.locator('html').getAttribute('data-crypto-state'), 'ready');
     assert.equal(await coldFrame.locator('html').getAttribute('data-kdf-active'), 'argon2id-standard');
     await coldFrame.locator('#cold-kdf-details[data-kdf-active="argon2id-standard"]').waitFor({ state: 'visible' });
