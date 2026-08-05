@@ -25,6 +25,14 @@ Foundation work in progress. Wallet and vault workflows are not available yet; t
 - Real P0.10-backed round-trip coverage, all-65-header-byte tamper coverage, indistinguishable authentication failures, zero-secret compartments, and a warm/cold vault API boundary check.
 - Independent-review remediation makes the vault API fail closed on cold-health/CSP failure, consumes the shared airgap network snapshot, rejects unknown KDF profile names, uses the crypto layer as the single KDF-profile source, documents a distinct 64 MiB size refusal, and removes the premature P0.13 session/save primitive from P0.11.
 
+### Added — review audit trail (2026-08-04)
+
+- **Three independent review reports recovered and committed.** The reviews of P0.6, P0.7 and P0.8 were written, stashed, and never landed. All three are FAIL, together carrying 27 findings of which 8 are blocking, against the cold realm bootstrap, the message handshake, and the CSP canary. Remediation had happened without them visible in the tree.
+- **Every one of the 27 findings dispositioned** against current `main`, with evidence, in a "Disposition of findings" section appended to each report. Reviewer text and verdicts are unmodified. Result: **25 Resolved, 2 open — both environmental** (upstream `verify-vendor` needs registry access; verification ran on Node 22 against a pinned 24.16.0).
+- **One live defect surfaced.** `docs/05-development/adr/README.md` links to ADR-0008, which `c6d6cc2` deleted from `main` when the literal CSP throw contract replaced it. The file survives only on the unmerged `p0.13-lock-save-load` branch, so the two branches disagree about whether ADR-0008 exists. Recorded, not patched — withdrawing or reinstating an ADR is a structural decision.
+- **P0.3a and P0.4 reviews** each contain two stacked reviews, an original FAIL and a later PASS re-review. A navigation banner now says so at the top; neither verdict was altered.
+- **Independent review coverage is now tracked** in [packets/README.md](docs/05-development/packets/README.md). It records that **P0.5 and P0.9 have never been independently reviewed** — the `BATCH-2026-08-03.md` claim of a P0.5 independent PASS has no artifact behind it, and P0.9's reviewer-reserved path briefly held a self-review instead.
+
 ### Added — design system (2026-08-04)
 
 - **Comic visual language** across the warm shell: heavy outlines, flat saturated fills, hard offset shadows, halftone dot field, comic display lettering. Recorded in [ADR-0009](docs/05-development/adr/0009-comic-visual-language.md); the full contract is [docs/01-spec/design-system.md](docs/01-spec/design-system.md), which is now authoritative for anything a user can see and supersedes the visual direction in SPEC §15.
