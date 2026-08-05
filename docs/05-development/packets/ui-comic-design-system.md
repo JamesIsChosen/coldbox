@@ -153,32 +153,62 @@ Two values sit deliberately below 4.5 and are documented in design-system.md §9
 
 **Font provenance.** Both packages resolved from `registry.npmjs.org`; the `integrity` values in the manifest are the values npm itself reports for those versions, and the SHA-256 values were computed locally from the committed bytes. Both are SIL Open Font License 1.1 with `LICENSE` present in the tarball.
 
-**Could not test:**
+**Browser harness — run post-merge by the repository owner on Windows, against `a680ca7`.**
 
-- `npm run test:browser`. Playwright's browser binaries could not be downloaded — `cdn.playwright.dev` returned `403 Connection blocked by network allowlist`. **Nothing in this PR has been rendered by a real browser engine.**
+The authoring environment could not download Playwright's browser binaries (`cdn.playwright.dev` returned `403 Connection blocked by network allowlist`), so this was outstanding when the branch was written. It has since been run and passed:
+
+```
+$ npm run test:browser
+Playwright is dev-only; dependency-free build matches byte-for-byte
+  (49694b68007140a56ca404ff1cf6aeff22ed6764aacbaca5b87e1adf3d400737)
+...
+Chromium: warm shell routes, theme switch, responsive navigation, and cold boundary passed over file://
+Chromium: built-artifact byte tampering triggered script-src and prevented execution
+Chromium: detected deliberate CSP violation
+Chromium: confirmed untampered inline script control
+Chromium: reported byte-tampered inline script rejection
+Chromium: reusable frame and viewport assertions passed
+...
+Firefox: warm shell routes, theme switch, responsive navigation, and cold boundary passed over file://
+Firefox: built-artifact byte tampering triggered script-src and prevented execution
+Firefox: reusable frame and viewport assertions passed
+Browser harness passed in Chromium and Firefox.
+```
+
+What this establishes for **this** change specifically:
+
+- The retokenised shell **renders over `file://` with no console errors and no CSP violations** in two independent engines. The ~83 KB of base64 `@font-face` inside the hash-pinned inline style does not trip `style-src` — the theoretical CSP-coverage check in §3 is now confirmed by a browser rather than by recomputing a hash.
+- Routing, the relocated theme toggle, and responsive navigation all still work after the app bar moved the toggle out of `.content-bar`.
+- The realm boundary, lockdown paths, and byte-tamper rejection are unaffected, which is what you would hope from a change that touches no security-relevant code — but is worth having demonstrated rather than assumed.
+
+**Still not covered by the harness:** the harness asserts the shell boots, routes, and stays within policy. It does **not** assert that the 3D stage renders in perspective, that the tilt responds to pointer input, or that the display face loaded rather than falling back. Those remain visually confirmed only, by the owner on Windows Edge.
+
+**Still could not test:** real-hardware rendering. See §7.
 
 ## 7. Device matrix
 
-This change touches rendering, so the matrix is required. It is entirely untested.
+This change touches rendering, so the matrix is required.
 
 | Platform | Result | Notes |
 |---|---|---|
-| Windows Chrome | untested | |
-| Windows Firefox | untested | |
+| Windows Chromium (headless, harness) | **pass** | Boots, routes, theme switch, responsive nav, no CSP violations over `file://` |
+| Windows Firefox (headless, harness) | **pass** | Same assertions |
+| Windows Edge (manual) | **pass** | Owner-confirmed: app bar, 3D stage, sticker, display face all render. Note a stale `file://` tab served the pre-redesign document until hard-reloaded — a caching artifact, not a build one |
 | macOS Safari | untested | |
 | macOS Chrome | untested | |
 | Linux Firefox | untested | |
-| **iOS Safari (Files)** | untested | Highest risk — `perspective` + `preserve-3d` + `position: sticky` interact badly on older iOS |
+| **iOS Safari (Files)** | untested | Highest remaining risk — `perspective` + `preserve-3d` under a `position: sticky` ancestor is where engines diverge |
 | Android Chrome (Files) | untested | |
 | Tor Browser | untested | `prefers-reduced-motion` and font fingerprinting resistance both worth checking |
 
-Not inferred from one another. The harness would cover the first five if it could run.
+Not inferred from one another. Headless Chromium and Firefox on Windows say nothing about iOS Safari, and the three passes above are all desktop — the stage's 3D path is the part most likely to behave differently on mobile, and no mobile engine has seen it. P0.19 remains the item that closes this out.
 
 ## 8. Assumptions made
 
 > **Assumed:** unregistered CSS custom properties substitute cleanly inside `transform` and `calc()` — `rotateX(var(--stage-tilt-x, 0deg))` and `calc(-50% + (var(--stage-depth, 0rem) * 0.55))`.
 > **Basis:** CSS Variables Level 1 substitution semantics; the fallbacks mean an engine that fails substitution lands on the resting transform rather than an invalid one.
-> **Not verified on:** any real engine.
+> **Since confirmed on:** Windows Edge, visually — the stage renders in perspective and tilts, so substitution works there.
+> **Still not verified on:** any mobile engine. The harness boots the shell but asserts nothing about the stage's transforms.
 > **If wrong:** the stage renders flat and static. Cosmetic.
 
 > **Assumed:** `font-display: block` on a `data:` URI resolves effectively immediately, so no flash of invisible text.
@@ -200,6 +230,8 @@ Not inferred from one another. The harness would cover the first five if it coul
 
 **Start here: there are no new automated tests.** A 1,366-line CSS change, a new build-time bundler, and 80 lines of new JS ship with zero new assertions. The pipeline is verified by hand-run negative tests documented above, which is exactly the kind of evidence that rots. If you add one thing to this branch, add a test that `createFontFaceSource()` emits three `@font-face` blocks with `wOF2`-signed payloads, and one that greps the built artifact for inline event handlers.
 
+The browser harness passing (§6) does **not** discharge this. It asserts the shell boots, routes, and stays within CSP — properties this change was trying not to break, and didn't. Nothing in the suite asserts that the stage renders in perspective, that the tilt responds, that the display face loaded rather than silently falling back to Impact, or that the contrast floors hold in a rendered document. A future change could regress every one of those and the harness would stay green.
+
 **Then the calm rule's boundary (§8, third assumption).** I drew the line at *reporting live state* versus *explaining the design*. That line is defensible but it is mine, not the spec's — the spec is now the line, because I wrote it. Someone should check whether it survives contact with Phase 1, when the Vault screen starts showing real state and the temptation to make it lively returns.
 
 **Then `startStageMotion()`.** It attaches `mousemove` and `scroll` listeners on `document`/`window` and never removes them. Harmless today because the shell never tears down, but it will need cleanup if routing ever destroys the dashboard. It also reads `matchMedia` once at boot, so a user who toggles reduced-motion, or resizes across the `62rem` boundary, does not get re-evaluated until reload.
@@ -212,8 +244,8 @@ Not inferred from one another. The harness would cover the first five if it coul
 
 **What might be wrong**
 
-- The no-new-tests gap above. It is the thing I would reject in someone else's PR.
-- Nothing has run in a browser. `preserve-3d` with `position: sticky` ancestors is a known source of engine divergence, and iOS Safari is where I would expect it to break first.
+- The no-new-tests gap above. It is the thing I would reject in someone else's PR, and the harness passing does not close it — the harness asserts the shell boots and stays within policy, not that any of this change's own behaviour is correct.
+- No mobile engine has seen this. `preserve-3d` with `position: sticky` ancestors is a known source of engine divergence, and iOS Safari is where I would expect it to break first. Three desktop passes are weak evidence about a phone.
 - Bangers has no lowercase and ambiguous digits. I barred it from data in the spec, but the rule is only as good as the next person reading it — a lint rule would enforce it better than prose.
 
 **What I did not do that arguably should have been done**

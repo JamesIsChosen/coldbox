@@ -34,6 +34,7 @@ Foundation work in progress. Wallet and vault workflows are not available yet; t
 - **Vendored display typefaces.** `@fontsource/bangers@5.3.0` and `@fontsource/comic-neue@5.3.0` (both SIL OFL 1.1) committed as pinned npm tarballs with SHA-256 and integrity in `vendor-manifest.json`, added to `requiredPackages`, and inlined as base64 `data:` URIs by the new `scripts/font-bundle.js` at the `__COLDBOX_FONT_FACES__` build token. Nothing is fetched at build or run time; a corrupted or unmanifested font tarball fails the build like any other vendored artifact. Cost ≈ 83 KB.
 - Dashboard copy now states plainly that Coldbox is a toolkit that holds no keys and signs nothing, and the design system carries a say/never-say table so the "not a wallet" boundary is reviewable rather than a matter of taste.
 - `scripts/crypto-bundle.js` and `scripts/font-bundle.js` are both covered by the lint tooling-syntax check; `crypto-bundle.js` had been missing from that list.
+- Verified against the built artifact: two clean builds byte-identical across path, locale, and timezone; 49/49 node tests including the contrast floor; `npm run test:browser` green in Chromium and Firefox over `file://`. Real-hardware rendering — mobile in particular — remains untested; see [the packet](docs/05-development/packets/ui-comic-design-system.md) §7.
 
 ### Changed — workflow (2026-08-03)
 
