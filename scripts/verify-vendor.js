@@ -9,6 +9,8 @@ const defaultProjectRoot = path.resolve(__dirname, '..');
 const maximumArtifactSize = 10 * 1024 * 1024;
 const maximumUncompressedSize = 20 * 1024 * 1024;
 const requiredPackages = Object.freeze([
+  '@fontsource/bangers',
+  '@fontsource/comic-neue',
   '@noble/ciphers',
   '@noble/curves',
   '@noble/hashes',

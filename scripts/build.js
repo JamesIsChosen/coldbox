@@ -5,6 +5,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 const { createCryptoVendorSource } = require('./crypto-bundle.js');
+const { createFontFaceSource } = require('./font-bundle.js');
 
 // These values are part of the reproducibility contract. Set them rather than
 // trusting the caller's environment, so the build behaves the same everywhere.
@@ -66,8 +67,13 @@ function assemble() {
       .replace(/>/g, '\\u003e')
       .replace(/&/g, '\\u0026')
   );
+  const warmStyles = injectOnce(
+    readSource('styles.css'),
+    '__COLDBOX_FONT_FACES__',
+    createFontFaceSource(projectRoot)
+  );
   const components = new Map([
-    ['styles.css', readSource('styles.css')],
+    ['styles.css', warmStyles],
     ['main.js', mainScript]
   ]);
 
@@ -93,6 +99,7 @@ function assemble() {
   for (const placeholder of [
     '__COLDBOX_STYLES__',
     '__COLDBOX_SCRIPT__',
+    '__COLDBOX_FONT_FACES__',
     '__COLDBOX_FRAME_SCRIPT_HASHES__',
     '__COLDBOX_FRAME_STYLE_HASHES__'
   ]) {

@@ -1,8 +1,36 @@
+/*
+ * Sealed realm styles.
+ *
+ * Deliberately matches the warm shell's ink-and-fill language without pulling
+ * in the vendored display face. Two reasons, both recorded in
+ * docs/01-spec/design-system.md §7:
+ *   1. Every byte in this document sits inside the security boundary and gets
+ *      hash-pinned. Keeping it small keeps it reviewable.
+ *   2. This realm renders secrets. Secret-bearing surfaces are calm surfaces,
+ *      and the display face is barred from data regardless.
+ *
+ * The realm stays dark under both parent themes. It is a separate document with
+ * a separate policy, and looking separate is accurate rather than a defect.
+ */
+
 :root {
   color-scheme: dark;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  background: #0d1728;
-  color: #e6f0ff;
+
+  --cold-bg: #1a1a24;
+  --cold-surface: #232331;
+  --cold-outline: #f4f0e2;
+  --cold-drop: #000000;
+  --cold-text: #fffdf5;
+  --cold-muted: #b3bcd4;
+  --cold-green: #4ade80;
+  --cold-yellow: #ffde59;
+  --cold-red: #e02020;
+  --cold-ink: #121212;
+
+  font-family: 'Comic Sans MS', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  background: var(--cold-bg);
+  color: var(--cold-text);
 }
 
 * {
@@ -14,13 +42,18 @@ body {
   min-height: 5rem;
   margin: 0;
   padding: 0.85rem 1rem;
-  background: #0d1728;
+  background: var(--cold-bg);
 }
 
 .eyebrow {
-  margin: 0;
-  color: #86c5ff;
-  font-size: 0.64rem;
+  display: inline-block;
+  margin: 0 0 0.4rem;
+  padding: 0.1rem 0.5rem;
+  border: 0.13rem solid var(--cold-drop);
+  background: var(--cold-yellow);
+  box-shadow: 0.15rem 0.15rem 0 var(--cold-drop);
+  color: var(--cold-ink);
+  font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -28,32 +61,46 @@ body {
 
 #cold-ready {
   margin: 0.35rem 0 0;
-  color: #8ff0c3;
-  font-size: 0.9rem;
-  font-weight: 750;
+  color: var(--cold-green);
+  font-size: 0.92rem;
+  font-weight: 800;
 }
 
 #cold-realm-details {
   margin: 0.3rem 0 0;
-  color: #aabbd2;
-  font-size: 0.75rem;
+  color: var(--cold-muted);
+  font-size: 0.76rem;
+}
+
+#cold-protocol-warning {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.6rem;
+  border: 0.16rem solid var(--cold-drop);
+  border-radius: 0.35rem;
+  background: var(--cold-red);
+  box-shadow: 0.2rem 0.2rem 0 var(--cold-drop);
+  color: #ffffff;
+  font-size: 0.74rem;
 }
 
 #cold-kdf-details {
   margin-top: 0.75rem;
-  padding-top: 0.65rem;
-  border-top: 1px solid rgba(134, 197, 255, 0.2);
+  padding: 0.6rem 0.7rem;
+  border: 0.16rem solid var(--cold-outline);
+  border-radius: 0.35rem;
+  background: var(--cold-surface);
+  box-shadow: 0.2rem 0.2rem 0 var(--cold-drop);
 }
 
 #cold-kdf-active {
   margin: 0.3rem 0 0;
-  color: #f2d58c;
-  font-size: 0.78rem;
-  font-weight: 700;
+  color: var(--cold-yellow);
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 
 #cold-crypto-path {
   margin: 0.25rem 0 0;
-  color: #aabbd2;
-  font-size: 0.7rem;
+  color: var(--cold-muted);
+  font-size: 0.72rem;
 }

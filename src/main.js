@@ -760,6 +760,87 @@ __COLDBOX_CAPABILITIES__
     });
   }
 
+  // The dashboard stage. Purely presentational: it drives two CSS custom
+  // properties and never touches routing, protocol, or realm state. If any part
+  // of it is unavailable the stage simply sits at its resting transform, which
+  // is the same arrangement a narrow viewport gets.
+  function startStageMotion() {
+    var scene = document.getElementById('stage-scene');
+    if (!scene || typeof window.requestAnimationFrame !== 'function') {
+      return;
+    }
+
+    var reduceMotion = typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var wideEnough = typeof window.matchMedia === 'function'
+      && window.matchMedia('(min-width: 62rem)').matches;
+    if (reduceMotion || !wideEnough) {
+      return;
+    }
+
+    var maximumTilt = 7;
+    var maximumDepth = 1.1;
+    var tiltX = 0;
+    var tiltY = 0;
+    var depth = 0;
+    var frameRequested = false;
+
+    function applyStageTransform() {
+      frameRequested = false;
+      scene.style.setProperty('--stage-tilt-x', tiltX.toFixed(2) + 'deg');
+      scene.style.setProperty('--stage-tilt-y', tiltY.toFixed(2) + 'deg');
+      scene.style.setProperty('--stage-depth', depth.toFixed(3) + 'rem');
+    }
+
+    function requestStageFrame() {
+      if (frameRequested) {
+        return;
+      }
+      frameRequested = true;
+      window.requestAnimationFrame(applyStageTransform);
+    }
+
+    function clamp(value, limit) {
+      if (value > limit) {
+        return limit;
+      }
+      if (value < -limit) {
+        return -limit;
+      }
+      return value;
+    }
+
+    function handlePointerMove(event) {
+      var width = window.innerWidth || 1;
+      var height = window.innerHeight || 1;
+      tiltY = clamp(((event.clientX - (width / 2)) / (width / 2)) * maximumTilt, maximumTilt);
+      tiltX = clamp((((height / 2) - event.clientY) / (height / 2)) * maximumTilt, maximumTilt);
+      requestStageFrame();
+    }
+
+    function handlePointerLeave() {
+      tiltX = 0;
+      tiltY = 0;
+      requestStageFrame();
+    }
+
+    // Offset from the scene's distance to the viewport centre, so the cards
+    // drift as the stage passes through the fold rather than accumulating.
+    function handleScroll() {
+      var bounds = scene.getBoundingClientRect();
+      var viewportCentre = (window.innerHeight || 1) / 2;
+      var sceneCentre = bounds.top + (bounds.height / 2);
+      var offset = (sceneCentre - viewportCentre) / viewportCentre;
+      depth = clamp(offset * maximumDepth, maximumDepth);
+      requestStageFrame();
+    }
+
+    document.addEventListener('mousemove', handlePointerMove, { passive: true });
+    document.addEventListener('mouseleave', handlePointerLeave, { passive: true });
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+  }
+
   function startNetworkMonitor() {
     if (!airgap) {
       return;
@@ -901,6 +982,7 @@ __COLDBOX_CAPABILITIES__
   window.addEventListener('hashchange', function () {
     renderRoute(true);
   });
+  startStageMotion();
   startNetworkMonitor();
   startCapabilities();
   startWarmCanary();
