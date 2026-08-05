@@ -52,7 +52,7 @@ These exist because the alternative silently corrupts something.
 
 **Every runner declares the state it expects.** It aborts before touching anything if the branch or HEAD is not what the agent believed. Drift is caught immediately, not three runners later.
 
-**No secret ever enters an uploaded bundle.** Discovery payload comes from `git archive`; step payload also includes generated transcript/diff/evidence files. Every staged file is scanned before zipping. A secret-shaped hit omits the payload and emits only `manifest.json` + `scan-report.txt`. See §5.
+**No secret ever enters an uploaded bundle.** Discovery payload starts from `git archive`; before upload, mnemonic-shaped runs in the staged tracked snapshot are replaced with an explicit redaction marker and their paths are recorded in `repo-screening-report.txt`. The source checkout is never altered by this screening. Step payload also includes generated transcript/diff/evidence files. Every staged file then receives the same final secret scan before zipping. Any remaining secret-shaped hit omits the payload and emits only `manifest.json` + `scan-report.txt`. See §5.
 
 **Never delete `.git/index.lock`.** If a runner finds one at preflight it aborts and reports. Another process may be mid-write.
 
@@ -148,7 +148,7 @@ This repository handles seed phrases. A bundle is uploaded to a chat window, so 
 
 **Discovery** payload is built from `git archive HEAD`, so its `repo/` directory contains tracked content only. **Step** bundles are assembled separately and may also contain generated `transcript.txt`, `changes.patch`, and build evidence, so tracked-content provenance alone is not a safety boundary.
 
-Before zipping, the runner scans every candidate text file regardless of size. Known binary formats are excluded by extension and every excluded path is listed in `scan-report.txt`; unreadable candidate text is a scan finding rather than a silent skip. CRLF is normalised before mnemonic analysis.
+For discovery bundles, the extracted tracked snapshot is first screened for mnemonic-shaped runs. Those runs are replaced only in the staged copy with `[BIP39-FIXTURE-REDACTED]`, and path-only evidence is written to `repo-screening-report.txt`; this keeps known public test vectors reviewable without uploading the mnemonic itself. The untouched checkout remains the source of truth. Before zipping, the runner then scans every candidate text file regardless of size. Known binary formats are excluded by extension and every excluded path is listed in `scan-report.txt`; unreadable candidate text is a scan finding rather than a silent skip. CRLF is normalised before mnemonic analysis.
 
 The mnemonic detector loads the English BIP-39 wordlist from the already-vendored `@scure/bip39` 2.2.0 archive and looks for an unanchored run of at least 12 consecutive BIP-39 words within a line. This catches standard 12 / 15 / 18 / 21 / 24-word mnemonics even when source-code, diff, or transcript prefixes/suffixes surround them, while a one-word-per-line wordlist does not self-trigger.
 

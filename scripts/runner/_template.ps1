@@ -306,6 +306,20 @@ function New-Bundle {
         if ($LASTEXITCODE -eq 0) {
             & tar -xf $tar -C $repoDir 2>&1 | Out-Null
             Remove-Item -LiteralPath $tar -Force
+
+            Import-SecretScanner
+            $screenedRepo = Protect-ColdboxDiscoverySnapshot -Root $repoDir -RepoPath $RepoPath
+            if ($screenedRepo.RedactedRunCount -gt 0) {
+                $screeningLines = @(
+                    'Tracked discovery copy sanitized before upload.'
+                    'Mnemonic-shaped runs were replaced only in the staged copy; source files were not modified.'
+                    "redactedRunCount: $($screenedRepo.RedactedRunCount)"
+                    'paths:'
+                ) + @($screenedRepo.RedactedPaths)
+                Set-Content -LiteralPath (Join-Path $script:Stage 'repo-screening-report.txt') `
+                    -Value ($screeningLines -join "`n") -Encoding UTF8
+                Write-Log "Discovery snapshot sanitized: $($screenedRepo.RedactedRunCount) mnemonic-shaped run(s) across $(@($screenedRepo.RedactedPaths).Count) path(s)."
+            }
         } else {
             Write-Log 'git archive failed; discovery bundle will omit repo/' 'WARN'
         }

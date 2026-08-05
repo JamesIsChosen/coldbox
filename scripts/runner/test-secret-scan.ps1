@@ -105,6 +105,43 @@ try {
     Assert-True ($redactedManifest.originalManifestOmitted -eq $true) 'Redacted manifest does not record original-manifest omission.'
     Write-Host 'PASS: a finding inside manifest.json cannot re-enter through the redacted manifest.'
 
+    # Discovery uses the scanner as a sanitizer on the staged tracked snapshot.
+    # The repository positive-control file must remain detectable at source but
+    # the staged discovery copy must be safe to upload.
+    $discoveryStage = Join-Path ([IO.Path]::GetTempPath()) ('coldbox-secret-scan-discovery-selftest-' + [guid]::NewGuid().ToString('N'))
+    $discoveryZip = "$discoveryStage.zip"
+    try {
+        $repoCopy = Join-Path $discoveryStage 'repo\test'
+        New-Item -ItemType Directory -Path $repoCopy -Force | Out-Null
+        Copy-Item -LiteralPath $protocolPath -Destination (Join-Path $repoCopy 'protocol.test.js')
+        '{"runnerId":"discovery-sanitize-selftest","verdict":"TEST"}' |
+            Set-Content -LiteralPath (Join-Path $discoveryStage 'manifest.json') -Encoding UTF8
+
+        $sourceHashBefore = (Get-FileHash -LiteralPath $protocolPath -Algorithm SHA256).Hash
+        $screened = Protect-ColdboxDiscoverySnapshot -Root (Join-Path $discoveryStage 'repo') -RepoPath $RepoPath
+        Assert-True ($screened.RedactedRunCount -ge 1) 'Discovery sanitizer did not redact the positive-control mnemonic run.'
+        Assert-True ($screened.RedactedPaths -contains 'test/protocol.test.js') 'Discovery sanitizer did not report the positive-control path.'
+        $sourceHashAfter = (Get-FileHash -LiteralPath $protocolPath -Algorithm SHA256).Hash
+        Assert-True ($sourceHashAfter -eq $sourceHashBefore) 'Discovery sanitizer modified the source checkout.'
+
+        $stagedProtocol = [IO.File]::ReadAllText((Join-Path $repoCopy 'protocol.test.js'))
+        Assert-True (-not (Test-ColdboxMnemonicShape -Text $stagedProtocol -WordSet $wordSet)) 'Sanitized discovery copy still contains a detectable mnemonic run.'
+        Assert-True ($stagedProtocol.Contains('[BIP39-FIXTURE-REDACTED]')) 'Sanitized discovery copy is missing the explicit redaction marker.'
+
+        $publishDiscovery = Publish-ColdboxScannedBundle -Root $discoveryStage -RepoPath $RepoPath -ZipPath $discoveryZip
+        Assert-True $publishDiscovery.Clean 'Sanitized discovery bundle did not pass the final secret scan.'
+        Assert-True (-not $publishDiscovery.Redacted) 'Sanitized discovery bundle was unexpectedly reduced to a redacted diagnostic bundle.'
+        Write-Host 'PASS: tracked positive-control mnemonic is detected at source, sanitized only in the discovery copy, and the final discovery payload remains usable.'
+    }
+    finally {
+        if (Test-Path -LiteralPath $discoveryStage) {
+            Remove-Item -LiteralPath $discoveryStage -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        if (Test-Path -LiteralPath $discoveryZip) {
+            Remove-Item -LiteralPath $discoveryZip -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     New-Item -ItemType Directory -Path $cleanRoot -Force | Out-Null
     '{"runnerId":"secret-scan-clean-selftest","verdict":"TEST"}' |
         Set-Content -LiteralPath (Join-Path $cleanRoot 'manifest.json') -Encoding UTF8

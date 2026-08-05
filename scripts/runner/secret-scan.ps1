@@ -62,6 +62,102 @@ function Test-ColdboxMnemonicShape {
     }
     return $false
 }
+function Redact-ColdboxMnemonicRuns {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)][AllowEmptyString()][string]$Text,
+        [Parameter(Mandatory=$true)][System.Collections.Generic.HashSet[string]]$WordSet
+    )
+
+    $normalized = $Text.Replace("`r`n","`n").Replace("`r","`n")
+    $redactedRunCount = 0
+    $outLines = @()
+
+    foreach ($line in ($normalized -split "`n")) {
+        $matches = @([regex]::Matches($line, '(?<![A-Za-z])[a-z]+(?![A-Za-z])'))
+        $spans = @()
+        $runStart = -1
+        $runEnd = -1
+        $runLength = 0
+
+        foreach ($match in $matches) {
+            if ($WordSet.Contains($match.Value)) {
+                if ($runLength -eq 0) { $runStart = $match.Index }
+                $runLength++
+                $runEnd = $match.Index + $match.Length
+            } else {
+                if ($runLength -ge 12) {
+                    $spans += [pscustomobject]@{ Start=$runStart; End=$runEnd }
+                }
+                $runStart = -1
+                $runEnd = -1
+                $runLength = 0
+            }
+        }
+        if ($runLength -ge 12) {
+            $spans += [pscustomobject]@{ Start=$runStart; End=$runEnd }
+        }
+
+        $updatedLine = $line
+        foreach ($span in @($spans | Sort-Object Start -Descending)) {
+            $updatedLine = $updatedLine.Substring(0,$span.Start) +
+                '[BIP39-FIXTURE-REDACTED]' +
+                $updatedLine.Substring($span.End)
+            $redactedRunCount++
+        }
+        $outLines += $updatedLine
+    }
+
+    [pscustomobject]@{
+        Text = ($outLines -join "`n")
+        RedactedRunCount = $redactedRunCount
+    }
+}
+
+function Protect-ColdboxDiscoverySnapshot {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)][string]$Root,
+        [Parameter(Mandatory=$true)][string]$RepoPath
+    )
+
+    $wordSet = Get-ColdboxBip39EnglishWordSet -RepoPath $RepoPath
+    $binaryExtensions = @('.png','.jpg','.jpeg','.gif','.ico','.pdf','.zip','.wasm','.woff','.woff2','.tgz')
+    $redactedPaths = @()
+    $runCount = 0
+
+    Get-ChildItem -LiteralPath $Root -Recurse -File -ErrorAction SilentlyContinue |
+        ForEach-Object {
+            if ($binaryExtensions -contains $_.Extension.ToLowerInvariant()) { return }
+            $raw = try { [IO.File]::ReadAllText($_.FullName) } catch { return }
+            if (-not (Test-ColdboxMnemonicShape -Text $raw -WordSet $wordSet)) { return }
+
+            $result = Redact-ColdboxMnemonicRuns -Text $raw -WordSet $wordSet
+            if ($result.RedactedRunCount -lt 1) {
+                throw 'Discovery mnemonic detector and sanitizer disagreed; refusing to emit a discovery bundle.'
+            }
+
+            [IO.File]::WriteAllText(
+                $_.FullName,
+                $result.Text,
+                (New-Object Text.UTF8Encoding($false))
+            )
+
+            if (Test-ColdboxMnemonicShape -Text ([IO.File]::ReadAllText($_.FullName)) -WordSet $wordSet) {
+                throw 'Discovery mnemonic sanitization left a detectable mnemonic-shaped run.'
+            }
+
+            $rel = $_.FullName.Substring($Root.Length).TrimStart('\','/').Replace('\','/')
+            $redactedPaths += $rel
+            $runCount += $result.RedactedRunCount
+        }
+
+    [pscustomobject]@{
+        RedactedPaths = @($redactedPaths)
+        RedactedRunCount = $runCount
+    }
+}
+
 function Invoke-ColdboxSecretScan {
     [CmdletBinding()]
     param(
