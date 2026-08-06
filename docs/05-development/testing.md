@@ -69,6 +69,8 @@ P0.11 additionally checks a real v1 round-trip, a zero-secret vault, every heade
 
 P0.12 additionally runs real Fast, Standard, and Paranoid Argon2id profile round-trips, measures the three profiles sequentially with the same Argon2id call shape as vault derivation, rejects zero-duration measurements, proves concurrent benchmark requests do not overlap profile allocations, warns that Paranoid may fail to allocate on iOS, and verifies in Chromium/Firefox that the benchmark control is cold-only and disables immediately when the shared vault-health predicate fails.
 
+P0.13 additionally verifies that mode signaling selects public-only unlock online and full unlock offline, that the cold session clears the passphrase field and encrypted working bytes on lock, that repeated saves rotate re-encrypted nonces, that online secret ciphertext is copied opaquely, that the idle timer and both warm/cold `Esc Esc` concealment paths lock the session, that an unlocked runtime airgap violation immediately closes/zeroizes the session before locked status is reported, that a save-time health failure also leaves the cold session locked/cleared, and that Chromium/Firefox complete `.cbx` blob-download, manual-base64, share-surface, and numbered QR-frame rendering checks. Direct iOS local execution from Files is a blocked portability target under [ADR-0010](adr/0010-ios-local-html-execution.md); Quick Look is not execution evidence.
+
 ---
 
 ## Security tests — mandatory
@@ -152,7 +154,7 @@ Covers: CSP enforcement and violation detection, post-build tamper rejection, co
 | macOS | Safari | Full function, secure-context behaviour |
 | macOS | Chrome | Full function |
 | Linux | Firefox | Full function |
-| **iOS** | **Safari from Files** | **Cold realm instantiates; manual save path; camera unavailable handled** |
+| **iOS** | **Local execution target** | **Record PASS, BLOCKED, or UNSUPPORTED with exact device/iOS version; Quick Look is not a Safari execution pass. See [ADR-0010](adr/0010-ios-local-html-execution.md)** |
 | Android | Chrome from Files | Cold realm instantiates; save path |
 | Tails | Tor Browser | Full function |
 
@@ -166,7 +168,7 @@ Per platform, confirm:
 6. Airgap banner reflects actual network state
 7. Layout usable at that screen size
 
-**iOS Safari is the highest-risk platform.** Opaque-origin secure-context behaviour, blob download restrictions, and camera access all differ there. Test it first, not last.
+**iOS local execution is the highest-risk portability target.** A Files preview does not establish the sandboxed execution environment. Do not substitute Quick Look, a third-party viewer, localhost, a renamed file, or another execution context for Safari-from-Files without an accepted ADR. See [ADR-0010](adr/0010-ios-local-html-execution.md).
 
 ---
 

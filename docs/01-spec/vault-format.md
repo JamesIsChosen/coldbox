@@ -145,9 +145,9 @@ Chosen at creation, stored in the header, changeable later (rewraps the DEK; com
 |---|---|---|
 | File System Access | Chrome/Edge desktop | `showSaveFilePicker()` — overwrite in place |
 | Blob download | Desktop, most Android | `<a download>` + `createObjectURL` |
-| Manual export | Everywhere incl. iOS Safari | Base64 textarea, `navigator.share`, multi-part QR |
+| Manual export | Any supported running Coldbox browser context | Base64 textarea, `navigator.share`, multi-part QR; iOS Safari-from-Files is not currently claimed (see [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md)) |
 
-Detected at boot. Manual export is a first-class flow with chunk counts and reassembly instructions, not a fallback.
+Detected at boot. Manual export is a first-class flow with chunk counts and reassembly instructions, not a fallback, whenever Coldbox reaches a supported execution context. Quick Look is not an execution context.
 
 ### Generational filenames
 

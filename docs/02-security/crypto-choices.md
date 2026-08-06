@@ -111,6 +111,8 @@ P0.10 implements this contract in the cold realm. The default AES-GCM path is th
 
 P0.12 adds a cold-only, user-triggered benchmark that runs Fast, Standard, and Paranoid sequentially with a fixed non-secret passphrase and salt. Its Argon2id call shape matches vault derivation (`pass`, `salt`, `time`, `mem`, `parallelism`, `hashLen`, `type`), it reports only meaningful positive elapsed milliseconds, and it warns that the 256 MiB Paranoid profile may fail to allocate on iOS; a likely iOS device skips that allocation rather than risking a tab crash. The UI control is available only while the exact vault-health predicate is satisfied.
 
+P0.13 keeps the mode decision explicit at unlock time. The cold realm starts in online-safe mode, opens only the public compartment there, and exposes the full opener only after the warm shell reports offline. The online-safe opener unwraps the DEK and derives only `cbx/public/v1`; it never derives `cbx/secret/v1`. A transition back to online clears the active cold session.
+
 ---
 
 ## Protocol-mandated primitives

@@ -10,11 +10,11 @@ Date: 2026-08-02 · Supersedes v0.3 · *"Coldbox" is a working name — see §22
 
 ## 1. What this is
 
-One HTML file you copy to a USB stick, a phone, or a laptop, open by double-clicking, and use with no install, no server, and no runtime. It replaces the ~15 separate tools in this folder, adds an encrypted registry of your wallets and addresses, and adds a portfolio manager with live prices and on-chain balance lookups.
+One HTML file you copy to a USB stick, a phone, or a laptop, open in a supported browser/file-launch context, and use with no install, no server, and no runtime. It replaces the ~15 separate tools in this folder, adds an encrypted registry of your wallets and addresses, and adds a portfolio manager with live prices and on-chain balance lookups. Direct local execution from iOS Files is not currently claimed; see [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md).
 
 ### 1.1 Design axioms
 
-1. **Runs anywhere, from a file.** Double-click on Windows/macOS/Linux, open from Files on iOS/Android. No install, no build, no localhost.
+1. **Runs from one local file on supported platforms.** Open the byte-stable HTML artifact directly in a supported browser/file-launch context, with no build step and no localhost server. Direct local execution from Files on iOS is not currently claimed: Safari is not a documented or demonstrated handler for the Coldbox HTML artifact, and Quick Look is not an equivalent execution context. iOS remains a portability target under [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md).
 2. **Secrets cannot leak, by construction.** All secret handling happens inside a sandboxed realm whose Content Security Policy forbids every form of network access. This is a browser-enforced boundary, not a promise.
 3. **Online is a supported mode, not a failure state.** Tools work online. Prices and balances require online. Only *secrets* are gated.
 4. **The HTML file never changes.** Byte-stable, so its SHA-256 verifies against a published hash forever. Your data lives in a separate encrypted file.
@@ -124,7 +124,7 @@ Note the vault-save nuance: in Warm Mode the secret compartment is copied throug
 
 ## 3. Portability contract
 
-"Runs on any device" silently kills several standard web techniques. Each item is a hard constraint.
+"Runs from one local file" silently kills several standard web techniques. Each item is a hard constraint for supported execution contexts.
 
 | Constraint | Reason | Consequence |
 |---|---|---|
@@ -135,12 +135,12 @@ Note the vault-save nuance: in Warm Mode the secret compartment is copied throug
 | **`crypto.getRandomValues` required** | No safe fallback for randomness exists | Hard-fail with explanation if missing. Never substitute `Math.random`. Dice entropy remains available |
 | **Web Workers optional** | `blob:` workers unreliable under `file://` on iOS | Long jobs use a worker when available, else chunked main-thread tasks yielding every ~16 ms |
 | **Camera optional** | `getUserMedia` fails on `file://` in Safari | QR *scanning* is a bonus; generation and manual entry always work |
-| **Saving needs three paths** | Blob downloads from `file://` are blocked on iOS Safari | File System Access → blob download → base64/QR manual export (§8.5) |
+| **Saving needs three paths** | No single save API works across supported file contexts; blob downloads can be blocked under `file://` | File System Access → blob download → base64/QR manual export (§8.5) |
 | **`localStorage` non-essential** | May be unavailable under `file://` on iOS | Used only for UI prefs and the save counter; degrades silently |
 | **Sandboxed iframe must work from `file://`** | The whole security model depends on it | Boot self-check verifies the cold realm instantiated and its CSP is active; **hard-fail with an explanation if not** — no silent fallback to an insecure single-realm mode |
 | **Target ≤ 3 MB, hard cap 4.5 MB** | Must open fast on a phone | Drives chain-tier scoping |
 
-**Field test matrix:** Chrome/Edge + Firefox on Windows; Safari + Chrome on macOS; Firefox on Linux; Safari on iOS from Files; Chrome on Android from Files; Tails/Tor Browser. A boot-time capability panel reports what's present.
+**Field test matrix:** Chrome/Edge + Firefox on Windows; Safari + Chrome on macOS; Firefox on Linux; Chrome on Android from Files; Tails/Tor Browser. **iOS local execution remains a blocked portability target under [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md) and is not counted as supported until a documented and security-qualified execution flow exists.** A boot-time capability panel reports what's present whenever Coldbox can actually execute.
 
 ---
 
@@ -391,9 +391,9 @@ Three save paths, because this is the weakest link in "any device":
 |---|---|---|
 | **File System Access** | Chrome/Edge desktop | `showSaveFilePicker()` — true overwrite in place |
 | **Blob download** | Desktop, most Android | `<a download>` + `createObjectURL` |
-| **Manual export** | Everywhere, incl. iOS Safari | Base64 in a select-all textarea, `navigator.share` where available, multi-part QR for locked-down devices |
+| **Manual export** | Any supported running Coldbox browser context | Base64 in a select-all textarea, `navigator.share` where available, multi-part QR for locked-down devices. iOS Safari-from-Files is not currently claimed; see [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md). |
 
-The app detects available paths at boot. Manual export is not an afterthought — for a phone-primary user it may be the normal flow, so it gets a real UI with chunk counts and reassembly instructions. Loading is symmetric: picker, drag-and-drop, or paste.
+The app detects available paths at boot. Manual export is not an afterthought — for a phone-primary user in a supported running context it may be the normal flow, so it gets a real UI with chunk counts and reassembly instructions. Loading is symmetric: picker, drag-and-drop, or paste. A file that never reaches a supported execution context has no save-path claim; Quick Look is not a substitute.
 
 Also: **generational filenames** (`my-vault-0047.cbx`) so you accumulate history rather than clobbering; **rollback detection** via highest-save-counter-seen; **verify-after-save**, which re-opens the file and confirms it decrypts before clearing the unsaved-changes flag; and honest corruption messaging — a failed AEAD tag means "wrong passphrase *or* damaged file," and the two are cryptographically indistinguishable.
 

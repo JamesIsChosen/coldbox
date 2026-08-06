@@ -81,7 +81,7 @@ Required for anything touching bootstrap, CSP, storage, or rendering.
 | macOS Safari | | |
 | macOS Chrome | | |
 | Linux Firefox | | |
-| **iOS Safari (Files)** | | |
+| **iOS local-execution target** | | Record PASS, BLOCKED, or UNSUPPORTED with the exact device and iOS build; Quick Look is not a Safari pass. See [ADR-0010](adr/0010-ios-local-html-execution.md). |
 | Android Chrome (Files) | | |
 | Tor Browser | | |
 
@@ -91,10 +91,8 @@ Untested platforms are marked untested. Never inferred from a similar one.
 
 Every decision not settled by the spec. This is where a reviewer finds the real risk.
 
-> **Assumed:** `srcdoc` iframes inherit parent CSP on iOS Safari 18 as they do on desktop.
-> **Basis:** spec text and desktop testing.
-> **Not verified on:** iOS 17 and earlier.
-> **If wrong:** the cold realm may not be sealed on older iOS; the canary should catch it, but that path is untested there.
+> **Portability boundary:** Direct local execution from iOS Files is governed by [ADR-0010](adr/0010-ios-local-html-execution.md). Do not infer Safari execution from Quick Look, a third-party viewer, localhost, a renamed file, or another execution context.
+> **Record:** the exact device and iOS build, the Files location and acquisition path, the launch path, and whether the target is PASS, BLOCKED, or UNSUPPORTED.
 
 ### 9. What to scrutinise
 

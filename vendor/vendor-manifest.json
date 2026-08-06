@@ -82,6 +82,15 @@
       "size": 44952,
       "sha256": "cdb11795a4971bde095fe6b836aa424de50c4558ed4b9505bc74111eee7f6d35",
       "integrity": "sha512-ImVAGIItnFnvET1exhsQB7apRztcoC5TnlSqernMJDUjbc/DLq3UEYeXFrLPrlaIl8cVfwnXb6wX2KpFf2zxHw=="
+    },
+    {
+      "name": "qrcode-generator",
+      "version": "1.4.4",
+      "path": "vendor/npm/qrcode-generator/1.4.4/package.tgz",
+      "url": "https://registry.npmjs.org/qrcode-generator/-/qrcode-generator-1.4.4.tgz",
+      "size": 46334,
+      "sha256": "ab6ed47d378877441deae95972e07b2716c26545a735a23aa6b9d442b33026ed",
+      "integrity": "sha512-HM7yY8O2ilqhmULxGMpcHSF1EhJJ9yBj8gvDEuZ6M+KGJ0YY2hKpnXvRD+hZPLrDVck3ExIGhmPtSdcjC+guuw=="
     }
   ]
 }

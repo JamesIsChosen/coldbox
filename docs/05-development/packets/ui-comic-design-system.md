@@ -24,7 +24,7 @@ Adopts a comic-book visual language across the warm shell, taken from a design m
 - `scripts/build.js` — one new injection token, `__COLDBOX_FONT_FACES__`
 - `scripts/verify-vendor.js` — two names added to `requiredPackages`
 - `vendor/` — two `@fontsource` tarballs plus manifest entries
-- Docs: design system, ADR-0009, ADR index, SPEC §15 amendment, dependencies, docs README, CHANGELOG
+- Docs: design system, ADR-0010, ADR index, SPEC §15 amendment, dependencies, docs README, CHANGELOG
 
 **Deliberately out of scope**
 

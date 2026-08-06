@@ -81,6 +81,7 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 | `vault.open` | `{ bytes }` | Ciphertext only. The passphrase is entered inside the cold realm and never crosses |
 | `vault.saveRequest` | `{ }` | Cold realm returns ciphertext |
 | `vault.lock` | `{ }` | |
+| `panic.hide` | `{ }` | Locks the cold session and asks the warm shell to conceal the app |
 | `mode.set` | `{ online: bool }` | Cold realm decides what to permit |
 | `derive.request` | `{ accountRef, scriptType, range }` | References a wallet by id; never carries key material |
 | `publicData.request` | `{ collections[] }` | Ask for public compartment contents |
@@ -96,6 +97,7 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 | `derive.result` | `{ addresses[], xpub, fingerprint }` | Public values only |
 | `status` | `{ locked, mode, warnings[] }` | |
 | `error` | `{ code, message }` | Never includes secret material in the message |
+| `panic.hide` | `{ }` | Cold realm requests the same concealment after `Esc Esc` inside the frame |
 
 ### Schema invariants — enforced by test
 
@@ -148,9 +150,12 @@ The public projection deliberately contains no free-form text fields. It permits
 | Public compartment | Read/write | Read/write (or sealed under `strict`) |
 | Secret compartment | Available | **Never decrypted** |
 | Tools | All | All — inside the cold realm |
-| Vault save | Full | Public re-encrypted; secret copied as opaque ciphertext |
+| Vault save | Full offline | Public and secret compartments re-encrypted with fresh nonces |
+| Vault save | Online-safe | Public re-encrypted; secret nonce and ciphertext copied as opaque bytes |
 
 Detection uses `navigator.onLine`, `navigator.connection`, and the CSP canary.
+
+P0.13 sends the detected mode over the private channel. The cold realm defaults to online-safe behavior until that signal arrives: an online unlock uses the public-only vault opener, which never derives `cbx/secret/v1`; a full unlock is available only after the warm shell reports offline. A mode change to online clears the active cold session.
 
 **`navigator.onLine` is not reliable** — it reports whether a network interface exists, not whether the internet is reachable. It catches Wi-Fi-left-on; a blackholed link can read as offline. Mode detection is a convenience feature. The actual guarantee is the cold realm's CSP, which does not depend on detection being correct.
 

@@ -5,6 +5,8 @@ __COLDBOX_CAPABILITIES__
 (function () {
   'use strict';
 
+__COLDBOX_QR_ENCODER__
+
   var coldRealmDocument = __COLDBOX_COLD_REALM_DOCUMENT__;
   var protocol = window.__coldboxProtocol;
   var airgap = window.__coldboxAirgap;
@@ -59,6 +61,32 @@ __COLDBOX_CAPABILITIES__
     camera: document.getElementById('capability-detail-camera'),
     savePaths: document.getElementById('capability-detail-save-paths')
   };
+  var vaultStatus = document.getElementById('vault-status');
+  var vaultStatusTitle = document.getElementById('vault-status-title');
+  var vaultStatusCopy = document.getElementById('vault-status-copy');
+  var vaultStatusLabel = document.getElementById('vault-status-label');
+  var vaultFileInput = document.getElementById('vault-file-input');
+  var vaultLoadFile = document.getElementById('vault-load-file');
+  var vaultSaveFileSystem = document.getElementById('vault-save-file-system');
+  var vaultSaveDownload = document.getElementById('vault-save-download');
+  var vaultSaveManual = document.getElementById('vault-save-manual');
+  var vaultManualData = document.getElementById('vault-manual-data');
+  var vaultManualCopy = document.getElementById('vault-manual-copy');
+  var vaultManualShare = document.getElementById('vault-manual-share');
+  var vaultManualQrPrepare = document.getElementById('vault-manual-qr-prepare');
+  var vaultManualQrCopy = document.getElementById('vault-manual-qr-copy');
+  var vaultManualQrCopyAll = document.getElementById('vault-manual-qr-copy-all');
+  var vaultManualQrPrevious = document.getElementById('vault-manual-qr-previous');
+  var vaultManualQrNext = document.getElementById('vault-manual-qr-next');
+  var vaultManualQrIndex = document.getElementById('vault-manual-qr-index');
+  var vaultManualQrData = document.getElementById('vault-manual-qr-data');
+  var vaultManualQrImage = document.getElementById('vault-manual-qr-image');
+  var vaultManualQrCount = document.getElementById('vault-manual-qr-count');
+  var vaultLoadManual = document.getElementById('vault-load-manual');
+  var vaultLock = document.getElementById('vault-lock');
+  var vaultPanicHide = document.getElementById('vault-panic-hide');
+  var panicScreen = document.getElementById('panic-screen');
+  var panicReload = document.getElementById('panic-reload');
   var coldFrame = null;
   var coldBootTimer = null;
   var coldRealmFailed = false;
@@ -74,6 +102,14 @@ __COLDBOX_CAPABILITIES__
   var coldCanaryPassed = false;
   var warmCapabilityReport = null;
   var coldCapabilityReport = null;
+  var vaultState = 'locked';
+  var pendingVaultRequest = null;
+  var vaultMessageSequence = 0;
+  var lastModeOnline = null;
+  var lastEscapeAt = 0;
+  var manualQrChunks = [];
+  var manualQrIndex = 0;
+  var QR_FRAME_PAYLOAD_LENGTH = 650;
   var pages = Array.prototype.slice.call(document.querySelectorAll('[data-page]'));
   var routeLinks = Array.prototype.slice.call(document.querySelectorAll('[data-route]'));
 
@@ -429,6 +465,28 @@ __COLDBOX_CAPABILITIES__
     }
   }
 
+  function sendColdMode(online) {
+    if (airgapFailure || handshakeState !== 'ready' || !coldMessagePort || lastModeOnline === online) {
+      return;
+    }
+    var message = protocol.createMessage(
+      'warm-to-cold',
+      nextVaultMessageId('mode'),
+      'mode.set',
+      { online: online }
+    );
+    if (!message) {
+      recordChannelAnomaly();
+      return;
+    }
+    try {
+      coldMessagePort.postMessage(message);
+      lastModeOnline = online;
+    } catch (error) {
+      recordChannelAnomaly();
+    }
+  }
+
   function updateAirgapBanner() {
     if (!airgap) {
       return;
@@ -475,6 +533,7 @@ __COLDBOX_CAPABILITIES__
     root.setAttribute('data-vault-operations', 'guarded');
     app.setAttribute('data-lockdown-state', 'none');
     app.setAttribute('data-vault-operations', 'guarded');
+    sendColdMode(snapshot.online !== false);
     if (snapshot.online === false) {
       setAirgapBanner(
         'green',
@@ -521,6 +580,12 @@ __COLDBOX_CAPABILITIES__
       }
       coldMessagePort = null;
     }
+    if (pendingVaultRequest) {
+      var pendingRequest = pendingVaultRequest;
+      pendingVaultRequest = null;
+      pendingRequest.reject(new Error('Vault operations are locked down.'));
+    }
+    updateVaultControls();
     window.removeEventListener('message', handleColdRealmMessage);
     if (!keepColdFrame && coldFrame && coldFrame.parentNode) {
       coldFrame.parentNode.removeChild(coldFrame);
@@ -599,6 +664,635 @@ __COLDBOX_CAPABILITIES__
     console.warn('Coldbox discarded an invalid channel message.');
   }
 
+  function vaultChannelReady() {
+    return !airgapFailure
+      && handshakeState === 'ready'
+      && coldMessagePort !== null
+      && root.getAttribute('data-vault-operations') === 'guarded';
+  }
+
+  function updateVaultControls() {
+    var channelReady = vaultChannelReady();
+    var unlocked = vaultState === 'unlocked';
+    var hasManualText = Boolean(vaultManualData && vaultManualData.value.trim());
+    var hasQrChunks = manualQrChunks.length > 0;
+    if (vaultLoadFile) {
+      vaultLoadFile.disabled = !channelReady;
+    }
+    if (vaultSaveFileSystem) {
+      vaultSaveFileSystem.disabled = !channelReady
+        || !unlocked
+        || typeof window.showSaveFilePicker !== 'function';
+    }
+    if (vaultSaveDownload) {
+      vaultSaveDownload.disabled = !channelReady || !unlocked;
+    }
+    if (vaultSaveManual) {
+      vaultSaveManual.disabled = !channelReady || !unlocked;
+    }
+    if (vaultManualCopy) {
+      vaultManualCopy.disabled = !hasManualText;
+    }
+    if (vaultManualShare) {
+      vaultManualShare.disabled = !hasManualText
+        || !window.navigator
+        || typeof window.navigator.share !== 'function';
+    }
+    if (vaultManualQrPrepare) {
+      vaultManualQrPrepare.disabled = !hasManualText;
+    }
+    if (vaultManualQrCopy) {
+      vaultManualQrCopy.disabled = !hasQrChunks;
+    }
+    if (vaultManualQrCopyAll) {
+      vaultManualQrCopyAll.disabled = !hasQrChunks;
+    }
+    if (vaultManualQrPrevious) {
+      vaultManualQrPrevious.disabled = !hasQrChunks || manualQrIndex === 0;
+    }
+    if (vaultManualQrNext) {
+      vaultManualQrNext.disabled = !hasQrChunks || manualQrIndex >= manualQrChunks.length - 1;
+    }
+    if (vaultManualQrIndex) {
+      vaultManualQrIndex.disabled = !hasQrChunks;
+    }
+    if (vaultLoadManual) {
+      vaultLoadManual.disabled = !channelReady || !hasManualText;
+    }
+    if (vaultLock) {
+      vaultLock.disabled = !channelReady || vaultState === 'locked';
+    }
+  }
+
+  function setVaultStatus(state, title, copy, label) {
+    vaultState = state;
+    if (vaultStatus) {
+      vaultStatus.setAttribute('data-state', state);
+    }
+    if (vaultStatusTitle) {
+      vaultStatusTitle.textContent = title;
+    }
+    if (vaultStatusCopy) {
+      vaultStatusCopy.textContent = copy;
+    }
+    if (vaultStatusLabel) {
+      vaultStatusLabel.textContent = label;
+    }
+    updateVaultControls();
+  }
+
+  function setVaultNotice(copy) {
+    if (vaultStatusCopy) {
+      vaultStatusCopy.textContent = copy;
+    }
+  }
+
+  function nextVaultMessageId(prefix) {
+    vaultMessageSequence += 1;
+    return 'vault-' + prefix + '-' + String(vaultMessageSequence);
+  }
+
+  function sendVaultMessage(type, payload, id) {
+    if (!vaultChannelReady()) {
+      setVaultNotice('The sealed realm is not ready. Vault operations remain locked.');
+      return null;
+    }
+    var message = protocol.createMessage(
+      'warm-to-cold',
+      id || nextVaultMessageId(type.replace(/[^A-Za-z0-9]+/g, '-')),
+      type,
+      payload
+    );
+    if (!message) {
+      setVaultNotice('The vault operation was rejected before it reached the sealed realm.');
+      return null;
+    }
+    try {
+      coldMessagePort.postMessage(message);
+      return message.id;
+    } catch (error) {
+      setVaultNotice('The sealed realm could not receive the vault operation.');
+      return null;
+    }
+  }
+
+  function requestVaultBytes() {
+    return new Promise(function (resolve, reject) {
+      if (pendingVaultRequest) {
+        reject(new Error('A vault save is already in progress.'));
+        return;
+      }
+      if (!vaultChannelReady()) {
+        reject(new Error('The sealed realm is not ready.'));
+        return;
+      }
+      var id = nextVaultMessageId('save');
+      var message = protocol.createMessage(
+        'warm-to-cold',
+        id,
+        'vault.saveRequest',
+        {}
+      );
+      if (!message) {
+        reject(new Error('The vault save request was rejected.'));
+        return;
+      }
+      pendingVaultRequest = { id: id, resolve: resolve, reject: reject };
+      try {
+        coldMessagePort.postMessage(message);
+      } catch (error) {
+        pendingVaultRequest = null;
+        reject(new Error('The sealed realm could not receive the save request.'));
+      }
+    });
+  }
+
+  function sendVaultOpen(bytes) {
+    if (!bytes || bytes.length === 0) {
+      setVaultNotice('The selected file did not contain vault bytes.');
+      return;
+    }
+    var copy = new Uint8Array(bytes);
+    var id = nextVaultMessageId('open');
+    var message = protocol.createMessage(
+      'warm-to-cold',
+      id,
+      'vault.open',
+      { bytes: copy }
+    );
+    if (!message) {
+      setVaultNotice('The selected vault is too large or is not a supported byte file.');
+      return;
+    }
+    setVaultStatus(
+      'pending',
+      'Vault is waiting for unlock',
+      'Encrypted bytes are inside the cold realm. Enter the unlock phrase in the sealed frame above.',
+      'Pending'
+    );
+    try {
+      coldMessagePort.postMessage(message);
+    } catch (error) {
+      setVaultStatus(
+        'locked',
+        'Vault is locked',
+        'The sealed realm could not receive the selected file.',
+        'Locked'
+      );
+    }
+  }
+
+  function bytesToBase64(bytes) {
+    var binary = '';
+    for (var index = 0; index < bytes.length; index += 1) {
+      binary += String.fromCharCode(bytes[index]);
+    }
+    return window.btoa(binary);
+  }
+
+  function base64ToBytes(value) {
+    var normalized = String(value || '').replace(/\s+/g, '');
+    var maximumBase64Length = Math.ceil((64 * 1024 * 1024) * 4 / 3) + 8;
+    if (!normalized
+      || normalized.length > maximumBase64Length
+      || normalized.length % 4 !== 0
+      || !/^[A-Za-z0-9+/]*={0,2}$/.test(normalized)) {
+      throw new Error('Invalid vault text.');
+    }
+    var binary;
+    try {
+      binary = window.atob(normalized);
+    } catch (error) {
+      throw new Error('Invalid vault text.');
+    }
+    var bytes = new Uint8Array(binary.length);
+    for (var index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return bytes;
+  }
+
+  function clearQrExport() {
+    manualQrChunks = [];
+    manualQrIndex = 0;
+    if (vaultManualQrData) {
+      vaultManualQrData.value = '';
+    }
+    if (vaultManualQrImage) {
+      vaultManualQrImage.hidden = true;
+      vaultManualQrImage.removeAttribute('src');
+    }
+    if (vaultManualQrCount) {
+      vaultManualQrCount.textContent = 'No QR frames prepared.';
+    }
+    updateVaultControls();
+  }
+
+  function renderQrFrame() {
+    if (manualQrChunks.length === 0) {
+      clearQrExport();
+      return;
+    }
+    var frame = manualQrChunks[manualQrIndex];
+    if (vaultManualQrData) {
+      vaultManualQrData.value = frame;
+    }
+    if (vaultManualQrIndex) {
+      vaultManualQrIndex.value = String(manualQrIndex + 1);
+    }
+    if (vaultManualQrCount) {
+      vaultManualQrCount.textContent = 'QR frame '
+        + String(manualQrIndex + 1)
+        + ' of '
+        + String(manualQrChunks.length)
+        + '. Copy all frames in order, or scan each frame in order and paste the resulting lines into the encrypted vault base64 field.';
+    }
+    if (vaultManualQrImage && typeof qrcode === 'function') {
+      try {
+        var code = qrcode(0, 'M');
+        code.addData(frame, 'Byte');
+        code.make();
+        vaultManualQrImage.src = code.createDataURL(4, 4);
+        vaultManualQrImage.alt = 'Encrypted vault QR frame '
+          + String(manualQrIndex + 1)
+          + ' of '
+          + String(manualQrChunks.length);
+        vaultManualQrImage.hidden = false;
+      } catch (error) {
+        vaultManualQrImage.hidden = true;
+        vaultManualQrImage.removeAttribute('src');
+        if (vaultManualQrCount) {
+          vaultManualQrCount.textContent = 'This QR frame could not be rendered. Copy the numbered text frame instead.';
+        }
+      }
+    }
+    updateVaultControls();
+  }
+
+  function prepareQrExport(value) {
+    var normalized = String(value || '').replace(/\s+/g, '');
+    if (!normalized) {
+      clearQrExport();
+      return;
+    }
+    var total = Math.ceil(normalized.length / QR_FRAME_PAYLOAD_LENGTH);
+    manualQrChunks = [];
+    for (var index = 0; index < total; index += 1) {
+      manualQrChunks.push(
+        'CBX-QR/1/'
+        + String(index + 1)
+        + '/'
+        + String(total)
+        + '/'
+        + normalized.slice(index * QR_FRAME_PAYLOAD_LENGTH, (index + 1) * QR_FRAME_PAYLOAD_LENGTH)
+      );
+    }
+    manualQrIndex = 0;
+    renderQrFrame();
+  }
+
+  function assembleQrExport(value) {
+    var lines = String(value || '').trim().split(/\s+/).filter(function (line) {
+      return line.length > 0;
+    });
+    if (lines.length === 0 || lines[0].indexOf('CBX-QR/1/') !== 0) {
+      return null;
+    }
+    var chunks = [];
+    var total = null;
+    lines.forEach(function (line) {
+      var match = /^CBX-QR\/1\/(\d+)\/(\d+)\/([A-Za-z0-9+/=]+)$/.exec(line);
+      if (!match) {
+        throw new Error('Invalid QR frame.');
+      }
+      var index = Number(match[1]);
+      var declaredTotal = Number(match[2]);
+      if (!Number.isSafeInteger(index)
+        || !Number.isSafeInteger(declaredTotal)
+        || index < 1
+        || declaredTotal < 1
+        || declaredTotal > Math.ceil((Math.ceil((64 * 1024 * 1024) * 4 / 3) + 8) / QR_FRAME_PAYLOAD_LENGTH)
+        || index > declaredTotal
+        || match[3].length > QR_FRAME_PAYLOAD_LENGTH
+        || (total !== null && total !== declaredTotal)) {
+        throw new Error('Invalid QR frame sequence.');
+      }
+      total = declaredTotal;
+      if (chunks[index - 1]) {
+        throw new Error('Duplicate QR frame.');
+      }
+      chunks[index - 1] = match[3];
+    });
+    if (total === null || chunks.length !== total) {
+      throw new Error('Incomplete QR frame set.');
+    }
+    for (var chunkIndex = 0; chunkIndex < total; chunkIndex += 1) {
+      if (!chunks[chunkIndex]) {
+        throw new Error('Incomplete QR frame set.');
+      }
+    }
+    return chunks.join('');
+  }
+
+  function shareManualText() {
+    if (!vaultManualData || !vaultManualData.value.trim()
+      || !window.navigator
+      || typeof window.navigator.share !== 'function') {
+      setVaultNotice('This browser does not expose secure text sharing. Copy the encrypted text or QR frames instead.');
+      return;
+    }
+    window.navigator.share({
+      title: 'Coldbox encrypted vault',
+      text: vaultManualData.value.replace(/\s+/g, '')
+    }).then(function () {
+      setVaultNotice('Encrypted vault text shared.');
+    }, function (error) {
+      if (!error || error.name !== 'AbortError') {
+        setVaultNotice('The encrypted vault was not shared. Copy the text or QR frames instead.');
+      }
+    });
+  }
+
+  function copyText(text, success, fallbackElement) {
+    if (window.navigator.clipboard && typeof window.navigator.clipboard.writeText === 'function') {
+      window.navigator.clipboard.writeText(text).then(function () {
+        setVaultNotice(success);
+      }, function () {
+        fallbackElement.focus();
+        fallbackElement.select();
+        setVaultNotice('Clipboard access was unavailable. The encrypted text is selected for manual copy.');
+      });
+      return;
+    }
+    fallbackElement.focus();
+    fallbackElement.select();
+    setVaultNotice('The encrypted text is selected for manual copy.');
+  }
+
+  function readVaultFile(file) {
+    if (!file) {
+      return Promise.reject(new Error('No file was selected.'));
+    }
+    if (typeof file.arrayBuffer === 'function') {
+      return file.arrayBuffer();
+    }
+    return new Promise(function (resolve, reject) {
+      if (typeof window.FileReader !== 'function') {
+        reject(new Error('File reading is unavailable.'));
+        return;
+      }
+      var reader = new window.FileReader();
+      reader.onload = function () { resolve(reader.result); };
+      reader.onerror = function () { reject(new Error('The selected file could not be read.')); };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  function loadVaultFile(file) {
+    readVaultFile(file).then(function (buffer) {
+      sendVaultOpen(new Uint8Array(buffer));
+    }, function () {
+      setVaultNotice('The selected file could not be read.');
+    });
+  }
+
+  function loadFromDevice() {
+    if (typeof window.showOpenFilePicker === 'function') {
+      window.showOpenFilePicker({
+        multiple: false,
+        types: [{
+          description: 'Coldbox vault',
+          accept: { 'application/octet-stream': ['.cbx'] }
+        }]
+      }).then(function (handles) {
+        if (!handles || handles.length === 0) {
+          return null;
+        }
+        return handles[0].getFile();
+      }).then(function (file) {
+        if (file) {
+          loadVaultFile(file);
+        }
+      }).catch(function (error) {
+        if (!error || error.name !== 'AbortError') {
+          setVaultNotice('The device file picker could not open the vault.');
+        }
+      });
+      return;
+    }
+    if (vaultFileInput) {
+      vaultFileInput.click();
+    }
+  }
+
+  function reportVaultSaveFailure(error) {
+    if (error && error.name === 'AbortError') {
+      setVaultNotice('Save cancelled. The vault remains unchanged.');
+      return;
+    }
+    setVaultNotice('The encrypted vault could not be saved.');
+  }
+
+  function saveWithFileSystemAccess() {
+    requestVaultBytes().then(function (bytes) {
+      if (typeof window.showSaveFilePicker !== 'function') {
+        throw new Error('File System Access is unavailable.');
+      }
+      return window.showSaveFilePicker({
+        suggestedName: 'coldbox-vault.cbx',
+        types: [{
+          description: 'Coldbox vault',
+          accept: { 'application/octet-stream': ['.cbx'] }
+        }]
+      }).then(function (handle) {
+        return handle.createWritable().then(function (writable) {
+          return writable.write(bytes).then(function () {
+            return writable.close();
+          });
+        });
+      });
+    }).then(function () {
+      setVaultNotice('Encrypted vault saved with File System Access.');
+    }, reportVaultSaveFailure);
+  }
+
+  function saveAsDownload() {
+    requestVaultBytes().then(function (bytes) {
+      if (!window.URL || typeof window.URL.createObjectURL !== 'function') {
+        throw new Error('Blob download is unavailable.');
+      }
+      var blob = new window.Blob([bytes], { type: 'application/octet-stream' });
+      var url = window.URL.createObjectURL(blob);
+      var link = document.createElement('a');
+      link.href = url;
+      link.download = 'coldbox-vault.cbx';
+      link.rel = 'noopener';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(function () { window.URL.revokeObjectURL(url); }, 0);
+    }).then(function () {
+      setVaultNotice('Encrypted vault download started.');
+    }, reportVaultSaveFailure);
+  }
+
+  function saveAsManualText() {
+    requestVaultBytes().then(function (bytes) {
+      if (!vaultManualData) {
+        throw new Error('Manual export is unavailable.');
+      }
+      vaultManualData.value = bytesToBase64(bytes);
+      vaultManualData.scrollTop = 0;
+      prepareQrExport(vaultManualData.value);
+      updateVaultControls();
+      setVaultNotice('Encrypted vault text and numbered QR frames are ready for copy, share, or airgapped transfer.');
+    }, reportVaultSaveFailure);
+  }
+
+  function copyManualText() {
+    if (!vaultManualData || !vaultManualData.value.trim()) {
+      setVaultNotice('Prepare a manual export before copying it.');
+      return;
+    }
+    var text = vaultManualData.value;
+    copyText(text, 'Encrypted vault text copied.', vaultManualData);
+  }
+
+  function prepareManualQr() {
+    if (!vaultManualData || !vaultManualData.value.trim()) {
+      setVaultNotice('Prepare an encrypted vault export before making QR frames.');
+      return;
+    }
+    prepareQrExport(vaultManualData.value);
+    setVaultNotice('Numbered QR frames are ready. Scan or copy every frame in order.');
+  }
+
+  function copyManualQr() {
+    if (manualQrChunks.length === 0 || !vaultManualQrData) {
+      setVaultNotice('Prepare QR frames before copying one.');
+      return;
+    }
+    copyText(vaultManualQrData.value, 'Current QR frame copied.', vaultManualQrData);
+  }
+
+  function copyAllManualQr() {
+    if (manualQrChunks.length === 0 || !vaultManualQrData) {
+      setVaultNotice('Prepare QR frames before copying them.');
+      return;
+    }
+    copyText(
+      manualQrChunks.join('\n'),
+      'All QR frames copied in numbered order.',
+      vaultManualQrData
+    );
+  }
+
+  function loadManualText() {
+    if (!vaultManualData) {
+      return;
+    }
+    try {
+      var qrText = assembleQrExport(vaultManualData.value);
+      sendVaultOpen(base64ToBytes(qrText || vaultManualData.value));
+    } catch (error) {
+      setVaultNotice('Manual load needs complete base64 text or every numbered QR frame in order.');
+    }
+  }
+
+  function publicRecordCount(publicCompartment) {
+    if (!publicCompartment || typeof publicCompartment !== 'object') {
+      return 0;
+    }
+    return Object.keys(publicCompartment).reduce(function (total, key) {
+      return total + (Array.isArray(publicCompartment[key]) ? publicCompartment[key].length : 0);
+    }, 0);
+  }
+
+  function handleVaultOpened(message) {
+    var count = publicRecordCount(message.payload.publicCompartment);
+    setVaultStatus(
+      'unlocked',
+      'Vault is unlocked',
+      count === 0
+        ? 'The encrypted vault opened inside the sealed realm. No public records were returned to this shell.'
+        : String(count) + ' public record(s) are available to the warm shell; secret compartments remain sealed here.',
+      'Unlocked'
+    );
+  }
+
+  function handleVaultStatus(message) {
+    if (message.payload.locked) {
+      setVaultStatus(
+        'locked',
+        'Vault is locked',
+        'The cold realm cleared its active vault session. Encrypted bytes can still be loaded again.',
+        'Locked'
+      );
+    } else {
+      setVaultStatus(
+        'unlocked',
+        'Vault is unlocked',
+        'The active vault session remains inside the sealed realm.',
+        'Unlocked'
+      );
+    }
+    if (message.payload.warnings.indexOf('airgap-violation') !== -1) {
+      setAirgapFailure('The cold realm runtime network guard blocked an unexpected request. Vault operations are refused.', true);
+    }
+  }
+
+  function handleVaultError(message) {
+    if (pendingVaultRequest && pendingVaultRequest.id === message.id) {
+      var request = pendingVaultRequest;
+      pendingVaultRequest = null;
+      request.reject(new Error(message.payload.message));
+    }
+    if (message.payload.code === 'vault-corrupt') {
+      setVaultStatus(
+        'pending',
+        'Vault remains locked',
+        'Unlock failed. The vault could not be authenticated; the same message covers a wrong phrase or corrupted bytes.',
+        'Pending'
+      );
+      return;
+    }
+    setVaultNotice(message.payload.message);
+  }
+
+  function handleVaultBytes(message) {
+    if (!pendingVaultRequest || pendingVaultRequest.id !== message.id) {
+      recordChannelAnomaly();
+      return;
+    }
+    var request = pendingVaultRequest;
+    pendingVaultRequest = null;
+    request.resolve(new Uint8Array(message.payload.bytes));
+    updateVaultControls();
+  }
+
+  function sendVaultLock() {
+    var id = sendVaultMessage('vault.lock', {});
+    if (id) {
+      setVaultStatus(
+        'locked',
+        'Vault is locked',
+        'The lock request was sent to the sealed realm. Its active bytes will be cleared there.',
+        'Locked'
+      );
+    }
+  }
+
+  function panicHide() {
+    sendVaultLock();
+    if (app) {
+      app.hidden = true;
+    }
+    if (panicScreen) {
+      panicScreen.hidden = false;
+    }
+    document.title = 'Coldbox hidden';
+  }
+
   function setHandshakePending() {
     handshakeState = 'pending';
     app.setAttribute('data-handshake-state', 'pending');
@@ -632,6 +1326,7 @@ __COLDBOX_CAPABILITIES__
     if (coldRealmStatusLabel) {
       coldRealmStatusLabel.textContent = 'Ready';
     }
+    updateVaultControls();
   }
 
   function handleProtocolPortMessage(event) {
@@ -681,10 +1376,24 @@ __COLDBOX_CAPABILITIES__
       return;
     }
     if (handshakeState === 'ready'
-      && message.type === 'status'
-      && message.payload.locked
-      && message.payload.warnings.indexOf('airgap-violation') !== -1) {
-      setAirgapFailure('The cold realm runtime network guard blocked an unexpected request. Vault operations are refused.', true);
+      && message.type === 'vault.opened') {
+      handleVaultOpened(message);
+      return;
+    }
+    if (handshakeState === 'ready' && message.type === 'vault.bytes') {
+      handleVaultBytes(message);
+      return;
+    }
+    if (handshakeState === 'ready' && message.type === 'status') {
+      handleVaultStatus(message);
+      return;
+    }
+    if (handshakeState === 'ready' && message.type === 'error') {
+      handleVaultError(message);
+      return;
+    }
+    if (handshakeState === 'ready' && message.type === 'panic.hide') {
+      panicHide();
       return;
     }
     recordChannelAnomaly();
@@ -954,6 +1663,12 @@ __COLDBOX_CAPABILITIES__
   app.setAttribute('data-capability-state', 'checking');
   app.setAttribute('data-lockdown-state', 'checking');
   app.setAttribute('data-vault-operations', 'refused');
+  setVaultStatus(
+    'locked',
+    'Vault is locked',
+    'Load an encrypted vault, then enter its unlock phrase in the sealed realm. The warm shell never receives it.',
+    'Locked'
+  );
   renderRoute(false);
 
   if (themeToggle) {
@@ -974,9 +1689,97 @@ __COLDBOX_CAPABILITIES__
       closeMoreMenu();
     });
   });
+  if (vaultLoadFile) {
+    vaultLoadFile.addEventListener('click', loadFromDevice);
+  }
+  if (vaultFileInput) {
+    vaultFileInput.addEventListener('change', function () {
+      if (vaultFileInput.files && vaultFileInput.files.length > 0) {
+        loadVaultFile(vaultFileInput.files[0]);
+      }
+      vaultFileInput.value = '';
+    });
+  }
+  if (vaultSaveFileSystem) {
+    vaultSaveFileSystem.addEventListener('click', saveWithFileSystemAccess);
+  }
+  if (vaultSaveDownload) {
+    vaultSaveDownload.addEventListener('click', saveAsDownload);
+  }
+  if (vaultSaveManual) {
+    vaultSaveManual.addEventListener('click', saveAsManualText);
+  }
+  if (vaultManualCopy) {
+    vaultManualCopy.addEventListener('click', copyManualText);
+  }
+  if (vaultManualShare) {
+    vaultManualShare.addEventListener('click', shareManualText);
+  }
+  if (vaultManualQrPrepare) {
+    vaultManualQrPrepare.addEventListener('click', prepareManualQr);
+  }
+  if (vaultManualQrCopy) {
+    vaultManualQrCopy.addEventListener('click', copyManualQr);
+  }
+  if (vaultManualQrCopyAll) {
+    vaultManualQrCopyAll.addEventListener('click', copyAllManualQr);
+  }
+  if (vaultManualQrPrevious) {
+    vaultManualQrPrevious.addEventListener('click', function () {
+      if (manualQrIndex > 0) {
+        manualQrIndex -= 1;
+        renderQrFrame();
+      }
+    });
+  }
+  if (vaultManualQrNext) {
+    vaultManualQrNext.addEventListener('click', function () {
+      if (manualQrIndex < manualQrChunks.length - 1) {
+        manualQrIndex += 1;
+        renderQrFrame();
+      }
+    });
+  }
+  if (vaultManualQrIndex) {
+    vaultManualQrIndex.addEventListener('change', function () {
+      var requested = Number(vaultManualQrIndex.value) - 1;
+      if (manualQrChunks.length > 0 && Number.isSafeInteger(requested)) {
+        manualQrIndex = Math.max(0, Math.min(requested, manualQrChunks.length - 1));
+        renderQrFrame();
+      }
+    });
+  }
+  if (vaultLoadManual) {
+    vaultLoadManual.addEventListener('click', loadManualText);
+  }
+  if (vaultManualData) {
+    vaultManualData.addEventListener('input', function () {
+      clearQrExport();
+      updateVaultControls();
+    });
+  }
+  if (vaultLock) {
+    vaultLock.addEventListener('click', sendVaultLock);
+  }
+  if (vaultPanicHide) {
+    vaultPanicHide.addEventListener('click', panicHide);
+  }
+  if (panicReload) {
+    panicReload.addEventListener('click', function () {
+      window.location.reload();
+    });
+  }
   document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {
       closeMoreMenu();
+      var now = Date.now();
+      if (lastEscapeAt > 0 && now - lastEscapeAt <= 800) {
+        event.preventDefault();
+        lastEscapeAt = 0;
+        panicHide();
+      } else {
+        lastEscapeAt = now;
+      }
     }
   });
   window.addEventListener('hashchange', function () {

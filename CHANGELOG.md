@@ -10,7 +10,20 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
-Foundation work in progress. Wallet and vault workflows are not available yet; the P0.10 cryptographic layer, P0.11 vault format, and P0.12 KDF benchmark are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
+Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
+
+### Added — P0.13 (2026-08-03)
+
+- Cold-realm vault session controls for create, unlock, lock, five-minute idle auto-lock, `Esc Esc` panic concealment, and fail-closed runtime health handling; any cold airgap/capability/crypto failure or save-time health rejection closes and zeroizes the active session before locked status is exposed. The warm shell never receives the unlock phrase or decrypted secret compartment.
+- File System Access save/load when available with normative `.cbx` filenames, portable blob download, and a first-class manual base64/share flow with numbered multi-part QR frames, local QR rendering, and ordered reassembly in supported running browser contexts.
+- Cold session saves now re-encrypt public data with a fresh nonce every time, re-encrypt the secret compartment offline, and preserve the encrypted secret compartment opaquely online without deriving its key.
+- Explicit mode signaling: online unlock uses a public-only opener that never derives the secret subkey; full compartment unlock is available only after the warm shell reports offline.
+- Chromium/Firefox browser coverage for blob and manual round-trips, panic hide, and the existing cold boundary. Direct iOS local execution from Files is a blocked portability target under ADR-0010.
+
+### Changed — portability decision (2026-08-04)
+
+- **ADR-0010 accepted Choice 3:** Coldbox no longer claims that an arbitrary local `coldbox.html` file executes in Safari from iOS Files. Quick Look, third-party viewers, localhost, renamed files, and wrapped formats are not equivalent execution evidence.
+- The authoritative roadmap/ADR re-baseline is now landed on `main`: direct iOS Files-to-Safari execution is a separately recorded P0.19 portability target, not a P0.13 acceptance gate. P0.13 remains `[~]` pending an independent PASS and merge; P0.14 remains blocked on P0.13. The security model and single-file/no-server constraints are unchanged.
 
 ### Added — P0.12 (2026-08-03)
 

@@ -23,6 +23,23 @@ __COLDBOX_CAPABILITIES__
   var cryptoReport = {};
   var benchmarkButton = document.getElementById('cold-kdf-benchmark-run');
   var benchmarkResult = document.getElementById('cold-kdf-benchmark-result');
+  var vaultControls = document.getElementById('cold-vault-controls');
+  var vaultStatus = document.getElementById('cold-vault-status');
+  var passphraseInput = document.getElementById('cold-vault-passphrase');
+  var createVaultButton = document.getElementById('cold-vault-create');
+  var unlockVaultButton = document.getElementById('cold-vault-unlock');
+  var lockVaultButton = document.getElementById('cold-vault-lock');
+  var vaultCryptoReady = false;
+  var vaultBusy = false;
+  var vaultUnlocked = false;
+  var currentVaultBytes = null;
+  var currentVaultSession = null;
+  var pendingVaultBytes = null;
+  var pendingOpenId = null;
+  var idleTimer = null;
+  var lastEscapeAt = 0;
+  var onlineMode = true;
+  var IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 
   function recordGlobalMessageAnomaly() {
     globalAnomalyCount += 1;
@@ -42,7 +59,335 @@ __COLDBOX_CAPABILITIES__
     console.warn('Coldbox discarded an invalid channel message.');
   }
 
+  function zeroBytes(value) {
+    if (value && typeof value.fill === 'function') {
+      value.fill(0);
+    }
+  }
+
+  function setSessionEvidence(state) {
+    document.documentElement.setAttribute('data-cold-session-state', state);
+    document.documentElement.setAttribute(
+      'data-cold-working-bytes',
+      currentVaultBytes ? 'present' : 'cleared'
+    );
+  }
+
+  function setVaultStatus(state, text) {
+    if (vaultControls) {
+      vaultControls.setAttribute('data-state', state);
+    }
+    if (vaultStatus) {
+      vaultStatus.setAttribute('data-state', state);
+      vaultStatus.textContent = text;
+    }
+    document.documentElement.setAttribute('data-vault-state', state);
+  }
+
+  function vaultControlsReady() {
+    return vaultCryptoReady && handshakeState === 'ready' && messagePort !== null;
+  }
+
+  function updateVaultControls() {
+    var ready = vaultControlsReady();
+    if (passphraseInput) {
+      passphraseInput.disabled = !ready;
+    }
+    if (createVaultButton) {
+      createVaultButton.disabled = !ready || vaultBusy || vaultUnlocked;
+    }
+    if (unlockVaultButton) {
+      unlockVaultButton.disabled = !ready || vaultBusy || vaultUnlocked || !pendingVaultBytes;
+    }
+    if (lockVaultButton) {
+      lockVaultButton.disabled = !ready || vaultBusy || (!vaultUnlocked && !pendingVaultBytes);
+    }
+  }
+
+  function nextVaultMessageId(prefix) {
+    var value = document.documentElement.getAttribute('data-vault-message-sequence');
+    var sequence = Number(value || 0) + 1;
+    document.documentElement.setAttribute('data-vault-message-sequence', String(sequence));
+    return 'cold-' + prefix + '-' + String(sequence);
+  }
+
+  function postVaultMessage(id, type, payload) {
+    if (!messagePort) {
+      return false;
+    }
+    var message = protocol.createMessage('cold-to-warm', id, type, payload);
+    if (!message) {
+      recordChannelAnomaly();
+      return false;
+    }
+    try {
+      messagePort.postMessage(message);
+      return true;
+    } catch (error) {
+      recordChannelAnomaly();
+      return false;
+    }
+  }
+
+  function sendVaultStatus(locked) {
+    postVaultMessage(
+      nextVaultMessageId('status'),
+      'status',
+      { locked: locked, mode: 'cold', warnings: [] }
+    );
+  }
+
+  function sendVaultError(id, code) {
+    postVaultMessage(id || nextVaultMessageId('error'), 'error', { code: code });
+  }
+
+  function sendVaultOpened(id, publicData) {
+    postVaultMessage(id || nextVaultMessageId('opened'), 'vault.opened', {
+      publicCompartment: publicData && typeof publicData === 'object' ? publicData : {}
+    });
+  }
+
+  function clearVaultSession(clearPending) {
+    if (currentVaultSession && typeof currentVaultSession.close === 'function') {
+      currentVaultSession.close();
+    }
+    currentVaultSession = null;
+    zeroBytes(currentVaultBytes);
+    currentVaultBytes = null;
+    vaultUnlocked = false;
+    if (clearPending) {
+      zeroBytes(pendingVaultBytes);
+      pendingVaultBytes = null;
+      pendingOpenId = null;
+    }
+    if (idleTimer !== null) {
+      window.clearTimeout(idleTimer);
+      idleTimer = null;
+    }
+    if (passphraseInput) {
+      passphraseInput.value = '';
+    }
+    setSessionEvidence('locked');
+    updateVaultControls();
+  }
+
+  function scheduleIdleLock() {
+    if (idleTimer !== null) {
+      window.clearTimeout(idleTimer);
+      idleTimer = null;
+    }
+    if (!vaultUnlocked) {
+      return;
+    }
+    idleTimer = window.setTimeout(function () {
+      idleTimer = null;
+      if (vaultUnlocked) {
+        clearVaultSession(false);
+        setVaultStatus('locked', 'Vault locked after five minutes of inactivity.');
+        sendVaultStatus(true);
+      }
+    }, IDLE_TIMEOUT_MS);
+  }
+
+  function recordVaultActivity() {
+    if (vaultUnlocked) {
+      scheduleIdleLock();
+    }
+  }
+
+  function createEmptyVault() {
+    if (!vaultLayer
+      || typeof vaultLayer.create !== 'function'
+      || typeof vaultLayer.openSession !== 'function'
+      || !passphraseInput) {
+      setVaultStatus('locked', 'Vault creation is unavailable in this build.');
+      return;
+    }
+    var passphrase = passphraseInput.value;
+    if (!passphrase) {
+      setVaultStatus('locked', 'Enter an unlock phrase in the sealed realm first.');
+      passphraseInput.focus();
+      return;
+    }
+    vaultBusy = true;
+    updateVaultControls();
+    setVaultStatus('pending', 'Creating an encrypted vault inside the sealed realm...');
+    var createOptions = {
+      passphrase: passphrase,
+      profile: 'fast',
+      publicData: {}
+    };
+    if (!onlineMode) {
+      createOptions.secretData = {};
+    }
+    vaultLayer.create(createOptions).then(function (bytes) {
+      return vaultLayer.openSession(bytes, passphrase, onlineMode ? 'online' : 'offline').then(function (session) {
+        currentVaultSession = session;
+        currentVaultBytes = new Uint8Array(bytes);
+        zeroBytes(pendingVaultBytes);
+        pendingVaultBytes = null;
+        pendingOpenId = null;
+        vaultUnlocked = true;
+        passphrase = '';
+        if (passphraseInput) {
+          passphraseInput.value = '';
+        }
+        setSessionEvidence('unlocked');
+        setVaultStatus(
+          'unlocked',
+          onlineMode
+            ? 'New public-only vault created in online mode.'
+            : 'New encrypted vault created and unlocked.'
+        );
+        sendVaultOpened(nextVaultMessageId('created'), session.publicData);
+        sendVaultStatus(false);
+        scheduleIdleLock();
+      }, function (error) {
+        zeroBytes(bytes);
+        passphrase = '';
+        setVaultStatus('locked', 'Vault creation failed; no session was opened.');
+        sendVaultError(nextVaultMessageId('create'), 'operation-failed');
+        throw error;
+      });
+    }, function () {
+      passphrase = '';
+      setVaultStatus('locked', 'Vault creation failed; no session was opened.');
+      sendVaultError(nextVaultMessageId('create'), 'operation-failed');
+    }).then(function () {
+      vaultBusy = false;
+      updateVaultControls();
+    }, function () {
+      vaultBusy = false;
+      updateVaultControls();
+    });
+  }
+
+  function unlockLoadedVault() {
+    if (!vaultLayer
+      || typeof vaultLayer.openSession !== 'function'
+      || !pendingVaultBytes
+      || !passphraseInput) {
+      setVaultStatus('locked', 'Load an encrypted vault before unlocking it.');
+      return;
+    }
+    var passphrase = passphraseInput.value;
+    if (!passphrase) {
+      setVaultStatus('pending', 'Enter the unlock phrase in the sealed realm first.');
+      passphraseInput.focus();
+      return;
+    }
+    var bytes = pendingVaultBytes;
+    var responseId = pendingOpenId || nextVaultMessageId('opened');
+    vaultBusy = true;
+    updateVaultControls();
+    setVaultStatus(
+      'pending',
+      onlineMode
+        ? 'Opening only the public compartment; secrets remain sealed online...'
+        : 'Authenticating the encrypted vault inside the sealed realm...'
+    );
+    vaultLayer.openSession(bytes, passphrase, onlineMode ? 'online' : 'offline').then(function (session) {
+      currentVaultSession = session;
+      currentVaultBytes = new Uint8Array(bytes);
+      zeroBytes(pendingVaultBytes);
+      pendingVaultBytes = null;
+      pendingOpenId = null;
+      vaultUnlocked = true;
+      passphrase = '';
+      if (passphraseInput) {
+        passphraseInput.value = '';
+      }
+      setSessionEvidence('unlocked');
+      setVaultStatus(
+        'unlocked',
+        onlineMode
+          ? 'Vault opened in online public-only mode; secrets remain sealed.'
+          : 'Encrypted vault opened and unlocked.'
+      );
+      sendVaultOpened(responseId, session.publicData);
+      sendVaultStatus(false);
+      scheduleIdleLock();
+    }, function () {
+      passphrase = '';
+      setVaultStatus('pending', 'Unlock failed. The vault remains locked; try again.');
+      sendVaultError(responseId, 'vault-corrupt');
+    }).then(function () {
+      vaultBusy = false;
+      updateVaultControls();
+    }, function () {
+      vaultBusy = false;
+      updateVaultControls();
+    });
+  }
+
+  function lockVaultSession(responseId, text, clearPending) {
+    clearVaultSession(clearPending !== false);
+    setVaultStatus('locked', text || 'Vault is locked.');
+    sendVaultStatus(true);
+    if (responseId) {
+      document.documentElement.setAttribute('data-last-lock-message', responseId);
+    }
+  }
+
+  function handleVaultMessage(message) {
+    if (message.type === 'vault.open') {
+      clearVaultSession(true);
+      pendingVaultBytes = new Uint8Array(message.payload.bytes);
+      pendingOpenId = message.id;
+      setVaultStatus('pending', 'Encrypted bytes received. Enter the unlock phrase to continue.');
+      updateVaultControls();
+      return;
+    }
+    if (message.type === 'vault.saveRequest') {
+      if (!vaultUnlocked || !currentVaultBytes || !currentVaultSession) {
+        sendVaultError(message.id, 'vault-locked');
+        return;
+      }
+      var saveSession = currentVaultSession;
+      saveSession.save().then(function (bytes) {
+        if (!vaultUnlocked || saveSession !== currentVaultSession) {
+          zeroBytes(bytes);
+          sendVaultError(message.id, 'vault-locked');
+          return;
+        }
+        zeroBytes(currentVaultBytes);
+        currentVaultBytes = new Uint8Array(bytes);
+        postVaultMessage(message.id, 'vault.bytes', { bytes: new Uint8Array(bytes) });
+        zeroBytes(bytes);
+        recordVaultActivity();
+      }, function () {
+        lockVaultSession(null, 'Vault locked because a save-time cold-realm health or mode check failed.', true);
+        sendVaultError(message.id, 'operation-failed');
+      });
+      return;
+    }
+    if (message.type === 'vault.lock') {
+      lockVaultSession(message.id, 'Vault locked on request.', true);
+      return;
+    }
+    if (message.type === 'mode.set') {
+      var wasOnline = onlineMode;
+      onlineMode = message.payload.online;
+      document.documentElement.setAttribute('data-warm-network-online', String(message.payload.online));
+      if (wasOnline !== onlineMode && vaultUnlocked) {
+        lockVaultSession(null, 'Vault locked because network mode changed.', true);
+      }
+      return;
+    }
+    if (message.type === 'panic.hide') {
+      lockVaultSession(message.id, 'Vault locked by panic hide.', true);
+      return;
+    }
+    recordChannelAnomaly();
+  }
+
+  function failClosedVaultHealth(reason) {
+    clearVaultSession(true);
+    setVaultStatus('locked', reason || 'Vault locked because cold-realm health failed.');
+  }
+
   function setAirgapFailure(reason) {
+    failClosedVaultHealth(reason);
     document.documentElement.setAttribute('data-airgap-state', 'red');
     document.documentElement.setAttribute('data-lockdown-state', 'full');
     document.documentElement.setAttribute('data-vault-operations', 'refused');
@@ -74,6 +419,7 @@ __COLDBOX_CAPABILITIES__
   }
 
   function setCapabilityFailure(reason) {
+    failClosedVaultHealth(reason);
     document.documentElement.setAttribute('data-capability-state', 'failed');
     document.documentElement.setAttribute('data-lockdown-state', 'full');
     document.documentElement.setAttribute('data-vault-operations', 'refused');
@@ -174,6 +520,7 @@ __COLDBOX_CAPABILITIES__
   }
 
   function setCryptoFailure(reason) {
+    failClosedVaultHealth(reason);
     document.documentElement.setAttribute('data-crypto-state', 'failed');
     document.documentElement.setAttribute('data-cold-state', 'failed');
     document.documentElement.setAttribute('data-airgap-state', 'red');
@@ -254,9 +601,11 @@ __COLDBOX_CAPABILITIES__
         : 'failed'
     );
     if (canaryPassed && runtimeNeuteringInstalled && capabilityReport.randomValues === true && cryptoReport.nobleAesGcm === true) {
+      vaultCryptoReady = true;
       document.documentElement.setAttribute('data-airgap-state', 'green');
       document.documentElement.setAttribute('data-lockdown-state', 'none');
       document.documentElement.setAttribute('data-vault-operations', 'guarded');
+      document.documentElement.setAttribute('data-idle-timeout-ms', String(IDLE_TIMEOUT_MS));
       if (readyMarker) {
         readyMarker.textContent = 'Cold realm sealed';
       }
@@ -265,14 +614,18 @@ __COLDBOX_CAPABILITIES__
           + (cryptoReport.kdf && cryptoReport.kdf.label ? cryptoReport.kdf.label : 'unknown') + '.';
       }
     }
+    updateVaultControls();
     updateBenchmarkAvailability();
     window.parent.postMessage({ type: 'cold.ready' }, '*');
   }
 
   function handleChannelMessage(event) {
-    if (!protocol.validateMessage('warm-to-cold', event.data)) {
+    var message = protocol.validateMessage('warm-to-cold', event.data);
+    if (!message) {
       recordChannelAnomaly();
+      return;
     }
+    handleVaultMessage(message);
   }
 
   function handleGlobalMessage(event) {
@@ -297,6 +650,7 @@ __COLDBOX_CAPABILITIES__
     messagePort = candidatePort;
     handshakeState = 'ready';
     document.documentElement.setAttribute('data-handshake-state', 'ready');
+    updateVaultControls();
     messagePort.addEventListener('message', handleChannelMessage);
     messagePort.start();
     var readyMessage = protocol.createMessage(
@@ -338,6 +692,36 @@ __COLDBOX_CAPABILITIES__
   if (benchmarkButton) {
     benchmarkButton.addEventListener('click', runBenchmark);
   }
+  if (createVaultButton) {
+    createVaultButton.addEventListener('click', createEmptyVault);
+  }
+  if (unlockVaultButton) {
+    unlockVaultButton.addEventListener('click', unlockLoadedVault);
+  }
+  if (lockVaultButton) {
+    lockVaultButton.addEventListener('click', function () {
+      lockVaultSession(nextVaultMessageId('local-lock'), 'Vault locked locally.', true);
+    });
+  }
+  document.addEventListener('pointerdown', recordVaultActivity);
+  document.addEventListener('input', recordVaultActivity);
+  document.addEventListener('keydown', function (event) {
+    recordVaultActivity();
+    if (event.key !== 'Escape') {
+      return;
+    }
+    var now = Date.now();
+    if (lastEscapeAt > 0 && now - lastEscapeAt <= 800) {
+      lastEscapeAt = 0;
+      lockVaultSession(nextVaultMessageId('panic-lock'), 'Vault locked by panic hide.', true);
+      postVaultMessage(nextVaultMessageId('panic'), 'panic.hide', {});
+      return;
+    }
+    lastEscapeAt = now;
+  });
+  setSessionEvidence('locked');
+  setVaultStatus('locked', 'Vault is locked. Unlocking stays in this sealed realm.');
+  updateVaultControls();
 
   window.__coldboxColdRealmMarker = 'cold-realm-ready';
 

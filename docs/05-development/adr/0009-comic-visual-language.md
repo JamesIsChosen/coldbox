@@ -53,7 +53,7 @@ The same logic drives the typography rule. Bangers has no lowercase and ambiguou
 
 ### Vendoring fonts is the only mechanism available
 
-The mockup loaded Bangers and Comic Neue from Google Fonts. That violates three independent rules at once: `scripts/lint.js` rejects external URLs, the CSP permits `font-src data:` only, and [AGENTS.md](../../AGENTS.md) forbids fetching anything at build or run time. There is no configuration that makes a CDN acceptable here.
+The mockup loaded Bangers and Comic Neue from Google Fonts. That violates three independent rules at once: `scripts/lint.js` rejects external URLs, the CSP permits `font-src data:` only, and [AGENTS.md](../../../AGENTS.md) forbids fetching anything at build or run time. There is no configuration that makes a CDN acceptable here.
 
 The alternative that already exists in this repo is the vendor pipeline: a pinned tarball, an upstream SHA-256 and npm integrity value in `vendor-manifest.json`, and a build that refuses to run if verification fails. `@fontsource/bangers` and `@fontsource/comic-neue` are on npm under SIL OFL 1.1, so the fonts drop into that pipeline with no new machinery — one new bundler script, one new build token, two manifest entries.
 

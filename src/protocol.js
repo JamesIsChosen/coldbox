@@ -530,6 +530,7 @@
     'vault.open': cleanVaultBytes,
     'vault.saveRequest': cleanEmptyPayload,
     'vault.lock': cleanEmptyPayload,
+    'panic.hide': cleanEmptyPayload,
     'mode.set': cleanModeSet,
     'derive.request': cleanDeriveRequest,
     'publicData.request': cleanPublicDataRequest,
@@ -541,7 +542,8 @@
     'vault.bytes': cleanVaultBytes,
     'derive.result': cleanDeriveResult,
     status: cleanStatus,
-    error: cleanError
+    error: cleanError,
+    'panic.hide': cleanEmptyPayload
   });
   var DIRECTIONS = Object.freeze({
     'warm-to-cold': WARM_TO_COLD,

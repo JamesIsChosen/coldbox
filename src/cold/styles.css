@@ -161,3 +161,109 @@ body {
   color: var(--cold-ink);
   cursor: wait;
 }
+
+/* Vault controls (P0.13). The passphrase field is the single most
+   security-critical surface in the product. design-system.md §6 applies in
+   full: comic shell, zero motion, and state carried by colour *and* text
+   together — the status line always says what it means in words. */
+
+#cold-vault-controls {
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.75rem;
+  border: 0.16rem solid var(--cold-outline);
+  border-radius: 0.35rem;
+  background: var(--cold-surface);
+  box-shadow: 0.2rem 0.2rem 0 var(--cold-drop);
+}
+
+/* An inset bar duplicates the state the colour and the label already carry,
+   so the surface never depends on colour vision alone. */
+#cold-vault-status {
+  margin: 0.3rem 0 0;
+  padding-left: 0.55rem;
+  border-left: 0.28rem solid var(--cold-yellow);
+  color: var(--cold-yellow);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+#cold-vault-status[data-state="unlocked"] {
+  border-left-color: var(--cold-green);
+  color: var(--cold-green);
+}
+
+#cold-vault-status[data-state="pending"] {
+  border-left-color: var(--cold-yellow);
+  color: var(--cold-yellow);
+}
+
+#cold-vault-passphrase-label {
+  display: block;
+  margin-top: 0.6rem;
+  color: var(--cold-text);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+/* Monospace, letter-spaced: a passphrase is data being transcribed, and
+   design-system.md §4 keeps data out of any display face. The spacing matters
+   for masked entry — it makes the character count readable at a glance. */
+#cold-vault-passphrase {
+  display: block;
+  width: min(100%, 24rem);
+  margin-top: 0.3rem;
+  padding: 0.45rem 0.55rem;
+  border: 0.16rem solid var(--cold-outline);
+  border-radius: 0.3rem;
+  background: var(--cold-bg);
+  color: var(--cold-text);
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+}
+
+/* A thick, unmissable focus ring. This is where the passphrase is typed; the
+   user should never be unsure which field has focus. */
+#cold-vault-passphrase:focus {
+  border-color: var(--cold-drop);
+  outline: 0.2rem solid var(--cold-pink);
+  outline-offset: 0.1rem;
+}
+
+#cold-vault-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+
+#cold-vault-actions button {
+  padding: 0.35rem 0.7rem;
+  border: 0.13rem solid var(--cold-drop);
+  border-radius: 0.3rem;
+  background: var(--cold-green);
+  box-shadow: 0.15rem 0.15rem 0 var(--cold-drop);
+  color: var(--cold-ink);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* Solid colours rather than an opacity wash — opacity multiplies against the
+   background and drifts below the contrast floor. */
+#cold-vault-actions button:disabled {
+  background: #8e8e9c;
+  box-shadow: none;
+  color: var(--cold-ink);
+  cursor: not-allowed;
+}
+
+#cold-vault-help {
+  max-width: 48rem;
+  margin: 0.55rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.7rem;
+  line-height: 1.45;
+}

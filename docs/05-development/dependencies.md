@@ -20,7 +20,7 @@ The pinned `@noble/*`, `@scure/*`, and Argon2 artifacts below are recorded in [v
 | SLIP-39 implementation | TBD | Shamir mnemonic shares | `TBD` |
 | codex32 implementation | TBD | BIP-93 hand-verifiable shares | `TBD` |
 | `secrets.js` | TBD | Raw Shamir over GF(2^n) | `TBD` |
-| QR encoder | TBD | SVG/PNG generation | `TBD` |
+| `qrcode-generator` | 1.4.4 | Local SVG/data-URL generation for numbered encrypted-vault QR frames | `ab6ed47d378877441deae95972e07b2716c26545a735a23aa6b9d442b33026ed` |
 | `jsQR` | TBD | Camera decoding (optional) | `TBD` |
 
 P0.2 verifies and stores release artifacts. P0.10 now extracts the selected `@noble` modules and the embedded `argon2-browser` WASM bundle into the cold realm; the remaining TBD libraries are still not runtime-ready.

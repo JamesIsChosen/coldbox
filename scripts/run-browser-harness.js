@@ -346,7 +346,8 @@ async function verifyBuiltFile(browser, engine) {
     assert.equal(await coldFrame.evaluate(() => window.__coldboxVault.formatVersion), 1);
     assert.equal(await coldFrame.evaluate(() => typeof window.__coldboxVault.healthReady), 'function');
     assert.equal(await coldFrame.evaluate(() => window.__coldboxVault.healthReady()), true);
-    assert.equal(await coldFrame.evaluate(() => typeof window.__coldboxVault.openSession), 'undefined');
+    assert.equal(await coldFrame.evaluate(() => typeof window.__coldboxVault.openSession), 'function');
+    assert.equal(await coldFrame.evaluate(() => typeof window.__coldboxVault.deriveSecretSubkey), 'undefined');
     assert.equal(await coldFrame.locator('html').getAttribute('data-crypto-state'), 'ready');
     assert.equal(await coldFrame.locator('html').getAttribute('data-kdf-active'), 'argon2id-standard');
     await coldFrame.locator('#cold-kdf-details[data-kdf-active="argon2id-standard"]').waitFor({ state: 'visible' });
@@ -356,6 +357,7 @@ async function verifyBuiltFile(browser, engine) {
     assert.equal(await coldFrame.locator('#cold-kdf-benchmark-result').textContent(), 'Benchmark not run.');
     await page.locator('#capability-crypto-summary').waitFor({ state: 'visible' });
     assert.match(await page.locator('#capability-crypto-summary').textContent(), /argon2id-standard/);
+    await coldFrame.locator('html[data-warm-network-online="true"]').waitFor({ state: 'visible' });
     await harness.expectParentCannotReadFrame();
     await harness.expectCspViolation('connect-src', { blockedURI: WARM_CANARY_URL });
     await harness.expectCspViolationInFrame(
@@ -372,6 +374,75 @@ async function verifyBuiltFile(browser, engine) {
     await page.context().setOffline(false);
     await page.locator('#airgap-banner[data-airgap-state="amber"]').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await page.locator('html').getAttribute('data-network-online'), 'true');
+
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    await page.context().setOffline(true);
+    await page.locator('#airgap-banner[data-airgap-state="green"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('html[data-warm-network-online="false"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-passphrase').fill('browser round-trip phrase');
+    await coldFrame.locator('#cold-vault-create').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    assert.equal(await coldFrame.locator('#cold-vault-passphrase').inputValue(), '');
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator('#vault-save-download').click();
+    const download = await downloadPromise;
+    assert.equal(download.suggestedFilename(), 'coldbox-vault.cbx');
+
+    await page.locator('#vault-save-manual').click();
+    await page.waitForFunction(() => document.querySelector('#vault-manual-data').value.length > 0);
+    const manualVaultText = await page.locator('#vault-manual-data').inputValue();
+    assert.ok(manualVaultText.length > 100, `${engine}: manual export should contain encrypted vault bytes`);
+    assert.equal(await page.locator('#vault-manual-copy').isDisabled(), false);
+    assert.equal(await page.locator('#vault-manual-share').isDisabled(), true);
+    await page.locator('#vault-manual-qr-data').waitFor({ state: 'visible' });
+    assert.match(await page.locator('#vault-manual-qr-data').inputValue(), /^CBX-QR\/1\/1\/\d+\//);
+    const qrCountText = await page.locator('#vault-manual-qr-count').textContent();
+    const qrCountMatch = /^QR frame 1 of (\d+)\./.exec(qrCountText);
+    assert.ok(qrCountMatch, `${engine}: QR frame count should be rendered`);
+    const qrFrameCount = Number(qrCountMatch[1]);
+    assert.ok(qrFrameCount > 1, `${engine}: offline vault should exercise multipart QR output`);
+    await page.locator('#vault-manual-qr-image').waitFor({ state: 'visible' });
+
+    await page.locator('#vault-save-manual').click();
+    await page.waitForFunction((previous) => {
+      const value = document.querySelector('#vault-manual-data').value;
+      return value.length > 0 && value !== previous;
+    }, manualVaultText);
+    const secondManualVaultText = await page.locator('#vault-manual-data').inputValue();
+    assert.notEqual(secondManualVaultText, manualVaultText, `${engine}: repeated saves must rotate the public nonce`);
+
+    await page.locator('#vault-lock').click();
+    await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible' });
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible' });
+    const qrFrames = await page.evaluate((value) => {
+      const payloadLength = 650;
+      const total = Math.ceil(value.length / payloadLength);
+      return Array.from({ length: total }, (_, index) => (
+        'CBX-QR/1/' + String(index + 1) + '/' + String(total) + '/'
+          + value.slice(index * payloadLength, (index + 1) * payloadLength)
+      ));
+    }, manualVaultText);
+    assert.equal(qrFrames.length, qrFrameCount, `${engine}: QR frame count should match reassembly input`);
+    const incompleteQrFrames = qrFrames.slice();
+    incompleteQrFrames.splice(1, 1);
+    await page.locator('#vault-manual-data').fill(incompleteQrFrames.join('\n'));
+    await page.locator('#vault-load-manual').click();
+    await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible' });
+    await page.locator('#vault-manual-data').fill(qrFrames.join('\n'));
+    await page.locator('#vault-load-manual').click();
+    await page.locator('#vault-status[data-state="pending"]').waitFor({ state: 'visible' });
+    await coldFrame.locator('#cold-vault-status[data-state="pending"]').waitFor({ state: 'visible' });
+    await coldFrame.locator('#cold-vault-passphrase').fill('browser round-trip phrase');
+    await coldFrame.locator('#cold-vault-unlock').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    console.log(`${engine}: blob download and manual base64 load/save round-tripped through the cold realm`);
+    await page.locator('#nav-rail .nav-link[data-route="dashboard"]').click();
+    await page.waitForFunction(() => window.location.hash === '#dashboard');
+
     await page.evaluate(() => {
       window.postMessage({
         id: 'injected-global-1',
@@ -558,8 +629,130 @@ async function verifyColdRealmFailure(browser, engine) {
       `${engine}: failed bootstrap did not lock the app`
     );
     await harness.expectCspViolation('connect-src', { blockedURI: WARM_CANARY_URL });
-    await harness.expectNoConsoleErrors({ allowedFragments: [CANARY_ERROR_FRAGMENT] });
+    await harness.expectNoConsoleErrors({
+      allowedFragments: [CANARY_ERROR_FRAGMENT, COLD_CANARY_ERROR_FRAGMENT]
+    });
     console.log(`${engine}: cold realm creation failure produced an explicit lockdown state`);
+  } finally {
+    await closePage(page);
+  }
+}
+
+async function verifyUnlockedRuntimeHealthLockdown(browser, engine) {
+  let opened = await openPage(browser, buildPath);
+  try {
+    let page = opened.page;
+    let harness = opened.harness;
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    let coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-vault-passphrase').fill('runtime violation unlocked phrase');
+    await coldFrame.locator('#cold-vault-create').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+
+    const runtimeResult = await harness.expectNetworkPrimitiveBlocked(
+      'fetch',
+      coldFrame,
+      { requireRuntimeBlock: true }
+    );
+    assert.equal(runtimeResult.signal, 'threw', `${engine}: unlocked runtime airgap probe did not throw`);
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('html').getAttribute('data-cold-working-bytes'), 'cleared');
+    assert.equal(await coldFrame.locator('#cold-vault-passphrase').inputValue(), '');
+    assert.equal(await coldFrame.locator('html').getAttribute('data-airgap-state'), 'red');
+    assert.equal(await coldFrame.locator('html').getAttribute('data-lockdown-state'), 'full');
+    assert.equal(await coldFrame.locator('html').getAttribute('data-vault-operations'), 'refused');
+    console.log(`${engine}: unlocked runtime airgap violation closed and zeroized the active vault session`);
+
+    await closePage(page);
+    opened = await openPage(browser, buildPath);
+    page = opened.page;
+    harness = opened.harness;
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    coldFrame = await getColdFrame(page, engine);
+    await page.context().setOffline(true);
+    await page.locator('#airgap-banner[data-airgap-state="green"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('html[data-warm-network-online="false"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-passphrase').fill('save health drift phrase');
+    await coldFrame.locator('#cold-vault-create').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+
+    await coldFrame.locator('html').evaluate((root) => root.setAttribute('data-airgap-state', 'red'));
+    await page.locator('#vault-save-manual').click();
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('html').getAttribute('data-cold-working-bytes'), 'cleared');
+    assert.equal(await coldFrame.locator('#cold-vault-passphrase').inputValue(), '');
+    console.log(`${engine}: unlocked save-time health failure closed and zeroized the active vault session`);
+  } finally {
+    if (opened && opened.page) {
+      await closePage(opened.page);
+    }
+  }
+}
+async function verifyPanicHide(browser, engine) {
+  const { harness, page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    let coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-vault-passphrase').fill('panic session phrase');
+    await coldFrame.locator('#cold-vault-create').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+    await page.locator('#panic-screen:not([hidden])').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#app').isHidden(), true, `${engine}: panic hide left the warm app visible`);
+    assert.equal(await page.locator('#panic-screen').isVisible(), true, `${engine}: panic hide did not show its recovery screen`);
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached' });
+    assert.equal(
+      await coldFrame.locator('html').getAttribute('data-cold-working-bytes'),
+      'cleared',
+      `${engine}: warm panic did not clear cold working bytes`
+    );
+    assert.equal(
+      await coldFrame.locator('#cold-vault-passphrase').inputValue(),
+      '',
+      `${engine}: warm panic did not clear the cold passphrase field`
+    );
+
+    await page.reload({ waitUntil: 'load' });
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-vault-passphrase').fill('cold panic session phrase');
+    await coldFrame.locator('#cold-vault-create').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('body').press('Escape');
+    await page.locator('#panic-screen:not([hidden])').waitFor({ state: 'visible' });
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached' });
+    assert.equal(
+      await coldFrame.locator('html').getAttribute('data-cold-working-bytes'),
+      'cleared',
+      `${engine}: cold panic did not clear cold working bytes`
+    );
+    assert.equal(
+      await coldFrame.locator('#cold-vault-passphrase').inputValue(),
+      '',
+      `${engine}: cold panic did not clear the cold passphrase field`
+    );
+    await harness.expectCspViolation('connect-src', { blockedURI: WARM_CANARY_URL });
+    await harness.expectNoConsoleErrors({
+      allowedFragments: [CANARY_ERROR_FRAGMENT, COLD_CANARY_ERROR_FRAGMENT]
+    });
+    console.log(`${engine}: warm and cold Escape Escape paths locked, cleared, and concealed the app`);
   } finally {
     await closePage(page);
   }
@@ -650,6 +843,7 @@ async function verifyCspStrippedLockdown(browser, engine, kind) {
         );
         await harness.expectCspViolation('connect-src', { blockedURI: WARM_CANARY_URL });
       } else {
+        await page.locator('html[data-csp-canary="failed"]').waitFor({ state: 'attached', timeout: 5000 });
         assert.equal(
           await page.locator('html').getAttribute('data-csp-canary'),
           'failed',
@@ -869,6 +1063,8 @@ async function run() {
     const browser = await browserType.launch({ headless: true });
     try {
       await verifyBuiltFile(browser, engine);
+      await verifyUnlockedRuntimeHealthLockdown(browser, engine);
+      await verifyPanicHide(browser, engine);
       await verifyColdRealmFailure(browser, engine);
       await verifyColdRealmTimeout(browser, engine);
       await verifyHandshakeTimeout(browser, engine);
