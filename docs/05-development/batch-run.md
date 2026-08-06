@@ -181,6 +181,10 @@ determinism, which everything downstream depends on.
 
 The "what I'd scrutinise hardest" and "known-weak areas" sections are the most valuable part. They direct a tired human to the right place first.
 
+### Handoff lifecycle: freeze it after finalization
+
+Once a `BATCH-<date>.md` handoff is finalized, it is a **historical snapshot**, not a live status dashboard. Do not update it to track later PR bases, merges, review verdicts, or roadmap status. Later state comes from the canonical source: `ROADMAP.md` for roadmap status, the relevant per-item `.review.md` for independent-review history, and GitHub for PR state. If an actual factual error in the historical handoff must be corrected, label that correction explicitly instead of turning the file into a rolling dashboard. Avoid mutable handoff headings or columns such as `Current state`, `Current status`, or a live `Review state`.
+
 ### The batch handoff block
 
 **End your response with copy-paste blocks for every branch you produced**, in dependency order, with every placeholder filled in and the **correct PR base** — stacked branches target their dependency, not `main`.

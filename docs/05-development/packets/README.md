@@ -36,13 +36,13 @@ A review report opens with its verdict block. Since **any finding is a FAIL**, a
 
 ## Independent review coverage
 
-**Canonical answer to "has this item been independently reviewed?"** A `.self-review.md` is the
-author's own gate and is **not** a review. Only `.review.md` counts, and only when written by a
-session other than the implementing one.
+**Canonical procedure for determining independent-review status:** a `.self-review.md` is the author's own gate and never counts as independent review. Inspect the per-item `.review.md`; its sequence of verdict blocks records the independent reviews and re-reviews. If no per-item `.review.md` exists, the item has not been independently reviewed.
 
-*Reviewed as of 2026-08-04. Update this table in the same commit as any new review report.*
+### Frozen audit snapshot — 2026-08-04
 
-| Item | Independent `.review.md` | Current disposition |
+The table below records what the audit found on 2026-08-04. It is intentionally **not** kept synchronized with later reviews, merges, or PR changes; use the procedure above for the later answer.
+
+| Item | Independent `.review.md` | Disposition as of 2026-08-04 |
 |---|---|---|
 | P0.2 | none | never independently reviewed |
 | P0.3 | none | never independently reviewed |
@@ -60,26 +60,13 @@ session other than the implementing one.
 
 ### P0.5 and P0.9 — the two gaps
 
-Neither has ever had an independent review report committed, on any branch.
+Neither had an independent review report committed on any branch as of the 2026-08-04 audit.
 
-**P0.5** — `BATCH-2026-08-03.md` records "Fresh independent review PASS; no remediation required".
-No artifact backs that claim; no `p0.5-warm-shell-skeleton.review.md` exists in the history of any
-branch. The only committed gate is the author's `.self-review.md`.
+**P0.5** — `BATCH-2026-08-03.md` recorded "Fresh independent review PASS; no remediation required". No artifact backed that claim; no `p0.5-warm-shell-skeleton.review.md` existed in the history of any branch. The only committed gate was the author's `.self-review.md`.
 
-**P0.9** — a file *was* briefly committed at the reviewer-reserved path
-`p0.9-capability-self-check.review.md` (commit `0ab8626`, "P0.9: record self-review PASS"), which is
-the same reserved-path violation the P0.6, P0.7 and P0.8 reviewers each raised as F1. It was later
-renamed to `.self-review.md`, correctly — but no independent review replaced it.
+**P0.9** — a file *was* briefly committed at the reviewer-reserved path `p0.9-capability-self-check.review.md` (commit `0ab8626`, "P0.9: record self-review PASS"), the same reserved-path violation the P0.6, P0.7 and P0.8 reviewers each raised as F1. It was later renamed to `.self-review.md`, correctly, but no independent review had replaced it by the audit date.
 
-**What this means for the current work.** P0.5 is the warm shell skeleton and P0.9 is the capability
-self-check; both are load-bearing for everything above them, and P0.12 and P0.13 stack directly on
-that foundation. Neither gap is evidence of a defect — the P0.9 `Math.random` regression was caught
-and fixed by a later gate (`b929a35`), which suggests the surrounding process worked. But the
-roadmap marks both `[x]`, and under [review-protocol.md](../review-protocol.md) an item with no
-independent review has not cleared the bar the protocol sets.
-
-Whether to review them retrospectively, or to accept the gap explicitly and record that decision, is
-a maintainer call. Recorded here rather than resolved.
+**What this meant at the 2026-08-04 audit.** P0.5 is the warm shell skeleton and P0.9 is the capability self-check; both were load-bearing for everything above them, and P0.12 and P0.13 stacked directly on that foundation. Neither gap was evidence of a defect — the P0.9 `Math.random` regression was caught and fixed by a later gate (`b929a35`), which suggested the surrounding process worked. But the roadmap marked both `[x]`, and under [review-protocol.md](../review-protocol.md) an item with no independent review had not cleared the bar the protocol sets. Whether to review them retrospectively or accept the gap explicitly and record that decision was a maintainer call; the audit recorded the gap rather than resolving it.
 
 ---
 
