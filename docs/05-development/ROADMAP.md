@@ -117,11 +117,11 @@ Nothing above this phase is safe to build until the container is trustworthy.
   **Accept:** all three profiles round-trip; benchmark reports realistic timings; Paranoid warns about iOS allocation failure.
   🌐 *Verified by real profile round-trips, positive ordered on-device benchmark timings, a likely-iOS allocation guard, shared vault-health gating, and the cold-only browser offer. The literal placement before vault creation is an integration property: P0.12 does not contain creation controls, while the dependent P0.13 workflow places the benchmark immediately before them. Physical-device timing remains part of P0.19.*
 
-- [~] **P0.13 â€” Lock, unlock, save, load**
+- [x] **P0.13 — Lock, unlock, save, load**
   *Deps: P0.12*
   Three save paths (File System Access, blob download, manual base64/QR); symmetric load; idle auto-lock; `Esc Esc` panic hide.
   **Accept:** the three save/load paths are complete browser flows, and the manual base64/QR path is usable without File System Access or blob-download support. At least one save path must work on every platform in the supported execution matrix. **Direct local execution from iOS Files into Safari is not a P0.13 acceptance gate under [ADR-0010](adr/0010-ios-local-html-execution.md); it remains a separately recorded portability target at P0.19.**
-  ðŸŒ *The P0.3a harness verifies the blob and manual paths in Chromium/Firefox. Physical supported-device confirmation remains P0.19. Quick Look is not Safari execution evidence, and no iOS result may be inferred from another platform.*
+  🌐 *The P0.3a harness verifies the blob and manual paths in Chromium/Firefox. Physical supported-device confirmation remains P0.19. Quick Look is not Safari execution evidence, and no iOS result may be inferred from another platform.*
 
 - [ ] **P0.14 — Save integrity**
   *Deps: P0.13*

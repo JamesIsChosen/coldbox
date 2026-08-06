@@ -23,7 +23,7 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 ### Changed — portability decision (2026-08-04)
 
 - **ADR-0010 accepted Choice 3:** Coldbox no longer claims that an arbitrary local `coldbox.html` file executes in Safari from iOS Files. Quick Look, third-party viewers, localhost, renamed files, and wrapped formats are not equivalent execution evidence.
-- The authoritative roadmap/ADR re-baseline is now landed on `main`: direct iOS Files-to-Safari execution is a separately recorded P0.19 portability target, not a P0.13 acceptance gate. P0.13 remains `[~]` pending an independent PASS and merge; P0.14 remains blocked on P0.13. The security model and single-file/no-server constraints are unchanged.
+- The authoritative roadmap/ADR re-baseline landed on `main`: direct iOS Files-to-Safari execution is a separately recorded P0.19 portability target, not a P0.13 acceptance gate. PR #21 subsequently received an independent PASS and merged; current item-level status is canonical in [ROADMAP.md](docs/05-development/ROADMAP.md). The security model and single-file/no-server constraints are unchanged.
 
 ### Added — P0.12 (2026-08-03)
 
