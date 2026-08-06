@@ -66,7 +66,9 @@ For genuinely minor gaps — a variable name, a layout detail — decide, and re
 
 **Add an ADR for structural decisions.** Format in [docs/05-development/adr/README.md](docs/05-development/adr/README.md).
 
-**Update the roadmap** in the same commit as the work.
+**Update the roadmap** in the same commit as the work — to `[~]`, not `[x]`.
+
+**You never mark your own item `[x]`.** The marker means *independently verified*, and you are not independent of your own work. Leave it at `[~]`; the reviewer flips it to `[x]` on the branch as part of their PASS, per [review-protocol.md](docs/05-development/review-protocol.md). If you mark it yourself the reviewer has nothing to flip, and the repository claims a verification that never happened.
 
 ## 5. Definition of done
 
@@ -80,7 +82,7 @@ For genuinely minor gaps — a variable name, a layout detail — decide, and re
 - [ ] Review dates updated on any dated doc this change touches
 - [ ] No doc left contradicting the new behaviour
 - [ ] ADR added if a structural decision was made
-- [ ] Roadmap status updated
+- [ ] Roadmap status updated to `[~]` — **never `[x]`; that is the reviewer's to set**
 - [ ] CHANGELOG updated
 - [ ] **PR packet written**
 - [ ] **Handoff block is the last thing in your response, with every placeholder filled in** (§6c)

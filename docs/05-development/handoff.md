@@ -273,7 +273,9 @@ git worktree remove ../coldbox-track-a
 
 ## 7. Review — PASS
 
-**You merge it yourself, then report.** Run `gh pr merge <n> --merge --delete-branch`, confirm `main` updated, then write this. **Delete the branch on merge** — leftover branches make it impossible to see which are live work.
+**Close out, merge, then report.** Before merging, push the closeout commit to the PR branch — your `.review.md` and the roadmap marker flipped to `[x]` — per [review-protocol.md](review-protocol.md). Then run `gh pr merge <n> --merge --delete-branch`, confirm `main` updated, and write this. **Delete the branch on merge** — leftover branches make it impossible to see which are live work.
+
+If the closeout commit did not land — you could not push to the branch, or you noticed too late — say so explicitly in the block below and name the item whose marker is still `[~]`. Do **not** open a PR to fix it; the next session folds it in.
 
 ```markdown
 ---
