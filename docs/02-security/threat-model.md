@@ -90,7 +90,7 @@ Countered by a mandatory verify-your-shares step before a backup can be marked c
 
 ### Vault rollback
 
-Monotonic save counter, generational filenames, prominent warning when opening an older vault than the highest seen.
+Monotonic save counter, generational filenames, prominent warning when opening an older vault than the highest seen. Advisory, not cryptographic — see [vault-format.md](../01-spec/vault-format.md#rollback-detection) for exactly what it does and does not catch.
 
 ### Address–IP correlation
 
