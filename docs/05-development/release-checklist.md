@@ -36,7 +36,7 @@ Copy this into the release issue and tick as you go.
 
 ### Manual device matrix
 
-Per [testing.md](testing.md). **All eight currently supported contexts are required; record the iOS target separately under [ADR-0010](adr/0010-ios-local-html-execution.md).**
+Per [testing.md](testing.md). **All seven supported execution-matrix contexts are required; record the separate iOS local-execution target as PASS, BLOCKED, or UNSUPPORTED with the exact device and iOS build under [ADR-0010](adr/0010-ios-local-html-execution.md).**
 
 - [ ] Windows Chrome/Edge
 - [ ] Windows Firefox

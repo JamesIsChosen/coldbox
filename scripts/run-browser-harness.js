@@ -843,6 +843,7 @@ async function verifyCspStrippedLockdown(browser, engine, kind) {
         );
         await harness.expectCspViolation('connect-src', { blockedURI: WARM_CANARY_URL });
       } else {
+        await page.locator('html[data-csp-canary="failed"]').waitFor({ state: 'attached', timeout: 5000 });
         assert.equal(
           await page.locator('html').getAttribute('data-csp-canary'),
           'failed',
