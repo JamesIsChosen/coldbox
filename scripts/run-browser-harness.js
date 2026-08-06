@@ -638,6 +638,66 @@ async function verifyColdRealmFailure(browser, engine) {
   }
 }
 
+async function verifyUnlockedRuntimeHealthLockdown(browser, engine) {
+  let opened = await openPage(browser, buildPath);
+  try {
+    let page = opened.page;
+    let harness = opened.harness;
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    let coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-vault-passphrase').fill('runtime violation unlocked phrase');
+    await coldFrame.locator('#cold-vault-create').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+
+    const runtimeResult = await harness.expectNetworkPrimitiveBlocked(
+      'fetch',
+      coldFrame,
+      { requireRuntimeBlock: true }
+    );
+    assert.equal(runtimeResult.signal, 'threw', `${engine}: unlocked runtime airgap probe did not throw`);
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('html').getAttribute('data-cold-working-bytes'), 'cleared');
+    assert.equal(await coldFrame.locator('#cold-vault-passphrase').inputValue(), '');
+    assert.equal(await coldFrame.locator('html').getAttribute('data-airgap-state'), 'red');
+    assert.equal(await coldFrame.locator('html').getAttribute('data-lockdown-state'), 'full');
+    assert.equal(await coldFrame.locator('html').getAttribute('data-vault-operations'), 'refused');
+    console.log(`${engine}: unlocked runtime airgap violation closed and zeroized the active vault session`);
+
+    await closePage(page);
+    opened = await openPage(browser, buildPath);
+    page = opened.page;
+    harness = opened.harness;
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    coldFrame = await getColdFrame(page, engine);
+    await page.context().setOffline(true);
+    await page.locator('#airgap-banner[data-airgap-state="green"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('html[data-warm-network-online="false"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-passphrase').fill('save health drift phrase');
+    await coldFrame.locator('#cold-vault-create').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+
+    await coldFrame.locator('html').evaluate((root) => root.setAttribute('data-airgap-state', 'red'));
+    await page.locator('#vault-save-manual').click();
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('html').getAttribute('data-cold-working-bytes'), 'cleared');
+    assert.equal(await coldFrame.locator('#cold-vault-passphrase').inputValue(), '');
+    console.log(`${engine}: unlocked save-time health failure closed and zeroized the active vault session`);
+  } finally {
+    if (opened && opened.page) {
+      await closePage(opened.page);
+    }
+  }
+}
 async function verifyPanicHide(browser, engine) {
   const { harness, page } = await openPage(browser, buildPath);
   try {
@@ -1002,6 +1062,7 @@ async function run() {
     const browser = await browserType.launch({ headless: true });
     try {
       await verifyBuiltFile(browser, engine);
+      await verifyUnlockedRuntimeHealthLockdown(browser, engine);
       await verifyPanicHide(browser, engine);
       await verifyColdRealmFailure(browser, engine);
       await verifyColdRealmTimeout(browser, engine);

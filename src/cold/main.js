@@ -356,6 +356,7 @@ __COLDBOX_CAPABILITIES__
         zeroBytes(bytes);
         recordVaultActivity();
       }, function () {
+        lockVaultSession(null, 'Vault locked because a save-time cold-realm health or mode check failed.', true);
         sendVaultError(message.id, 'operation-failed');
       });
       return;
@@ -380,7 +381,13 @@ __COLDBOX_CAPABILITIES__
     recordChannelAnomaly();
   }
 
+  function failClosedVaultHealth(reason) {
+    clearVaultSession(true);
+    setVaultStatus('locked', reason || 'Vault locked because cold-realm health failed.');
+  }
+
   function setAirgapFailure(reason) {
+    failClosedVaultHealth(reason);
     document.documentElement.setAttribute('data-airgap-state', 'red');
     document.documentElement.setAttribute('data-lockdown-state', 'full');
     document.documentElement.setAttribute('data-vault-operations', 'refused');
@@ -412,6 +419,7 @@ __COLDBOX_CAPABILITIES__
   }
 
   function setCapabilityFailure(reason) {
+    failClosedVaultHealth(reason);
     document.documentElement.setAttribute('data-capability-state', 'failed');
     document.documentElement.setAttribute('data-lockdown-state', 'full');
     document.documentElement.setAttribute('data-vault-operations', 'refused');
@@ -512,6 +520,7 @@ __COLDBOX_CAPABILITIES__
   }
 
   function setCryptoFailure(reason) {
+    failClosedVaultHealth(reason);
     document.documentElement.setAttribute('data-crypto-state', 'failed');
     document.documentElement.setAttribute('data-cold-state', 'failed');
     document.documentElement.setAttribute('data-airgap-state', 'red');

@@ -14,7 +14,7 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 
 ### Added — P0.13 (2026-08-03)
 
-- Cold-realm vault session controls for create, unlock, lock, five-minute idle auto-lock, and `Esc Esc` panic concealment; the warm shell never receives the unlock phrase or decrypted secret compartment.
+- Cold-realm vault session controls for create, unlock, lock, five-minute idle auto-lock, `Esc Esc` panic concealment, and fail-closed runtime health handling; any cold airgap/capability/crypto failure or save-time health rejection closes and zeroizes the active session before locked status is exposed. The warm shell never receives the unlock phrase or decrypted secret compartment.
 - File System Access save/load when available with normative `.cbx` filenames, portable blob download, and a first-class manual base64/share flow with numbered multi-part QR frames, local QR rendering, and ordered reassembly in supported running browser contexts.
 - Cold session saves now re-encrypt public data with a fresh nonce every time, re-encrypt the secret compartment offline, and preserve the encrypted secret compartment opaquely online without deriving its key.
 - Explicit mode signaling: online unlock uses a public-only opener that never derives the secret subkey; full compartment unlock is available only after the warm shell reports offline.
@@ -23,7 +23,7 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 ### Changed — portability decision (2026-08-04)
 
 - **ADR-0010 accepted Choice 3:** Coldbox no longer claims that an arbitrary local `coldbox.html` file executes in Safari from iOS Files. Quick Look, third-party viewers, localhost, renamed files, and wrapped formats are not equivalent execution evidence.
-- P0.13 remains `[~]`; P0.14 remains paused pending a separate roadmap-owner decision about the dependency re-baseline. The security model and single-file/no-server constraints are unchanged.
+- The authoritative roadmap/ADR re-baseline is now landed on `main`: direct iOS Files-to-Safari execution is a separately recorded P0.19 portability target, not a P0.13 acceptance gate. P0.13 remains `[~]` pending an independent PASS and merge; P0.14 remains blocked on P0.13. The security model and single-file/no-server constraints are unchanged.
 
 ### Added — P0.12 (2026-08-03)
 

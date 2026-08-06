@@ -74,9 +74,7 @@ git pull
 
 ## Then paste this into a new session
 
-> Read `AGENTS.md`. P0.19 is complete — I verified the device matrix manually
-> on iOS Safari, Android Chrome, macOS Safari, and Tor Browser. Mark it `[x]`
-> and continue from the next available item.
+> Read `AGENTS.md`. I completed the P0.19 human device work: every supported execution-matrix platform passed its seven checks, and the separate iOS local-execution target is recorded as PASS, BLOCKED, or UNSUPPORTED with the exact device and iOS build under ADR-0010. Verify those recorded results; if they satisfy the P0.19 acceptance criteria, mark P0.19 `[x]` and continue from the next available item.
 
 **Until this is done:** nothing in Phase 1 can start.
 
@@ -220,8 +218,8 @@ Per platform: cold realm instantiates · handshake completes · capability panel
 
 **Review each, in order:** […one prompt per item…]
 
-**After your device pass**, resume with:
-> Read `AGENTS.md` and `docs/05-development/batch-run.md`. P0.19 is complete — I verified the device matrix manually. Continue the campaign from the next available item.
+**After every supported execution-matrix platform passes its seven checks and the separate iOS local-execution target has a recorded PASS, BLOCKED, or UNSUPPORTED result with the exact device and iOS build**, resume with:
+> Read `AGENTS.md` and `docs/05-development/batch-run.md`. I completed the P0.19 human device work: every supported execution-matrix platform passed, and the separate iOS target status is recorded under ADR-0010. Verify the recorded results; if they satisfy P0.19 acceptance, mark P0.19 `[x]` and continue the campaign from the next available item.
 ```
 
 Same shape for a **missing credential** — CoinGecko key, repo secret, GPG key. State exactly what's needed, where to get it, and where it goes.
