@@ -293,8 +293,13 @@ __COLDBOX_STYLES__
               <p class="panel-kicker">Session state</p>
               <h2 id="vault-status-title">Vault is locked</h2>
               <p id="vault-status-copy">Load an encrypted vault, then enter its unlock phrase in the sealed realm. The warm shell never receives it.</p>
+              <p class="vault-dirty-notice" id="vault-dirty-notice" data-dirty="false" hidden></p>
             </div>
             <div class="vault-status-label"><span class="status-dot" aria-hidden="true"></span><span id="vault-status-label">Locked</span></div>
+          </section>
+
+          <section class="protocol-warning vault-rollback-banner" id="vault-rollback-banner" data-state="none" aria-live="polite" hidden>
+            <p><strong>Possible rollback detected.</strong> <span id="vault-rollback-banner-copy"></span></p>
           </section>
 
           <div class="card-grid vault-card-grid">
