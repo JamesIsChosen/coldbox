@@ -152,4 +152,4 @@ CI builds the tag independently and publishes an attestation. **Three hashes mus
 
 **CSP hash mismatch at runtime.** The build produced different bytes than the hash it embedded. Almost always nondeterminism in the assembly step.
 
-**Argon2 fails to load in the built file.** Check the visible **Vault details / P0.10** panel and the `data-kdf-active` attribute. The cold realm runs the RFC 9106 vector during boot; if Argon2id WASM cannot load, it labels the active PBKDF2-HMAC-SHA512 fallback and never hides that downgrade. A missing `'wasm-unsafe-eval'` token is still a build/security defect because it forces the fallback on browsers that support WASM.
+**Argon2 fails to load in the built file.** Check the visible **Vault details / P0.12** panel and the `data-kdf-active` attribute. The cold realm runs the RFC 9106 vector during boot; if Argon2id WASM cannot load, it labels the active PBKDF2-HMAC-SHA512 fallback and never hides that downgrade. A missing `'wasm-unsafe-eval'` token is still a build/security defect because it forces the fallback on browsers that support WASM.

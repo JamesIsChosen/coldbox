@@ -344,6 +344,8 @@ async function verifyBuiltFile(browser, engine) {
     assert.equal(await page.evaluate(() => typeof window.__coldboxVault), 'undefined');
     assert.equal(await coldFrame.evaluate(() => typeof window.__coldboxVault), 'object');
     assert.equal(await coldFrame.evaluate(() => window.__coldboxVault.formatVersion), 1);
+    assert.equal(await coldFrame.evaluate(() => typeof window.__coldboxVault.healthReady), 'function');
+    assert.equal(await coldFrame.evaluate(() => window.__coldboxVault.healthReady()), true);
     assert.equal(await coldFrame.evaluate(() => typeof window.__coldboxVault.openSession), 'undefined');
     assert.equal(await coldFrame.locator('html').getAttribute('data-crypto-state'), 'ready');
     assert.equal(await coldFrame.locator('html').getAttribute('data-kdf-active'), 'argon2id-standard');
@@ -449,6 +451,14 @@ async function verifyBuiltFile(browser, engine) {
     assert.match(prototypeResults.sendBeacon.error, /Coldbox airgap blocked sendBeacon/);
     await page.locator('#airgap-banner[data-airgap-state="red"]').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await page.locator('#app').getAttribute('data-vault-operations'), 'refused');
+    assert.equal(await coldFrame.locator('html').getAttribute('data-vault-operations'), 'refused');
+    assert.equal(await coldFrame.evaluate(() => window.__coldboxVault.healthReady()), false);
+    assert.equal(
+      await coldFrame.locator('#cold-kdf-benchmark-run').isDisabled(),
+      true,
+      `${engine}: F3 regression - benchmark stayed usable after the cold realm refused vault operations`
+    );
+    console.log(`${engine}: F3 benchmark control disabled after runtime airgap lockdown`);
     await harness.expectCspViolationInFrame(
       coldFrame,
       'connect-src',
@@ -482,6 +492,12 @@ async function verifyBuiltFile(browser, engine) {
     assert.equal(await page.locator('#mobile-tabs').isVisible(), false);
 
     await harness.atViewport(360, 640);
+    const benchmarkTouchRect = await coldFrame.locator('#cold-kdf-benchmark-run').evaluate((button) => {
+      const rect = button.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    });
+    assert.ok(benchmarkTouchRect.width >= 44, `${engine}: benchmark mobile target width is below 44 CSS px`);
+    assert.ok(benchmarkTouchRect.height >= 44, `${engine}: benchmark mobile target height is below 44 CSS px`);
     assert.equal(await page.locator('#nav-rail').isVisible(), false);
     assert.equal(await page.locator('#mobile-tabs').isVisible(), true);
     assert.equal(

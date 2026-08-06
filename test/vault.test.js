@@ -342,9 +342,11 @@ test('P0.11 refuses every vault entry point unless the cold health gate is prove
     ['data-vault-operations', 'refused']
   ];
 
+  assert.equal(context.__coldboxVault.healthReady(), true);
   for (const [name, value] of failures) {
     context.__resetVaultHealth();
     context.__setVaultHealth(name, value);
+    assert.equal(context.__coldboxVault.healthReady(), false, `${name} must close the shared vault-health gate`);
     await expectSerializationFailure(
       () => context.__coldboxVault.create({ passphrase, profile: 'fallback', publicData: {} })
     );
@@ -358,6 +360,7 @@ test('P0.11 refuses every vault entry point unless the cold health gate is prove
 
   context.__resetVaultHealth();
   context.__setVaultHealth('data-crypto-state', 'fallback');
+  assert.equal(context.__coldboxVault.healthReady(), true, 'explicit fallback remains a valid vault-health state');
   const fallbackOpened = await context.__coldboxVault.open(vault, passphrase);
   assert.equal(JSON.stringify(fallbackOpened.publicData), JSON.stringify({ wallets: [] }));
 

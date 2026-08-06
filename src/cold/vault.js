@@ -602,7 +602,8 @@
     open: openVault,
     openPublic: openPublicVault,
     parse: openVault,
-    inspectHeader: inspectHeader
+    inspectHeader: inspectHeader,
+    healthReady: vaultHealthReady
   });
 
   Object.defineProperty(global, '__coldboxVault', {

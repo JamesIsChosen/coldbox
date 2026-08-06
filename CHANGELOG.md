@@ -14,7 +14,7 @@ Foundation work in progress. Wallet and vault workflows are not available yet; t
 
 ### Added — P0.12 (2026-08-03)
 
-- Cold-only KDF profile benchmark for Fast, Standard, and Paranoid, with sequential timings before vault creation and an explicit iOS allocation warning for the 256 MiB profile.
+- Cold-only KDF profile benchmark for Fast, Standard, and Paranoid, with sequential positive timings, shared vault-health gating, and an explicit iOS allocation warning for the 256 MiB profile; literal placement before creation is verified with the dependent P0.13 workflow.
 - Real Argon2id round-trips for all three stored header profiles, likely-iOS Paranoid skip coverage, and browser verification that the benchmark offer remains inside the sealed realm.
 
 ### Added — P0.10 (2026-08-03)

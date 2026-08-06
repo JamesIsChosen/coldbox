@@ -8,6 +8,7 @@ __COLDBOX_CAPABILITIES__
   var airgap = window.__coldboxAirgap;
   var capabilities = window.__coldboxCapabilities;
   var cryptoLayer = window.__coldboxCrypto;
+  var vaultLayer = window.__coldboxVault;
   var readyMarker = document.getElementById('cold-ready');
   var protocolWarning = document.getElementById('cold-protocol-warning');
   var details = document.getElementById('cold-realm-details');
@@ -45,6 +46,7 @@ __COLDBOX_CAPABILITIES__
     document.documentElement.setAttribute('data-airgap-state', 'red');
     document.documentElement.setAttribute('data-lockdown-state', 'full');
     document.documentElement.setAttribute('data-vault-operations', 'refused');
+    updateBenchmarkAvailability();
     if (details) {
       details.textContent = reason;
     }
@@ -75,6 +77,7 @@ __COLDBOX_CAPABILITIES__
     document.documentElement.setAttribute('data-capability-state', 'failed');
     document.documentElement.setAttribute('data-lockdown-state', 'full');
     document.documentElement.setAttribute('data-vault-operations', 'refused');
+    updateBenchmarkAvailability();
     if (details) {
       details.textContent = reason;
     }
@@ -110,6 +113,25 @@ __COLDBOX_CAPABILITIES__
     }
   }
 
+  function benchmarkAvailable() {
+    return Boolean(
+      benchmarkButton
+      && cryptoLayer
+      && typeof cryptoLayer.benchmarkProfiles === 'function'
+      && vaultLayer
+      && typeof vaultLayer.healthReady === 'function'
+      && vaultLayer.healthReady()
+      && cryptoReport.argon2id
+      && cryptoReport.argon2id.passed === true
+    );
+  }
+
+  function updateBenchmarkAvailability() {
+    if (benchmarkButton) {
+      benchmarkButton.disabled = !benchmarkAvailable();
+    }
+  }
+
   function benchmarkDuration(result) {
     if (result.status === 'passed' && typeof result.durationMs === 'number') {
       return result.durationMs.toFixed(1) + ' ms';
@@ -134,30 +156,20 @@ __COLDBOX_CAPABILITIES__
   }
 
   function runBenchmark() {
-    if (!cryptoLayer || typeof cryptoLayer.benchmarkProfiles !== 'function') {
+    if (!benchmarkAvailable()) {
+      updateBenchmarkAvailability();
       if (benchmarkResult) {
-        benchmarkResult.textContent = 'KDF benchmark is unavailable in this build.';
+        benchmarkResult.textContent = 'KDF benchmark is unavailable while cold-realm health refuses vault operations.';
       }
       return;
     }
-    if (benchmarkButton) {
-      benchmarkButton.disabled = true;
-    }
+    benchmarkButton.disabled = true;
     if (benchmarkResult) {
       benchmarkResult.textContent = 'Benchmarking Fast, Standard, then Paranoid sequentially…';
     }
     cryptoLayer.benchmarkProfiles().then(function (report) {
       renderBenchmark(report);
-      if (benchmarkButton) {
-        benchmarkButton.disabled = false;
-      }
-    }, function () {
-      if (benchmarkResult) {
-        benchmarkResult.textContent = 'KDF benchmark failed closed; no profile was selected.';
-      }
-      if (benchmarkButton) {
-        benchmarkButton.disabled = false;
-      }
+      updateBenchmarkAvailability();
     });
   }
 
@@ -167,6 +179,7 @@ __COLDBOX_CAPABILITIES__
     document.documentElement.setAttribute('data-airgap-state', 'red');
     document.documentElement.setAttribute('data-lockdown-state', 'full');
     document.documentElement.setAttribute('data-vault-operations', 'refused');
+    updateBenchmarkAvailability();
     if (details) {
       details.textContent = reason;
     }
@@ -200,9 +213,6 @@ __COLDBOX_CAPABILITIES__
   function completeBootstrap(result, detectedCapabilities, detectedCrypto) {
     capabilityReport = detectedCapabilities || {};
     setCryptoAttributes(detectedCrypto || {});
-    if (benchmarkButton && cryptoReport.nobleAesGcm === true) {
-      benchmarkButton.disabled = false;
-    }
     setCapabilityAttributes(capabilityReport);
     canaryPassed = Boolean(result && result.passed);
     document.documentElement.setAttribute(
@@ -255,6 +265,7 @@ __COLDBOX_CAPABILITIES__
           + (cryptoReport.kdf && cryptoReport.kdf.label ? cryptoReport.kdf.label : 'unknown') + '.';
       }
     }
+    updateBenchmarkAvailability();
     window.parent.postMessage({ type: 'cold.ready' }, '*');
   }
 
@@ -320,7 +331,7 @@ __COLDBOX_CAPABILITIES__
     messagePort.postMessage(readyMessage);
   }
 
-  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer) {
+  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer || !vaultLayer) {
     return;
   }
 

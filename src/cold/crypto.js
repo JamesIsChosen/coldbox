@@ -186,14 +186,10 @@
     var profile = profiles[profileName];
     var passphrase = new Uint8Array(32).fill(0x42);
     var salt = new Uint8Array(16).fill(0x24);
-    var secret = new Uint8Array(8).fill(0x13);
-    var associatedData = new Uint8Array(12).fill(0x07);
     var started = monotonicNow();
     var cleanup = function (result) {
       zeroBytes(passphrase);
       zeroBytes(salt);
-      zeroBytes(secret);
-      zeroBytes(associatedData);
       if (result && result.hash) {
         zeroBytes(result.hash);
       }
@@ -203,8 +199,6 @@
       operation = argon2.hash({
         pass: passphrase,
         salt: salt,
-        secret: secret,
-        ad: associatedData,
         time: profile.iterations,
         mem: profile.memoryKiB,
         parallelism: profile.parallelism,
@@ -219,7 +213,7 @@
       var valid = Boolean(result && result.hash && result.hash.length === 32);
       var durationMs = roundedMilliseconds(monotonicNow() - started);
       cleanup(result);
-      return valid
+      return valid && durationMs > 0
         ? benchmarkResult(profileName, 'passed', durationMs)
         : unavailableBenchmark(profileName);
     }, function () {

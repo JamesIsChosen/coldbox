@@ -115,7 +115,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
   *Deps: P0.11*
   Fast/Standard/Paranoid profiles, stored in the header, with an on-device timing benchmark offered before vault creation.
   **Accept:** all three profiles round-trip; benchmark reports realistic timings; Paranoid warns about iOS allocation failure.
-  🌐 *Verified by real profile round-trips, sequential on-device benchmark timings, a likely-iOS allocation guard, and the cold-only browser offer; physical-device timing remains part of P0.19.*
+  🌐 *Verified by real profile round-trips, positive ordered on-device benchmark timings, a likely-iOS allocation guard, shared vault-health gating, and the cold-only browser offer. The literal placement before vault creation is an integration property: P0.12 does not contain creation controls, while the dependent P0.13 workflow places the benchmark immediately before them. Physical-device timing remains part of P0.19.*
 
 - [ ] **P0.13 — Lock, unlock, save, load**
   *Deps: P0.12*

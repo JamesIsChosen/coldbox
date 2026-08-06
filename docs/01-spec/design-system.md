@@ -92,6 +92,7 @@ Flat, saturated, identical in both themes, always outlined, always carrying `--f
 | `--fill-pink` | `#ff007a` | Focus rings, accent marks |
 | `--fill-red` | `#e02020` | Failure, lockdown (white text — the one exception) |
 | `--fill-green` | `#4ade80` | Verified, airgapped, available |
+| `--fill-disabled` | `#8e8e9c` | Disabled controls; use the surface's dark ink token |
 
 ### Paper
 
