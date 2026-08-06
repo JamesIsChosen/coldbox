@@ -17,9 +17,14 @@ __COLDBOX_COLD_STYLES__
     <p id="cold-realm-details">The CSP canary and runtime network guard are starting inside this sandbox.</p>
     <p id="cold-protocol-warning" role="alert" hidden>Unexpected protocol traffic was discarded and logged. No message was accepted.</p>
     <section id="cold-kdf-details" data-kdf-active="checking" aria-label="Vault cryptography">
-      <p class="eyebrow">Vault details / P0.10</p>
+      <p class="eyebrow">Vault details / P0.12</p>
       <p id="cold-kdf-active">Active KDF: checking.</p>
       <p id="cold-crypto-path">Pure-JS @noble crypto and Argon2id WASM are running their known-answer tests.</p>
+      <div id="cold-kdf-benchmark">
+        <p id="cold-kdf-benchmark-copy">Before creating a vault, time each Argon2id profile on this device.</p>
+        <button id="cold-kdf-benchmark-run" type="button" disabled>Benchmark KDF profiles</button>
+        <p id="cold-kdf-benchmark-result" role="status" aria-live="polite">Benchmark not run.</p>
+      </div>
     </section>
   </main>
   <script>

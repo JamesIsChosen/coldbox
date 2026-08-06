@@ -8,6 +8,7 @@ __COLDBOX_CAPABILITIES__
   var airgap = window.__coldboxAirgap;
   var capabilities = window.__coldboxCapabilities;
   var cryptoLayer = window.__coldboxCrypto;
+  var vaultLayer = window.__coldboxVault;
   var readyMarker = document.getElementById('cold-ready');
   var protocolWarning = document.getElementById('cold-protocol-warning');
   var details = document.getElementById('cold-realm-details');
@@ -20,6 +21,8 @@ __COLDBOX_CAPABILITIES__
   var runtimeViolationCount = 0;
   var capabilityReport = {};
   var cryptoReport = {};
+  var benchmarkButton = document.getElementById('cold-kdf-benchmark-run');
+  var benchmarkResult = document.getElementById('cold-kdf-benchmark-result');
 
   function recordGlobalMessageAnomaly() {
     globalAnomalyCount += 1;
@@ -43,6 +46,7 @@ __COLDBOX_CAPABILITIES__
     document.documentElement.setAttribute('data-airgap-state', 'red');
     document.documentElement.setAttribute('data-lockdown-state', 'full');
     document.documentElement.setAttribute('data-vault-operations', 'refused');
+    updateBenchmarkAvailability();
     if (details) {
       details.textContent = reason;
     }
@@ -73,6 +77,7 @@ __COLDBOX_CAPABILITIES__
     document.documentElement.setAttribute('data-capability-state', 'failed');
     document.documentElement.setAttribute('data-lockdown-state', 'full');
     document.documentElement.setAttribute('data-vault-operations', 'refused');
+    updateBenchmarkAvailability();
     if (details) {
       details.textContent = reason;
     }
@@ -108,12 +113,73 @@ __COLDBOX_CAPABILITIES__
     }
   }
 
+  function benchmarkAvailable() {
+    return Boolean(
+      benchmarkButton
+      && cryptoLayer
+      && typeof cryptoLayer.benchmarkProfiles === 'function'
+      && vaultLayer
+      && typeof vaultLayer.healthReady === 'function'
+      && vaultLayer.healthReady()
+      && cryptoReport.argon2id
+      && cryptoReport.argon2id.passed === true
+    );
+  }
+
+  function updateBenchmarkAvailability() {
+    if (benchmarkButton) {
+      benchmarkButton.disabled = !benchmarkAvailable();
+    }
+  }
+
+  function benchmarkDuration(result) {
+    if (result.status === 'passed' && typeof result.durationMs === 'number') {
+      return result.durationMs.toFixed(1) + ' ms';
+    }
+    return result.status;
+  }
+
+  function renderBenchmark(report) {
+    if (!benchmarkResult || !report || !Array.isArray(report.profiles)) {
+      return;
+    }
+    var summaries = report.profiles.map(function (result) {
+      return result.profile + ': ' + benchmarkDuration(result);
+    });
+    var warnings = report.profiles.filter(function (result) {
+      return typeof result.warning === 'string' && result.warning.length > 0;
+    }).map(function (result) {
+      return result.profile + ' warning: ' + result.warning;
+    });
+    benchmarkResult.textContent = summaries.join(' · ')
+      + (warnings.length > 0 ? ' ' + warnings.join(' ') : '');
+  }
+
+  function runBenchmark() {
+    if (!benchmarkAvailable()) {
+      updateBenchmarkAvailability();
+      if (benchmarkResult) {
+        benchmarkResult.textContent = 'KDF benchmark is unavailable while cold-realm health refuses vault operations.';
+      }
+      return;
+    }
+    benchmarkButton.disabled = true;
+    if (benchmarkResult) {
+      benchmarkResult.textContent = 'Benchmarking Fast, Standard, then Paranoid sequentially…';
+    }
+    cryptoLayer.benchmarkProfiles().then(function (report) {
+      renderBenchmark(report);
+      updateBenchmarkAvailability();
+    });
+  }
+
   function setCryptoFailure(reason) {
     document.documentElement.setAttribute('data-crypto-state', 'failed');
     document.documentElement.setAttribute('data-cold-state', 'failed');
     document.documentElement.setAttribute('data-airgap-state', 'red');
     document.documentElement.setAttribute('data-lockdown-state', 'full');
     document.documentElement.setAttribute('data-vault-operations', 'refused');
+    updateBenchmarkAvailability();
     if (details) {
       details.textContent = reason;
     }
@@ -199,6 +265,7 @@ __COLDBOX_CAPABILITIES__
           + (cryptoReport.kdf && cryptoReport.kdf.label ? cryptoReport.kdf.label : 'unknown') + '.';
       }
     }
+    updateBenchmarkAvailability();
     window.parent.postMessage({ type: 'cold.ready' }, '*');
   }
 
@@ -264,8 +331,12 @@ __COLDBOX_CAPABILITIES__
     messagePort.postMessage(readyMessage);
   }
 
-  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer) {
+  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer || !vaultLayer) {
     return;
+  }
+
+  if (benchmarkButton) {
+    benchmarkButton.addEventListener('click', runBenchmark);
   }
 
   window.__coldboxColdRealmMarker = 'cold-realm-ready';

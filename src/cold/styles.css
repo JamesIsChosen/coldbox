@@ -24,7 +24,9 @@
   --cold-muted: #b3bcd4;
   --cold-green: #4ade80;
   --cold-yellow: #ffde59;
+  --cold-pink: #ff007a;
   --cold-red: #e02020;
+  --cold-disabled-fill: #8e8e9c; /* design-system.md --fill-disabled */
   --cold-ink: #121212;
 
   font-family: 'Comic Sans MS', ui-sans-serif, system-ui, sans-serif;
@@ -103,4 +105,59 @@ body {
   margin: 0.25rem 0 0;
   color: var(--cold-muted);
   font-size: 0.72rem;
+}
+
+/* KDF benchmark (P0.12). A security surface under design-system.md §6: it sits
+   inside the sealed realm and its result governs vault creation. Comic shell,
+   no tilt, no animation. */
+
+#cold-kdf-benchmark {
+  margin-top: 0.6rem;
+  padding-top: 0.55rem;
+  border-top: 0.13rem solid var(--cold-outline);
+}
+
+#cold-kdf-benchmark-copy,
+#cold-kdf-benchmark-result {
+  margin: 0.25rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+/* Timings are data. design-system.md §4 keeps data out of the display face and
+   in a monospace stack, so figures line up when profiles are compared. */
+#cold-kdf-benchmark-result {
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+#cold-kdf-benchmark-run {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  margin-top: 0.5rem;
+  padding: 0.35rem 0.7rem;
+  border: 0.13rem solid var(--cold-drop);
+  border-radius: 0.3rem;
+  background: var(--cold-green);
+  box-shadow: 0.15rem 0.15rem 0 var(--cold-drop);
+  color: var(--cold-ink);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+#cold-kdf-benchmark-run:focus-visible {
+  outline: 0.2rem solid var(--cold-pink);
+  outline-offset: 0.18rem;
+}
+
+/* Disabled state carries its own solid colours rather than an opacity wash —
+   opacity multiplies against the background and drifts below the contrast
+   floor. Grey fill, dark ink, and the shadow drops to signal "not pressable". */
+#cold-kdf-benchmark-run:disabled {
+  background: var(--cold-disabled-fill);
+  box-shadow: none;
+  color: var(--cold-ink);
+  cursor: wait;
 }

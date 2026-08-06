@@ -109,6 +109,8 @@ Assuming WebCrypto and discovering at runtime that it's missing would mean eithe
 
 P0.10 implements this contract in the cold realm. The default AES-GCM path is the selected pure-JS `@noble/ciphers` code; WebCrypto AES-GCM is callable only after its NIST known-answer test passes. `argon2-browser` 1.18.0 is vendored from its official npm tarball and the bundled distribution carries the WASM bytes inside the single HTML artifact, so Argon2id does not need a network or a relative file. Boot runs the RFC 9106 Argon2id vector (32 KiB, 3 passes, 4 lanes, with the RFC secret and associated data) and exposes the actual KDF as `data-kdf-active` and in the visible vault-details panel. If that test fails, PBKDF2-HMAC-SHA512 with 1,000,000 iterations is an explicitly labelled fallback rather than a silent downgrade.
 
+P0.12 adds a cold-only, user-triggered benchmark that runs Fast, Standard, and Paranoid sequentially with a fixed non-secret passphrase and salt. Its Argon2id call shape matches vault derivation (`pass`, `salt`, `time`, `mem`, `parallelism`, `hashLen`, `type`), it reports only meaningful positive elapsed milliseconds, and it warns that the 256 MiB Paranoid profile may fail to allocate on iOS; a likely iOS device skips that allocation rather than risking a tab crash. The UI control is available only while the exact vault-health predicate is satisfied.
+
 ---
 
 ## Protocol-mandated primitives

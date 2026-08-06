@@ -111,10 +111,11 @@ Nothing above this phase is safe to build until the container is trustworthy.
   **Accept:** round-trips; tampering with any header byte fails authentication; wrong passphrase and corrupted file are indistinguishable in the error; padding always lands on a 64 KiB boundary; **the secret subkey has no derivation path reachable while online.**
   🌐 *Verified by real P0.10-backed Node round-trips, all-header-byte tamper tests, generic authentication failures, and the Chromium/Firefox cold-only API boundary; physical vault workflows remain part of P0.19.*
 
-- [ ] **P0.12 — KDF profiles and benchmark**
+- [x] **P0.12 — KDF profiles and benchmark**
   *Deps: P0.11*
   Fast/Standard/Paranoid profiles, stored in the header, with an on-device timing benchmark offered before vault creation.
   **Accept:** all three profiles round-trip; benchmark reports realistic timings; Paranoid warns about iOS allocation failure.
+  🌐 *Verified by real profile round-trips, positive ordered on-device benchmark timings, a likely-iOS allocation guard, shared vault-health gating, and the cold-only browser offer. The literal placement before vault creation is an integration property: P0.12 does not contain creation controls, while the dependent P0.13 workflow places the benchmark immediately before them. Physical-device timing remains part of P0.19.*
 
 - [ ] **P0.13 — Lock, unlock, save, load**
   *Deps: P0.12*
