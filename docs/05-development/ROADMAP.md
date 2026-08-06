@@ -7,7 +7,7 @@ Markers: `👤 human-required` — an agent cannot complete it (physical hardwar
 · `⚠️` — agent-implementable, but something is needed from the human before it fully works
 · `🌐` — has acceptance criteria only a browser can verify; use the P0.3a harness and mark `[~]` until it confirms them
 
-**An item whose criteria you cannot verify is `[~]`, never `[x]`.** Nine Phase 0 items have browser-dependent criteria; the P0.3a harness makes eight of them agent-verifiable. The ninth, P0.19, needs real devices for the supported execution matrix and records the deferred iOS target separately under [ADR-0010](adr/0010-ios-local-html-execution.md).
+**An item whose criteria you cannot verify is `[~]`, never `[x]`.** Nine Phase 0 items have browser-dependent criteria; the P0.3a harness makes eight of them agent-verifiable. The ninth, P0.19, needs real devices and always will.
 
 Every PR must update this file in the same commit as the work it completes.
 
@@ -117,11 +117,11 @@ Nothing above this phase is safe to build until the container is trustworthy.
   **Accept:** all three profiles round-trip; benchmark reports realistic timings; Paranoid warns about iOS allocation failure.
   🌐 *Verified by real profile round-trips, positive ordered on-device benchmark timings, a likely-iOS allocation guard, shared vault-health gating, and the cold-only browser offer. The literal placement before vault creation is an integration property: P0.12 does not contain creation controls, while the dependent P0.13 workflow places the benchmark immediately before them. Physical-device timing remains part of P0.19.*
 
-- [~] **P0.13 — Lock, unlock, save, load**
+- [~] **P0.13 â€” Lock, unlock, save, load**
   *Deps: P0.12*
   Three save paths (File System Access, blob download, manual base64/QR); symmetric load; idle auto-lock; `Esc Esc` panic hide.
-  **Accept:** the three save/load paths are complete browser flows, and the manual base64/QR path is usable without File System Access or blob-download support. At least one save path must work on every platform in the currently supported execution matrix. **The unresolved iOS Files-to-Safari launch path is not waived by this criterion. P0.13 remains `[~]` pending the roadmap re-baseline required by [ADR-0010](adr/0010-ios-local-html-execution.md).**
-  🌐 *Harness verifies the blob and manual paths in Chromium/Firefox, including a create → save → lock → manual-load → unlock round-trip. A physical iPhone test reached Quick Look rather than Safari. Under [ADR-0010](adr/0010-ios-local-html-execution.md), Quick Look is not a pass and no iOS execution claim is inferred. P0.13 remains `[~]` until the roadmap owner explicitly resolves the dependency ordering.*
+  **Accept:** the three save/load paths are complete browser flows, and the manual base64/QR path is usable without File System Access or blob-download support. At least one save path must work on every platform in the supported execution matrix. **Direct local execution from iOS Files into Safari is not a P0.13 acceptance gate under [ADR-0010](adr/0010-ios-local-html-execution.md); it remains a separately recorded portability target at P0.19.**
+  ðŸŒ *The P0.3a harness verifies the blob and manual paths in Chromium/Firefox. Physical supported-device confirmation remains P0.19. Quick Look is not Safari execution evidence, and no iOS result may be inferred from another platform.*
 
 - [ ] **P0.14 — Save integrity**
   *Deps: P0.13*
@@ -152,10 +152,10 @@ Nothing above this phase is safe to build until the container is trustworthy.
   GitHub Actions: build, test, `verify-vendor`, lint, **double-build hash comparison**, second-OS build comparison, bundle size report, release attestation. Plus the documentation checks in [doc-hygiene.md](doc-hygiene.md): internal link resolution, review dates present and within max age, three-depth help blocks, doc index consistency, roadmap ID references, and `dependencies.md` matching `vendor-manifest.json`.
   **Accept:** CI hash matches a local build; a nondeterministic change fails CI; a broken internal link fails CI; a missing review date fails CI; an out-of-date review date warns.
 
-- [ ] **P0.19 — Device matrix pass** 👤 **human-required**
+- [ ] **P0.19 â€” Device matrix pass** ðŸ‘¤ **human-required**
   *Deps: P0.18*
-  Full manual pass per [testing.md](testing.md) across the currently supported execution matrix; record the deferred iOS local-execution target separately.
-  **Accept:** every platform in the currently supported execution matrix passes the seven per-platform checks and the results are recorded in the PR packet. The iOS local-execution target is recorded separately as **PASS, BLOCKED, or UNSUPPORTED** with the exact device and iOS version. Under [ADR-0010](adr/0010-ios-local-html-execution.md), Quick Look, a third-party viewer, localhost, a renamed file, or another execution context cannot be recorded as a Safari-from-Files PASS unless a later accepted ADR explicitly qualifies that context.
+  Full manual pass per [testing.md](testing.md) across the supported execution matrix; record the deferred iOS local-execution target separately.
+  **Accept:** every platform in the supported execution matrix passes the seven per-platform checks and the results are recorded in the PR packet. The iOS local-execution target is recorded separately as **PASS, BLOCKED, or UNSUPPORTED** with the exact device and iOS version. A `BLOCKED` or `UNSUPPORTED` iOS result does not fail P0.19 under [ADR-0010](adr/0010-ios-local-html-execution.md), but remains visible portability debt. Quick Look, a third-party viewer, localhost, a renamed file, or another execution context is not a Safari-from-Files PASS unless a later accepted ADR explicitly qualifies it.
   Requires physically opening the file on real devices. An agent must not mark this complete, and must not infer a platform's result from a similar one.
 
 ---
