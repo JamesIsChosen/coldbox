@@ -12,6 +12,23 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
+### Changed — review closeout ownership (2026-08-06)
+
+- **Root cause fixed for governance-only pull requests.** [review-protocol.md](docs/05-development/review-protocol.md) told the reviewer to *write* a `.review.md` report but never to commit it to the branch under review, and no document assigned the `[~]` → `[x]` roadmap transition to anyone. Both artifacts therefore had no home once `--delete-branch` ran, producing rescue branches for review reports and a follow-up PR whose entire diff was one character.
+- The reviewer now owns a **closeout commit** — report plus roadmap marker — pushed to the item branch before the merge. Authors set `[~]` and never `[x]`, because marking your own item complete asserts an independent verification that has not happened.
+- **Pull requests that only move governance are prohibited.** A missed marker or report folds into the next PR to touch the repository. Browser-based sessions that cannot push to the branch under review hand the closeout to the next session via the handoff block rather than opening a PR.
+- Aligned across [AGENTS.md](AGENTS.md), [ROADMAP.md](docs/05-development/ROADMAP.md), [review-protocol.md](docs/05-development/review-protocol.md), [handoff.md](docs/05-development/handoff.md), and [packets/README.md](docs/05-development/packets/README.md).
+
+### Added — Recovery Assistant specification (2026-08-06)
+
+- **SPEC §11.1b** replaces the single-paragraph Recovery Assistant sketch with a full specification: two-stage screen/verify pipeline, measured primitive costs, tiered stop conditions, search-space ordering, a declared typo grammar, phased escalation, and the estimate-and-refuse contract.
+- Records the measured finding that **elliptic curve arithmetic, not the KDF, dominates recovery cost** — 79% against 16% at default settings — which inverts the assumption the previous text implied.
+- Requires both operation counts (combinations enumerated, candidates verified) to be shown, and the time estimate to name which crypto path is live, since the pure-JS and WebCrypto paths differ by 7.8×.
+- **[ADR-0011](docs/05-development/adr/0011-wasm-secp256k1-for-recovery.md):** WASM secp256k1 for the search path only, with `@noble` re-deriving every hit before display. `'wasm-unsafe-eval'` was already mandatory in the cold realm for Argon2id, so this adds no CSP concession.
+- **[ADR-0012](docs/05-development/adr/0012-recovery-checkpoint.md):** checkpoints are a separate encrypted file rather than vault records — the cold realm's opaque origin cannot persist anything, and continuous vault rewriting would fight verify-after-save, generational filenames, and rollback detection.
+- **P4.3 split into P4.3a–P4.3e** in the roadmap; the original single line materially understated the work. P4.3d is explicitly gated on unresolved size research and may be dropped.
+- [recover-a-seed.md](docs/03-guides/recover-a-seed.md) corrected: the previous timing estimates conflated 12- and 24-word phrases and were optimistic by roughly an order of magnitude for 12-word, because a 12-word checksum filters 1 in 16 where a 24-word filters 1 in 256. Adds the xpub stop condition and the address generation limit.
+
 ### Added — P0.13 (2026-08-03)
 
 - Cold-realm vault session controls for create, unlock, lock, five-minute idle auto-lock, `Esc Esc` panic concealment, and fail-closed runtime health handling; any cold airgap/capability/crypto failure or save-time health rejection closes and zeroizes the active session before locked status is exposed. The warm shell never receives the unlock phrase or decrypted secret compartment.
@@ -23,7 +40,7 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 ### Changed — portability decision (2026-08-04)
 
 - **ADR-0010 accepted Choice 3:** Coldbox no longer claims that an arbitrary local `coldbox.html` file executes in Safari from iOS Files. Quick Look, third-party viewers, localhost, renamed files, and wrapped formats are not equivalent execution evidence.
-- The authoritative roadmap/ADR re-baseline is now landed on `main`: direct iOS Files-to-Safari execution is a separately recorded P0.19 portability target, not a P0.13 acceptance gate. P0.13 remains `[~]` pending an independent PASS and merge; P0.14 remains blocked on P0.13. The security model and single-file/no-server constraints are unchanged.
+- The authoritative roadmap/ADR re-baseline landed on `main`: direct iOS Files-to-Safari execution is a separately recorded P0.19 portability target, not a P0.13 acceptance gate. PR #21 subsequently received an independent PASS and merged; current item-level status is canonical in [ROADMAP.md](docs/05-development/ROADMAP.md). The security model and single-file/no-server constraints are unchanged.
 
 ### Added — P0.12 (2026-08-03)
 

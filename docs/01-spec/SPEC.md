@@ -517,7 +517,105 @@ That last distinction matters more than it looks. A false-precision number invit
 
 **QR Studio 🔳** — address QRs with BIP-21 / EIP-681 URI options; **SeedQR** (SeedSigner format: word indices as zero-padded 4-digit decimals) and **Compact SeedQR** (raw entropy, binary mode) matching the 21×21/25×25/29×29 templates already in this folder; printable A4/Letter card layouts and wallet-sized 12/24-word templates; grid overlay for hand-transcription to metal; SVG and PNG export. Optional camera scanner (`jsQR`) gated behind an extra confirmation for seed payloads, degrading to "unavailable" where `getUserMedia` doesn't work. Print warnings note that spoolers and printer memory retain documents.
 
-**Recovery Assistant 🩺** — checksum repair (enumerate valid final words); one missing word at known or unknown position; typo repair ranked by Levenshtein plus BIP-39's 4-letter-prefix property; transposition search; passphrase search over a candidate list or rule-based mutations; address-match as the stop condition. Every search shows an estimated operation count and plain-language time estimate **before** running, with live progress and cancel. If the space is infeasible, it says so with the number rather than pretending to try.
+**Recovery Assistant 🩺** — repairs a damaged BIP-39 phrase, a damaged SLIP-39 share, or a codex32 share, and searches for a forgotten passphrase. Full specification in §11.1b.
+
+#### 11.1b Recovery Assistant
+
+Recovery is not primarily a speed problem. A fast search aimed at the wrong derivation path, or checking too few addresses, silently rejects the correct seed and reports failure — while the progress bar looks healthy the whole way. **Aim is specified here before throughput, because a false negative costs the user everything and a slow search only costs them time.**
+
+**The pipeline has two stages, and the ratio between them governs everything.**
+
+| Stage | Work | Cost | Survivors |
+|---|---|---|---|
+| **1 — screen** | enumerate candidate, BIP-39 checksum | ~1.1 µs | 1 in 16 (12-word), 1 in 256 (24-word) |
+| **2 — verify** | seed, derive, compare | 1.5–5.6 ms | the answer, or nothing |
+
+Stage 1 is roughly four thousand times cheaper than stage 2. Every design decision below exists to keep work in stage 1 and to make stage 2 as rare and as cheap as possible.
+
+**Measured primitive costs** (`@noble` 2.2.0, desktop-class CPU; see the P4.3a harness):
+
+| Operation | Cost |
+|---|---|
+| SHA-256, 32 B (checksum screen) | 1.1 µs |
+| PBKDF2-HMAC-SHA512 ×2048, WebCrypto | 870 µs |
+| PBKDF2-HMAC-SHA512 ×2048, pure JS | 6,746 µs |
+| secp256k1 scalar multiplication | ~200 µs |
+| HMAC-SHA512 (BIP-32 step) | 9.2 µs |
+
+**The KDF is not the bottleneck; the curve is.** At one path and twenty addresses a candidate costs 5.56 ms, of which PBKDF2 is 870 µs — 16%. The other 79% is twenty-two scalar multiplications. The crossover is at about three addresses. Any optimisation effort spent on the KDF beyond using WebCrypto is misdirected.
+
+**Per-candidate cost is `PBKDF2 + paths × (account derivation + addresses × 212 µs)`.** Which is why the search sequences paths and deepens address indices rather than multiplying both.
+
+##### Stop conditions
+
+A search needs a way to recognise the answer. In order of preference:
+
+| Evidence | Quality | Notes |
+|---|---|---|
+| **xpub / master public key** | Best | No address-index guessing. Preferred, and offered first |
+| **Known address + generation limit** | Good | Correct only if the address lies within the limit |
+| **Imported address database** | Weak | Probabilistic — see below |
+| **Checksum validity alone** | Not proof | 1 in 16 of all 12-word phrases passes |
+
+**A checksum-only result is never reported as a recovery.** It is reported as a candidate count with an explanation of why the tool cannot choose between them.
+
+**An address-database hit is never reported as a recovery either.** These structures are probabilistic and produce false positives by construction; a hit means "verify this against a real address or xpub," and the UI says exactly that. Reporting a bloom-filter hit as success would be failing open.
+
+##### Search space and ordering
+
+The space is *candidate × derivation path × script type × address index*. All four vary, and searching them naively multiplies. The engine therefore:
+
+- **Deepens address indices rather than multiplying them.** Account-level xpubs for all surviving candidates are derived and cached, index 0 is checked across every candidate, then index 1, and so on to the limit. Most known addresses sit at a low index, so the typical case costs 1.53 ms per candidate instead of 5.56 ms. The cache is bounded; when candidates exceed the bound the engine falls back to per-candidate derivation and says so in the estimate.
+- **Sequences derivation paths rather than searching them together.** Order: BIP-84, BIP-49, BIP-44, BIP-86. Searching all four at once costs 4× for a result usually found in the first pass.
+- **Defaults to an address generation limit of 20**, user-adjustable, matching the gap limit in §7.3. This is the single most common cause of a false negative and it is surfaced in the UI, not buried in settings.
+
+##### Error models
+
+Individually specified, and composable — real damage is rarely one clean category:
+
+- **Checksum repair** — enumerate valid final words; enumerate valid substitutes at every position.
+- **Missing words** — known or unknown position, one or more.
+- **Typo repair** — a declared grammar, not a similarity score: substitution, insertion, deletion, and adjacent transposition, ranked by Levenshtein distance and constrained by BIP-39's unique four-letter prefix. Where the first four characters are legible the word is determined and the position is not searched at all.
+- **Ordering** — adjacent swap, arbitrary pair swap, and partial-order search where part of the sequence is known.
+- **Passphrase search** — candidate list, or rule-based mutation of a base guess.
+
+**Phased escalation** runs automatically, cheapest first, in the order: one error → two errors including one arbitrary word → three errors → two arbitrary words. Each phase reports its own estimate and the user can stop between phases.
+
+##### Estimates, and the honesty contract
+
+Before any search runs, the app states **both numbers**: combinations to enumerate and candidates to verify. They differ by 16× or 256× and conflating them is the difference between "seconds" and "hours."
+
+**The time estimate is a property of the search and the live crypto path, not the search alone.** Per §11.1 and architecture.md, the cold realm defaults to pure-JS `@noble` and uses WebCrypto only after a known-answer test passes — an 7.8× difference on the KDF. The estimate is calibrated from the capability self-check (P0.9) and the Verify Bench KDF benchmark, and the UI names which path is live. An estimate quoted without that qualifier is wrong by up to an order of magnitude.
+
+**Practical budget: roughly 10⁹ combinations of a 24-word phrase per hour, or 10⁸ of a 12-word phrase**, on eight workers at default settings. Past about 10¹¹ the answer is no at any settings.
+
+**When a search is infeasible the app says so with the number and stops.** It does not start a search it cannot finish. Past the feasibility threshold it names the alternative explicitly — btcrecover with GPU acceleration, with the command — in the spirit of [ADR-0006](../05-development/adr/0006-companion-not-replacement.md). Pretending a browser tab competes at 10¹¹ combinations would be a lie told to someone who has already lost something.
+
+##### Checkpointing
+
+Searches in the hour-to-week band are resumable. Below that, restart is cheaper than the machinery; above it, the search is refused anyway.
+
+The cold realm has an opaque origin and **cannot persist anything** — no `localStorage`, no IndexedDB. A checkpoint is therefore an encrypted file emitted through the sandbox's `allow-downloads` capability, on demand and periodically. Format and key handling in [ADR-0012](../05-development/adr/0012-recovery-checkpoint.md).
+
+**A checkpoint is more dangerous than a stored seed.** It contains the known words *and* a map of exactly which are missing — 21 of 24 words plus the answer key reduces the space to about 33 million, which is minutes. It is encrypted at full vault strength, handled as top-tier secret material under §15's display rules, and the UI says plainly that it must not be stored anywhere the seed itself wouldn't be.
+
+##### Coverage
+
+- **All nine BIP-39 wordlists.** Language is detected from the legible words and confirmed by the user; a phrase mixing wordlists is reported as such rather than silently searched in one.
+- **SLIP-39 share repair** — damaged or short shares, using the same error models against SLIP-39's own wordlist and checksum.
+- **codex32 correction** — the BCH code over GF(32) is error-*correcting*, so a damaged codex32 share is repaired arithmetically rather than searched. This is the only format here where recovery is deterministic, and it is presented that way.
+- **Address database import** — optional, user-supplied, never shipped. Constraints in §11.1c.
+
+##### Address database import
+
+For users with no address and no xpub. The database is built externally — it requires a full chain scan, which is not something a single HTML file can or should do — and imported read-only.
+
+- **Format:** btcrecover's address database, produced by its `create-address-db.py`. Adopting an existing format avoids shipping a builder we cannot ship.
+- **It must fit in memory.** A probabilistic filter needs random access; a multi-gigabyte file read through `File.slice()` costs milliseconds per lookup against a 1.5 ms candidate budget and would dominate by three orders of magnitude. The app checks the size at import and **refuses with the actual number** rather than degrading into a search that appears to run and cannot finish.
+- **Never persisted.** The cold realm cannot persist it in any case; it is re-imported per session and discarded with the realm.
+- **Never claims recovery** — see stop conditions above.
+
+Maximum viable size and realistic pruned-database dimensions are unresolved; P4.3d is gated on establishing them, and if a pruned database cannot fit in browser memory the feature is dropped rather than shipped in a form that misleads.
 
 **Passphrase Studio** — Diceware with EFF Large (7776) and EFF Short 2.0 (1296), both embedded from this folder's wordlists. Physical dice or CSPRNG, exact entropy math per word, and options for separators/capitalization/numbers each showing how little entropy they actually add. Direct handoff to the BIP-39 passphrase and vault passphrase fields.
 
