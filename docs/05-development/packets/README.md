@@ -13,6 +13,8 @@ docs/05-development/packets/
 
 Naming: `<roadmap-id>-<slug>.md` for the packet, `.review.md` alongside it. Use the same slug as the branch.
 
+**Both files live on the item's own branch.** The packet is committed by the author; the `.review.md` is committed by the reviewer, before the merge, alongside the roadmap `[x]` — see [review-protocol.md](../review-protocol.md). A review report has no other home: once the item branch is deleted on merge, a report that was never committed to it can only be rescued onto a branch of its own, which is how `docs/preserve-review-reports` and `docs-browser-runner-flow` came to exist. Neither should have needed to.
+
 ---
 
 ## Why per-item files rather than one `PR-PACKET.md`

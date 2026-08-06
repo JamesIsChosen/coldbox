@@ -25,7 +25,9 @@ Missing words, typos, wrong order, failing checksums.
 
 Nearly every recovery method produces candidates. You need a way to know which is right.
 
-**The reliable answer is a known address.** Any address that wallet has used — a receive address you gave someone, an address from a block explorer, or one recorded in your Registry.
+**The best answer is your xpub** — the wallet's master public key, if you have it recorded. It identifies the wallet outright, with no guessing about which address came first.
+
+**Failing that, a known address.** Any address that wallet has used — a receive address you gave someone, an address from a block explorer, or one recorded in your Registry. If you use an address, the app also needs to know roughly how many addresses that wallet created before it, because it can only check so far down the list. Set that too low and the search will pass straight over your correct seed without noticing. The default is 20.
 
 Without one, you can find seeds with valid checksums, but not which is *yours*. Roughly 1 in 16 random 24-word combinations has a valid checksum, so "valid" is a weak filter.
 
@@ -64,9 +66,16 @@ If the last word is the only problem, it's simpler: the final word encodes the c
 
 Either is trivial. **Recovery → Missing word.**
 
-**Two missing words:** ~4.2 million combinations. Seconds to minutes. Feasible.
+**Two or three missing words: how long depends on your phrase length**, and the difference is larger than most people expect. A 24-word phrase carries eight checksum bits, so only 1 in 256 combinations is worth testing. A 12-word phrase carries four, so 1 in 16 is — sixteen times more work for the same number of combinations.
 
-**Three missing:** ~8.6 billion. Hours to days, and **only viable with a known address**. Without one you'd get millions of checksum-valid candidates and no way to choose.
+| Missing | 24-word | 12-word |
+|---|---|---|
+| Two | ~4.2 M combinations — seconds | ~4.2 M combinations — **minutes** |
+| Three | ~8.6 B — hours, with a known address | ~8.6 B — **days**, and often not worth starting |
+
+Three missing words is **only viable with a known address or xpub**. Without one you'd get millions of checksum-valid candidates and no way to choose between them.
+
+Times assume the search is narrowed — one derivation path, script type set. Leave it searching everything and multiply by about four.
 
 ---
 
@@ -108,7 +117,11 @@ Requires a known address. Success depends entirely on whether the real passphras
 
 The app always shows, before starting: the number of combinations, an estimated time on your hardware, and what the stop condition is.
 
-Searches run in a Web Worker where available, or chunked on the main thread otherwise, with live progress and cancel. Close the tab and you lose progress — for long searches, leave it running.
+Searches run in a Web Worker where available, or chunked on the main thread otherwise, with live progress and cancel.
+
+**For long searches, save a checkpoint.** Anything expected to run more than an hour offers an encrypted progress file you can reload later. Guard it like the seed itself — it contains the words you already have plus a map of exactly which ones are missing, which is far more useful to a thief than either piece alone. Delete it once you've recovered.
+
+Without a checkpoint, closing the tab loses your progress.
 
 Speed depends on script type: legacy is fastest, Taproot slowest. If you know the script type, set it and skip the others.
 

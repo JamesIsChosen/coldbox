@@ -95,6 +95,8 @@ No amount of good work elsewhere offsets these:
 
 Write `docs/05-development/packets/<roadmap-id>-<slug>.review.md`, alongside the packet you're reviewing, and post its contents as the PR review.
 
+**Commit it to the branch you are reviewing**, not to your working tree and not to a branch of your own — see [Close the item out](#close-the-item-out-on-the-branch-before-you-merge) below. A report that exists only in a working tree is destroyed by the merge that follows it.
+
 **It must open with the verdict block**, before anything else:
 
 ```markdown
@@ -140,11 +142,47 @@ Severity is recorded for triage, **not** to excuse anything. Advisory findings m
 
 ---
 
-## Merge it yourself on PASS
+## Close the item out on the branch, before you merge
 
-**A PASS verdict means you merge.** Run it, confirm `main` updated, then report in the handoff:
+**Everything a reviewer produces belongs on the branch being reviewed, committed before the merge.** There are exactly two such artifacts:
+
+1. Your `.review.md` report.
+2. The roadmap marker, flipped from `[~]` to `[x]` — on a PASS only.
+
+**The author cannot flip that marker and should not try.** [ROADMAP.md](ROADMAP.md) says an item whose criteria you cannot verify is `[~]`, never `[x]`, and when the author opens the PR the criteria have not yet been *independently* verified. Only your PASS establishes that. So the author leaves `[~]` and you close it — the marker is a reviewer artifact, not an author one.
+
+Miss either artifact and it has nowhere to live, because `--delete-branch` removes the only branch it could have gone on. That is not hypothetical: it is how this repository ended up with review reports stranded on rescue branches and a follow-up PR whose entire content was one character.
+
+On a PASS, from the PR branch:
 
 ```
+git checkout <branch> && git pull
+# write your report, then flip the roadmap marker to [x]
+git add docs/05-development/packets/<slug>.review.md docs/05-development/ROADMAP.md
+git commit -m "review(<id>): record independent PASS and close item"
+git push
+```
+
+Then, and only then, merge.
+
+On a FAIL, commit the report the same way but leave the marker at `[~]`. Nothing merges, so the report stays on the branch and the fixing session builds on top of it.
+
+### Never open a pull request that only moves governance
+
+A missed marker, an absent review report, or a stale checkbox is **not** grounds for a PR of its own. Fold it into the next PR that touches the repository for any reason, and note it in that PR's description.
+
+A pull request whose diff is one checkbox costs a branch, a packet, a review cycle and a merge, and delivers nothing a reader can use. The repository is more wrong for the ceremony than it was for the checkbox.
+
+**If you cannot push to the branch you are reviewing** — some browser-based sessions cannot — do not open a governance PR to compensate. Post the report as the PR review, state plainly in your handoff that the roadmap marker is still `[~]` and which item it belongs to, and hand the closeout to the next session as its first action. One line in a handoff is cheaper than a pull request, and it cannot be silently lost the way an uncommitted file can.
+
+---
+
+## Merge it yourself on PASS
+
+**A PASS verdict means you merge.** First confirm the closeout commit is pushed — report committed, roadmap marker at `[x]` — because after `--delete-branch` there is no branch left to put it on. Then run it, confirm `main` updated, and report in the handoff:
+
+```
+git log --oneline -1 <branch>     # confirm the closeout commit is the tip
 gh pr merge 12 --merge --delete-branch
 git checkout main && git pull && git fetch --prune
 ```
