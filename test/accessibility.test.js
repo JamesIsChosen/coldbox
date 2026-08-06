@@ -57,3 +57,28 @@ test('navigation faint text meets the documented 4.5:1 contrast floor', () => {
     });
   });
 });
+
+test('cold KDF benchmark keeps the design-system focus and mobile touch floors', () => {
+  const coldStyles = fs.readFileSync(path.join(__dirname, '..', 'src', 'cold', 'styles.css'), 'utf8');
+
+  assert.match(
+    coldStyles,
+    /#cold-kdf-benchmark-run:focus-visible\s*\{[\s\S]*?outline:\s*0\.2rem solid var\(--cold-pink\);[\s\S]*?outline-offset:\s*0\.18rem;/,
+    'KDF benchmark must expose the documented focus-visible ring'
+  );
+  assert.match(
+    coldStyles,
+    /#cold-kdf-benchmark-run\s*\{[\s\S]*?min-width:\s*2\.75rem;[\s\S]*?min-height:\s*2\.75rem;/,
+    'KDF benchmark must retain at least a 44 x 44 CSS-pixel target at the default root size'
+  );
+  assert.match(
+    coldStyles,
+    /#cold-kdf-benchmark-run:disabled\s*\{[\s\S]*?background:\s*var\(--cold-disabled-fill\);/,
+    'KDF benchmark disabled fill must use a token rather than an inline hex'
+  );
+  assert.doesNotMatch(
+    coldStyles.match(/#cold-kdf-benchmark-run:disabled\s*\{[\s\S]*?\}/)[0],
+    /#[0-9a-fA-F]{6}/,
+    'KDF benchmark disabled rule must not reintroduce a hard-coded colour'
+  );
+});

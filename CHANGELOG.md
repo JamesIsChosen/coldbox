@@ -27,8 +27,12 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 
 ### Added — P0.12 (2026-08-03)
 
-- Cold-only KDF profile benchmark for Fast, Standard, and Paranoid, with sequential timings before vault creation and an explicit iOS allocation warning for the 256 MiB profile.
+- Cold-only KDF profile benchmark for Fast, Standard, and Paranoid, with sequential positive timings, shared vault-health gating, and an explicit iOS allocation warning for the 256 MiB profile; literal placement before creation is verified with the dependent P0.13 workflow.
 - Real Argon2id round-trips for all three stored header profiles, likely-iOS Paranoid skip coverage, and browser verification that the benchmark offer remains inside the sealed realm.
+
+### Added — browser runner workflow (2026-08-05)
+- Browser-only development/review runners now require explicit repository/branch/HEAD state, persist per-step exit codes and preflight untracked paths, preserve recovery tags without overwriting them, and emit scanner-gated evidence bundles.
+- Secret scanning uses the vendored English BIP-39 wordlist, handles CRLF and large text inputs, records skipped binary paths, and emits only a content-free diagnostic manifest plus scan report when a finding is detected.
 
 ### Added — P0.10 (2026-08-03)
 

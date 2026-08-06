@@ -572,6 +572,216 @@
     return openVault(value, passphrase, 'online');
   }
 
+  function createVaultSession(state) {
+    var closed = false;
+    var saving = false;
+
+    function close() {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      zeroBytes(state.publicKey);
+      zeroBytes(state.secretKey);
+      zeroBytes(state.publicPlain);
+      zeroBytes(state.secretPlain);
+      zeroBytes(state.secretNonce);
+      zeroBytes(state.secretCiphertext);
+      zeroBytes(state.headerBytes);
+      zeroBytes(state.wrappedBlock);
+      state.publicKey = null;
+      state.secretKey = null;
+      state.publicPlain = null;
+      state.secretPlain = null;
+      state.secretNonce = null;
+      state.secretCiphertext = null;
+      state.headerBytes = null;
+      state.wrappedBlock = null;
+    }
+
+    async function save() {
+      if (closed || saving) {
+        throw serializationError();
+      }
+      saving = true;
+      var publicNonce = null;
+      var publicCiphertext = null;
+      var secretNonce = null;
+      var secretCiphertext = null;
+      try {
+        requireVaultHealth(serializationError);
+        if (networkState() !== state.mode) {
+          close();
+          throw serializationError();
+        }
+
+        publicNonce = cryptoLayer.randomBytes(NONCE_LENGTH);
+        publicCiphertext = await aesGcm(
+          'encrypt',
+          state.publicKey,
+          publicNonce,
+          state.publicPlain,
+          state.headerBytes
+        );
+
+        if (state.mode === 'online') {
+          secretNonce = new Uint8Array(state.secretNonce);
+          secretCiphertext = new Uint8Array(state.secretCiphertext);
+        } else {
+          secretNonce = cryptoLayer.randomBytes(NONCE_LENGTH);
+          if (state.secretLength > 0) {
+            if (!state.secretKey || !state.secretPlain) {
+              close();
+              throw serializationError();
+            }
+            secretCiphertext = await aesGcm(
+              'encrypt',
+              state.secretKey,
+              secretNonce,
+              state.secretPlain,
+              state.headerBytes
+            );
+          } else {
+            secretCiphertext = new Uint8Array(0);
+          }
+        }
+
+        var vault = concatBytes([
+          state.headerBytes,
+          state.wrappedBlock,
+          publicNonce,
+          publicCiphertext,
+          secretNonce,
+          secretCiphertext
+        ]);
+        if (vault.length > MAX_VAULT_BYTES) {
+          throw sizeLimitError();
+        }
+        return vault;
+      } catch (error) {
+        if (!closed && (!vaultHealthReady() || networkState() !== state.mode)) {
+          close();
+        }
+        if (isSizeLimitError(error)) {
+          throw error;
+        }
+        throw serializationError();
+      } finally {
+        saving = false;
+        zeroBytes(publicNonce);
+        zeroBytes(publicCiphertext);
+        zeroBytes(secretNonce);
+        zeroBytes(secretCiphertext);
+      }
+    }
+
+    return Object.freeze({
+      formatVersion: FORMAT_VERSION,
+      header: state.header,
+      publicData: state.publicData,
+      save: save,
+      close: close
+    });
+  }
+
+  async function openVaultSession(value, passphrase, mode) {
+    var bytes = null;
+    var headerBytes = null;
+    var wrappedBlock = null;
+    var dek = null;
+    var publicKey = null;
+    var secretKey = null;
+    var publicPlain = null;
+    var secretPlain = null;
+    var secretNonce = null;
+    var secretCiphertext = null;
+    var session = null;
+    try {
+      var resolvedMode = resolveMode(mode);
+      bytes = ensureVaultBytes(value);
+      var header = parseHeader(bytes);
+      var expectedLength = HEADER_LENGTH
+        + header.wrappedDekLength
+        + NONCE_LENGTH
+        + header.publicLength
+        + NONCE_LENGTH
+        + header.secretLength;
+      if (expectedLength !== bytes.length || expectedLength > MAX_VAULT_BYTES) {
+        throw authenticationError();
+      }
+      headerBytes = bytes.slice(0, HEADER_LENGTH);
+      header.bytes = headerBytes;
+      var records = parseWrappedRecords(bytes, HEADER_LENGTH, header.wrappedDekLength);
+      wrappedBlock = bytes.slice(HEADER_LENGTH, HEADER_LENGTH + header.wrappedDekLength);
+      var publicNonceOffset = HEADER_LENGTH + header.wrappedDekLength;
+      var publicNonce = bytes.slice(publicNonceOffset, publicNonceOffset + NONCE_LENGTH);
+      var publicCipherOffset = publicNonceOffset + NONCE_LENGTH;
+      var publicCiphertext = bytes.slice(publicCipherOffset, publicCipherOffset + header.publicLength);
+      var secretNonceOffset = publicCipherOffset + header.publicLength;
+      secretNonce = bytes.slice(secretNonceOffset, secretNonceOffset + NONCE_LENGTH);
+      secretCiphertext = bytes.slice(secretNonceOffset + NONCE_LENGTH);
+      dek = await unwrapDek(records, passphrase, header);
+      publicKey = hkdfSubkey(dek, 'cbx/public/v1');
+      publicPlain = await aesGcm('decrypt', publicKey, publicNonce, publicCiphertext, headerBytes);
+      var publicData = parsePaddedJson(publicPlain);
+      if (resolvedMode === 'offline' && header.secretLength > 0) {
+        secretKey = hkdfSubkey(dek, 'cbx/secret/v1');
+        secretPlain = await aesGcm('decrypt', secretKey, secretNonce, secretCiphertext, headerBytes);
+        parsePaddedJson(secretPlain);
+      }
+
+      requireVaultHealth(authenticationError);
+      if (networkState() !== resolvedMode) {
+        throw authenticationError();
+      }
+
+      session = createVaultSession({
+        mode: resolvedMode,
+        header: publicHeader(header),
+        headerBytes: headerBytes,
+        wrappedBlock: wrappedBlock,
+        publicData: publicData,
+        publicPlain: publicPlain,
+        publicKey: publicKey,
+        secretLength: header.secretLength,
+        secretNonce: secretNonce,
+        secretCiphertext: secretCiphertext,
+        secretPlain: secretPlain,
+        secretKey: secretKey
+      });
+
+      headerBytes = null;
+      wrappedBlock = null;
+      publicKey = null;
+      publicPlain = null;
+      secretKey = null;
+      secretPlain = null;
+      secretNonce = null;
+      secretCiphertext = null;
+      return session;
+    } catch (error) {
+      if (isSizeLimitError(error)) {
+        throw error;
+      }
+      throw authenticationError();
+    } finally {
+      zeroBytes(bytes);
+      zeroBytes(headerBytes);
+      zeroBytes(wrappedBlock);
+      zeroBytes(dek);
+      zeroBytes(publicKey);
+      zeroBytes(secretKey);
+      zeroBytes(publicPlain);
+      zeroBytes(secretPlain);
+      zeroBytes(secretNonce);
+      zeroBytes(secretCiphertext);
+    }
+  }
+
+  async function openSession(value, passphrase, mode) {
+    return openVaultSession(value, passphrase, mode);
+  }
+
   function inspectHeader(value) {
     try {
       requireVaultHealth(authenticationError);
@@ -601,8 +811,10 @@
     serialize: createVault,
     open: openVault,
     openPublic: openPublicVault,
+    openSession: openSession,
     parse: openVault,
-    inspectHeader: inspectHeader
+    inspectHeader: inspectHeader,
+    healthReady: vaultHealthReady
   });
 
   Object.defineProperty(global, '__coldboxVault', {

@@ -24,8 +24,9 @@
   --cold-muted: #b3bcd4;
   --cold-green: #4ade80;
   --cold-yellow: #ffde59;
-  --cold-red: #e02020;
   --cold-pink: #ff007a;
+  --cold-red: #e02020;
+  --cold-disabled-fill: #8e8e9c; /* design-system.md --fill-disabled */
   --cold-ink: #121212;
 
   font-family: 'Comic Sans MS', ui-sans-serif, system-ui, sans-serif;
@@ -131,6 +132,8 @@ body {
 }
 
 #cold-kdf-benchmark-run {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   margin-top: 0.5rem;
   padding: 0.35rem 0.7rem;
   border: 0.13rem solid var(--cold-drop);
@@ -144,11 +147,16 @@ body {
   cursor: pointer;
 }
 
+#cold-kdf-benchmark-run:focus-visible {
+  outline: 0.2rem solid var(--cold-pink);
+  outline-offset: 0.18rem;
+}
+
 /* Disabled state carries its own solid colours rather than an opacity wash —
    opacity multiplies against the background and drifts below the contrast
    floor. Grey fill, dark ink, and the shadow drops to signal "not pressable". */
 #cold-kdf-benchmark-run:disabled {
-  background: #8e8e9c;
+  background: var(--cold-disabled-fill);
   box-shadow: none;
   color: var(--cold-ink);
   cursor: wait;

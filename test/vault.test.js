@@ -185,6 +185,19 @@ function cloneBytes(value) {
   return new Uint8Array(value);
 }
 
+function compartmentNonce(vault, header, secret) {
+  const publicNonceOffset = header.wrappedDekLength + 65;
+  const secretNonceOffset = publicNonceOffset + 12 + header.publicLength;
+  const offset = secret ? secretNonceOffset : publicNonceOffset;
+  return vault.slice(offset, offset + 12);
+}
+
+function secretRegion(vault, header) {
+  const publicNonceOffset = header.wrappedDekLength + 65;
+  const secretNonceOffset = publicNonceOffset + 12 + header.publicLength;
+  return vault.slice(secretNonceOffset);
+}
+
 async function expectAuthenticationFailure(operation) {
   await assert.rejects(operation, (error) => error && error.message === 'Vault authentication failed.');
 }
@@ -343,6 +356,49 @@ test('P0.11 online opening never derives or decrypts the secret compartment', as
   );
 });
 
+test('P0.13 vault sessions rotate nonces, preserve online secret bytes, and close on mode or health drift', async () => {
+  const context = createFormatContext();
+  const passphrase = 'session save passphrase';
+  const vault = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fallback',
+    publicData: { wallets: [{ id: 'public' }] },
+    secretData: { seeds: [{ mnemonic: 'test only' }] }
+  });
+  const header = context.__coldboxVault.inspectHeader(vault);
+
+  const offlineSession = await context.__coldboxVault.openSession(vault, passphrase, 'offline');
+  const offlineFirst = await offlineSession.save();
+  const offlineSecond = await offlineSession.save();
+  assert.notDeepEqual(
+    compartmentNonce(offlineFirst, header, false),
+    compartmentNonce(offlineSecond, header, false)
+  );
+  assert.notDeepEqual(
+    compartmentNonce(offlineFirst, header, true),
+    compartmentNonce(offlineSecond, header, true)
+  );
+
+  context.__networkSnapshotOverride = { online: true, connection: 'wifi' };
+  await expectSerializationFailure(() => offlineSession.save());
+  await expectSerializationFailure(() => offlineSession.save());
+
+  const onlineSession = await context.__coldboxVault.openSession(vault, passphrase, 'online');
+  const onlineFirst = await onlineSession.save();
+  const onlineSecond = await onlineSession.save();
+  assert.notDeepEqual(
+    compartmentNonce(onlineFirst, header, false),
+    compartmentNonce(onlineSecond, header, false)
+  );
+  assert.deepEqual(secretRegion(onlineFirst, header), secretRegion(vault, header));
+  assert.deepEqual(secretRegion(onlineSecond, header), secretRegion(vault, header));
+
+  context.__setVaultHealth('data-vault-operations', 'refused');
+  await expectSerializationFailure(() => onlineSession.save());
+  context.__resetVaultHealth();
+  await expectSerializationFailure(() => onlineSession.save());
+});
+
 test('P0.11 refuses every vault entry point unless the cold health gate is proven', async () => {
   const context = createFormatContext();
   const passphrase = 'health gate passphrase';
@@ -363,14 +419,17 @@ test('P0.11 refuses every vault entry point unless the cold health gate is prove
     ['data-vault-operations', 'refused']
   ];
 
+  assert.equal(context.__coldboxVault.healthReady(), true);
   for (const [name, value] of failures) {
     context.__resetVaultHealth();
     context.__setVaultHealth(name, value);
+    assert.equal(context.__coldboxVault.healthReady(), false, `${name} must close the shared vault-health gate`);
     await expectSerializationFailure(
       () => context.__coldboxVault.create({ passphrase, profile: 'fallback', publicData: {} })
     );
     await expectAuthenticationFailure(() => context.__coldboxVault.open(vault, passphrase));
     await expectAuthenticationFailure(() => context.__coldboxVault.openPublic(vault, passphrase));
+    await expectAuthenticationFailure(() => context.__coldboxVault.openSession(vault, passphrase, 'online'));
     assert.throws(
       () => context.__coldboxVault.inspectHeader(vault),
       (error) => error && error.message === 'Vault authentication failed.'
@@ -379,6 +438,7 @@ test('P0.11 refuses every vault entry point unless the cold health gate is prove
 
   context.__resetVaultHealth();
   context.__setVaultHealth('data-crypto-state', 'fallback');
+  assert.equal(context.__coldboxVault.healthReady(), true, 'explicit fallback remains a valid vault-health state');
   const fallbackOpened = await context.__coldboxVault.open(vault, passphrase);
   assert.equal(JSON.stringify(fallbackOpened.publicData), JSON.stringify({ wallets: [] }));
 
@@ -457,7 +517,7 @@ test('P0.11 authenticates every header byte and keeps corruption errors indistin
   await expectAuthenticationFailure(() => context.__coldboxVault.open(vault, 'wrong passphrase'));
 });
 
-test('P0.11 exposes the vault API only in the cold layer and never exports secret-subkey derivation', () => {
+test('P0.11/P0.13 keeps the vault API cold-only while exposing only the bounded session surface', () => {
   const warmSource = fs.readFileSync(path.join(projectRoot, 'src', 'main.js'), 'utf8');
   const warmTemplate = fs.readFileSync(path.join(projectRoot, 'src', 'index.html'), 'utf8');
   assert.doesNotMatch(warmSource, /__coldboxVault|deriveSecretSubkey|cbx\/secret\/v1/);
@@ -467,7 +527,9 @@ test('P0.11 exposes the vault API only in the cold layer and never exports secre
   const context = createFormatContext();
   assert.equal(typeof context.__coldboxVault, 'object');
   assert.equal(typeof context.__coldboxVault.deriveSecretSubkey, 'undefined');
-  assert.equal(typeof context.__coldboxVault.openSession, 'undefined');
-  assert.doesNotMatch(vaultSource, /createVaultSession|openVaultSession|openSession/);
+  assert.equal(typeof context.__coldboxVault.openSession, 'function');
+  assert.match(vaultSource, /function createVaultSession/);
+  assert.match(vaultSource, /function openVaultSession/);
+  assert.match(vaultSource, /function openSession/);
   assert.match(vaultSource, /cbx\/secret\/v1/);
 });
