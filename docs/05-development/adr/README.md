@@ -18,6 +18,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0008](0008-csp-blocked-network-signals.md) | CSP-blocked network signals are not a throw contract | Accepted |
 | [0009](0009-comic-visual-language.md) | Comic visual language, with security surfaces exempted | Accepted |
 
+| [0010](0010-ios-local-html-execution.md) | iOS local-HTML execution is a portability gate, not a preview-equivalence claim | Accepted |
 ## When to write one
 
 Any decision that is structural, hard to reverse, or likely to be questioned later:
