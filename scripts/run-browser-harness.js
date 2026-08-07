@@ -1070,6 +1070,14 @@ async function verifyKeyfileUiAndRegressions(browser, engine) {
   // Firefox via the normal per-engine loop in run().
   const { page } = await openPageWithFileReaderControl(browser, buildPath);
   try {
+    // The keyfile controls live inside the cold iframe, which is reachable
+    // regardless of warm-shell routing - but #vault-save-manual and the
+    // other warm-shell save/lock/status controls this test also drives live
+    // inside #page-vault, which is `hidden` until the vault route is
+    // navigated to (matching the existing round-trip test's sequencing).
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+
     const coldFrame = await getColdFrame(page, engine);
     await coldFrame.locator('#cold-vault-passphrase:not([disabled])').waitFor({ state: 'attached', timeout: 10000 });
 
