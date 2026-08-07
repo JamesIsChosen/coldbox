@@ -104,15 +104,28 @@ $ grep -c '' LICENSE
 663
 ```
 
-**What remains unverified, and it is now narrow.** The diff above is against SPDX, not against gnu.org — this sandbox's egress allowlist returns `403 blocked-by-allowlist` for `gnu.org`, so the FSF's own copy could not be retrieved. A reviewer with network access closes the remaining gap in one command:
+### Confirmed against the FSF's own copy — zero differences
+
+The SPDX diff above left one gap: it compared `LICENSE` against SPDX, not against gnu.org, which this sandbox cannot reach (`403 blocked-by-allowlist`). **That gap is now closed.** The maintainer ran the comparison against the FSF's canonical text on their own machine, with real network access (2026-08-07, PowerShell):
+
+```powershell
+$tmp = Join-Path $env:TEMP 'agpl-3.0.txt'
+Invoke-WebRequest https://www.gnu.org/licenses/agpl-3.0.txt -OutFile $tmp
+$fsf  = (Get-Content $tmp      -Raw) -split '\s+' | Where-Object { $_ -ne '' }
+$ours = (Get-Content .\LICENSE -Raw) -split '\s+' | Where-Object { $_ -ne '' }
+"fsf: $($fsf.Count)  ours: $($ours.Count)"
+Compare-Object $fsf $ours -SyncWindow 0
+```
 
 ```
-$ curl -sO https://www.gnu.org/licenses/agpl-3.0.txt
-$ diff <(tr -s '[:space:]' '\n' < agpl-3.0.txt | grep -v '^$') \
-       <(tr -s '[:space:]' '\n' < LICENSE      | grep -v '^$')
+fsf: 5535  ours: 5535
 ```
 
-Expect **no output**. If the three URL lines appear, the FSF still ships `http://` and `LICENSE` should be changed to match — a cosmetic fix with no effect on the terms, but worth making so the file byte-matches a published reference, which is the property this project values everywhere else.
+**No `Compare-Object` output.** `LICENSE` is word-for-word identical to the FSF's published `agpl-3.0.txt`, including the three URLs where SPDX differs — so the FSF ships `https://` and SPDX retains the older `http://`. The three-token delta reported above is a property of SPDX's copy, not a defect in ours, and nothing needed changing.
+
+`-split '\s+'` collapses all whitespace so line wrapping is ignored; `-SyncWindow 0` forces positional rather than set-based comparison, without which `Compare-Object` would report misleadingly. Note that `curl -sO` is not usable here — in PowerShell 5.1 `curl` aliases to `Invoke-WebRequest` and silently misbehaves rather than erroring, which is the kind of shell gotcha [AGENTS.md](../../../AGENTS.md) §6a exists to catch.
+
+**The licence text is now verified against upstream, not merely against a mirror.** Nothing in this PR remains unverified for want of network access.
 
 ## 4. Acceptance criteria
 
@@ -171,12 +184,12 @@ Not applicable — nothing touching bootstrap, CSP, storage, or rendering change
 | SIL OFL 1.1 fonts may be bundled without relicensing them | OFL permits bundling; its conditions bind the font files, not the work they ship inside | A reserved-font-name issue at most; the faces are unmodified |
 | Playwright's Apache-2.0 terms don't reach the artifact | Dev dependency contributing 0 bytes, per [ADR-0007](../adr/0007-headless-browser-harness.md) | Would need an Apache notice. Contradicted by the existing 0-byte assertion, so low risk |
 | "only" beats "or-later" | An upgrade clause delegates a future drafting decision to a third party | If the FSF publishes a v4 the project wants, it needs an explicit relicense — deliberate friction, not an accident |
-| The reviewer has network access to diff against gnu.org | Prior reviewers in this repo have demonstrably had real network access (see the P0.17 and P0.18 notes) | The three-token `http`/`https` delta in §3 stays unresolved. Bounded: the operative text is already word-diffed clean against SPDX |
-| SPDX's published AGPL-3.0 text is faithful to the FSF's | SPDX is the reference the OSI and the wider tooling ecosystem build on, and its texts are used for automated licence identification | If SPDX itself is wrong, the §3 diff proves only that two copies agree. The gnu.org diff is what closes this, and it is the reason §3 still asks for it despite the clean result |
+| ~~The reviewer has network access to diff against gnu.org~~ | **No longer an assumption.** The gnu.org comparison was run and is recorded in §3 with its output | — |
+| ~~SPDX's published AGPL-3.0 text is faithful to the FSF's~~ | **No longer load-bearing.** `LICENSE` is verified directly against the FSF, so SPDX's fidelity no longer matters. The two do differ, in three URL schemes — the FSF ships `https://`, SPDX `http://` — which is worth knowing for any future comparison against SPDX | — |
 
 ## 9. What to scrutinise
 
-**First: the `LICENSE` bytes — now largely retired, but check the residue.** This was the top risk when the packet was first written: the text was hand-reflowed from a paragraph-unwrapped source, which is exactly the operation that silently drops a clause or mangles a "not". It has since been word-diffed against the SPDX source (§3): **5535 tokens each side, zero differences in operative text.** What remains is the three-token `http`/`https` delta and the fact that the comparison was against SPDX rather than gnu.org, which the sandbox cannot reach. One `curl` and one `diff` settle it — commands in §3. Do not review this by reading it; read the diff.
+**First: the `LICENSE` bytes — resolved, and recorded so you don't have to redo it.** This was the top risk when the packet was written: the text was hand-reflowed from a paragraph-unwrapped source, exactly the operation that silently drops a clause or mangles a "not". It has since been word-diffed twice — against SPDX from the sandbox, then against gnu.org from the maintainer's machine — with **5535 tokens each side and zero differences against the FSF's own text** (§3). Re-run it if you want; it is two commands. But this is no longer where the risk in this PR sits, and the items below are now the ones worth your attention.
 
 **Second: the P0.20 placement.** I put it *before* P0.19 in the file, out of numeric order. The reasoning is in the item itself: its dependency is P0.16, and P0.19 is `👤 human-required`, so an agent reaching P0.19 stops and anything after it is unreachable. If you disagree, the alternative is P0.20 never getting picked up. Worth a second opinion — this is a judgement call about how the roadmap's pick-the-next-item algorithm interacts with the human-required marker, and I may be reading that interaction more literally than intended.
 
