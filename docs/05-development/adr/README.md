@@ -22,6 +22,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0012](0012-recovery-checkpoint.md) | Recovery checkpoints are a separate encrypted file, not vault records | Accepted |
 | [0013](0013-save-integrity-in-warm-shell.md) | Save-integrity bookkeeping lives in the warm shell, not the vault format | Accepted |
 | [0014](0014-keyfile-unlock-implementation-limits.md) | Keyfile unlock (method 2) implementation limits and record shape | Accepted |
+| [0015](0015-provenance-build-date-and-self-hash.md) | Provenance panel build date is the source commit date, and the self-hash is a blank-then-hash self-consistency check | Accepted |
 
 ## When to write one
 

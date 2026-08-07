@@ -140,6 +140,6 @@ Every PR states its size impact. The budget exists because this file must open q
 
 ## Provenance in-app
 
-Reference → Provenance lists every embedded library with version, upstream repository, and upstream release hash, plus the build date, the app's own expected hash, and the complete CSP allowlist.
+Reference → Provenance lists every embedded library with version, upstream release URL, and upstream release hash — generated at build time directly from [vendor/vendor-manifest.json](../../vendor/vendor-manifest.json), so this table and the in-app panel cannot drift apart. It also shows the build date (the source commit date, never a wall-clock build timestamp — see [build.md](build.md)'s determinism requirements), the complete CSP allowlist for each realm read live from the assembled document rather than a second transcribed copy, and a self-hash drop zone that states plainly that self-verification is circular and points to [verification.md](../02-security/verification.md) for checks an attacker cannot forge.
 
 An auditor should be able to diff what's in the file against what's claimed here, without cloning anything.
