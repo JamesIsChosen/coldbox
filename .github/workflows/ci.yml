@@ -12,12 +12,18 @@ name: CI
 #
 # Third-party Actions (checkout/setup-node/upload-artifact/download-artifact/
 # attest-build-provenance) are pinned to the newest major each supports as of
-# this commit (checkout v7, setup-node v6, upload-artifact v7,
+# this commit (checkout v7, setup-node v7, upload-artifact v7,
 # download-artifact v8, attest-build-provenance v4 - all Node 24-runtime,
 # confirmed via each action's GitHub Releases API at the time this was
 # written). Action releases move; a reviewer or future maintainer should
 # re-check these are still current rather than assuming this comment stays
 # accurate forever.
+#
+# setup-node was bumped v6 -> v7 during P0.18 R2 remediation (see the packet's
+# "Remediation of R2 review FAIL" section): v7 migrated the action to ESM and
+# removed a NODE_AUTH_TOKEN fallback that only mattered for actions that pass
+# that input. This workflow only ever passes node-version-file to
+# actions/setup-node, so that removal does not affect it.
 
 on:
   push:
@@ -80,7 +86,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Node.js (pinned via .nvmrc)
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
 
@@ -234,7 +240,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Node.js (pinned via .nvmrc)
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
 
@@ -284,7 +290,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Node.js (pinned via .nvmrc)
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
 
