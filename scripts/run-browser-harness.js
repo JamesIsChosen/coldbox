@@ -1346,6 +1346,87 @@ async function verifyProvenancePanel(browser, engine) {
   }
 }
 
+async function verifyHelpFramework(browser, engine) {
+  // P0.17: the Learn route's three-depth switcher, offline search, and
+  // contextual '?' help. Per the roadmap's 🌐 marker, depth rendering and
+  // switching are verified here; the actual glossary/guide content is
+  // covered by test/help-content.test.js (Node-side), so this only checks
+  // that the compiled content actually reaches the DOM and responds to
+  // interaction in a real browser.
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#nav-rail a[data-route="learn"]').click();
+    await page.locator('#page-learn:not([hidden])').waitFor({ state: 'visible' });
+
+    const glossaryTerms = page.locator('#help-glossary-list .help-glossary-term');
+    const initialCount = await glossaryTerms.count();
+    assert.ok(initialCount > 0, `${engine}: Learn page must render at least one glossary term`);
+
+    const seedPhraseBody = page.locator('#help-glossary-list .help-glossary-term', { hasText: 'Seed phrase' })
+      .locator('.help-term-body');
+    await seedPhraseBody.waitFor({ state: 'visible' });
+    const plainText = (await seedPhraseBody.textContent()).trim();
+    assert.match(plainText, /12 or 24 ordinary words/i, `${engine}: plain depth should be showing by default`);
+
+    // Switch to technical depth and confirm the *content itself* changes,
+    // not just the pressed-state of the button - a stale render that only
+    // updates aria-pressed would otherwise pass a shallower check.
+    await page.locator('#help-depth-technical').click();
+    await page.locator('#help-depth-technical[aria-pressed="true"]').waitFor({ state: 'visible' });
+    const technicalText = (await seedPhraseBody.textContent()).trim();
+    assert.match(technicalText, /PBKDF2-HMAC-SHA512/, `${engine}: technical depth did not render distinct content`);
+    assert.notEqual(technicalText, plainText, `${engine}: switching depth must change the rendered text`);
+
+    // The depth preference must be a UI preference (see CONTRIBUTING.md's
+    // "no localStorage for secrets" rule - this is explicitly allowed) and
+    // must survive a reload, per SPEC.md #18.1 ("remembered").
+    await page.reload();
+    await page.locator('#nav-rail a[data-route="learn"]').click();
+    await page.locator('#help-depth-technical[aria-pressed="true"]').waitFor({ state: 'visible' });
+
+    // Offline search: no network request should be made while typing, and a
+    // result must be clickable to jump to the matching entry.
+    let networkRequestSeen = false;
+    const onRequest = () => {
+      networkRequestSeen = true;
+    };
+    page.on('request', onRequest);
+    await page.locator('#help-search-input').fill('xpub');
+    await page.locator('.help-search-result', { hasText: 'xpub' }).first().waitFor({ state: 'visible', timeout: 3000 });
+    page.off('request', onRequest);
+    assert.equal(networkRequestSeen, false, `${engine}: offline search must not trigger any network request`);
+
+    await page.locator('.help-search-result', { hasText: 'xpub' }).first().click();
+    await page.locator('#help-glossary-xpub').waitFor({ state: 'visible', timeout: 3000 });
+
+    // Contextual '?' help: clicking the cold-realm panel's help button must
+    // land on its mapped glossary entry, not just switch routes.
+    await page.locator('#nav-rail a[data-route="dashboard"]').click();
+    await page.locator('button.help-context-button[data-help-topic^="glossary:cold-realm-warm-shell"]').click();
+    await page.locator('#page-learn:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('[id^="help-glossary-cold-realm-warm-shell"]').waitFor({ state: 'visible', timeout: 3000 });
+
+    // A contextual button pointed at content that doesn't exist yet (the
+    // capability panel, honestly not backfilled - see the roadmap) must
+    // fail closed into the documented fallback notice, not silently no-op.
+    await page.locator('#nav-rail a[data-route="dashboard"]').click();
+    await page.locator('button.help-context-button[data-help-topic="guide:capability-self-check"]').click();
+    await page.locator('#help-fallback-notice:not([hidden])').waitFor({ state: 'visible', timeout: 3000 });
+
+    // Inline glossary: a term inside the rendered guide body must be
+    // tappable for a definition without leaving the page.
+    await page.locator('#nav-rail a[data-route="learn"]').click();
+    const inlineTerm = page.locator('#help-guides-list .glossary-term').first();
+    await inlineTerm.waitFor({ state: 'visible' });
+    await inlineTerm.click();
+    await page.locator('.glossary-tooltip').first().waitFor({ state: 'visible', timeout: 3000 });
+
+    console.log(`${engine}: Learn page depth switching (persisted across reload), offline search, contextual help, fallback-on-missing-topic, and inline glossary verified`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyDevOnlyDependency() {
   const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
   assert.equal(packageJson.dependencies?.playwright, undefined);
@@ -1435,6 +1516,7 @@ async function run() {
       await verifyReusableAssertions(browser, engine);
       await verifyKeyfileUiAndRegressions(browser, engine);
       await verifyProvenancePanel(browser, engine);
+      await verifyHelpFramework(browser, engine);
     } finally {
       await browser.close();
     }

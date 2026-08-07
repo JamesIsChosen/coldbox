@@ -84,7 +84,9 @@ __COLDBOX_STYLES__
         <section class="realm-status" id="cold-realm-status" data-cold-state="starting" aria-labelledby="cold-realm-status-title" aria-live="polite">
           <div class="realm-status-copy">
             <p class="eyebrow">Security boundary / P0.8</p>
-            <h2 id="cold-realm-status-title">Establishing the sealed realm</h2>
+            <h2 id="cold-realm-status-title">Establishing the sealed realm
+              <button type="button" class="icon-button help-context-button" data-help-topic="glossary:cold-realm-warm-shell" aria-label="What is the sealed realm?">?</button>
+            </h2>
             <p id="cold-realm-status-copy">The secret-capable side of Coldbox is starting inside an opaque sandbox. The shell will stay locked down if that boundary cannot be established.</p>
           </div>
           <div class="realm-status-state" aria-label="Sealed realm status">
@@ -99,7 +101,9 @@ __COLDBOX_STYLES__
         <section class="airgap-banner" id="airgap-banner" data-airgap-state="checking" aria-labelledby="airgap-banner-title" aria-live="polite">
           <div class="airgap-banner-copy">
             <p class="eyebrow">Airgap guard / P0.8</p>
-            <h2 id="airgap-banner-title">Checking the airgap guard</h2>
+            <h2 id="airgap-banner-title">Checking the airgap guard
+              <button type="button" class="icon-button help-context-button" data-help-topic="glossary:airgapped" aria-label="What does airgapped mean?">?</button>
+            </h2>
             <p id="airgap-banner-copy">Coldbox is confirming both CSP policies and the private cold-realm channel before vault operations can be considered.</p>
           </div>
           <div class="airgap-banner-state" aria-label="Airgap and network status">
@@ -112,7 +116,9 @@ __COLDBOX_STYLES__
           <div class="capability-panel-header">
             <div>
               <p class="eyebrow">Boot self-check / P0.9</p>
-              <h2 id="capability-panel-title">Capability self-check</h2>
+              <h2 id="capability-panel-title">Capability self-check
+                <button type="button" class="icon-button help-context-button" data-help-topic="guide:capability-self-check" aria-label="Learn more about this panel">?</button>
+              </h2>
               <p id="capability-summary">Coldbox is checking the platform capabilities needed for safe secret work and portable saves.</p>
             </div>
             <div class="capability-panel-state" aria-label="Capability self-check status">
@@ -292,7 +298,9 @@ __COLDBOX_STYLES__
           <section class="vault-status" id="vault-status" data-state="locked" aria-labelledby="vault-status-title" aria-live="polite">
             <div>
               <p class="panel-kicker">Session state</p>
-              <h2 id="vault-status-title">Vault is locked</h2>
+              <h2 id="vault-status-title">Vault is locked
+                <button type="button" class="icon-button help-context-button" data-help-topic="glossary:vault" aria-label="What is the vault?">?</button>
+              </h2>
               <p id="vault-status-copy">Load an encrypted vault, then enter its unlock phrase in the sealed realm. The warm shell never receives it.</p>
               <p class="vault-dirty-notice" id="vault-dirty-notice" data-dirty="false" hidden></p>
             </div>
@@ -429,7 +437,9 @@ __COLDBOX_STYLES__
 
           <section class="provenance-panel" id="provenance-panel" aria-labelledby="provenance-panel-title">
             <div class="provenance-panel-header">
-              <h2 id="provenance-panel-title">Provenance</h2>
+              <h2 id="provenance-panel-title">Provenance
+                <button type="button" class="icon-button help-context-button" data-help-topic="glossary:hash-checksum" aria-label="What is a hash?">?</button>
+              </h2>
               <p>Every third-party library embedded in this file, the exact Content-Security-Policy enforced by each realm, when the source was last changed, and a self-hash check with its limits stated plainly.</p>
             </div>
 
@@ -474,8 +484,42 @@ __COLDBOX_STYLES__
         </section>
 
         <section class="page" id="page-learn" data-page="learn" aria-labelledby="page-title-learn" hidden>
-          <header class="page-header"><p class="eyebrow">Reference / Learn</p><h1 id="page-title-learn">Learn</h1><p class="page-lede">Plain, working, and technical explanations will be available offline from this route.</p></header>
-          <div class="empty-panel"><span class="panel-kicker">Coming in Phase 0</span><h2>Help will be part of the product, not a link away.</h2><p>The help framework is a later foundation item. This shell makes room for it now.</p></div>
+          <header class="page-header">
+            <p class="eyebrow">Reference / Learn · P0.17</p>
+            <h1 id="page-title-learn">Learn</h1>
+            <p class="page-lede">Compiled at build time from <code>docs/00-overview/glossary.md</code> and <code>docs/03-guides/</code> in the source repository — the same words either place. No network request is made by this page.</p>
+          </header>
+
+          <section class="help-panel" id="help-panel" aria-labelledby="help-depth-switcher-title">
+            <div class="help-depth-switcher" role="group" aria-labelledby="help-depth-switcher-title">
+              <p class="panel-kicker" id="help-depth-switcher-title">Explanation depth</p>
+              <div class="help-depth-buttons">
+                <button type="button" class="comic-btn help-depth-button" id="help-depth-plain" data-help-depth="plain" aria-pressed="true">Plain</button>
+                <button type="button" class="comic-btn help-depth-button" id="help-depth-working" data-help-depth="working" aria-pressed="false">Working</button>
+                <button type="button" class="comic-btn help-depth-button" id="help-depth-technical" data-help-depth="technical" aria-pressed="false">Technical</button>
+              </div>
+              <p class="help-depth-note">Remembered everywhere in Coldbox, and changeable from here at any time.</p>
+            </div>
+
+            <div class="help-search">
+              <label class="vault-label" for="help-search-input">Search help, offline</label>
+              <input type="search" id="help-search-input" placeholder="e.g. xpub, SLIP-39, airgapped" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off">
+              <div class="help-search-results" id="help-search-results" role="listbox" aria-label="Search results" hidden></div>
+            </div>
+
+            <p class="help-fallback-notice" id="help-fallback-notice" role="status" aria-live="polite" hidden>No dedicated help content exists for that panel yet — see the P0.17 backfill obligation in the roadmap.</p>
+
+            <article class="help-section">
+              <h2>Guides</h2>
+              <div id="help-guides-list"></div>
+            </article>
+
+            <article class="help-section">
+              <h2>Glossary</h2>
+              <p class="provenance-section-note">Jargon inside a guide above is underlined and tappable for a definition without leaving the page.</p>
+              <div id="help-glossary-list"></div>
+            </article>
+          </section>
         </section>
       </main>
     </div>

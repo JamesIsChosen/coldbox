@@ -45,7 +45,7 @@ function assertExactColdSandbox(html) {
 
 function createBuildRoot() {
   const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'coldbox-csp-'));
-  for (const directory of ['scripts', 'src', 'vendor']) {
+  for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
     fs.cpSync(path.join(projectRoot, directory), path.join(root, directory), { recursive: true });
   }
   return root;
@@ -87,7 +87,17 @@ test('build assembles one HTML file and emits its SHA-256 sidecar', () => {
   assert.match(html.toString('utf8'), /<title>Coldbox<\/title>/);
   assert.doesNotMatch(html.toString('utf8'), /__COLDBOX_/);
   assert.equal(sidecar, `${digest}  build/coldbox.html\n`);
-  assert.doesNotMatch(html.toString('utf8'), /[A-Za-z]:\\|\/Users\/|\/home\//);
+  // P0.17: HELP_CONTENT embeds guide/glossary prose via JSON.stringify,
+  // which escapes '<' as the six literal source characters <. A
+  // sentence that ends a word right before an escaped tag (e.g.
+  // "...backup immediately, verify it, then destroy the incorrect one so it
+  // can't confuse anyone later.<strong>...") happens to spell "letter,
+  // colon, backslash" - the exact shape this check is looking for in a
+  // Windows drive-letter path. Excluding the \uXXXX unicode-escape shape
+  // keeps the check aimed at real absolute paths, which are never followed
+  // by a lowercase 'u' plus four hex digits, without flagging legitimate
+  // compiled help content.
+  assert.doesNotMatch(html.toString('utf8'), /[A-Za-z]:\\(?!u[0-9a-fA-F]{4})|\/Users\/|\/home\//);
   assert.equal(html.includes(0x0d), false, 'generated HTML must use LF line endings');
   assert.equal(Buffer.from(sidecar, 'utf8').includes(0x0d), false, 'sidecar must use LF line endings');
 });

@@ -74,6 +74,20 @@ __COLDBOX_QR_ENCODER__
   var provenanceExpectedHash = document.getElementById('provenance-expected-hash');
   var PROVENANCE_LIBRARIES = __COLDBOX_PROVENANCE_LIBRARIES__;
   var PROVENANCE_BUILD_DATE = __COLDBOX_BUILD_DATE__;
+  var HELP_CONTENT = __COLDBOX_HELP_CONTENT__;
+  var HELP_DEPTHS = ['plain', 'working', 'technical'];
+  var HELP_DEPTH_STORAGE_KEY = 'coldbox-help-depth';
+  var helpDepthButtons = Array.prototype.slice.call(document.querySelectorAll('[data-help-depth]'));
+  var helpSearchInput = document.getElementById('help-search-input');
+  var helpSearchResults = document.getElementById('help-search-results');
+  var helpGlossaryList = document.getElementById('help-glossary-list');
+  var helpGuidesList = document.getElementById('help-guides-list');
+  var helpFallbackNotice = document.getElementById('help-fallback-notice');
+  var helpContextButtons = Array.prototype.slice.call(document.querySelectorAll('[data-help-topic]'));
+  var currentHelpDepth = 'plain';
+  var helpGlossaryTermIndex = null;
+  var helpGlossaryPattern;
+  var helpSearchCorpus = null;
   var PROVENANCE_MAX_DROP_BYTES = 16 * 1024 * 1024;
   var vaultStatus = document.getElementById('vault-status');
   var vaultStatusTitle = document.getElementById('vault-status-title');
@@ -186,6 +200,410 @@ __COLDBOX_QR_ENCODER__
     }
   }
 
+  // P0.17 - Help framework.
+  //
+  // HELP_CONTENT is compiled at build time (scripts/help-content.js) from
+  // docs/00-overview/glossary.md and docs/03-guides/*.md, per SPEC.md #18.
+  // Everything below only ever reads that already-rendered, already-escaped
+  // HTML - it never fetches, parses markdown at runtime, or reaches the
+  // network, so the "searchable help index, fully offline" and "no network,
+  // no external docs links" acceptance criteria hold structurally.
+
+  function helpDomId(id) {
+    return 'help-' + String(id).replace(/[^a-zA-Z0-9]+/g, '-');
+  }
+
+  function stripHtmlToText(html) {
+    var container = document.createElement('div');
+    container.innerHTML = html || '';
+    return (container.textContent || '').trim();
+  }
+
+  function escapeHelpHtml(text) {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function readStoredHelpDepth() {
+    try {
+      var stored = window.localStorage.getItem(HELP_DEPTH_STORAGE_KEY);
+      return HELP_DEPTHS.indexOf(stored) !== -1 ? stored : 'plain';
+    } catch (error) {
+      return 'plain';
+    }
+  }
+
+  function findGlossaryTermById(id) {
+    for (var i = 0; i < HELP_CONTENT.glossary.length; i += 1) {
+      var category = HELP_CONTENT.glossary[i];
+      for (var j = 0; j < category.terms.length; j += 1) {
+        if (category.terms[j].id === id) {
+          return category.terms[j];
+        }
+      }
+    }
+    return null;
+  }
+
+  function findGuideById(id) {
+    for (var i = 0; i < HELP_CONTENT.guides.length; i += 1) {
+      if (HELP_CONTENT.guides[i].id === id) {
+        return HELP_CONTENT.guides[i];
+      }
+    }
+    return null;
+  }
+
+  // The compiled build deliberately does NOT ship a separate precomputed
+  // search-text field (see help-content.js's renderNodesAtDepth comment) -
+  // duplicating all three depths again just for search would have added
+  // roughly as much weight as the glossary and guides combined. Instead the
+  // corpus is built once, lazily, from the same byDepth HTML already
+  // embedded, by stripping tags via stripHtmlToText. This still satisfies
+  // "searchable help index, fully offline" (SPEC.md #18.2): no network
+  // call, and the index is fully available at first use, not lazily fetched
+  // from anywhere.
+  function buildHelpSearchCorpus() {
+    if (helpSearchCorpus) {
+      return helpSearchCorpus;
+    }
+    helpSearchCorpus = Object.create(null);
+    HELP_CONTENT.searchIndex.forEach(function (entry) {
+      var source = entry.kind === 'glossary' ? findGlossaryTermById(entry.id) : findGuideById(entry.id);
+      var parts = [entry.title].concat(entry.aliases || []);
+      if (source) {
+        HELP_DEPTHS.forEach(function (depth) {
+          parts.push(stripHtmlToText(source.byDepth[depth]));
+        });
+      }
+      helpSearchCorpus[entry.id] = parts.join(' ').toLowerCase();
+    });
+    return helpSearchCorpus;
+  }
+
+  function buildGlossaryTermIndex() {
+    if (helpGlossaryTermIndex) {
+      return helpGlossaryTermIndex;
+    }
+    var index = [];
+    var byLower = Object.create(null);
+    HELP_CONTENT.glossary.forEach(function (category) {
+      category.terms.forEach(function (term) {
+        var names = [term.term].concat(term.aliases || []);
+        names.forEach(function (rawName) {
+          var name = String(rawName).trim();
+          if (name.length < 3) {
+            return;
+          }
+          var lower = name.toLowerCase();
+          if (byLower[lower]) {
+            return;
+          }
+          var entry = { name: name, id: term.id };
+          byLower[lower] = entry;
+          index.push(entry);
+        });
+      });
+    });
+    index.sort(function (a, b) {
+      return b.name.length - a.name.length;
+    });
+    helpGlossaryTermIndex = { list: index, byLower: byLower };
+    return helpGlossaryTermIndex;
+  }
+
+  function buildGlossaryPattern() {
+    if (helpGlossaryPattern !== undefined) {
+      return helpGlossaryPattern;
+    }
+    var index = buildGlossaryTermIndex();
+    if (index.list.length === 0) {
+      helpGlossaryPattern = null;
+      return null;
+    }
+    var escapedNames = index.list.map(function (entry) {
+      return entry.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    });
+    helpGlossaryPattern = new RegExp('\\b(' + escapedNames.join('|') + ')\\b', 'gi');
+    return helpGlossaryPattern;
+  }
+
+  function replaceGlossaryTermsInText(text) {
+    var pattern = buildGlossaryPattern();
+    if (!pattern || !text || !text.trim()) {
+      return null;
+    }
+    var index = buildGlossaryTermIndex();
+    pattern.lastIndex = 0;
+    var match = pattern.exec(text);
+    if (!match) {
+      return null;
+    }
+    var result = '';
+    var lastIndex = 0;
+    while (match) {
+      var entry = index.byLower[match[0].toLowerCase()];
+      result += escapeHelpHtml(text.slice(lastIndex, match.index));
+      if (entry) {
+        result += '<button type="button" class="glossary-term" data-term-id="' +
+          escapeHelpHtml(entry.id) + '" aria-expanded="false" aria-label="Definition: ' +
+          escapeHelpHtml(entry.name) + '">' + escapeHelpHtml(match[0]) + '</button>';
+      } else {
+        result += escapeHelpHtml(match[0]);
+      }
+      lastIndex = pattern.lastIndex;
+      match = pattern.exec(text);
+    }
+    result += escapeHelpHtml(text.slice(lastIndex));
+    return result;
+  }
+
+  function linkifyGlossaryTerms(container) {
+    if (!container) {
+      return;
+    }
+    var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+    var textNodes = [];
+    var node = walker.nextNode();
+    while (node) {
+      var parentTag = node.parentNode && node.parentNode.tagName;
+      if (parentTag !== 'CODE' && parentTag !== 'PRE' && parentTag !== 'BUTTON') {
+        textNodes.push(node);
+      }
+      node = walker.nextNode();
+    }
+    textNodes.forEach(function (textNode) {
+      var replaced = replaceGlossaryTermsInText(textNode.nodeValue);
+      if (replaced !== null) {
+        var span = document.createElement('span');
+        span.innerHTML = replaced;
+        textNode.parentNode.replaceChild(span, textNode);
+      }
+    });
+  }
+
+  function closeGlossaryTooltips() {
+    Array.prototype.slice.call(document.querySelectorAll('.glossary-tooltip')).forEach(function (tooltip) {
+      var owner = tooltip.previousElementSibling;
+      tooltip.parentNode.removeChild(tooltip);
+      if (owner) {
+        owner.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+
+  function handleGlossaryTermClick(event) {
+    var target = event.target;
+    var button = target && typeof target.closest === 'function' ? target.closest('.glossary-term') : null;
+    if (!button) {
+      return;
+    }
+    var alreadyOpen = button.getAttribute('aria-expanded') === 'true';
+    closeGlossaryTooltips();
+    if (alreadyOpen) {
+      return;
+    }
+    var term = findGlossaryTermById(button.getAttribute('data-term-id'));
+    if (!term) {
+      return;
+    }
+    var tooltip = document.createElement('span');
+    tooltip.className = 'glossary-tooltip';
+    tooltip.setAttribute('role', 'tooltip');
+    tooltip.textContent = stripHtmlToText(term.byDepth.plain || term.byDepth.working || term.byDepth.technical);
+    button.insertAdjacentElement('afterend', tooltip);
+    button.setAttribute('aria-expanded', 'true');
+  }
+
+  function renderHelpGlossary() {
+    if (!helpGlossaryList) {
+      return;
+    }
+    while (helpGlossaryList.firstChild) {
+      helpGlossaryList.removeChild(helpGlossaryList.firstChild);
+    }
+    HELP_CONTENT.glossary.forEach(function (category) {
+      var section = document.createElement('section');
+      section.className = 'help-glossary-category';
+      var heading = document.createElement('h3');
+      heading.textContent = category.title;
+      section.appendChild(heading);
+      category.terms.forEach(function (term) {
+        var entry = document.createElement('article');
+        entry.className = 'help-glossary-term';
+        entry.id = helpDomId(term.id);
+        entry.setAttribute('tabindex', '-1');
+        var termHeading = document.createElement('h4');
+        termHeading.textContent = term.aliases.length
+          ? term.term + ' (also ' + term.aliases.join(', ') + ')'
+          : term.term;
+        entry.appendChild(termHeading);
+        var body = document.createElement('div');
+        body.className = 'help-term-body';
+        body.innerHTML = term.byDepth[currentHelpDepth] || term.byDepth.plain || '';
+        entry.appendChild(body);
+        section.appendChild(entry);
+      });
+      helpGlossaryList.appendChild(section);
+    });
+  }
+
+  function renderHelpGuides() {
+    if (!helpGuidesList) {
+      return;
+    }
+    while (helpGuidesList.firstChild) {
+      helpGuidesList.removeChild(helpGuidesList.firstChild);
+    }
+    HELP_CONTENT.guides.forEach(function (guide) {
+      var entry = document.createElement('article');
+      entry.className = 'help-guide';
+      entry.id = helpDomId(guide.id);
+      entry.setAttribute('tabindex', '-1');
+      var heading = document.createElement('h3');
+      heading.textContent = guide.title;
+      entry.appendChild(heading);
+      var body = document.createElement('div');
+      body.className = 'help-guide-body';
+      body.innerHTML = guide.byDepth[currentHelpDepth] || guide.byDepth.plain || '';
+      entry.appendChild(body);
+      helpGuidesList.appendChild(entry);
+      linkifyGlossaryTerms(body);
+    });
+  }
+
+  function setHelpDepth(depth, persist) {
+    currentHelpDepth = HELP_DEPTHS.indexOf(depth) !== -1 ? depth : 'plain';
+    helpDepthButtons.forEach(function (button) {
+      var isCurrent = button.getAttribute('data-help-depth') === currentHelpDepth;
+      button.setAttribute('aria-pressed', String(isCurrent));
+    });
+    closeGlossaryTooltips();
+    renderHelpGlossary();
+    renderHelpGuides();
+    if (persist) {
+      try {
+        window.localStorage.setItem(HELP_DEPTH_STORAGE_KEY, currentHelpDepth);
+      } catch (error) {
+        // UI preferences are optional on file:// and must not block the shell.
+      }
+    }
+  }
+
+  function showHelpFallbackNotice() {
+    if (!helpFallbackNotice) {
+      return;
+    }
+    helpFallbackNotice.hidden = false;
+    window.setTimeout(function () {
+      helpFallbackNotice.hidden = true;
+    }, 6000);
+  }
+
+  function focusHelpTopic(id) {
+    var target = document.getElementById(helpDomId(id));
+    if (!target) {
+      showHelpFallbackNotice();
+      return;
+    }
+    try {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (error) {
+      target.scrollIntoView();
+    }
+    target.classList.add('help-topic-highlight');
+    window.setTimeout(function () {
+      target.classList.remove('help-topic-highlight');
+    }, 2000);
+    target.focus({ preventScroll: true });
+  }
+
+  function navigateToHelpTopic(id) {
+    var encoded = encodeURIComponent(id);
+    if (routeFromLocation() === 'learn') {
+      try {
+        window.history.replaceState(null, '', '#learn/' + encoded);
+      } catch (error) {
+        window.location.hash = 'learn/' + encoded;
+      }
+      focusHelpTopic(id);
+    } else {
+      window.location.hash = 'learn/' + encoded;
+    }
+  }
+
+  function handleHelpSearch() {
+    if (!helpSearchInput || !helpSearchResults) {
+      return;
+    }
+    var rawQuery = helpSearchInput.value || '';
+    var query = rawQuery.trim().toLowerCase();
+    while (helpSearchResults.firstChild) {
+      helpSearchResults.removeChild(helpSearchResults.firstChild);
+    }
+    if (!query) {
+      helpSearchResults.hidden = true;
+      return;
+    }
+    var corpus = buildHelpSearchCorpus();
+    var matches = HELP_CONTENT.searchIndex.filter(function (entry) {
+      return (corpus[entry.id] || '').indexOf(query) !== -1;
+    }).slice(0, 30);
+    helpSearchResults.hidden = false;
+    if (matches.length === 0) {
+      var empty = document.createElement('p');
+      empty.className = 'help-search-empty';
+      empty.textContent = 'No offline help entries match "' + rawQuery.trim() + '".';
+      helpSearchResults.appendChild(empty);
+      return;
+    }
+    matches.forEach(function (entry) {
+      var item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'help-search-result';
+      item.setAttribute('role', 'option');
+      item.textContent = entry.title + ' — ' + entry.category;
+      item.addEventListener('click', function () {
+        navigateToHelpTopic(entry.id);
+      });
+      helpSearchResults.appendChild(item);
+    });
+  }
+
+  function initHelp() {
+    setHelpDepth(readStoredHelpDepth(), false);
+    helpDepthButtons.forEach(function (button) {
+      button.addEventListener('click', function () {
+        setHelpDepth(button.getAttribute('data-help-depth'), true);
+      });
+    });
+    if (helpSearchInput) {
+      helpSearchInput.addEventListener('input', handleHelpSearch);
+    }
+    if (helpGlossaryList) {
+      helpGlossaryList.addEventListener('click', handleGlossaryTermClick);
+    }
+    if (helpGuidesList) {
+      helpGuidesList.addEventListener('click', handleGlossaryTermClick);
+    }
+    helpContextButtons.forEach(function (button) {
+      button.addEventListener('click', function () {
+        var topic = button.getAttribute('data-help-topic');
+        if (topic) {
+          navigateToHelpTopic(topic);
+        }
+      });
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') {
+        closeGlossaryTooltips();
+      }
+    });
+  }
+
   function routeFromLocation() {
     var hash = window.location.hash.replace(/^#/, '').trim();
     var route = hash.split('/')[0];
@@ -193,7 +611,12 @@ __COLDBOX_QR_ENCODER__
   }
 
   function normalizeLocation(route) {
-    if (window.location.hash === '#' + route) {
+    var hash = window.location.hash;
+    // A '#route/topic' deep link (used by contextual ? help and search
+    // results to jump straight to a compiled glossary/guide entry) is left
+    // alone rather than collapsed to the bare route, so the link stays
+    // shareable and survives a reload.
+    if (hash === '#' + route || hash.indexOf('#' + route + '/') === 0) {
       return;
     }
     try {
@@ -2067,6 +2490,9 @@ __COLDBOX_QR_ENCODER__
   }
 
   function renderRoute(shouldFocus) {
+    var rawHash = window.location.hash.replace(/^#/, '').trim();
+    var hashSegments = rawHash.split('/');
+    var topicSegment = hashSegments.length > 1 ? hashSegments.slice(1).join('/') : null;
     var route = routeFromLocation();
     var detail = routeDetails[route];
     normalizeLocation(route);
@@ -2095,7 +2521,9 @@ __COLDBOX_QR_ENCODER__
     }
     closeMoreMenu();
 
-    if (shouldFocus) {
+    if (route === 'learn' && topicSegment) {
+      focusHelpTopic(decodeURIComponent(topicSegment));
+    } else if (shouldFocus) {
       try {
         main.focus({ preventScroll: true });
       } catch (error) {
@@ -2124,6 +2552,7 @@ __COLDBOX_QR_ENCODER__
     'Load an encrypted vault, then enter its unlock phrase in the sealed realm. The warm shell never receives it.',
     'Locked'
   );
+  initHelp();
   renderRoute(false);
   renderProvenancePanel();
   initProvenanceDropZone();

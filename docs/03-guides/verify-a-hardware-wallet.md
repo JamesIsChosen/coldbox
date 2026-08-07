@@ -8,11 +8,23 @@
 
 You want to receive Bitcoin. Your wallet software displays an address. You copy it, send it to whoever is paying you, and the money arrives — somewhere.
 
-Address-swapping malware exists for exactly this. It watches for an address on your screen or clipboard and substitutes the attacker's. You never see the substitution. The transaction succeeds. The coins are simply not yours.
+::: plain
+There's malware built to do exactly one thing: swap the address on your screen or clipboard for the attacker's own, right before you copy it. You never notice the swap. The payment goes through fine. It just doesn't go to you.
 
-Your hardware wallet shows the true address on its own screen, which is why you're told to check it. But comparing 42 characters against a small display is tedious, and people stop doing it — or check the first four and last four characters, which malware defeats by generating an address with matching ends.
+Your hardware wallet shows the real address on its own tiny screen so you can catch this — but comparing 42 random-looking characters against a phone-sized display is tedious, so people stop doing it, or shortcut it by checking just the first few and last few characters. Address-swapping malware is built to defeat exactly that shortcut, by generating a fake address with matching ends.
 
-**The defence:** derive the address independently, in software that has no connection to the wallet application that might be lying.
+**The fix:** work out the address yourself, independently, using software that was never anywhere near the app that might be lying to you.
+:::
+::: working
+Address-swapping malware watches the clipboard or display for a cryptocurrency address and substitutes an attacker-controlled one before the user sends. The substitution is invisible in the moment; the transaction itself succeeds normally, just to the wrong recipient.
+
+The hardware wallet's own display exists precisely to defeat this, but character-by-character comparison of a long address is tedious and commonly shortcut to just the visible prefix/suffix — which is exactly what generation of a matching vanity address defeats.
+
+**The defence:** derive the address independently, in software with no code path shared with the potentially-compromised wallet application, and compare the full string.
+:::
+::: technical
+Given an xpub and derivation path, deriving address `i` requires only public-key arithmetic (see "xpub" in the [glossary](../00-overview/glossary.md)) — no private key or network access is needed, which is exactly why Coldbox can perform this check entirely inside the airgapped cold realm. A vanity-address generator brute-forces private keys until it finds one whose derived address matches a chosen prefix and/or suffix; matching even 4+4 characters is computationally cheap, which is why partial-string comparison provides negligible protection.
+:::
 
 ---
 
@@ -58,7 +70,17 @@ Once verified, record the address in the Registry with a label. Verifying it aga
 
 Useful after restoring from a backup, buying a used device, or when you simply can't remember which seed is on which device.
 
-**Compare master fingerprints** — eight hex characters, derived from the seed but revealing nothing about it.
+**Compare master fingerprints.**
+
+::: plain
+A fingerprint is eight characters that identify a wallet without giving anything away about it — like comparing serial numbers instead of comparing the actual contents of a safe.
+:::
+::: working
+The master fingerprint is an 8-hex-character identifier derived one-way from the seed's master public key, safe to compare and record even though it reveals nothing exploitable about the underlying seed.
+:::
+::: technical
+See "Fingerprint" in the [glossary](../00-overview/glossary.md) for the exact BIP-32 derivation (`HASH160` of the master public key, first 4 bytes). Coldbox computes this from an entered seed entirely inside the cold realm, so the comparison never requires the seed to leave the airgapped side of the app.
+:::
 
 1. Display the fingerprint on your device (often shown as XFP, in advanced or wallet info screens).
 2. In Coldbox, **offline**, enter the seed phrase you believe it holds. Seed Forge shows the fingerprint immediately.

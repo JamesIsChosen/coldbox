@@ -882,6 +882,8 @@ Zero runtime dependencies. Everything vendored, pinned, listed in Provenance wit
 
 Comfortably under budget. The existing Ian Coleman standalone is 4.55 MB by itself.
 
+**Help content row, measured (2026-08-07):** P0.17's compiled `HELP_CONTENT` (glossary + guides, JSON-embedded per-depth HTML) currently measures **≈ 350 KB**, not the 180 KB estimated above, and will grow further once the remaining guides and the P0.1–P0.16 in-app-copy backfill are written (see [ROADMAP.md](../05-development/ROADMAP.md)'s P0.17 entry). Most of the gap is the existing build-time JSON-escaping helper (`jsonScriptLiteral()`, shared with `PROVENANCE_LIBRARIES` and the cold-realm document) expanding every `<`/`>` in the compiled HTML to a 6-character `\uXXXX` escape. Flagged here rather than silently reconciled, per doc-hygiene.md rule 4 — this line item, and the total, need re-estimating once the backfill is complete.
+
 ---
 
 ## 17. Build phases
