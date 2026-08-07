@@ -1265,6 +1265,21 @@ async function verifyProvenancePanel(browser, engine) {
       `${engine}: drop zone must state plainly that self-verification is circular`
     );
 
+    // --- F1: the compiled expected hash must be visible in the panel, and
+    // must equal the value in the document's own coldbox-expected-hash meta
+    // tag (the same quantity the drop zone compares against). ---
+    const declaredExpectedHash = await page.evaluate(() => {
+      const meta = document.querySelector('meta[name="coldbox-expected-hash"]');
+      return meta ? meta.getAttribute('content') : null;
+    });
+    assert.match(declaredExpectedHash || '', /^[0-9a-f]{64}$/, `${engine}: running copy has no readable expected-hash meta value`);
+    const visibleExpectedHashText = (await page.locator('#provenance-expected-hash').textContent()).trim();
+    assert.equal(
+      visibleExpectedHashText,
+      declaredExpectedHash,
+      `${engine}: visible expected-hash value must equal the build's expected-hash meta value`
+    );
+
     // --- self-drop: the exact built file must report a match ---
     const builtBytes = fs.readFileSync(buildPath);
     await page.locator('#provenance-drop-input').setInputFiles({
@@ -1286,6 +1301,25 @@ async function verifyProvenancePanel(browser, engine) {
     });
     await page.locator('#provenance-drop-result[data-state="mismatch"]').waitFor({ state: 'visible', timeout: 5000 });
 
+    // --- F2: a byte flipped *inside the declared expected-hash field itself*
+    // must also report a mismatch. This is the adversarial case the P0.16
+    // review proved false-PASSed under the old blank-then-hash-only
+    // comparison, because blanking the field before hashing erases the very
+    // byte that was corrupted. ---
+    const hashFieldTamperedBytes = Buffer.from(builtBytes);
+    const declaredHashBuffer = Buffer.from(declaredExpectedHash, 'utf8');
+    const hashFieldIndex = hashFieldTamperedBytes.indexOf(declaredHashBuffer);
+    assert.notEqual(hashFieldIndex, -1, `${engine}: fixture could not locate the declared expected-hash bytes to tamper`);
+    const originalFirstNibble = String.fromCharCode(hashFieldTamperedBytes[hashFieldIndex]);
+    const replacementNibble = originalFirstNibble === '0' ? '1' : '0';
+    hashFieldTamperedBytes[hashFieldIndex] = replacementNibble.charCodeAt(0);
+    await page.locator('#provenance-drop-input').setInputFiles({
+      name: 'coldbox-hashfield-tampered.html',
+      mimeType: 'text/html',
+      buffer: hashFieldTamperedBytes
+    });
+    await page.locator('#provenance-drop-result[data-state="mismatch"]').waitFor({ state: 'visible', timeout: 5000 });
+
     // --- an unrelated file must fail closed with a clear error, never a false match ---
     await page.locator('#provenance-drop-input').setInputFiles({
       name: 'not-coldbox.html',
@@ -1294,7 +1328,7 @@ async function verifyProvenancePanel(browser, engine) {
     });
     await page.locator('#provenance-drop-result[data-state="error"]').waitFor({ state: 'visible', timeout: 5000 });
 
-    console.log(`${engine}: provenance panel library list, CSP text, build date, and self-hash drop zone (match/mismatch/error) verified`);
+    console.log(`${engine}: provenance panel library list, CSP text, build date, visible expected hash, and self-hash drop zone (match/mismatch/hash-field-tamper/error) verified`);
   } finally {
     await closePage(page);
   }
