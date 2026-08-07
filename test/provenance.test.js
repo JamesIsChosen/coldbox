@@ -137,6 +137,26 @@ test('a commit touching only docs/ (governance-only, e.g. a packet update) does 
       env: { ...gitEnvBase, GIT_AUTHOR_DATE: '2020-01-01T00:00:00Z', GIT_COMMITTER_DATE: '2020-01-01T00:00:00Z' }
     });
 
+    // Re-derive the expected build date from git itself, the same way
+    // readBuildCommitDate() does, rather than hardcoding a specific
+    // ISO-8601 spelling. R2-F1: different git versions render the strict
+    // ISO offset for this same UTC instant differently ('Z' vs '+00:00')
+    // depending on how the commit date was supplied; comparing against a
+    // hand-typed string made this test's pass/fail depend on the reviewing
+    // machine's git version rather than on the actual product behavior
+    // under test (that the governance-only commit below does not move the
+    // embedded build date). Capturing git's own answer for the 2020 commit
+    // right after creating it, and comparing the final build's embedded
+    // date against that captured value, is representation-independent by
+    // construction: whatever spelling this git version produces here is
+    // the same spelling readBuildCommitDate() will produce later, because
+    // both call the identical `git log --format=%cI` command.
+    const productCommitLog = execFileSync(
+      'git',
+      ['log', '-1', '--format=%cI', 'HEAD'],
+      { cwd: root, encoding: 'utf8' }
+    ).trim();
+
     // A second, governance-only commit: touches a file outside src/scripts/vendor.
     fs.mkdirSync(path.join(root, 'docs'), { recursive: true });
     fs.writeFileSync(path.join(root, 'docs', 'packet.md'), 'a governance-only change\n', 'utf8');
@@ -158,8 +178,11 @@ test('a commit touching only docs/ (governance-only, e.g. a packet update) does 
     // Must reflect the 2020 product commit, not the 2030 governance-only
     // commit that is literal HEAD. This is the exact scenario F4 describes:
     // committing a packet must not change the product's own build date (or,
-    // by extension, its bytes and hash).
-    assert.equal(buildDate, '2020-01-01T00:00:00+00:00');
+    // by extension, its bytes and hash). Compared against git's own
+    // independently-captured answer for that commit (see above), not a
+    // hardcoded string, so this assertion can't fail merely because a
+    // different git version spells the same UTC instant differently.
+    assert.equal(buildDate, productCommitLog);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
