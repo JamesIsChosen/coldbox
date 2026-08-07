@@ -1415,8 +1415,16 @@ async function verifyHelpFramework(browser, engine) {
     const initialCount = await glossaryTerms.count();
     assert.ok(initialCount > 0, `${engine}: Learn page must render at least one glossary term`);
 
-    const seedPhraseBody = page.locator('#help-glossary-list .help-glossary-term', { hasText: 'Seed phrase' })
-      .locator('.help-term-body');
+    // Selecting by hasText: 'Seed phrase' used to be ambiguous: Playwright's
+    // hasText matches substring-anywhere-in-text-content, and "Seed phrase"
+    // as a cross-referenced concept legitimately appears in the compiled
+    // prose of several other glossary entries too (entropy, passphrase,
+    // private key, BIP-39, BIP-85, SLIP-39, SeedQR, and the "my seed phrase
+    // is my password" myth entry all mention it) - a real run against real
+    // Chromium hit a strict-mode violation with 9 matching elements. The
+    // compiler's own deterministic id (glossary:seed-phrase -> helpDomId ->
+    // #help-glossary-seed-phrase) is exact and unambiguous; use that instead.
+    const seedPhraseBody = page.locator('#help-glossary-seed-phrase .help-term-body');
     await seedPhraseBody.waitFor({ state: 'visible' });
     const plainText = (await seedPhraseBody.textContent()).trim();
     assert.match(plainText, /12 or 24 ordinary words/i, `${engine}: plain depth should be showing by default`);
