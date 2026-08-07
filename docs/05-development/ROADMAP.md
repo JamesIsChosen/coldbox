@@ -130,7 +130,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
   Verify-after-save re-opening the written file before clearing the dirty flag; generational filenames; rollback detection via save counter.
   **Accept:** a deliberately truncated save is caught before the dirty flag clears; opening an older vault warns with both dates and counters.
 
-- [ ] **P0.15 — Keyfile unlock**
+- [~] **P0.15 — Keyfile unlock**
   *Deps: P0.14*
   Wrapped-DEK method 2. Off by default, with an unmissable warning that a lost or byte-altered keyfile means permanent loss.
   **Accept:** unlocks with the correct keyfile; fails with a one-byte-altered keyfile; passphrase-only vaults are unaffected.

@@ -21,6 +21,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0011](0011-wasm-secp256k1-for-recovery.md) | WASM secp256k1 for the recovery search, with `@noble` as the authority | Accepted |
 | [0012](0012-recovery-checkpoint.md) | Recovery checkpoints are a separate encrypted file, not vault records | Accepted |
 | [0013](0013-save-integrity-in-warm-shell.md) | Save-integrity bookkeeping lives in the warm shell, not the vault format | Accepted |
+| [0014](0014-keyfile-unlock-implementation-limits.md) | Keyfile unlock (method 2) implementation limits and record shape | Accepted |
 
 ## When to write one
 
