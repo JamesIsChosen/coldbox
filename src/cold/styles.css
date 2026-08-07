@@ -85,6 +85,45 @@ body {
   font-size: 0.74rem;
 }
 
+#cold-vault-keyfile {
+  margin-top: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border: 0.14rem dashed var(--cold-outline);
+  border-radius: 0.35rem;
+}
+
+#cold-vault-keyfile-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+#cold-vault-keyfile-warning {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.6rem;
+  border: 0.16rem solid var(--cold-drop);
+  border-radius: 0.35rem;
+  background: var(--cold-red);
+  box-shadow: 0.2rem 0.2rem 0 var(--cold-drop);
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+#cold-vault-keyfile-input-label {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.76rem;
+}
+
+#cold-vault-keyfile-status {
+  margin: 0.3rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.72rem;
+}
+
 #cold-kdf-details {
   margin-top: 0.75rem;
   padding: 0.6rem 0.7rem;

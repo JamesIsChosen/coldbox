@@ -30,7 +30,22 @@ __COLDBOX_COLD_STYLES__
       <p class="eyebrow">Vault session / P0.13</p>
       <p id="cold-vault-status" data-state="locked" role="status" aria-live="polite">Vault is locked. Unlocking stays in this sealed realm.</p>
       <label id="cold-vault-passphrase-label" for="cold-vault-passphrase">Unlock phrase (never leaves this realm)</label>
-      <input id="cold-vault-passphrase" type="password" autocomplete="new-password" spellcheck="false" autocapitalize="off" disabled>
+      <input id="cold-vault-passphrase" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+      <section id="cold-vault-keyfile" aria-label="Keyfile unlock (advanced, off by default)">
+        <label id="cold-vault-keyfile-toggle-label" for="cold-vault-keyfile-toggle">
+          <input id="cold-vault-keyfile-toggle" type="checkbox" disabled>
+          Also need a keyfile to unlock (advanced, off by default)
+        </label>
+        <p id="cold-vault-keyfile-warning" role="alert" hidden>
+          Warning: with a keyfile enabled, both the unlock phrase and the exact original keyfile are required. Losing the
+          keyfile, or a single byte changing in it — a re-save, a re-download, an edit by another program — makes this
+          vault permanently and unrecoverably unopenable. There is no recovery path and no backdoor. Keep a verified,
+          byte-identical backup of the keyfile if you turn this on.
+        </p>
+        <label id="cold-vault-keyfile-input-label" for="cold-vault-keyfile-input">Keyfile</label>
+        <input id="cold-vault-keyfile-input" type="file" disabled>
+        <p id="cold-vault-keyfile-status" role="status" aria-live="polite">No keyfile selected. This input and the file's bytes stay inside this sealed realm.</p>
+      </section>
       <div id="cold-vault-actions">
         <button id="cold-vault-create" type="button" disabled>Create empty vault</button>
         <button id="cold-vault-unlock" type="button" disabled>Unlock loaded vault</button>

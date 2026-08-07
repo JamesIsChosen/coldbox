@@ -29,6 +29,10 @@ __COLDBOX_CAPABILITIES__
   var createVaultButton = document.getElementById('cold-vault-create');
   var unlockVaultButton = document.getElementById('cold-vault-unlock');
   var lockVaultButton = document.getElementById('cold-vault-lock');
+  var keyfileToggle = document.getElementById('cold-vault-keyfile-toggle');
+  var keyfileWarning = document.getElementById('cold-vault-keyfile-warning');
+  var keyfileInput = document.getElementById('cold-vault-keyfile-input');
+  var keyfileStatus = document.getElementById('cold-vault-keyfile-status');
   var vaultCryptoReady = false;
   var vaultBusy = false;
   var vaultUnlocked = false;
@@ -36,6 +40,11 @@ __COLDBOX_CAPABILITIES__
   var currentVaultSession = null;
   var pendingVaultBytes = null;
   var pendingOpenId = null;
+  // Off by default (P0.15). Keyfile bytes and name never leave this document -
+  // no message type carries them, and they are never logged. Cleared on lock
+  // and whenever the keyfile toggle is switched off.
+  var keyfileBytes = null;
+  var keyfileName = '';
   var idleTimer = null;
   var lastEscapeAt = 0;
   var onlineMode = true;
@@ -102,6 +111,32 @@ __COLDBOX_CAPABILITIES__
     if (lockVaultButton) {
       lockVaultButton.disabled = !ready || vaultBusy || (!vaultUnlocked && !pendingVaultBytes);
     }
+    if (keyfileToggle) {
+      keyfileToggle.disabled = !ready || vaultBusy || vaultUnlocked;
+    }
+    if (keyfileInput) {
+      keyfileInput.disabled = !ready || vaultBusy || vaultUnlocked || !(keyfileToggle && keyfileToggle.checked);
+    }
+  }
+
+  function zeroKeyfile() {
+    zeroBytes(keyfileBytes);
+    keyfileBytes = null;
+    keyfileName = '';
+  }
+
+  function setKeyfileStatus(text) {
+    if (keyfileStatus) {
+      keyfileStatus.textContent = text;
+    }
+  }
+
+  function clearKeyfileSelection() {
+    zeroKeyfile();
+    if (keyfileInput) {
+      keyfileInput.value = '';
+    }
+    setKeyfileStatus('No keyfile selected. This input and the file\'s bytes stay inside this sealed realm.');
   }
 
   function nextVaultMessageId(prefix) {
@@ -167,6 +202,7 @@ __COLDBOX_CAPABILITIES__
     if (passphraseInput) {
       passphraseInput.value = '';
     }
+    zeroKeyfile();
     setSessionEvidence('locked');
     updateVaultControls();
   }
@@ -212,6 +248,13 @@ __COLDBOX_CAPABILITIES__
     vaultBusy = true;
     updateVaultControls();
     setVaultStatus('pending', 'Creating an encrypted vault inside the sealed realm...');
+    var activeKeyfile = keyfileToggle && keyfileToggle.checked ? keyfileBytes : null;
+    if (keyfileToggle && keyfileToggle.checked && !activeKeyfile) {
+      vaultBusy = false;
+      updateVaultControls();
+      setVaultStatus('locked', 'Keyfile unlock is on but no keyfile is selected yet.');
+      return;
+    }
     var createOptions = {
       passphrase: passphrase,
       profile: 'fast',
@@ -220,8 +263,12 @@ __COLDBOX_CAPABILITIES__
     if (!onlineMode) {
       createOptions.secretData = {};
     }
+    if (activeKeyfile) {
+      createOptions.keyfile = activeKeyfile;
+      createOptions.keyfileHint = keyfileName;
+    }
     vaultLayer.create(createOptions).then(function (bytes) {
-      return vaultLayer.openSession(bytes, passphrase, onlineMode ? 'online' : 'offline').then(function (session) {
+      return vaultLayer.openSession(bytes, passphrase, onlineMode ? 'online' : 'offline', activeKeyfile).then(function (session) {
         currentVaultSession = session;
         currentVaultBytes = new Uint8Array(bytes);
         zeroBytes(pendingVaultBytes);
@@ -276,6 +323,11 @@ __COLDBOX_CAPABILITIES__
       passphraseInput.focus();
       return;
     }
+    var activeKeyfile = keyfileToggle && keyfileToggle.checked ? keyfileBytes : null;
+    if (keyfileToggle && keyfileToggle.checked && !activeKeyfile) {
+      setVaultStatus('pending', 'Keyfile unlock is on but no keyfile is selected yet.');
+      return;
+    }
     var bytes = pendingVaultBytes;
     var responseId = pendingOpenId || nextVaultMessageId('opened');
     vaultBusy = true;
@@ -286,7 +338,7 @@ __COLDBOX_CAPABILITIES__
         ? 'Opening only the public compartment; secrets remain sealed online...'
         : 'Authenticating the encrypted vault inside the sealed realm...'
     );
-    vaultLayer.openSession(bytes, passphrase, onlineMode ? 'online' : 'offline').then(function (session) {
+    vaultLayer.openSession(bytes, passphrase, onlineMode ? 'online' : 'offline', activeKeyfile).then(function (session) {
       currentVaultSession = session;
       currentVaultBytes = new Uint8Array(bytes);
       zeroBytes(pendingVaultBytes);
@@ -701,6 +753,54 @@ __COLDBOX_CAPABILITIES__
   if (lockVaultButton) {
     lockVaultButton.addEventListener('click', function () {
       lockVaultSession(nextVaultMessageId('local-lock'), 'Vault locked locally.', true);
+    });
+  }
+  if (keyfileToggle) {
+    keyfileToggle.addEventListener('change', function () {
+      if (keyfileWarning) {
+        keyfileWarning.hidden = !keyfileToggle.checked;
+      }
+      if (!keyfileToggle.checked) {
+        clearKeyfileSelection();
+      }
+      updateVaultControls();
+    });
+  }
+  if (keyfileInput && typeof window.FileReader === 'function') {
+    keyfileInput.addEventListener('change', function () {
+      var file = keyfileInput.files && keyfileInput.files[0];
+      if (!file) {
+        clearKeyfileSelection();
+        return;
+      }
+      var maxKeyfileBytes = vaultLayer.constants && vaultLayer.constants.maxKeyfileBytes;
+      if (typeof file.size === 'number' && typeof maxKeyfileBytes === 'number' && file.size > maxKeyfileBytes) {
+        clearKeyfileSelection();
+        setKeyfileStatus('That keyfile is too large (limit ' + String(maxKeyfileBytes) + ' bytes).');
+        return;
+      }
+      zeroKeyfile();
+      setKeyfileStatus('Reading keyfile inside the sealed realm...');
+      var reader = new window.FileReader();
+      reader.onerror = function () {
+        clearKeyfileSelection();
+        setKeyfileStatus('Could not read the selected keyfile.');
+      };
+      reader.onload = function () {
+        var result = reader.result;
+        if (!(result instanceof ArrayBuffer) || result.byteLength === 0) {
+          clearKeyfileSelection();
+          setKeyfileStatus('The selected keyfile is empty or unreadable.');
+          return;
+        }
+        keyfileBytes = new Uint8Array(result);
+        // Only the filename (display metadata) is retained beyond this
+        // handler - never the file's contents beyond the in-memory bytes
+        // above, and neither crosses the realm boundary or is logged.
+        keyfileName = typeof file.name === 'string' ? file.name : '';
+        setKeyfileStatus('Keyfile loaded (' + String(keyfileBytes.length) + ' bytes). It never leaves this sealed realm.');
+      };
+      reader.readAsArrayBuffer(file);
     });
   }
   document.addEventListener('pointerdown', recordVaultActivity);
