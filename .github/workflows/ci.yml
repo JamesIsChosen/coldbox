@@ -9,6 +9,15 @@ name: CI
 # Every job pins the exact Node version from .nvmrc (never "latest") because
 # a different toolchain can legitimately produce different build output -
 # see build.md's determinism requirements.
+#
+# Third-party Actions (checkout/setup-node/upload-artifact/download-artifact/
+# attest-build-provenance) are pinned to the newest major each supports as of
+# this commit (checkout v7, setup-node v6, upload-artifact v7,
+# download-artifact v8, attest-build-provenance v4 - all Node 24-runtime,
+# confirmed via each action's GitHub Releases API at the time this was
+# written). Action releases move; a reviewer or future maintainer should
+# re-check these are still current rather than assuming this comment stays
+# accurate forever.
 
 on:
   push:
@@ -45,10 +54,33 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # Explicit checkout semantics, not actions/checkout@v4's defaults.
+        # Two things the defaults get wrong for this repository's
+        # reproducibility contract (see review finding F1 on P0.18):
+        #
+        # 1. On `pull_request` events, actions/checkout@v4 by default
+        #    checks out GitHub's synthetic merge commit (the PR head
+        #    merged into the base branch), not the actual PR head SHA.
+        #    build.js embeds a build date derived from git history, so
+        #    building the synthetic merge commit produces different bytes
+        #    than building the real commit a reviewer would check out
+        #    locally. `ref` pins to the real head SHA on pull_request
+        #    events (falling through to the default ref - the pushed
+        #    branch/tag/release commit - on every other event, since
+        #    github.event.pull_request is only populated for PRs).
+        # 2. The default `fetch-depth: 1` (shallow clone) means
+        #    `git log -1 -- src scripts vendor` in build.js may not
+        #    resolve to the same commit a full-history local clone would
+        #    find, if the most recent commit touching those paths isn't
+        #    the tip itself. `fetch-depth: 0` fetches full history,
+        #    matching what a plain `git clone` gives a local builder.
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
 
       - name: Set up Node.js (pinned via .nvmrc)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
 
@@ -128,7 +160,7 @@ jobs:
           echo "Bundle size: ${bytes} bytes (~${kib} KiB)"
 
       - name: Upload built artifact and hash
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coldbox-build-${{ matrix.os }}
           path: |
@@ -150,13 +182,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download Ubuntu build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: coldbox-build-ubuntu-latest
           path: ubuntu-build
 
       - name: Download Windows build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: coldbox-build-windows-latest
           path: windows-build
@@ -196,10 +228,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
 
       - name: Set up Node.js (pinned via .nvmrc)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
 
@@ -236,10 +271,20 @@ jobs:
       attestations: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # Same explicit checkout semantics as the build/browser-tests jobs
+        # (see the build job's Checkout step comment). This job only ever
+        # runs on `release`/tag-push events, so
+        # github.event.pull_request.head.sha is always empty here and this
+        # falls through to github.sha - kept identical to the other jobs
+        # for consistency and so a future trigger change doesn't silently
+        # regress this job back to shallow/synthetic checkout semantics.
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
 
       - name: Set up Node.js (pinned via .nvmrc)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
 
@@ -253,12 +298,12 @@ jobs:
         run: npm run build
 
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: 'build/coldbox.html'
 
       - name: Upload release artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coldbox-release
           path: |
