@@ -1446,7 +1446,18 @@ async function verifyDevOnlyDependency() {
   const built = fs.readFileSync(buildPath);
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-browser-build-'));
   try {
-    for (const directory of ['scripts', 'src', 'vendor']) {
+    // P0.17 fallout: scripts/build.js now also reads the help corpus from
+    // docs/00-overview/glossary.md and docs/03-guides/*.md (see
+    // scripts/help-content.js). This fixture's job is proving the build
+    // needs no devDependency (in particular, no Playwright) - it was never
+    // meant to prove the build needs no docs/ tree, and a real "node_modules
+    // absent" checkout still has its docs/ directory. Without copying it,
+    // the dependency-free build fails closed on ENOENT before either engine
+    // ever reaches verifyHelpFramework(), which defeats the whole point of
+    // this fixture existing in the browser harness. Copying docs/ restores
+    // that fidelity, matching the .git fix applied for the same reason
+    // below (P0.16 F4 fallout).
+    for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
       fs.cpSync(
         path.join(projectRoot, directory),
         path.join(temporaryRoot, directory),

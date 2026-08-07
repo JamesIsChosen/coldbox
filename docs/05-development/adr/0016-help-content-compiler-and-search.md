@@ -36,7 +36,7 @@ The search-index change was a direct response to measurement, not speculation: a
 
 ### Negative
 
-- The per-file backfill obligation recorded on P0.17 in the roadmap is not fully met by this branch — 7 of 9 guides and all of the P0.1–P0.16 in-app-copy backfill remain plain-only, each producing the documented build warning. This ADR does not resolve that; it only fixes the mechanism doing the compiling.
+- *(Historical, true only of an intermediate draft of this branch, corrected here after independent review flagged it as stale — see ROADMAP.md P0.17 and the PR packet for the final state.)* At the point this ADR was first written, the per-file backfill obligation recorded on P0.17 in the roadmap was not yet fully met — 7 of 9 guides and all of the P0.1–P0.16 in-app-copy backfill were still plain-only, each producing the documented build warning. That gap was closed before this branch was submitted for review: the final branch state carries three-depth content across all nine guides and all 51 compiled glossary terms, and `npm run build` emits zero help-content warnings. This ADR's actual subject — the compiler mechanism and the runtime search-derivation decision — is unaffected either way.
 - Runtime search-text derivation means the Learn page does slightly more work on first search (walking every compiled entry once, caching the result) than a precomputed index would. Given the corpus size (dozens of terms/guides, not thousands), this is not expected to be perceptible, but it hasn't been measured on a low-end device.
 
 ### Risks
