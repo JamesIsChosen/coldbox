@@ -114,6 +114,28 @@ test('handleVaultOpened derives dirty state from whether a file load was pending
   assert.match(body, /saveIntegrity\.parseFilename\(/);
 });
 
+// Independent review finding F1: the browser's remembered high-water mark
+// must advance on every opened file with a newer generation, not only on a
+// verified save - otherwise it goes stale and a later older file evades
+// the rollback warning after a reload.
+test('handleVaultOpened advances and persists the high-water mark after evaluating rollback against the old one', () => {
+  const body = extractFunction(mainSource, 'handleVaultOpened');
+  assert.match(body, /saveIntegrity\.advanceGenerationOnOpen\(saveGeneration, fileInfo\)/);
+  assert.match(body, /saveIntegrity\.writeGeneration\(safeLocalStorage\(\), saveGeneration\.counter, saveGeneration\.savedAt\)/);
+
+  const evaluateIndex = body.indexOf('saveIntegrity.evaluateRollback(');
+  const advanceIndex = body.indexOf('saveIntegrity.advanceGenerationOnOpen(');
+  const persistIndex = body.indexOf('saveIntegrity.writeGeneration(safeLocalStorage()');
+  assert.notEqual(evaluateIndex, -1);
+  assert.notEqual(advanceIndex, -1);
+  assert.notEqual(persistIndex, -1);
+  assert.ok(
+    evaluateIndex < advanceIndex,
+    'rollback must be evaluated against the OLD generation before it is advanced, or an opened file would always be compared against itself'
+  );
+  assert.ok(advanceIndex < persistIndex, 'the advanced generation must be computed before it is persisted');
+});
+
 test('the manual/QR load path never attaches file metadata (no filename exists for it)', () => {
   const body = extractFunction(mainSource, 'loadManualText');
   assert.doesNotMatch(body, /pendingLoadFileMeta\s*=/, 'must rely on sendVaultOpen\'s default of no file metadata');

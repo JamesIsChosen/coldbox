@@ -1372,15 +1372,24 @@ __COLDBOX_QR_ENCODER__
     var rollbackNotice = '';
     if (wasLoadedFile && saveIntegrity) {
       var fileCounter = loadMeta && loadMeta.name ? saveIntegrity.parseFilename(loadMeta.name) : null;
-      var evaluation = saveIntegrity.evaluateRollback(saveGeneration, {
-        counter: fileCounter,
-        lastModified: loadMeta ? loadMeta.lastModified : null
-      });
+      var fileInfo = { counter: fileCounter, lastModified: loadMeta ? loadMeta.lastModified : null };
+      // Evaluate against the generation on record BEFORE advancing it - an
+      // opened file must be judged against what this browser already knew,
+      // not against itself.
+      var evaluation = saveIntegrity.evaluateRollback(saveGeneration, fileInfo);
       setVaultRollbackBanner(evaluation, loadMeta);
       if (evaluation.rollback) {
         rollbackNotice = ' Rollback warning: see the banner above - this file is an older save generation'
           + ' than one this browser has already recorded.';
       }
+      // The remembered high-water mark must be the highest generation this
+      // browser has ever *seen*, not only the highest it has *saved* -
+      // otherwise opening a newer file here, then an older one after a
+      // reload, would evade rollback detection entirely (independent review
+      // finding F1). Never lowers the record; never fires on an unparseable
+      // filename.
+      saveGeneration = saveIntegrity.advanceGenerationOnOpen(saveGeneration, fileInfo);
+      saveIntegrity.writeGeneration(safeLocalStorage(), saveGeneration.counter, saveGeneration.savedAt);
     } else {
       setVaultRollbackBanner(null, null);
     }

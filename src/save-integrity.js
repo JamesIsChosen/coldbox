@@ -161,6 +161,34 @@
     });
   }
 
+  // The remembered generation must be the highest this browser profile has
+  // ever *seen*, not merely the highest it has *saved* - otherwise opening a
+  // newer file, then later opening an older one after a reload, evades
+  // rollback detection entirely, because the stale saved-only record never
+  // learned about the newer file in between. Call this on every successful
+  // file-backed open, always with the OLD generation (evaluateRollback must
+  // compare against the pre-advance record, not this function's result).
+  // Never lowers the recorded generation, and never fires on an unparseable
+  // filename - same degrade-silently contract as evaluateRollback.
+  function advanceGenerationOnOpen(generation, file) {
+    var seenCounter = generation && isSafeCounter(generation.counter) ? generation.counter : 0;
+    var seenSavedAt = generation && (generation.savedAt === null || isIsoDate(generation.savedAt))
+      ? generation.savedAt
+      : null;
+    var fileCounter = file && isSafeCounter(file.counter) ? file.counter : null;
+    if (fileCounter === null || fileCounter <= seenCounter) {
+      return Object.freeze({ counter: seenCounter, savedAt: seenSavedAt });
+    }
+    // Prefer the file's own last-modified time as the recorded date for this
+    // generation; fall back to now only when the platform didn't expose one,
+    // so the advance can still be persisted (a null savedAt is not a valid
+    // writeGeneration() argument).
+    var openedAt = file && typeof file.lastModified === 'number' && Number.isFinite(file.lastModified)
+      ? new Date(file.lastModified).toISOString()
+      : new Date().toISOString();
+    return Object.freeze({ counter: fileCounter, savedAt: openedAt });
+  }
+
   // The verify-after-save orchestration itself, decoupled from any specific
   // save path so it can be exercised with fake write/readBack callbacks. A
   // deliberately truncated or corrupted readBack fails verification; only a
@@ -193,6 +221,7 @@
     parseFilename: parseFilename,
     bytesEqual: bytesEqual,
     evaluateRollback: evaluateRollback,
+    advanceGenerationOnOpen: advanceGenerationOnOpen,
     verifyAfterSave: verifyAfterSave
   });
 

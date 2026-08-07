@@ -209,6 +209,92 @@ test('evaluateRollback only fires on a strictly older, successfully parsed gener
   assert.equal(freshBrowser.seenCounter, 0);
 });
 
+// Independent-review finding F1: the remembered generation must be the
+// highest this browser has ever SEEN (opened or saved), not only the
+// highest it has SAVED - otherwise opening a newer file, then an older one
+// after a reload, evades rollback detection because the stale record never
+// learned about the newer file in between.
+test('advanceGenerationOnOpen raises the high-water mark for a newer opened file', () => {
+  const api = load();
+  const generation = { counter: 47, savedAt: '2026-08-01T00:00:00.000Z' };
+
+  const advanced = api.advanceGenerationOnOpen(generation, { counter: 100, lastModified: 1754400000000 });
+  assert.equal(advanced.counter, 100);
+  assert.equal(advanced.savedAt, new Date(1754400000000).toISOString(), 'prefers the file\'s own last-modified date');
+});
+
+test('advanceGenerationOnOpen never lowers the recorded generation', () => {
+  const api = load();
+  const generation = { counter: 100, savedAt: '2026-08-01T00:00:00.000Z' };
+
+  const olderOpen = api.advanceGenerationOnOpen(generation, { counter: 80, lastModified: null });
+  assert.equal(olderOpen.counter, 100, 'opening an older file must not regress the high-water mark');
+  assert.equal(olderOpen.savedAt, generation.savedAt);
+
+  const sameOpen = api.advanceGenerationOnOpen(generation, { counter: 100, lastModified: null });
+  assert.equal(sameOpen.counter, 100);
+  assert.equal(sameOpen.savedAt, generation.savedAt);
+});
+
+test('advanceGenerationOnOpen never fires on an unparseable filename', () => {
+  const api = load();
+  const generation = { counter: 47, savedAt: null };
+
+  const unparsed = api.advanceGenerationOnOpen(generation, { counter: null, lastModified: 1754400000000 });
+  assert.equal(unparsed.counter, 47);
+  assert.equal(unparsed.savedAt, null);
+});
+
+test('advanceGenerationOnOpen still advances, using now, when the file exposes no last-modified time', () => {
+  const api = load();
+  const before = Date.now();
+  const advanced = api.advanceGenerationOnOpen({ counter: 0, savedAt: null }, { counter: 5, lastModified: null });
+  const after = Date.now();
+
+  assert.equal(advanced.counter, 5);
+  const parsed = Date.parse(advanced.savedAt);
+  assert.ok(Number.isFinite(parsed), 'savedAt must always be a valid date so the advance can be persisted');
+  assert.ok(parsed >= before && parsed <= after, 'falls back to the current time, not an unparseable placeholder');
+});
+
+// Reproduces the exact failing sequence independent review finding F1
+// described: 47 -> open 100 -> reload -> open 80 must warn, using the same
+// pure functions and call order src/main.js's handleVaultOpened() uses -
+// evaluateRollback() against the OLD generation, then
+// advanceGenerationOnOpen(), with the result persisted and reloaded through
+// a real fake localStorage in between.
+test('regression: 47 -> open 100 -> reload -> open 80 warns with both counters and dates (F1)', () => {
+  const api = load();
+  const storage = fakeStorage({});
+  api.writeGeneration(storage, 47, '2026-08-01T00:00:00.000Z');
+
+  // --- Session 1: open generation 100 ---
+  let generation = api.readGeneration(storage);
+  const openHundred = { counter: 100, lastModified: 1754400000000 };
+  const evalHundred = api.evaluateRollback(generation, openHundred);
+  assert.equal(evalHundred.rollback, false, 'a newer generation is never itself a rollback');
+  generation = api.advanceGenerationOnOpen(generation, openHundred);
+  api.writeGeneration(storage, generation.counter, generation.savedAt);
+  assert.equal(generation.counter, 100, 'the high-water mark must advance within session 1');
+
+  // --- "Reload": a fresh read from storage, exactly like a new page load ---
+  generation = api.readGeneration(storage);
+  assert.equal(generation.counter, 100, 'the advance from session 1 must survive a reload');
+
+  // --- Session 2: open the older generation 80 ---
+  const openEighty = { counter: 80, lastModified: 1700000000000 };
+  const evalEighty = api.evaluateRollback(generation, openEighty);
+  assert.equal(evalEighty.rollback, true, 'must warn - this browser has already recorded a newer generation');
+  assert.equal(evalEighty.seenCounter, 100);
+  assert.equal(evalEighty.fileCounter, 80);
+  assert.equal(typeof evalEighty.seenSavedAt, 'string', 'both counters AND dates must be available to the warning');
+  assert.equal(typeof evalEighty.fileLastModified, 'number');
+
+  // The next suggested save filename must also stay above the highest seen
+  // generation, not regress to one above the stale 47.
+  assert.equal(api.nextCounter(generation), 101);
+});
+
 test('verifyAfterSave: exact write/read-back agreement verifies', async () => {
   const api = load();
   const bytes = new Uint8Array([10, 20, 30, 40]);
