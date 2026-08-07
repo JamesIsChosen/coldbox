@@ -43,7 +43,14 @@ Record: the quorum (2-of-3), the **descriptor**, and per key — which device, i
 
 ### The descriptor is not optional
 
-An output descriptor is the precise, unambiguous definition of the wallet: which keys, which script type, which paths, which quorum.
+::: plain
+A descriptor is a precise, unambiguous piece of text describing exactly what the wallet is: which keys, what type of addresses, and in what order. Without it, three correct seed phrases still won't recover your funds — you'd also have to guess the quorum, the address type, the key order, and the paths, and guessing that correctly by trial and error is a genuinely bad afternoon.
+:::
+::: working
+An output descriptor is the precise, unambiguous definition of the wallet: which keys, which script type, which paths, which quorum. Without it, seed phrases alone are insufficient to recover a multisig wallet, since the same keys under a different configuration produce entirely different addresses.
+:::
+::: technical
+See "Descriptor / output descriptor" in the [glossary](../00-overview/glossary.md), e.g.:
 
 ```
 wsh(sortedmulti(2,[A1B2C3D4/48h/0h/0h/2h]xpub.../0/*,
@@ -51,7 +58,8 @@ wsh(sortedmulti(2,[A1B2C3D4/48h/0h/0h/2h]xpub.../0/*,
                   [C9D0E1F2/48h/0h/0h/2h]xpub.../0/*))
 ```
 
-**Without the descriptor, three seed phrases will not recover your funds.** You'd also need to know the quorum, the script type, the key order, and the paths — and reconstructing that by trial and error is a genuinely bad afternoon.
+`sortedmulti(2, ...)` fixes the quorum and canonical key ordering; each `[fingerprint/path]xpub` fixes exactly which key, at which origin path, is being referenced — this is the complete, machine-reconstructible state a coordinator needs.
+:::
 
 Store the descriptor with **every** backup. It contains no private keys and is safe to distribute alongside each share. It does reveal your addresses, so it isn't public information — but it can't spend.
 

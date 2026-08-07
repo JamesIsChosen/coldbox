@@ -27,7 +27,17 @@ Entropy Lab → choose your source.
 | Coin flips | 128 | 256 |
 | CSPRNG | instant | instant |
 
-**Use Mixing mode** for anything holding real value: your dice XORed with the system's randomness, then hashed. Neither source alone determines the result, so a weighted die *or* a broken RNG can't compromise it — both would have to fail together.
+**Use Mixing mode** for anything holding real value.
+
+::: plain
+Mixing mode combines your dice rolls with the computer's own randomness before using either. That way, a loaded die alone can't hurt you, and a broken random-number generator alone can't hurt you either — both would have to fail at once, which is a much taller order.
+:::
+::: working
+Mixing mode XORs your recorded entropy with the system CSPRNG's output, then hashes the result. Neither source alone determines the final entropy, so a weighted die *or* a compromised RNG can't compromise the outcome on its own.
+:::
+::: technical
+The combiner computes `SHA-256(user_entropy XOR csprng_output)` (or the equivalent for the chosen bit length): XOR with an independent uniform source is itself uniform regardless of the other input's distribution, and the hash step destroys any residual structure, so security holds unless *both* inputs are simultaneously compromised.
+:::
 
 ### Watch the Entropy Health Meter
 
@@ -36,7 +46,15 @@ Two numbers, side by side:
 - **Claimed** — what your input should yield
 - **Measured** — bias-corrected min-entropy actually achieved
 
-A gap between them means your source is biased. Fifty rolls of a loaded die claim 129 bits and deliver fewer.
+::: plain
+A gap between the two numbers means your source is leaning one way — like a die that lands on 6 a little too often. Fifty rolls of a die like that would claim about 129 bits of randomness on paper, but actually hand you less.
+:::
+::: working
+A gap between claimed and measured entropy means bias was detected in the source. Fifty rolls of a loaded die claim 129 bits of entropy but deliver fewer, because the bias makes some outcomes predictable.
+:::
+::: technical
+"Claimed" is `rolls × log2(faces)` (or the equivalent for the chosen source); "measured" is bias-corrected min-entropy, `H_∞ = -log2(max probability)` estimated over the recorded sequence, which is always ≤ the claimed figure and equal only for a perfectly uniform source.
+:::
 
 | State | Meaning |
 |---|---|
@@ -65,9 +83,19 @@ Both are beyond brute force. 24 words is margin against future cryptanalysis, no
 
 An optional extra secret creating a completely separate wallet.
 
-**For:** someone who finds your seed phrase still can't spend. Enables plausible deniability with a decoy wallet on the base seed.
+::: plain
+**For:** even someone who finds your seed phrase still can't spend anything, because the real wallet needs the passphrase too — and you can even keep a small decoy amount on the plain seed to make that plausible.
 
-**Against:** one forgotten or mistyped character and the wallet is gone permanently. It's a second secret needing its own backup, and it's the second most common cause of permanent loss after untested backups.
+**Against:** one forgotten or mistyped character, and the wallet is gone forever. It's a whole second secret that needs its own backup, and after untested backups, it's the single biggest cause of people permanently losing funds.
+:::
+::: working
+**For:** the passphrase derives a wallet that's inaccessible without it, so a compromised base seed alone doesn't expose the funds — and a small balance can be left on the base (passphrase-less) wallet as a plausible decoy.
+
+**Against:** it's a second secret with no error correction. Any deviation from the exact string produces a different, valid, empty wallet with no warning. It's the second most common cause of permanent loss after untested backups.
+:::
+::: technical
+The passphrase is used verbatim (after UTF-8 NFKD normalization) as PBKDF2-HMAC-SHA512 salt material alongside the mnemonic — see "Passphrase" in the [glossary](../00-overview/glossary.md) — so there is no checksum or verification step analogous to BIP-39's word-list checksum; a one-character deviation silently derives a different, internally-valid seed.
+:::
 
 **If you use one:** generate it in Passphrase Studio (six Diceware words minimum), back it up as carefully as the seed but stored *separately*, and **verify the fingerprint** before sending anything.
 

@@ -25,11 +25,19 @@ Missing words, typos, wrong order, failing checksums.
 
 Nearly every recovery method produces candidates. You need a way to know which is right.
 
-**The best answer is your xpub** — the wallet's master public key, if you have it recorded. It identifies the wallet outright, with no guessing about which address came first.
+::: plain
+The best answer is your xpub — the wallet's master public key, if you have it written down somewhere. It picks out your exact wallet, with no guessing involved.
 
-**Failing that, a known address.** Any address that wallet has used — a receive address you gave someone, an address from a block explorer, or one recorded in your Registry. If you use an address, the app also needs to know roughly how many addresses that wallet created before it, because it can only check so far down the list. Set that too low and the search will pass straight over your correct seed without noticing. The default is 20.
+Failing that, any address you know that wallet has used works too. You'll also need to tell the app roughly how many addresses the wallet made before that one, since it can only check so far down the list — set that too low and it'll walk right past your correct seed without noticing. The default is 20.
 
-Without one, you can find seeds with valid checksums, but not which is *yours*. Roughly 1 in 16 random 24-word combinations has a valid checksum, so "valid" is a weak filter.
+Without either, you can find seeds that *look* valid, but not which one is actually yours — a fair number of random word combinations pass the built-in checksum by pure chance.
+:::
+::: working
+The strongest stop condition is a known xpub, which identifies the wallet outright. Next best is a known address plus a generation-limit (gap limit) setting the app checks up to — set it below the wallet's actual usage and the search silently misses the correct candidate. Without either, checksum validity alone is a weak filter: roughly 1 in 16 random 24-word combinations passes it.
+:::
+::: technical
+See "Gap limit" and "xpub" in the [glossary](../00-overview/glossary.md). BIP-39's checksum is only `ENT/32` bits (4 bits for a 24-word/256-bit phrase), so a random 24-word sequence has roughly a 1-in-16 chance of passing checksum validation purely by coincidence — nowhere near enough to identify a specific wallet without an independent target (xpub or address) to check derived results against.
+:::
 
 Have an address ready before you start.
 

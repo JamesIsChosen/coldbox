@@ -24,10 +24,17 @@ If you're not on Trezor, consider [codex32](backup-codex32.md) or plain metal ba
 
 Shamir Secret Sharing splits a secret into N shares with a threshold T.
 
-- Any **T** shares reconstruct the secret exactly.
-- Any **T−1** shares reveal **nothing at all** — not a portion, not a hint. Mathematically nothing.
+::: plain
+Any **T** shares put back together give you the exact original secret. Any **T−1** — one short of the threshold — give you **nothing at all**. Not a portion, not a hint, not "almost." Two shares of a 3-of-5 split don't get an attacker 40% of the way there. They get nowhere, same as zero shares.
+:::
+::: working
+Any T shares reconstruct the secret exactly; any T−1 shares are information-theoretically independent of it — the guarantee holds regardless of computing power, not just against today's hardware.
+:::
+::: technical
+See "Shamir Secret Sharing" in the [glossary](../00-overview/glossary.md): the secret is the constant term of a degree-(T−1) polynomial over a finite field, and T−1 points are consistent with *every* possible value of that constant term, so no information leaks below threshold.
+:::
 
-That second property surprises people. Two shares of a 3-of-5 split don't get you 40% of the way. They get you nowhere.
+That second property surprises people.
 
 ---
 

@@ -42,7 +42,15 @@ Portfolio → Transactions → Add.
 
 ### The one that matters most
 
-**Transfers between your own wallets are not disposals.** Moving Bitcoin from an exchange to your Coldcard isn't a sale, produces no gain, and must preserve the original acquisition date and cost basis.
+::: plain
+Moving coins from an exchange to your own hardware wallet isn't selling them — it's just moving them from one pocket to another. It shouldn't create a taxable gain, and the app needs to remember when and how much you originally paid for them, not treat the move as a fresh purchase.
+:::
+::: working
+Transfers between your own wallets are not disposals: no gain is realized, and the original acquisition date and cost basis must carry forward unchanged onto the receiving wallet's lot pool.
+:::
+::: technical
+See "Lot" in the [glossary](../00-overview/glossary.md): a transfer-in/transfer-out pair moves existing lots between per-wallet lot pools without closing them, preserving basis and acquisition date; only an actual disposal (sell, swap, spend) closes a lot and computes gain/loss, per [us-tax-reporting.md](../04-reference/us-tax-reporting.md)'s requirement that transfers "produce no disposal."
+:::
 
 Getting this wrong silently corrupts every gain figure downstream, and it is the most common bug in portfolio software. Coldbox models transfers as movement, not disposal.
 

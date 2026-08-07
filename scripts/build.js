@@ -7,6 +7,7 @@ const zlib = require('node:zlib');
 const { spawnSync } = require('node:child_process');
 const { createCryptoVendorSource } = require('./crypto-bundle.js');
 const { createFontFaceSource } = require('./font-bundle.js');
+const { compileHelpContent } = require('./help-content.js');
 
 // These values are part of the reproducibility contract. Set them rather than
 // trusting the caller's environment, so the build behaves the same everywhere.
@@ -109,6 +110,31 @@ function readBuildCommitDate() {
   return 'unknown (no git commit metadata available)';
 }
 
+// P0.17 - Help framework. Compiles docs/00-overview/glossary.md and
+// docs/03-guides/*.md into the three-depth content model and embeds the
+// result into the build, per docs/01-spec/SPEC.md #18. A guide or glossary
+// term missing one or more ::: plain/working/technical blocks is reported
+// as a build warning (see the roadmap's P0.17 acceptance criterion) rather
+// than failing the build - the gap is visible without blocking unrelated
+// work, and doc-hygiene.md's own automated CI check (P0.18) is what turns
+// "help content missing a depth block" into a hard failure once wired up.
+let cachedHelpContent = null;
+
+function readHelpContent() {
+  if (cachedHelpContent) {
+    return cachedHelpContent.content;
+  }
+  const { content, warnings } = compileHelpContent(projectRoot);
+  for (const warning of warnings) {
+    console.warn(`Help content warning: ${warning}`);
+  }
+  if (warnings.length > 0) {
+    console.warn(`Help content warning: ${warnings.length} gap(s) found — see docs/05-development/ROADMAP.md P0.17 backfill obligation.`);
+  }
+  cachedHelpContent = { content, warnings };
+  return content;
+}
+
 function jsonScriptLiteral(value) {
   return JSON.stringify(value)
     .replace(/</g, '\\u003c')
@@ -192,6 +218,11 @@ function assemble() {
     '__COLDBOX_BUILD_DATE__',
     jsonScriptLiteral(readBuildCommitDate())
   );
+  mainScript = injectOnce(
+    mainScript,
+    '__COLDBOX_HELP_CONTENT__',
+    jsonScriptLiteral(readHelpContent())
+  );
   const warmStyles = injectOnce(
     readSource('styles.css'),
     '__COLDBOX_FONT_FACES__',
@@ -226,7 +257,8 @@ function assemble() {
     '__COLDBOX_SCRIPT__',
     '__COLDBOX_FONT_FACES__',
     '__COLDBOX_FRAME_SCRIPT_HASHES__',
-    '__COLDBOX_FRAME_STYLE_HASHES__'
+    '__COLDBOX_FRAME_STYLE_HASHES__',
+    '__COLDBOX_HELP_CONTENT__'
   ]) {
     if (document.includes(placeholder)) {
       throw new Error(`Unresolved source placeholder in assembled document: ${placeholder}`);

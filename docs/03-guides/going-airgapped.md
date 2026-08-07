@@ -15,7 +15,15 @@ Setting up a machine that has never been and will never be online.
 | Checking a fingerprint | No |
 | Portfolio review | No |
 
-The tools work online — the cold realm can't reach a network regardless of what's around it. The airgap defends against a different threat: **a compromised operating system**, which no in-browser protection addresses. A keylogger reads your seed as you type it, whatever the page does.
+::: plain
+The tools work fine online — Coldbox's own sealed realm can't reach the network regardless of what's around it. A physical airgap defends against a different, bigger threat: your whole computer already being compromised. If something is logging your keystrokes, it reads your seed as you type it no matter how good the app is.
+:::
+::: working
+Coldbox's cold realm already can't reach a network, but that's a browser-level guarantee — it says nothing about the operating system underneath it. A genuinely airgapped machine defends against OS-level compromise (keyloggers, screen scrapers) that no in-page protection can address.
+:::
+::: technical
+See "Airgapped" and "Cold realm / warm shell" in the [glossary](../00-overview/glossary.md): the cold realm's `connect-src 'none'` CSP and runtime network-primitive neutering are a software boundary inside one process; they cannot detect or prevent OS-level input capture, which happens below the browser entirely.
+:::
 
 ---
 

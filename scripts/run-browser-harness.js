@@ -103,6 +103,41 @@ function requireBrowserBinaries() {
   );
 }
 
+// R2-F1 remediation: the P0.17 build now reads docs/00-overview/glossary.md
+// and docs/03-guides/*.md (see scripts/help-content.js), so every temporary
+// build root this harness creates - not just the one
+// verifyDevOnlyDependency() builds - needs docs/ copied alongside
+// scripts/src/vendor or its build.js invocation fails closed on ENOENT
+// before the fixture's actual point is reached. The prior remediation fixed
+// only verifyDevOnlyDependency() by hand, missed the other three build-root
+// creators, and the reviewer caught it. Routing every temporary build root
+// through this one helper is the fix the reviewer explicitly asked for:
+// there is now exactly one place that knows the full build input list, so
+// it cannot drift out of sync with scripts/build.js's actual dependencies
+// again.
+function copyBuildInputsInto(temporaryRoot, { includeGit = false } = {}) {
+  for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
+    fs.cpSync(
+      path.join(projectRoot, directory),
+      path.join(temporaryRoot, directory),
+      { recursive: true }
+    );
+  }
+  if (includeGit) {
+    // P0.16 F4 fallout: scripts/build.js derives the embedded build date from
+    // `git log -- src scripts vendor` (see ADR-0015's 2026-08-06 amendment).
+    // Fixtures proving "no devDependency required" would otherwise fall back
+    // to the "unknown (no git commit metadata available)" branch while the
+    // real build embeds an actual date, diverging for a reason unrelated to
+    // what the fixture is meant to prove.
+    fs.cpSync(
+      path.join(projectRoot, '.git'),
+      path.join(temporaryRoot, '.git'),
+      { recursive: true }
+    );
+  }
+}
+
 function createTamperedFixture() {
   const originalPath = path.join(fixtureRoot, 'tamper.html');
   const original = fs.readFileSync(originalPath, 'utf8');
@@ -141,13 +176,7 @@ function createTamperedBuildFixture() {
 
 function createColdReadySuppressedFixture() {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-browser-timeout-'));
-  for (const directory of ['scripts', 'src', 'vendor']) {
-    fs.cpSync(
-      path.join(projectRoot, directory),
-      path.join(temporaryRoot, directory),
-      { recursive: true }
-    );
-  }
+  copyBuildInputsInto(temporaryRoot);
 
   const coldMainPath = path.join(temporaryRoot, 'src', 'cold', 'main.js');
   const original = fs.readFileSync(coldMainPath, 'utf8');
@@ -177,13 +206,7 @@ function createColdReadySuppressedFixture() {
 
 function createHandshakeResponseSuppressedFixture() {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-browser-handshake-timeout-'));
-  for (const directory of ['scripts', 'src', 'vendor']) {
-    fs.cpSync(
-      path.join(projectRoot, directory),
-      path.join(temporaryRoot, directory),
-      { recursive: true }
-    );
-  }
+  copyBuildInputsInto(temporaryRoot);
 
   const coldMainPath = path.join(temporaryRoot, 'src', 'cold', 'main.js');
   const original = fs.readFileSync(coldMainPath, 'utf8');
@@ -272,13 +295,7 @@ function createCspStrippedFixture(kind) {
 
 function createMissingRandomnessFixture() {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-browser-capability-'));
-  for (const directory of ['scripts', 'src', 'vendor']) {
-    fs.cpSync(
-      path.join(projectRoot, directory),
-      path.join(temporaryRoot, directory),
-      { recursive: true }
-    );
-  }
+  copyBuildInputsInto(temporaryRoot);
   const capabilityPath = path.join(temporaryRoot, 'src', 'capabilities.js');
   const original = fs.readFileSync(capabilityPath, 'utf8');
   const disabled = original.replace(
@@ -1346,6 +1363,132 @@ async function verifyProvenancePanel(browser, engine) {
   }
 }
 
+async function verifyHelpFramework(browser, engine) {
+  // P0.17: the Learn route's three-depth switcher, offline search, and
+  // contextual '?' help. Per the roadmap's 🌐 marker, depth rendering and
+  // switching are verified here; the actual glossary/guide content is
+  // covered by test/help-content.test.js (Node-side), so this only checks
+  // that the compiled content actually reaches the DOM and responds to
+  // interaction in a real browser.
+  const { page } = await openPage(browser, buildPath);
+  try {
+    // R2-F2 regression: cold-realm-status, airgap-banner, and vault-status
+    // each rewrite their <h2> title's .textContent as the app settles
+    // (starting -> ready, checking -> amber/green, and so on). Before the
+    // fix, that wholesale rewrite deleted the contextual help button
+    // nested inside the same <h2>, so a check that only ever looked at the
+    // five buttons in the *static* pre-render markup would have missed the
+    // defect entirely - three of the five were gone by the time a real user
+    // could ever click one. Waiting for the app to fully settle first, then
+    // counting, is the only way this check can catch a regression here.
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#airgap-banner[data-airgap-state="amber"], #airgap-banner[data-airgap-state="green"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#capability-panel[data-capability-state="ready"], #capability-panel[data-capability-state="ready-with-warnings"]').waitFor({ state: 'visible', timeout: 5000 });
+
+    const settledButtonCount = await page.locator('button.help-context-button[data-help-topic]').count();
+    assert.equal(settledButtonCount, 5, `${engine}: all five contextual help buttons must survive app initialization, found ${settledButtonCount}`);
+
+    // Exercise every one of the five mappings, not just two of them - each
+    // must land on real, rendered glossary content, proving the button
+    // both still exists in the settled DOM and still resolves correctly.
+    const contextualHelpMappings = [
+      { topic: 'glossary:cold-realm-warm-shell', anchorPrefix: 'help-glossary-cold-realm-warm-shell', route: 'dashboard' },
+      { topic: 'glossary:airgapped', anchorPrefix: 'help-glossary-airgapped', route: 'dashboard' },
+      { topic: 'glossary:capability-self-check', anchorPrefix: 'help-glossary-capability-self-check', route: 'dashboard' },
+      { topic: 'glossary:vault', anchorPrefix: 'help-glossary-vault', route: 'vault' },
+      { topic: 'glossary:provenance-panel', anchorPrefix: 'help-glossary-provenance-panel', route: 'reference' }
+    ];
+    for (const mapping of contextualHelpMappings) {
+      await page.locator(`#nav-rail a[data-route="${mapping.route}"]`).click();
+      const button = page.locator(`button.help-context-button[data-help-topic="${mapping.topic}"]`);
+      await button.waitFor({ state: 'visible', timeout: 3000 });
+      await button.click();
+      await page.locator('#page-learn:not([hidden])').waitFor({ state: 'visible' });
+      await page.locator(`[id^="${mapping.anchorPrefix}"]`).waitFor({ state: 'visible', timeout: 3000 });
+    }
+
+    await page.locator('#nav-rail a[data-route="learn"]').click();
+    await page.locator('#page-learn:not([hidden])').waitFor({ state: 'visible' });
+
+    const glossaryTerms = page.locator('#help-glossary-list .help-glossary-term');
+    const initialCount = await glossaryTerms.count();
+    assert.ok(initialCount > 0, `${engine}: Learn page must render at least one glossary term`);
+
+    // Selecting by hasText: 'Seed phrase' used to be ambiguous: Playwright's
+    // hasText matches substring-anywhere-in-text-content, and "Seed phrase"
+    // as a cross-referenced concept legitimately appears in the compiled
+    // prose of several other glossary entries too (entropy, passphrase,
+    // private key, BIP-39, BIP-85, SLIP-39, SeedQR, and the "my seed phrase
+    // is my password" myth entry all mention it) - a real run against real
+    // Chromium hit a strict-mode violation with 9 matching elements. The
+    // compiler's own deterministic id (glossary:seed-phrase -> helpDomId ->
+    // #help-glossary-seed-phrase) is exact and unambiguous; use that instead.
+    const seedPhraseBody = page.locator('#help-glossary-seed-phrase .help-term-body');
+    await seedPhraseBody.waitFor({ state: 'visible' });
+    const plainText = (await seedPhraseBody.textContent()).trim();
+    assert.match(plainText, /12 or 24 ordinary words/i, `${engine}: plain depth should be showing by default`);
+
+    // Switch to technical depth and confirm the *content itself* changes,
+    // not just the pressed-state of the button - a stale render that only
+    // updates aria-pressed would otherwise pass a shallower check.
+    await page.locator('#help-depth-technical').click();
+    await page.locator('#help-depth-technical[aria-pressed="true"]').waitFor({ state: 'visible' });
+    const technicalText = (await seedPhraseBody.textContent()).trim();
+    assert.match(technicalText, /PBKDF2-HMAC-SHA512/, `${engine}: technical depth did not render distinct content`);
+    assert.notEqual(technicalText, plainText, `${engine}: switching depth must change the rendered text`);
+
+    // The depth preference must be a UI preference (see CONTRIBUTING.md's
+    // "no localStorage for secrets" rule - this is explicitly allowed) and
+    // must survive a reload, per SPEC.md #18.1 ("remembered").
+    await page.reload();
+    await page.locator('#nav-rail a[data-route="learn"]').click();
+    await page.locator('#help-depth-technical[aria-pressed="true"]').waitFor({ state: 'visible' });
+
+    // Offline search: no network request should be made while typing, and a
+    // result must be clickable to jump to the matching entry.
+    let networkRequestSeen = false;
+    const onRequest = () => {
+      networkRequestSeen = true;
+    };
+    page.on('request', onRequest);
+    await page.locator('#help-search-input').fill('xpub');
+    await page.locator('.help-search-result', { hasText: 'xpub' }).first().waitFor({ state: 'visible', timeout: 3000 });
+    page.off('request', onRequest);
+    assert.equal(networkRequestSeen, false, `${engine}: offline search must not trigger any network request`);
+
+    await page.locator('.help-search-result', { hasText: 'xpub' }).first().click();
+    await page.locator('#help-glossary-xpub').waitFor({ state: 'visible', timeout: 3000 });
+
+    // Contextual '?' help for all five panels, including that each button
+    // survives real app initialization, was already exercised in full at
+    // the top of this function (R2-F2 regression coverage) - not repeated
+    // here.
+
+    // A contextual button pointed at content that genuinely doesn't exist
+    // must still fail closed into the documented fallback notice rather
+    // than silently no-op - proven directly against the runtime function
+    // rather than against a UI button, since every shipped button now
+    // resolves to real content.
+    await page.evaluate(() => {
+      window.location.hash = 'learn/glossary%3Athis-topic-does-not-exist';
+    });
+    await page.locator('#help-fallback-notice:not([hidden])').waitFor({ state: 'visible', timeout: 3000 });
+
+    // Inline glossary: a term inside the rendered guide body must be
+    // tappable for a definition without leaving the page.
+    await page.locator('#nav-rail a[data-route="learn"]').click();
+    const inlineTerm = page.locator('#help-guides-list .glossary-term').first();
+    await inlineTerm.waitFor({ state: 'visible' });
+    await inlineTerm.click();
+    await page.locator('.glossary-tooltip').first().waitFor({ state: 'visible', timeout: 3000 });
+
+    console.log(`${engine}: Learn page depth switching (persisted across reload), offline search, contextual help, fallback-on-missing-topic, and inline glossary verified`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyDevOnlyDependency() {
   const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
   assert.equal(packageJson.dependencies?.playwright, undefined);
@@ -1354,29 +1497,7 @@ async function verifyDevOnlyDependency() {
   const built = fs.readFileSync(buildPath);
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-browser-build-'));
   try {
-    for (const directory of ['scripts', 'src', 'vendor']) {
-      fs.cpSync(
-        path.join(projectRoot, directory),
-        path.join(temporaryRoot, directory),
-        { recursive: true }
-      );
-    }
-    // P0.16 F4 fallout: scripts/build.js now derives the embedded build date
-    // from `git log -- src scripts vendor` (see ADR-0015's 2026-08-06
-    // amendment). This fixture's whole point is proving the build needs no
-    // devDependency (in particular, no Playwright) - it was never meant to
-    // prove the build needs no *git checkout*, and a real "node_modules
-    // absent" checkout still has its .git directory. Without copying it, the
-    // dependency-free build fell back to the "unknown (no git commit
-    // metadata available)" branch while the real build embedded an actual
-    // date, so the two byte-identical builds legitimately diverged - not a
-    // regression in build.js, but this fixture no longer modeling a real
-    // checkout. Copying .git restores that fidelity.
-    fs.cpSync(
-      path.join(projectRoot, '.git'),
-      path.join(temporaryRoot, '.git'),
-      { recursive: true }
-    );
+    copyBuildInputsInto(temporaryRoot, { includeGit: true });
     assert.equal(fs.existsSync(path.join(temporaryRoot, 'node_modules')), false);
 
     const result = spawnSync(
@@ -1435,6 +1556,7 @@ async function run() {
       await verifyReusableAssertions(browser, engine);
       await verifyKeyfileUiAndRegressions(browser, engine);
       await verifyProvenancePanel(browser, engine);
+      await verifyHelpFramework(browser, engine);
     } finally {
       await browser.close();
     }

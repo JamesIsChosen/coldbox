@@ -871,16 +871,18 @@ Zero runtime dependencies. Everything vendored, pinned, listed in Provenance wit
 | Chain address formatters | Tier 1 encodings | 60 KB |
 | BIP-39 wordlists (all nine languages) | | 103 KB |
 | codex32 + Seed XOR + BIP-329 + BC-UR | new in v0.3 | 45 KB |
-| Help content (three depths, guides, glossary) | compiled from `docs/` | 180 KB |
+| Help content (three depths, guides, glossary) | compiled from `docs/` | ≈ 344 KB (measured; see note below) |
 | SLIP-39 wordlist | | 8 KB |
 | EFF wordlists | Diceware | 75 KB |
 | BIP/SLIP reference excerpts | | 120 KB |
 | Portfolio engine + charts | lots, PnL, SVG charts | 60 KB |
 | Price/balance adapters | 5 price + 5 chain sources | 35 KB |
 | App code + CSS + icons | | 450 KB |
-| **Total** | | **≈ 1.7 MB** |
+| **Total** | | **≈ 1.9 MB** (revised for the measured help-content figure; every other row remains a pre-implementation estimate) |
 
 Comfortably under budget. The existing Ian Coleman standalone is 4.55 MB by itself.
+
+**Help content row, measured (2026-08-07, full P0.17 backfill):** P0.17's compiled `HELP_CONTENT` (the complete glossary and all nine guides, JSON-embedded per-depth HTML) measures **≈ 344 KB**, not the 180 KB estimated above. Most of the gap is the existing build-time JSON-escaping helper (`jsonScriptLiteral()`, shared with `PROVENANCE_LIBRARIES` and the cold-realm document) expanding every `<`/`>` in the compiled HTML to a 6-character `\uXXXX` escape — an earlier draft also duplicated a full plain-text copy of every depth for search, which alone cost roughly another third; deriving search text from the already-embedded HTML at runtime instead (see [ADR-0016](../05-development/adr/0016-help-content-compiler-and-search.md)) removed that. Flagged here rather than silently reconciled, per doc-hygiene.md rule 4 — this line item, and the total, are updated to the real measured figure rather than the original estimate.
 
 ---
 

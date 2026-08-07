@@ -12,11 +12,17 @@ Every other backup format has a hidden dependency: to check that your backup is 
 
 Pull a SLIP-39 share out of a safe in fifteen years and you must trust that some implementation still exists, still runs on hardware you own, and hasn't been tampered with. Usually fine. Occasionally not.
 
-codex32 removes that dependency. Its checksum is a BCH code over GF(32) — chosen specifically because it's simple enough to compute by hand with lookup tables. You can verify a share is intact using nothing but paper.
+::: plain
+codex32 removes that dependency. Its checksum was deliberately designed to be checkable with pen, paper, and a printed lookup table — no software, no device, no supply chain to trust. And it doesn't just spot a mistake, it can often tell you exactly which character was wrong and fix it.
+:::
+::: working
+codex32's checksum is a BCH code over GF(32), chosen specifically because it's simple enough to compute by hand with lookup tables. Unlike most backup checksums, it corrects single-character errors rather than merely detecting them.
+:::
+::: technical
+See "codex32 (BIP-93)" in the [glossary](../00-overview/glossary.md): each share is 48 Bech32-charset characters encoding a BCH(n,k) code with a 13-character checksum, and the official worksheets specify the by-hand polynomial-division correction procedure.
+:::
 
 For a backup meant to outlive its tooling, that's a genuinely different security property.
-
-It also **corrects** errors rather than merely detecting them, so a single transcription mistake can often be identified and fixed.
 
 ---
 

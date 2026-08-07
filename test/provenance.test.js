@@ -35,7 +35,7 @@ function runBuild(overrides = {}) {
 
 function createBuildRoot() {
   const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'coldbox-provenance-'));
-  for (const directory of ['scripts', 'src', 'vendor']) {
+  for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
     fs.cpSync(path.join(projectRoot, directory), path.join(root, directory), { recursive: true });
   }
   return root;

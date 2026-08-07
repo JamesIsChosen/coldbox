@@ -28,7 +28,15 @@ Two requirements pulling opposite ways:
 **Security** wants no single person able to take your funds while you're alive.
 **Inheritance** wants your heirs able to access them without you.
 
-Anything satisfying only the first fails your family. Anything satisfying only the second is a standing risk. The good approaches satisfy both by **separating knowledge from capability**.
+::: plain
+Anything that only solves the first problem fails your family when you're gone. Anything that only solves the second is a risk sitting there the whole time you're alive. The good approaches solve both at once by splitting things up: no one person holds enough on their own, but the right group of people, after the right event, can put the pieces back together.
+:::
+::: working
+Anything satisfying only the first requirement fails your family; anything satisfying only the second is a standing risk while you're alive. Good approaches satisfy both by separating knowledge (who knows what exists and where) from capability (who can actually reconstruct the secret) — no single custodian holds enough of either alone.
+:::
+::: technical
+This is the same structural property Shamir Secret Sharing gives cryptographically (see "Threshold" in the [glossary](../00-overview/glossary.md)) applied at the human-process level: a quorum of custodians, each holding a share or partial knowledge, reconstructs access only when combined, while any subset below the threshold — including a single compromised or coerced custodian — reconstructs nothing.
+:::
 
 ---
 

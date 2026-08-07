@@ -12,6 +12,37 @@ const buildScript = path.join(projectRoot, 'scripts', 'build.js');
 const htmlPath = path.join(projectRoot, 'build', 'coldbox.html');
 const hashPath = path.join(projectRoot, 'build', 'coldbox.html.sha256');
 
+// P0.17 review F2 remediation: scripts/build.js's jsonScriptLiteral() emits
+// exactly three JSON-escape sequences - \u003c, \u003e, \u0026 - as literal
+// six-character source text when it embeds guide/glossary prose (see
+// scripts/build.js's jsonScriptLiteral). A sentence that ends a word right
+// before an escaped tag (e.g. "...can't confuse anyone later.<strong>...")
+// compiles to "...later.\u003cstrong\u003e...", and "r.\u003c" spells
+// "letter, colon, backslash" - the exact shape this leak check looks for in
+// a Windows drive-letter path.
+//
+// An earlier draft of this check excluded *any* "letter:\" followed by a
+// lowercase 'u' plus four hex digits, on the theory that real absolute
+// paths are never followed by that shape. That theory is false: a real path
+// like `C:\u1234\repo\file.js` (a directory literally named "u1234") would
+// legitimately leak past that check undetected. The exclusion must instead
+// name the exact three escape sequences jsonScriptLiteral produces, so any
+// other "letter:\u" shape - including a coincidental real path - still gets
+// flagged.
+const NO_MACHINE_PATHS = /[A-Za-z]:\\(?!u003c|u003e|u0026)|\/Users\/|\/home\//;
+
+// Mirrors scripts/build.js's jsonScriptLiteral() exactly. Not imported
+// directly because build.js runs its build as top-level side effects on
+// require (it's a CLI script, not a library module) - requiring it here
+// would trigger a second, unwanted build. Keep this in sync if
+// jsonScriptLiteral's escape set ever changes.
+function jsonScriptLiteral(value) {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026');
+}
+
 function cspHash(block) {
   return `'sha256-${crypto.createHash('sha256').update(Buffer.from(block, 'utf8')).digest('base64')}'`;
 }
@@ -45,7 +76,7 @@ function assertExactColdSandbox(html) {
 
 function createBuildRoot() {
   const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'coldbox-csp-'));
-  for (const directory of ['scripts', 'src', 'vendor']) {
+  for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
     fs.cpSync(path.join(projectRoot, directory), path.join(root, directory), { recursive: true });
   }
   return root;
@@ -87,9 +118,32 @@ test('build assembles one HTML file and emits its SHA-256 sidecar', () => {
   assert.match(html.toString('utf8'), /<title>Coldbox<\/title>/);
   assert.doesNotMatch(html.toString('utf8'), /__COLDBOX_/);
   assert.equal(sidecar, `${digest}  build/coldbox.html\n`);
-  assert.doesNotMatch(html.toString('utf8'), /[A-Za-z]:\\|\/Users\/|\/home\//);
+  assert.doesNotMatch(html.toString('utf8'), NO_MACHINE_PATHS);
   assert.equal(html.includes(0x0d), false, 'generated HTML must use LF line endings');
   assert.equal(Buffer.from(sidecar, 'utf8').includes(0x0d), false, 'sidecar must use LF line endings');
+});
+
+test('the no-machine-paths guard flags real absolute paths, including ones shaped like a JSON escape, but not the actual JSON escapes jsonScriptLiteral emits (P0.17 review F2)', () => {
+  const shouldFlag = {
+    'ordinary Windows user path': String.raw`C:\Users\jkent\repo\file.js`,
+    'ordinary Windows build path': String.raw`D:\build\coldbox\file.js`,
+    'macOS user path': '/Users/jkent/repo/file.js',
+    'Linux home path': '/home/jkent/repo/file.js',
+    'a real Windows path that happens to start with u + 4 hex digits': String.raw`C:\u1234\repo\file.js`
+  };
+  for (const [label, text] of Object.entries(shouldFlag)) {
+    assert.match(text, NO_MACHINE_PATHS, `expected to flag: ${label}`);
+  }
+
+  const shouldNotFlag = {
+    'a literal <': jsonScriptLiteral('one.<strong>two'),
+    'a literal >': jsonScriptLiteral('one.</strong>two'),
+    'a literal &': jsonScriptLiteral('one & two'),
+    'all three together': jsonScriptLiteral('<p>one &amp; two</p>')
+  };
+  for (const [label, text] of Object.entries(shouldNotFlag)) {
+    assert.doesNotMatch(text, NO_MACHINE_PATHS, `expected not to flag: ${label}`);
+  }
 });
 
 test('two builds are byte-identical regardless of caller locale and timezone', () => {
