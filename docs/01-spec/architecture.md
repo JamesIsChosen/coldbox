@@ -86,6 +86,7 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 | `derive.request` | `{ accountRef, scriptType, range }` | References a wallet by id; never carries key material |
 | `publicData.request` | `{ collections[] }` | Ask for public compartment contents |
 | `ui.navigate` | `{ section }` | |
+| `address.verifyRequest` | `{ addressId, accountRef, index, candidate }` | `candidate` is a **validated public address string**, which the existing projection already permits. Asks the cold realm to re-derive and compare |
 
 ### Cold → Warm
 
@@ -96,6 +97,7 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 | `vault.bytes` | `{ bytes }` | Encrypted blob for the warm shell to save |
 | `derive.result` | `{ addresses[], xpub, fingerprint }` | Public values only |
 | `status` | `{ locked, mode, warnings[] }` | |
+| `address.verifyResult` | `{ addressId, outcome, divergenceIndex, verificationState, verifiedAt, xpubFingerprint }` | `outcome` and `verificationState` are **enum codes, never prose** — see below. `divergenceIndex` is an integer |
 | `error` | `{ code, message }` | Never includes secret material in the message |
 | `panic.hide` | `{ }` | Cold realm requests the same concealment after `Esc Esc` inside the frame |
 
@@ -106,6 +108,14 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 3. Adding a message type requires review. This is written in [CONTRIBUTING.md](../../CONTRIBUTING.md) because it's the one change that could quietly dismantle the model.
 
 The `publicData.request.collections` allowlist is the public projection of [data-model.md](data-model.md): `seeds`, `wallets`, `accounts`, `addresses`, `notes`, `devices`, `transactions`, `lots`, `disposals`, `basisAllocations`, `prices`, `backups`, `contacts`, and `auditLog`. `settings` is not a vault collection and is rejected rather than silently accepted.
+
+### Why the verification result carries enum codes rather than a message
+
+`address.verifyResult` reports `outcome` as one of a closed set — `match`, `mismatch`, `unrecognised-format`, `checksum-invalid`, `no-record`, `different-account`, `vault-locked` — and never a human-readable explanation. The warm shell maps the code to display text on its own side.
+
+This is not a style preference. The schema invariant below permits only structurally typed public values precisely because **arbitrary prose cannot be distinguished from a secret by inspection**. A `reason` string on a Cold → Warm message would be exactly the free-form text field the projection exists to exclude, and it would be an unusually attractive one, since it originates in the realm that holds the secrets. The same reasoning already governs `error`, whose `message` is constrained for the same purpose.
+
+`different-account` deserves its own code rather than being folded into `match`: an address that matches a record in a *different* account than expected is a real and confusing situation, and collapsing it into a plain match would hide it.
 
 The public projection deliberately contains no free-form text fields. It permits only structurally typed public values: UUIDs, eight-hex-digit fingerprints, validated extended public keys, validated public addresses, and numeric accounting values. Any string-bearing field outside that closed projection, including labels, notes, names, tags, locations, and unknown nested records, is rejected rather than forwarded. Recognizable extended-private-key forms, WIF forms, mnemonic-shaped phrases, and raw 32-byte private-key hex are also rejected. This is the only honest way to enforce the literal no-passphrase/no-secret-plaintext invariant; arbitrary prose cannot be distinguished from a secret by regex. All non-vault messages have a 4 MiB aggregate sanitized-payload limit, and encrypted `vault.open`/`vault.bytes` payloads have a 64 MiB byte limit.
 

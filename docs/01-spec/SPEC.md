@@ -49,6 +49,7 @@ One HTML file you copy to a USB stick, a phone, or a laptop, open in a supported
 ### 1.3 Explicit non-goals
 
 - **No transaction building, signing, or broadcasting.** Signing turns a calculator into a target. PSBT *viewing* is a Phase 4 candidate; signing is not.
+  **Reaffirmed 2026-08 by [ADR-0019](../05-development/adr/0019-no-transaction-workbench.md)**, which worked up a proposal to permit unsigned construction, opaque relay, and ERC-7730 clear signing — and rejected all three. Read that ADR before re-proposing any of them; the short version is that the three were justifying each other rather than standing on their own, and that hardware wallets already perform clear signing with provenance Coldbox structurally cannot match. Keeping all three prohibited leaves three lines of defence against scope drift toward a hot wallet, rather than one.
 - **No Monero.** Different seed scheme entirely (25-word, dual keys). Bolting it on invites subtle, expensive errors.
 - **No custodial/exchange API integration.** Read-only exchange keys still get stolen and still leak your entire position. Exchange holdings are manual entries.
 - **No tax filing output.** The portfolio computes cost basis and realized gains; it does not produce tax forms and does not give tax advice.
@@ -649,7 +650,9 @@ That verification mode matters more than it first appears given this tool's stor
 
 **Prices** — see §7.1–7.2.
 
-**Registry** — searchable/filterable tables (cards on mobile), per-wallet detail pulling together its seed fingerprint, accounts, addresses, devices, and backups. Balance lookup buttons per address/account. Reports: **Backup Health dashboard**, **inheritance letter** (secret-free, printable), **portfolio sheet**, **address book export** (public only).
+**Registry** — searchable/filterable tables (cards on mobile), per-wallet detail pulling together its seed fingerprint, accounts, addresses, devices, and backups. Balance lookup buttons per address/account. Reports: **Backup Health dashboard**, **inheritance letter** (secret-free, printable), **portfolio sheet**, **address book export** (public only). Per-address verification state is surfaced here, so addresses that have never been re-derived in the cold realm are a visible, actionable list rather than an unstated assumption — see [address-verification.md](address-verification.md).
+
+**Address Check** — the clipboard round-trip comparison, batch verification, and the optional volatility canary. Warm-shell-resident because clipboard APIs are unavailable in an opaque-origin sandboxed frame; it escalates to the cold realm for re-derivation when the vault is unlocked offline. Specification: [address-verification.md](address-verification.md).
 
 ---
 
@@ -805,6 +808,10 @@ Everything here answers a question a hardware wallet alone cannot answer, becaus
 
 **Receive address verification.** The highest-value check in the whole tool. Address-swapping malware alters the address your computer displays while the device shows the true one. Coldbox independently derives addresses from your xpub and lets you batch-compare against what the device screen shows. If they diverge, something on your machine is lying to you.
 
+**Clipboard round-trip verification.** The check above proves the *displayed* address was right. It says nothing about what arrived in the destination field — a clipboard hijacker rewrites the address between the copy and the paste, every display stays correct, and the funds still leave. So Coldbox compares, character-exact and over the whole string, what you paste back *out of* the destination, and reports the index of the first divergent character.
+
+Two things make this work, and both are commonly got wrong elsewhere: the comparison is never first-four/last-four, because address poisoning exists specifically to defeat end-matching; and a checksum pass is not a verification, because a swapped address is a valid address that passes every checksum. An optional clipboard volatility canary re-reads the clipboard with no user action, making it the one check here that can affirmatively detect a hijacker rather than merely failing to find one. Full specification in [address-verification.md](address-verification.md); rationale in [ADR-0021](../05-development/adr/0021-clipboard-address-verification.md).
+
 **xpub verification.** Confirm the xpub your desktop wallet holds matches what the device actually exports — the root of every address it will ever show you.
 
 **Backup verification without touching the device.** Restore your metal or paper backup into Coldbox offline, derive the fingerprint, compare to the device. You've now proven the backup works without wiping a device to test it, which is how people usually find out their backup was wrong — too late.
@@ -949,6 +956,8 @@ Surveyed for v0.3. Adopted where the value is real and the spec is stable; noted
 | **ERC-4337 smart accounts** | Widely deployed | ✅ **Registry support, Phase 5.** A smart account address isn't derived from your key the usual way, so it needs its own record type linking account address to owner key |
 | **Border Wallets** entropy grid | Niche but real | ✅ **Phase 5**, Entropy Lab addition |
 | **Ecash / Fedimint / Ark / Lightning** | Active | ❌ Out of scope. Different custody model entirely |
+| **EIP-6963 / EIP-1193** injected wallet providers | Final; implemented by every current EVM wallet extension | ❌ **Declined** — [ADR-0020](../05-development/adr/0020-injected-providers-rejected-and-neutered.md). Provider calls bypass page CSP entirely, so integrating one would have put the first carve-out into [threat-model.md](../02-security/threat-model.md)'s design commitments in exchange for a feature worth very little. The investigation did produce a real fix, shipped as P0.21: the cold realm now treats provider presence inside itself as an isolation failure |
+| **ERC-7730** clear-signing metadata | Draft; Ledger runs a public descriptor registry **and implements it on-device** | ❌ **Declined** — [ADR-0019](../05-development/adr/0019-no-transaction-workbench.md). Coldbox cannot fetch the registry, so it could only use hand-imported descriptors with unverifiable provenance — a weaker duplicate of a check the hardware wallet already performs. Revisit if on-device support stalls |
 
 ### 19.1 On quantum, honestly
 

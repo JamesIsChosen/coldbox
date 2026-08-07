@@ -66,9 +66,28 @@ P0.11 implements the v1 header as AAD, wraps the random DEK in a record list, de
 
 The attack: malware alters the receive address displayed by your wallet software. You send to the attacker.
 
-The defence: Coldbox derives addresses independently from your xpub, with no involvement from the software that might be lying. Three-way agreement between wallet software, device screen, and Coldbox catches it.
+The defence has two halves, covering two different moments.
 
-This is the single highest-value function in the tool. See the [verification guide](../03-guides/verify-a-hardware-wallet.md).
+**Before the copy — independent derivation.** Coldbox derives addresses from your xpub with no involvement from the software that might be lying. Three-way agreement between wallet software, device screen, and Coldbox catches a display that has been altered. See the [verification guide](../03-guides/verify-a-hardware-wallet.md).
+
+**After the copy — clipboard round-trip.** The first half proves the *displayed* address was right. It says nothing about what arrived in the destination field, and a clipboard hijacker rewrites the address in transit — every display correct, funds still gone. So Coldbox compares, character-exact, what you paste back out of the destination, and reports the index of the first divergent character. See [address-verification.md](../01-spec/address-verification.md) and the [address verification guide](../03-guides/verify-an-address.md).
+
+Two properties of that second half are what make it work, and both are easy to get wrong:
+
+- **Full-string comparison, never first-four/last-four.** Address poisoning exists specifically to defeat end-matching. A truncated comparison counters an attack that is no longer the one being used.
+- **A checksum pass is not a verification.** A swapped address is a *valid* address — EIP-55, bech32, and base58check all validate it perfectly. Checksums catch typing mistakes, not substitution.
+
+*Residual:* a registry entry that was already wrong when recorded verifies cleanly forever. Countered by tracking per-address verification state, so an address that has never been re-derived inside the cold realm says so on every verdict rather than borrowing the credibility of one that has.
+
+This remains the single highest-value function in the tool.
+
+### Clipboard hijacking, detected rather than inferred
+
+Everything above reports the *absence* of evidence — the strings matched, so probably nothing is wrong. The optional clipboard volatility canary is the one affirmative signal available: it re-reads the clipboard after a delay with no user action, and a change is positive detection of an active hijacker.
+
+Opt-in, off by default, because it needs persistent clipboard-read permission. If permission is denied the paste comparison still works and the app says the canary is unavailable — it never presents the weaker check's result as the stronger one's.
+
+*Residual:* legitimate clipboard managers and sync tools rewrite clipboard contents, so false positives are expected and the alarm names benign causes first.
 
 ### Browser text exfiltration
 
@@ -114,6 +133,14 @@ Extensions can read page content and inject scripts. They operate above the laye
 
 *Mitigation:* use a clean browser profile with no extensions, or an amnesic OS.
 
+**Wallet extensions are the sharpest case, and worth stating explicitly.** Calling `provider.request(...)` does not make a network request from the page — it messages the extension, which makes the request from its own context. **Nothing appears in `connect-src`, and the CSP canary does not fire.** An injected provider is an egress channel this project's central mechanism cannot constrain at all.
+
+**Coldbox does not use one.** A 2026-08 proposal to integrate wallet extensions was rejected on exactly this basis — [ADR-0020](../05-development/adr/0020-injected-providers-rejected-and-neutered.md).
+
+What that investigation did produce is a fix for a hole that exists regardless: extensions are **not** reliably excluded from sandboxed `srcdoc` frames. That is a browser implementation detail, not a guarantee, and until [P0.21](../05-development/ROADMAP.md) nothing stops an extension injecting a provider into the cold realm and nothing notices if one does. The cold realm therefore treats provider presence inside itself as an **isolation failure** — `window.ethereum` and the `eip6963:announceProvider` event neutered alongside the five network primitives, entering full lockdown if observed.
+
+Note the asymmetry: this guard is *more* important than the ones on the five network primitives, not less, because those sit behind a CSP that already blocks them, and this one has no CSP in front of it.
+
 ### JavaScript memory forensics
 
 JS strings are immutable and cannot be wiped. The garbage collector may copy buffers anywhere. The OS may page memory to swap on disk.
@@ -153,6 +180,11 @@ Breaking one of these is a security regression, not a feature change:
 3. If the cold realm cannot be established, the app **fails closed**.
 4. No telemetry. The CSP allowlist in source is the complete set of reachable hosts.
 5. Builds are reproducible and the published hash is independently verifiable.
+6. **Coldbox builds, signs, and broadcasts nothing.** No code path constructs a transaction, produces a signature, or transmits one. See [SPEC §1.3](../01-spec/SPEC.md) and [ADR-0019](../05-development/adr/0019-no-transaction-workbench.md).
+
+**On commitment 4 and wallet extensions.** A 2026-08 proposal to use an injected wallet provider would have made commitment 4 false as written, because provider calls are not subject to page CSP — see below and [ADR-0020](../05-development/adr/0020-injected-providers-rejected-and-neutered.md). **The feature was rejected rather than the commitment amended**, so commitment 4 stands unqualified. That was the deciding consideration: these commitments are valuable because they are checkable by reading the source, and a carve-out is a cost paid by every future reader, not only by users of the feature.
+
+Commitment 6 restates in security terms what [SPEC §1.3](../01-spec/SPEC.md) states as a product non-goal, so that a regression is judged here as well as there.
 
 **Fail closed** is worth dwelling on. A tool that silently degrades from "cannot leak" to "probably won't leak" is more dangerous than one that stops, because the user keeps behaving as though the guarantee holds.
 

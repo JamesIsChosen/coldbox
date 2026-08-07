@@ -23,6 +23,7 @@ Everything about Coldbox lives here. Guides and the glossary compile into the ap
 | [Vault format](01-spec/vault-format.md) | Byte-level `.cbx` specification |
 | [Data model](01-spec/data-model.md) | Entities and compartment assignment |
 | [Chain registry](01-spec/chain-registry.md) | How chains are defined and validated |
+| [Address verification](01-spec/address-verification.md) | The clipboard round-trip check and the two claims it makes |
 
 ## Security
 
@@ -36,7 +37,7 @@ Everything about Coldbox lives here. Guides and the glossary compile into the ap
 
 ## Guides
 
-[Index](03-guides/README.md) — first wallet · verifying hardware wallets · SLIP-39 · codex32 · recovery · multisig · inheritance · airgap · portfolio
+[Index](03-guides/README.md) — first wallet · verifying hardware wallets · verifying an address · SLIP-39 · codex32 · recovery · multisig · inheritance · airgap · portfolio
 
 ## Reference
 

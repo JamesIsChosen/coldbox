@@ -113,6 +113,24 @@ This works in our favour: the cold realm's `connect-src 'none'` applies on top o
 
 The build preserves this contract in a fixed order: it assembles and hashes the child document, inserts those exact child hashes into the parent `script-src` and `style-src`, serializes the child into the outer script, and then hashes the outer blocks. A child hash in the parent is authorization for that exact inline block only; it does not weaken the child's own `connect-src 'none'` policy. See [build.md](../05-development/build.md) for the assembly steps.
 
+### Injected wallet providers are not constrained by CSP at all
+
+The most important gotcha on this page, because it is an exception to the mechanism the whole document describes.
+
+`provider.request(...)` — the [EIP-1193](../04-reference/standards.md) call every browser wallet extension exposes — **does not make a network request from this page.** It passes a message to the extension, and the *extension* makes the request from its own context under its own policy.
+
+Consequences:
+
+- Nothing appears in `connect-src`. The allowlist above does not describe this path.
+- The [CSP canary](#the-csp-canary) does not fire, because no CSP violation occurs.
+- `connect-src 'none'` would not prevent it.
+
+So an injected provider is an egress channel that exists **outside** every mechanism on this page. This is a property of how extensions work, not a defect in our policy, and no CSP change can address it.
+
+**Coldbox does not use a wallet provider**, and a proposal to do so was rejected on exactly this basis — [ADR-0020](../05-development/adr/0020-injected-providers-rejected-and-neutered.md).
+
+What can be done is defensive: **provider objects are neutered inside the cold realm alongside the five network primitives** ([P0.21](../05-development/ROADMAP.md)), with presence treated as an isolation failure rather than a capability. Sandboxed `srcdoc` frames are not reliably excluded from extension injection, so this is enforced at runtime instead of assumed.
+
 ### Opaque origins may lack `crypto.subtle`
 
 Not strictly a CSP issue, but it arises from the same sandbox. An opaque origin may not qualify as a secure context, so WebCrypto may be undefined. The cold realm defaults to pure-JS implementations and only uses WebCrypto after a known-answer test. See [crypto-choices](crypto-choices.md).
@@ -128,6 +146,12 @@ Not strictly a CSP issue, but it arises from the same sandbox. An opaque origin 
 Defense in depth *behind* the CSP, never instead of it.
 
 P0.6's cold bootstrap normalizes its three acceptance probes: the native XHR send and WebSocket construction are attempted under `connect-src 'none'` and then produce a labelled throw, while native `fetch` rejection is reported as a thrown probe result. P0.8 runs its own native `fetch` canary first using `http://localhost:9/cold-csp-canary`, which the inherited warm allowlist permits while the cold policy must deny; the warm realm uses `https://coldbox.invalid/csp-canary`. Once the cold canary settles, P0.8 overwrites `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, and `navigator.sendBeacon` with functions that throw a labelled error and raise a visible alarm. The blockers are installed on both the exposed object and the prototype that originally owns the WebIDL member, then made non-configurable and non-writable. Any failed canary or failed installation enters full lockdown before the warm shell accepts the private-channel readiness response.
+
+**P0.21 extends the same mechanism to injected wallet providers**, because CSP cannot touch them at all (see the gotcha above). `window.ethereum` and the `eip6963:announceProvider` event are covered alongside the five primitives, on the same non-configurable, non-writable basis.
+
+The difference is what a hit means: a network-primitive call inside the cold realm indicates the **CSP has failed**, whereas an announcement indicates an extension is **injecting into a sandboxed opaque-origin frame** — an isolation failure rather than a policy failure. Both enter full lockdown; the alarm text distinguishes them, because they call for different responses from the user.
+
+Sandboxed `srcdoc` frames are not reliably excluded from extension injection. That is a browser implementation detail rather than a guarantee, which is exactly why this is enforced at runtime instead of assumed — and why this particular guard matters more than the other five rather than less, since the others sit behind a CSP that already blocks them.
 
 If any of these ever fires, the CSP has failed and something is badly wrong — the alarm exists to make that loud rather than silent.
 

@@ -49,10 +49,30 @@ id, walletId, asset, path, xpub, label, notes
 
 ```
 id, accountId, index, address, label, isChange, used,
-balanceSnapshot { amount, asOf, source }, notes, tags[], hidden
+balanceSnapshot { amount, asOf, source }, notes, tags[], hidden,
+addressOrigin, verificationState, lastColdVerifiedAt, verifiedAgainstXpub
 ```
 
 Balances are snapshots with timestamps, never presented as live truth once stale.
+
+**Verification fields** — see [address-verification.md](address-verification.md) and [ADR-0021](../05-development/adr/0021-clipboard-address-verification.md).
+
+`addressOrigin`: `derived | manual | imported`
+
+`verificationState`: `unverified | cold-verified | cold-verified-stale | unverifiable`
+
+| State | Meaning |
+|---|---|
+| `unverified` | Recorded but never re-derived inside the cold realm |
+| `cold-verified` | Re-derived from the seed, offline, with the vault unlocked |
+| `cold-verified-stale` | Was verified, but `verifiedAgainstXpub` no longer matches the account's current xpub |
+| `unverifiable` | **Terminal.** No seed exists in this vault for it — a watch-only address recorded from an xpub or entered directly |
+
+`unverifiable` is an honest permanent state, not a failure. It is more useful than leaving a watch-only address indistinguishable from one nobody has got round to checking.
+
+`verifiedAgainstXpub` stores the xpub the verification was performed against, so staleness is *detected* rather than assumed. Without it, an account whose xpub changed would keep displaying a verification that no longer means anything.
+
+**Why this is in the model rather than computed.** A verification is an event that happened at a time, not a property derivable from current state — and the whole point is to distinguish "checked" from "not yet checked."
 
 ### Device 🔵
 

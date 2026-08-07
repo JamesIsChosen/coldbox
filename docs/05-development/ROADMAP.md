@@ -173,6 +173,14 @@ Nothing above this phase is safe to build until the container is trustworthy.
   **Accept:** the notices are reachable from the app's own UI without a network connection and without leaving the file; the embedded licence text is byte-identical to the repository's `LICENSE` (asserted by a test that compares them, so the two cannot drift); the notice states the licence by SPDX identifier `AGPL-3.0-only`; the bundle remains within the [SPEC §3](../01-spec/SPEC.md) size budget with the delta recorded; **no release may be tagged until this ships**, since tagging is a conveyance and §5(d) applies to it — the gate is recorded in [release-checklist.md](release-checklist.md) rather than left to memory. Rationale in [ADR-0018](adr/0018-agplv3-license.md).
   🌐 *The "reachable from the app's UI with no network" criterion is verified against the built artifact by the P0.3a harness; the byte-identity criterion is a Node test.*
 
+- [ ] **P0.21 — Cold-realm injected-provider neutering**
+  *Deps: P0.8*
+  **Also placed before P0.19, for the same reason P0.20 is** — its dependency is P0.8, and an agent reaching the `👤 human-required` P0.19 must stop.
+  Extend P0.8's runtime neutering to cover `window.ethereum` and the `eip6963:announceProvider` event alongside the five network primitives, on the same non-configurable, non-writable basis, installed on both the exposed object and its owning prototype.
+  **This closes a hole that exists today, and is entirely independent of the wallet-extension integration that was rejected in [ADR-0020](adr/0020-injected-providers-rejected-and-neutered.md)** — it is that investigation's one durable finding, and it ships whether or not Coldbox ever talks to an extension. Sandboxed `srcdoc` frames are not reliably excluded from extension injection — that is a browser implementation detail, not a guarantee — and at present nothing stops an extension injecting a provider into the cold realm and nothing notices if one does. A provider inside the sealed realm is an egress channel that `connect-src 'none'` cannot touch, because provider calls are not subject to page CSP at all ([csp-policy.md](../02-security/csp-policy.md)).
+  **Accept:** an announcement or provider object observed inside the cold realm enters **full lockdown** and refuses vault operations, exactly as a network-primitive call does; the alarm text **distinguishes an isolation failure from a policy failure**, since the two call for different responses from the user; the blockers survive an attempt to redefine or delete them, proven by a negative test that tries; a fixture dispatching `eip6963:announceProvider` inside the cold realm is detected. Rationale in [ADR-0020](adr/0020-injected-providers-rejected-and-neutered.md).
+  🌐 *Verified by the P0.3a harness in Chromium and Firefox, alongside the existing prototype-restoration and network-primitive checks.*
+
 - [ ] **P0.19 â€” Device matrix pass** ðŸ‘¤ **human-required**
   *Deps: P0.18*
   Full manual pass per [testing.md](testing.md) across the supported execution matrix; record the deferred iOS local-execution target separately.
@@ -195,6 +203,19 @@ Nothing above this phase is safe to build until the container is trustworthy.
 - [ ] P1.8 Device registry
 - [ ] P1.9 Verification workflows: fingerprint, receive address, xpub, backup, passphrase ⚠️ *implementable by agent; final validation needs real hardware wallets*
 - [ ] P1.10 QR generation: addresses, SeedQR, Compact SeedQR, printable cards
+- [ ] **P1.11 Address verification state in the data model**
+  *Deps: P1.6*
+  The `addressOrigin`, `verificationState`, `lastColdVerifiedAt`, and `verifiedAgainstXpub` fields per [data-model.md](../01-spec/data-model.md), the schema migration, and the Registry surface that lists never-verified addresses. Rationale in [ADR-0021](adr/0021-clipboard-address-verification.md).
+  **Accept:** a vault written by the previous schema version still opens (the migration test [data-model.md](../01-spec/data-model.md) requires); `verificationState` is never inferred — an address reaches `cold-verified` only via an actual cold re-derivation; changing an account's xpub moves its verified addresses to `cold-verified-stale` **automatically**, and a test proves a stale entry is never displayed as verified.
+- [ ] **P1.12 Clipboard round-trip address verification**
+  *Deps: P1.11, P1.9*
+  Full-string comparison with divergence index, the round-trip flow, inbound and batch verification, and the two-claim verdict model per [address-verification.md](../01-spec/address-verification.md).
+  **Accept:** comparison is character-exact over the whole string and **never** prefix/suffix — a fixture pair matching on the first and last four characters but differing in the middle is reported as a mismatch with the correct divergence index; bech32 compares case-insensitively while base58check does not; a mixed-case EVM address failing EIP-55 is reported as `checksum-invalid`, distinctly from both match and mismatch; **a locked vault reports `vault-locked`, never `no-record`** — reporting "no match" when the registry simply cannot be read is a false negative on a security check and is the worst available bug here; a warm-only verdict against an `unverified` or `unverifiable` address states that inline every time; `address.verifyResult` carries enum codes only, with a test asserting no free-form string field exists on it ([architecture.md](../01-spec/architecture.md)).
+  🌐 *The clipboard-permission matrix — read-permitted, read-denied, write-only, API-absent — is a P0.3a harness matrix, not an assumption.*
+- [ ] **P1.13 Clipboard volatility canary** ⚠️ *opt-in; needs a permission the user may refuse*
+  *Deps: P1.12*
+  Re-read the clipboard after a delay with no user action; a change is affirmative detection of an active hijacker.
+  **Accept:** off by default and never enabled implicitly by using another feature; with permission denied or the API absent, the paste comparison still works **and the UI states the canary is unavailable** rather than silently presenting the weaker check's result as the stronger one's; the alarm names benign causes (clipboard managers, sync tools, remote-desktop clients) **before** naming malware; permission can be re-requested without a reload.
 
 ## Phase 2 — Backup
 
@@ -246,6 +267,17 @@ Nothing above this phase is safe to build until the container is trustworthy.
 - [ ] P5.4 BLS/EIP-2333 · P5.5 PSBT viewer · P5.6 Silent payments (experimental)
 - [ ] P5.7 Quantum readiness panel · P5.8 ERC-4337 records · P5.9 Border Wallets
 - [ ] P5.10 Inheritance letter · P5.11 Camera scanner
+
+---
+
+## Considered and rejected
+
+Recorded here so they are not silently re-proposed. Each has an ADR with the full analysis.
+
+| Proposal | Outcome |
+|---|---|
+| Unsigned transaction construction, broadcast relay, ERC-7730 clear signing | **Rejected** — [ADR-0019](adr/0019-no-transaction-workbench.md). Worked up in full, then declined: the three were justifying each other rather than standing alone, and hardware wallets already perform clear signing with provenance Coldbox structurally cannot match. [SPEC §1.3](../01-spec/SPEC.md)'s non-goal stands unamended |
+| Injected wallet provider integration (EIP-6963 / EIP-1193) | **Rejected as a feature, kept as a threat** — [ADR-0020](adr/0020-injected-providers-rejected-and-neutered.md). Provider calls bypass page CSP, which would have required the first carve-out in [threat-model.md](../02-security/threat-model.md)'s design commitments. The investigation's finding ships as P0.21 |
 
 ---
 

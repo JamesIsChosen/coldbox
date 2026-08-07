@@ -547,6 +547,28 @@ Wrapped-DEK method 2: an alternative or additional unlock path using a keyfile r
 See [ADR-0014](../05-development/adr/0014-keyfile-unlock-implementation-limits.md) for the exact record shape and implementation limits. Multiple unlock methods share one underlying data-encryption key via the vault format's multi-record wrapped-DEK block (see "Vault" above), so adding keyfile unlock never duplicates the encrypted compartments.
 :::
 
+**Clipboard hijacking** (also *address swapping*)
+::: plain
+Malware that watches your clipboard and swaps a copied crypto address for the attacker's. Everything on screen looks right — you copied the correct address, and something rewrote it before you pasted. It's one of the most common ways people lose money, and it's why Coldbox asks you to paste the address *back* after you've put it somewhere.
+:::
+::: working
+Malware that monitors the system clipboard and substitutes copied cryptocurrency addresses. Verifying the address before copying proves nothing, since the substitution happens between copy and paste — which is why the round-trip check compares what actually landed in the destination field.
+:::
+::: technical
+Countered by full-string comparison against the vault's `Address` records, reporting the first divergent character index rather than a boolean. Optionally augmented by a clipboard volatility canary — an unprompted re-read detecting a change with no user action, the only affirmative hijacker signal available. See [address-verification.md](../01-spec/address-verification.md) and [ADR-0021](../05-development/adr/0021-clipboard-address-verification.md).
+:::
+
+**Verification state** (in Coldbox)
+::: plain
+A label on every address saying how thoroughly Coldbox has checked it. "Never checked" is different from "checked against your seed", and Coldbox tells you which one you're looking at rather than showing the same green tick for both.
+:::
+::: working
+Per-address record of whether an address has been re-derived from its seed inside the cold realm: `unverified`, `cold-verified`, `cold-verified-stale`, or `unverifiable`. A match against a never-verified address states that limitation inline, every time.
+:::
+::: technical
+Stored on the `Address` entity with `lastColdVerifiedAt` and `verifiedAgainstXpub`, so staleness is detected on xpub change rather than assumed. `unverifiable` is terminal and applies to watch-only addresses for which no seed exists in the vault. See [data-model.md](../01-spec/data-model.md).
+:::
+
 **Provenance panel**
 ::: plain
 A screen listing exactly what's inside this copy of Coldbox: every third-party library and its version, the security rules the app is running under, when it was built, and a way to check the file you're running hasn't been quietly altered. It's honest about the limits of that last check too — see "Hash / checksum" above.
@@ -605,5 +627,16 @@ Address-swapping malware is specifically built to generate a fake address with a
 Address-swapping malware generates addresses with matching prefixes and suffixes precisely because that partial-comparison shortcut is common. Check the whole string, or compare fingerprints instead.
 :::
 ::: technical
-Generating a vanity address matching a chosen prefix/suffix of length N is a brute-force search over roughly `58^N` (Base58) or `32^N` (Bech32) candidate private keys — cheap for the 4-6 characters a manual comparison typically checks, astronomically expensive for the full ~34-62 character address. See "Verify a receive address" in [verify-a-hardware-wallet.md](../03-guides/verify-a-hardware-wallet.md).
+Generating a vanity address matching a chosen prefix/suffix of length N is a brute-force search over roughly `58^N` (Base58) or `32^N` (Bech32) candidate private keys — cheap for the 4-6 characters a manual comparison typically checks, astronomically expensive for the full ~34-62 character address. See "Verify a receive address" in [verify-a-hardware-wallet.md](../03-guides/verify-a-hardware-wallet.md), and [verify-an-address.md](../03-guides/verify-an-address.md) for the clipboard round-trip check that automates the full-string comparison.
+:::
+
+**"I checked the address before I pasted it."**
+::: plain
+Checking before you paste tells you the address Coldbox showed you was right. It tells you nothing about the address that ended up in the withdrawal box — and that's the one the money follows. Copy it back out and check it again after pasting.
+:::
+::: working
+Pre-paste verification and post-paste verification answer different questions. Clipboard-hijacking malware substitutes the address between the two, so only the round-trip check — comparing what actually landed in the destination field — covers the interval where the attack occurs.
+:::
+::: technical
+The pre-copy check validates the source of truth; the round-trip check validates the transport. See [address-verification.md](../01-spec/address-verification.md): step 4 of the round-trip flow (copying back out of the destination) is the step users skip and the one carrying the value, which is why the guide calls it out explicitly rather than listing it as one instruction among five.
 :::

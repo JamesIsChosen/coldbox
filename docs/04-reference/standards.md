@@ -4,7 +4,7 @@ Every BIP, SLIP, and other standard Coldbox implements, tracks, or deliberately 
 
 Adoption status changes as wallets ship support and proposals activate. Re-check before relying on the "tracked, not implemented" rows.
 
-*Last reviewed: 2026-08-02 · Max age: 12 months · See [doc-hygiene.md](../05-development/doc-hygiene.md)*
+*Last reviewed: 2026-08-07 · Max age: 12 months · See [doc-hygiene.md](../05-development/doc-hygiene.md)*
 
 ---
 
@@ -68,6 +68,8 @@ Adoption status changes as wallets ship support and proposals activate. Re-check
 | Miniscript | Nunchuk shipped generalized miniscript 2026; Coldcard/Jade/Ledger support native SegWit, Taproot on Coldcard/Ledger/Specter DIY | Phase 5, parse and display only |
 | FROST | Active development, not deployed | Watching |
 | ERC-4337 | Widely deployed | Registry support Phase 5 — smart account addresses aren't derived conventionally |
+| [EIP-6963](https://eips.ethereum.org/EIPS/eip-6963) Multi Injected Provider Discovery | Final; implemented by every current EVM wallet extension | **Declined** — [ADR-0020](../05-development/adr/0020-injected-providers-rejected-and-neutered.md). Not a quality judgement on the standard, which cleanly solves the `window.ethereum` contention problem. Provider calls bypass page CSP entirely, and the feature it would have enabled was not worth a carve-out in the design commitments. The event name is still *recognised* — in the cold realm, as an isolation-failure signal ([P0.21](../05-development/ROADMAP.md)) |
+| [EIP-1193](https://eips.ethereum.org/EIPS/eip-1193) Provider JavaScript API | Final; universal | **Declined**, with EIP-6963. Nothing here calls a provider |
 
 ### On BIP-360 and quantum
 
@@ -85,6 +87,7 @@ BIP-360 merging in February 2026 means the *documentation* standard is settled �
 
 | Standard | Why |
 |---|---|
+| [ERC-7730](https://eips.ethereum.org/EIPS/eip-7730) clear-signing metadata | **Hardware wallets already do this better.** Ledger implements ERC-7730 on-device *and* operates the descriptor registry. Coldbox fetches nothing at build or run time ([CONTRIBUTING.md](../../CONTRIBUTING.md)), so it could only use hand-imported descriptors with provenance it cannot verify — a weaker duplicate of a check the same user already gets downstream, and shipping a weaker duplicate of a security check invites reliance on the weaker one. Full analysis in [ADR-0019](../05-development/adr/0019-no-transaction-workbench.md). **Revisit if on-device support stalls** |
 | BIP-38 (encrypted keys) | Superseded; weak KDF by modern standards |
 | BIP-70 (payment protocol) | Deprecated, removed from most wallets |
 | Electrum seed format | Non-standard, incompatible with BIP-39 |

@@ -26,6 +26,9 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0016](0016-help-content-compiler-and-search.md) | Help content is compiled from block-scoped markdown, and search text is derived at runtime, not precomputed | Accepted |
 | [0017](0017-ci-workflow-structure.md) | CI workflow structure — two-OS matrix, a separate always-run browser job, and gated release attestation | Accepted |
 | [0018](0018-agplv3-license.md) | AGPLv3 rather than MIT, and what §5(d) obliges the app to display | Accepted |
+| [0019](0019-no-transaction-workbench.md) | Transaction construction, broadcast relay, and clear signing | Accepted (rejected feature) |
+| [0020](0020-injected-providers-rejected-and-neutered.md) | Injected wallet providers — rejected as a feature, neutered as a threat | Accepted |
+| [0021](0021-clipboard-address-verification.md) | Clipboard address verification — warm clipboard, cold authority, two separate claims | Accepted |
 
 ## When to write one
 

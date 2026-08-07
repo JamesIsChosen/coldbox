@@ -14,6 +14,7 @@ Step-by-step for the flows where mistakes are expensive. These compile into the 
 | Guide | |
 |---|---|
 | [Verify a hardware wallet](verify-a-hardware-wallet.md) | **Start here.** The most valuable thing this tool does |
+| [Verify an address](verify-an-address.md) | Catching a swap between the copy and the paste — the gap the check above doesn't cover |
 
 ## Backup
 
