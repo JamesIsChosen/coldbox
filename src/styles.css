@@ -950,6 +950,34 @@ samp {
   line-height: 1.55;
 }
 
+/* Set explicitly by selector rather than relying on :last-child, because
+   the dirty notice below is a sibling <p> that is present (though hidden)
+   in the DOM even when there are no unsaved changes. */
+#vault-status-copy {
+  max-width: 48rem;
+  margin: 0.45rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.vault-dirty-notice {
+  max-width: 48rem;
+  margin: 0.5rem 0 0;
+  padding: 0.35rem 0.6rem;
+  border: var(--outline-width) solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--fill-yellow);
+  color: var(--fill-ink);
+  font-size: 0.75rem;
+  font-weight: 750;
+  line-height: 1.5;
+}
+
+.vault-rollback-banner {
+  margin-top: 1rem;
+}
+
 .vault-status-label {
   display: inline-flex;
   align-items: center;

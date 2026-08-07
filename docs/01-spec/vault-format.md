@@ -151,15 +151,17 @@ Detected at boot. Manual export is a first-class flow with chunk counts and reas
 
 ### Generational filenames
 
-`my-vault-0047.cbx`, where 0047 is the save counter. You accumulate history rather than clobbering. Keep at least the last three.
+`coldbox-vault-0047.cbx`, where 0047 is the save counter, zero-padded to at least four digits. You accumulate history rather than clobbering. Keep at least the last three.
+
+The counter and its save timestamp are warm-shell bookkeeping only (`localStorage`, plus the filename itself) — they are not part of the vault format or the encrypted payload, and P0.14 does not change the byte layout above. See [ADR-0013](../05-development/adr/0013-save-integrity-in-warm-shell.md) for why.
 
 ### Rollback detection
 
-Highest save counter seen is remembered in `localStorage` (non-secret, degrades silently if unavailable). Opening an older vault shows a prominent warning with both dates and counters.
+Highest save counter seen is remembered in `localStorage` (non-secret, degrades silently if unavailable). Opening a file whose *filename* parses to an older generation than the highest seen shows a prominent warning with both dates and counters. This is advisory, not cryptographic: it reads the counter from the filename, so a renamed file, a foreign file, or a fresh browser profile simply cannot be checked — and in every one of those cases it stays silent rather than guessing. It is not a substitute for verified backups.
 
 ### Verify-after-save — mandatory
 
-After writing, the app re-reads the file and confirms it decrypts and matches before clearing the unsaved-changes flag. An unverified save is not a save.
+Where the save path can read its own output back (File System Access), the app re-reads the file after writing and confirms the bytes are identical before clearing the unsaved-changes flag. An unverified save is not a save. Blob download and the manual base64/QR handoff have no way to read back what actually landed on disk or in the person's clipboard, so those paths never clear the flag automatically — they say so, and the flag clears once a verified save path succeeds.
 
 ### Corruption
 

@@ -395,7 +395,7 @@ Three save paths, because this is the weakest link in "any device":
 
 The app detects available paths at boot. Manual export is not an afterthought — for a phone-primary user in a supported running context it may be the normal flow, so it gets a real UI with chunk counts and reassembly instructions. Loading is symmetric: picker, drag-and-drop, or paste. A file that never reaches a supported execution context has no save-path claim; Quick Look is not a substitute.
 
-Also: **generational filenames** (`my-vault-0047.cbx`) so you accumulate history rather than clobbering; **rollback detection** via highest-save-counter-seen; **verify-after-save**, which re-opens the file and confirms it decrypts before clearing the unsaved-changes flag; and honest corruption messaging — a failed AEAD tag means "wrong passphrase *or* damaged file," and the two are cryptographically indistinguishable.
+Also: **generational filenames** (`coldbox-vault-0047.cbx`) so you accumulate history rather than clobbering; **rollback detection** via highest-save-counter-seen, read from the filename and therefore advisory rather than cryptographic (see [vault-format.md](vault-format.md#rollback-detection)); **verify-after-save**, which re-reads the file where the save path allows it (File System Access) and confirms the bytes are identical before clearing the unsaved-changes flag — blob download and the manual/QR handoff cannot be read back and so never clear it automatically; and honest corruption messaging — a failed AEAD tag means "wrong passphrase *or* damaged file," and the two are cryptographically indistinguishable.
 
 ### 8.6 Memory hygiene and its limits
 

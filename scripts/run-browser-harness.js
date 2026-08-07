@@ -389,7 +389,12 @@ async function verifyBuiltFile(browser, engine) {
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#vault-save-download').click();
     const download = await downloadPromise;
-    assert.equal(download.suggestedFilename(), 'coldbox-vault.cbx');
+    // P0.14: saves are named with a zero-padded generational counter so they
+    // accumulate history instead of clobbering (vault-format.md's
+    // "Generational filenames"). This is a fresh page/context with no prior
+    // localStorage save-generation record, so the first save in it is
+    // always generation 1.
+    assert.equal(download.suggestedFilename(), 'coldbox-vault-0001.cbx');
 
     await page.locator('#vault-save-manual').click();
     await page.waitForFunction(() => document.querySelector('#vault-manual-data').value.length > 0);

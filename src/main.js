@@ -2,6 +2,7 @@
 __COLDBOX_PROTOCOL__
 __COLDBOX_AIRGAP__
 __COLDBOX_CAPABILITIES__
+__COLDBOX_SAVE_INTEGRITY__
 (function () {
   'use strict';
 
@@ -11,6 +12,7 @@ __COLDBOX_QR_ENCODER__
   var protocol = window.__coldboxProtocol;
   var airgap = window.__coldboxAirgap;
   var capabilities = window.__coldboxCapabilities;
+  var saveIntegrity = window.__coldboxSaveIntegrity;
   var root = document.documentElement;
   var app = document.getElementById('app');
   var main = document.getElementById('main-content');
@@ -107,6 +109,13 @@ __COLDBOX_QR_ENCODER__
   var vaultMessageSequence = 0;
   var lastModeOnline = null;
   var lastEscapeAt = 0;
+  var vaultDirty = false;
+  var pendingVaultLoad = false;
+  var pendingLoadFileMeta = null;
+  var saveGeneration = { counter: 0, savedAt: null };
+  var vaultDirtyNotice = document.getElementById('vault-dirty-notice');
+  var vaultRollbackBanner = document.getElementById('vault-rollback-banner');
+  var vaultRollbackBannerCopy = document.getElementById('vault-rollback-banner-copy');
   var manualQrChunks = [];
   var manualQrIndex = 0;
   var QR_FRAME_PAYLOAD_LENGTH = 650;
@@ -747,6 +756,72 @@ __COLDBOX_QR_ENCODER__
     }
   }
 
+  function safeLocalStorage() {
+    try {
+      return window.localStorage;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  // The dirty flag only ever clears inside completeVerifiedSave(), after a
+  // save has been read back from disk and found byte-identical to what was
+  // written (P0.14). Every other caller may only set it true.
+  function setVaultDirty(value) {
+    vaultDirty = Boolean(value);
+    root.setAttribute('data-vault-dirty', String(vaultDirty));
+    app.setAttribute('data-vault-dirty', String(vaultDirty));
+    if (vaultDirtyNotice) {
+      vaultDirtyNotice.hidden = !vaultDirty;
+      vaultDirtyNotice.setAttribute('data-dirty', String(vaultDirty));
+      vaultDirtyNotice.textContent = vaultDirty
+        ? 'Unsaved changes: this vault has not completed a verified save yet.'
+        : '';
+    }
+  }
+
+  function setVaultRollbackBanner(evaluation, fileMeta) {
+    var detected = Boolean(evaluation && evaluation.rollback);
+    root.setAttribute('data-vault-rollback', detected ? 'detected' : 'none');
+    if (!vaultRollbackBanner) {
+      return;
+    }
+    vaultRollbackBanner.hidden = !detected;
+    vaultRollbackBanner.setAttribute('data-state', detected ? 'detected' : 'none');
+    if (!detected || !vaultRollbackBannerCopy) {
+      return;
+    }
+    var fileDate = fileMeta && typeof fileMeta.lastModified === 'number'
+      ? new Date(fileMeta.lastModified).toISOString()
+      : 'unknown date';
+    var seenDate = evaluation.seenSavedAt || 'unknown date';
+    vaultRollbackBannerCopy.textContent = 'This file is save generation '
+      + String(evaluation.fileCounter) + ' (' + fileDate + '), but this browser has already recorded'
+      + ' generation ' + String(evaluation.seenCounter) + ' (' + seenDate + '). '
+      + 'You may be opening an older backup. This check is advisory: it degrades silently when the'
+      + ' filename or local record is unavailable.';
+  }
+
+  function saveVerificationError() {
+    var error = new Error('Vault save could not be verified.');
+    error.code = 'VAULT_SAVE_VERIFY_FAILED';
+    return error;
+  }
+
+  // Only called after a save's written bytes have been read back and
+  // confirmed identical (P0.14 verify-after-save). Advances the local save
+  // generation and clears the dirty flag; a failed write or a failed
+  // verification must never reach this function.
+  function completeVerifiedSave() {
+    if (saveIntegrity) {
+      var counter = saveIntegrity.nextCounter(saveGeneration);
+      var savedAt = new Date().toISOString();
+      saveGeneration = { counter: counter, savedAt: savedAt };
+      saveIntegrity.writeGeneration(safeLocalStorage(), counter, savedAt);
+    }
+    setVaultDirty(false);
+  }
+
   function nextVaultMessageId(prefix) {
     vaultMessageSequence += 1;
     return 'vault-' + prefix + '-' + String(vaultMessageSequence);
@@ -807,7 +882,7 @@ __COLDBOX_QR_ENCODER__
     });
   }
 
-  function sendVaultOpen(bytes) {
+  function sendVaultOpen(bytes, fileMeta) {
     if (!bytes || bytes.length === 0) {
       setVaultNotice('The selected file did not contain vault bytes.');
       return;
@@ -832,7 +907,15 @@ __COLDBOX_QR_ENCODER__
     );
     try {
       coldMessagePort.postMessage(message);
+      // Set only once the message is actually queued - handleVaultOpened()
+      // uses this to distinguish "opened an existing file" (not dirty) from
+      // "created fresh inside the cold realm" (dirty until first verified
+      // save). A retried unlock attempt on the same file must keep this set.
+      pendingVaultLoad = true;
+      pendingLoadFileMeta = fileMeta || null;
     } catch (error) {
+      pendingVaultLoad = false;
+      pendingLoadFileMeta = null;
       setVaultStatus(
         'locked',
         'Vault is locked',
@@ -1049,8 +1132,15 @@ __COLDBOX_QR_ENCODER__
   }
 
   function loadVaultFile(file) {
+    // Captured before the async read so a slow FileReader path can't race a
+    // second load; used only for the advisory rollback check (P0.14) and
+    // never sent anywhere - it stays in the warm shell.
+    var fileMeta = {
+      name: file && typeof file.name === 'string' ? file.name : null,
+      lastModified: file && typeof file.lastModified === 'number' ? file.lastModified : null
+    };
     readVaultFile(file).then(function (buffer) {
-      sendVaultOpen(new Uint8Array(buffer));
+      sendVaultOpen(new Uint8Array(buffer), fileMeta);
     }, function () {
       setVaultNotice('The selected file could not be read.');
     });
@@ -1093,30 +1183,78 @@ __COLDBOX_QR_ENCODER__
     setVaultNotice('The encrypted vault could not be saved.');
   }
 
+  function nextSuggestedFilename() {
+    if (!saveIntegrity) {
+      return 'coldbox-vault.cbx';
+    }
+    try {
+      return saveIntegrity.filenameForCounter(saveIntegrity.nextCounter(saveGeneration));
+    } catch (error) {
+      return 'coldbox-vault.cbx';
+    }
+  }
+
+  // File System Access is the only save path where Coldbox can read the
+  // written file back from disk, so it is the only path that performs a real
+  // verify-after-save (P0.14) and the only one that ever clears the dirty
+  // flag automatically. A handle that fails to re-read, or bytes that read
+  // back different from what was written - the shape a truncated or
+  // interrupted write takes - leaves the vault marked dirty and says so.
   function saveWithFileSystemAccess() {
+    if (typeof window.showSaveFilePicker !== 'function') {
+      reportVaultSaveFailure(new Error('File System Access is unavailable.'));
+      return;
+    }
+    var suggestedName = nextSuggestedFilename();
     requestVaultBytes().then(function (bytes) {
-      if (typeof window.showSaveFilePicker !== 'function') {
-        throw new Error('File System Access is unavailable.');
-      }
       return window.showSaveFilePicker({
-        suggestedName: 'coldbox-vault.cbx',
+        suggestedName: suggestedName,
         types: [{
           description: 'Coldbox vault',
           accept: { 'application/octet-stream': ['.cbx'] }
         }]
       }).then(function (handle) {
-        return handle.createWritable().then(function (writable) {
-          return writable.write(bytes).then(function () {
-            return writable.close();
+        if (!saveIntegrity) {
+          return handle.createWritable().then(function (writable) {
+            return writable.write(bytes).then(function () { return writable.close(); });
+          }).then(function () {
+            return { verified: false };
           });
+        }
+        return saveIntegrity.verifyAfterSave({
+          bytes: bytes,
+          write: function (writeBytes) {
+            return handle.createWritable().then(function (writable) {
+              return writable.write(writeBytes).then(function () { return writable.close(); });
+            });
+          },
+          readBack: function () {
+            return handle.getFile()
+              .then(readVaultFile)
+              .then(function (buffer) { return new Uint8Array(buffer); });
+          }
         });
       });
-    }).then(function () {
-      setVaultNotice('Encrypted vault saved with File System Access.');
+    }).then(function (result) {
+      if (!result || !result.verified) {
+        setVaultNotice(
+          'Save could not be verified: the file read back from disk did not match what was written. '
+          + 'The vault still shows unsaved changes - try saving again or use a different save path.'
+        );
+        return;
+      }
+      completeVerifiedSave();
+      setVaultNotice('Encrypted vault saved as ' + suggestedName + ' and verified by reading it back from disk.');
     }, reportVaultSaveFailure);
   }
 
+  // Blob download and the manual/QR export below cannot be read back from
+  // disk through any web API - the browser (or the person copying the text)
+  // owns that step, invisibly to this page. So neither path ever clears the
+  // dirty flag automatically or advances the save generation; both say so
+  // plainly rather than claiming a verification that did not happen.
   function saveAsDownload() {
+    var suggestedName = nextSuggestedFilename();
     requestVaultBytes().then(function (bytes) {
       if (!window.URL || typeof window.URL.createObjectURL !== 'function') {
         throw new Error('Blob download is unavailable.');
@@ -1125,18 +1263,23 @@ __COLDBOX_QR_ENCODER__
       var url = window.URL.createObjectURL(blob);
       var link = document.createElement('a');
       link.href = url;
-      link.download = 'coldbox-vault.cbx';
+      link.download = suggestedName;
       link.rel = 'noopener';
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.setTimeout(function () { window.URL.revokeObjectURL(url); }, 0);
     }).then(function () {
-      setVaultNotice('Encrypted vault download started.');
+      setVaultNotice(
+        'Encrypted vault download started as ' + suggestedName + '. Browsers do not let Coldbox read a '
+        + 'downloaded file back to verify it, so unsaved changes remain marked until a File System Access '
+        + 'save succeeds or you confirm the download opened correctly.'
+      );
     }, reportVaultSaveFailure);
   }
 
   function saveAsManualText() {
+    var suggestedName = nextSuggestedFilename();
     requestVaultBytes().then(function (bytes) {
       if (!vaultManualData) {
         throw new Error('Manual export is unavailable.');
@@ -1145,7 +1288,12 @@ __COLDBOX_QR_ENCODER__
       vaultManualData.scrollTop = 0;
       prepareQrExport(vaultManualData.value);
       updateVaultControls();
-      setVaultNotice('Encrypted vault text and numbered QR frames are ready for copy, share, or airgapped transfer.');
+      setVaultNotice(
+        'Encrypted vault text and numbered QR frames are ready for copy, share, or airgapped transfer '
+        + '(suggested filename ' + suggestedName + ' if you save the pasted text as a file). This handoff '
+        + 'is not read back automatically, so unsaved changes remain marked until you confirm it was '
+        + 'captured correctly.'
+      );
     }, reportVaultSaveFailure);
   }
 
@@ -1210,12 +1358,49 @@ __COLDBOX_QR_ENCODER__
 
   function handleVaultOpened(message) {
     var count = publicRecordCount(message.payload.publicCompartment);
+    // pendingVaultLoad is only true when this session began from bytes the
+    // warm shell staged via sendVaultOpen() - an existing file, with no
+    // unsaved changes yet. Its absence means the cold realm's own "create"
+    // control produced this session instead, which starts dirty until its
+    // first verified save (P0.14).
+    var wasLoadedFile = pendingVaultLoad;
+    var loadMeta = pendingLoadFileMeta;
+    pendingVaultLoad = false;
+    pendingLoadFileMeta = null;
+    setVaultDirty(!wasLoadedFile);
+
+    var rollbackNotice = '';
+    if (wasLoadedFile && saveIntegrity) {
+      var fileCounter = loadMeta && loadMeta.name ? saveIntegrity.parseFilename(loadMeta.name) : null;
+      var fileInfo = { counter: fileCounter, lastModified: loadMeta ? loadMeta.lastModified : null };
+      // Evaluate against the generation on record BEFORE advancing it - an
+      // opened file must be judged against what this browser already knew,
+      // not against itself.
+      var evaluation = saveIntegrity.evaluateRollback(saveGeneration, fileInfo);
+      setVaultRollbackBanner(evaluation, loadMeta);
+      if (evaluation.rollback) {
+        rollbackNotice = ' Rollback warning: see the banner above - this file is an older save generation'
+          + ' than one this browser has already recorded.';
+      }
+      // The remembered high-water mark must be the highest generation this
+      // browser has ever *seen*, not only the highest it has *saved* -
+      // otherwise opening a newer file here, then an older one after a
+      // reload, would evade rollback detection entirely (independent review
+      // finding F1). Never lowers the record; never fires on an unparseable
+      // filename.
+      saveGeneration = saveIntegrity.advanceGenerationOnOpen(saveGeneration, fileInfo);
+      saveIntegrity.writeGeneration(safeLocalStorage(), saveGeneration.counter, saveGeneration.savedAt);
+    } else {
+      setVaultRollbackBanner(null, null);
+    }
+
     setVaultStatus(
       'unlocked',
       'Vault is unlocked',
-      count === 0
+      (count === 0
         ? 'The encrypted vault opened inside the sealed realm. No public records were returned to this shell.'
-        : String(count) + ' public record(s) are available to the warm shell; secret compartments remain sealed here.',
+        : String(count) + ' public record(s) are available to the warm shell; secret compartments remain sealed here.')
+      + rollbackNotice,
       'Unlocked'
     );
   }
@@ -1276,7 +1461,10 @@ __COLDBOX_QR_ENCODER__
       setVaultStatus(
         'locked',
         'Vault is locked',
-        'The lock request was sent to the sealed realm. Its active bytes will be cleared there.',
+        vaultDirty
+          ? 'The lock request was sent to the sealed realm. Unsaved changes existed at lock time and were '
+            + 'not written to a verified save.'
+          : 'The lock request was sent to the sealed realm. Its active bytes will be cleared there.',
         'Locked'
       );
     }
@@ -1663,6 +1851,11 @@ __COLDBOX_QR_ENCODER__
   app.setAttribute('data-capability-state', 'checking');
   app.setAttribute('data-lockdown-state', 'checking');
   app.setAttribute('data-vault-operations', 'refused');
+  if (saveIntegrity) {
+    saveGeneration = saveIntegrity.readGeneration(safeLocalStorage());
+  }
+  setVaultDirty(false);
+  setVaultRollbackBanner(null, null);
   setVaultStatus(
     'locked',
     'Vault is locked',

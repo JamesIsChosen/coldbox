@@ -12,6 +12,13 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
+### Added — P0.14 save integrity (2026-08-06)
+
+- **Verify-after-save.** The File System Access save path re-reads the file it just wrote and confirms the bytes are byte-identical before clearing the unsaved-changes flag; a truncated or corrupted read-back leaves the vault marked dirty and says so instead of silently reporting success.
+- **Dirty-flag tracking.** A vault created fresh inside the cold realm starts with unsaved changes; opening an existing file does not. Only a verified save clears the flag — blob download and the manual base64/QR handoff have no way to read back what actually landed on disk or in a clipboard, so neither ever clears it automatically.
+- **Generational filenames and rollback detection.** Saves are named `coldbox-vault-0047.cbx`; the highest generation this browser has seen is tracked in `localStorage` (non-secret, degrades silently) and compared against a loaded file's filename. Opening a file that parses to an older generation shows a warning with both dates and counters. This is advisory, not cryptographic — a renamed or foreign file simply cannot be checked, and the check never guesses.
+- New `src/save-integrity.js`, assembled into the warm shell the same way as `airgap.js`/`capabilities.js`/`protocol.js`. Pure logic, no DOM dependency, no vault-format change, no new `postMessage` type — see [ADR-0013](docs/05-development/adr/0013-save-integrity-in-warm-shell.md) for why it lives here.
+
 ### Changed — review closeout ownership (2026-08-06)
 
 - **Root cause fixed for governance-only pull requests.** [review-protocol.md](docs/05-development/review-protocol.md) told the reviewer to *write* a `.review.md` report but never to commit it to the branch under review, and no document assigned the `[~]` → `[x]` roadmap transition to anyone. Both artifacts therefore had no home once `--delete-branch` ran, producing rescue branches for review reports and a follow-up PR whose entire diff was one character.
