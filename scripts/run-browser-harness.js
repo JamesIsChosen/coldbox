@@ -1349,6 +1349,22 @@ async function verifyDevOnlyDependency() {
         { recursive: true }
       );
     }
+    // P0.16 F4 fallout: scripts/build.js now derives the embedded build date
+    // from `git log -- src scripts vendor` (see ADR-0015's 2026-08-06
+    // amendment). This fixture's whole point is proving the build needs no
+    // devDependency (in particular, no Playwright) - it was never meant to
+    // prove the build needs no *git checkout*, and a real "node_modules
+    // absent" checkout still has its .git directory. Without copying it, the
+    // dependency-free build fell back to the "unknown (no git commit
+    // metadata available)" branch while the real build embedded an actual
+    // date, so the two byte-identical builds legitimately diverged - not a
+    // regression in build.js, but this fixture no longer modeling a real
+    // checkout. Copying .git restores that fidelity.
+    fs.cpSync(
+      path.join(projectRoot, '.git'),
+      path.join(temporaryRoot, '.git'),
+      { recursive: true }
+    );
     assert.equal(fs.existsSync(path.join(temporaryRoot, 'node_modules')), false);
 
     const result = spawnSync(

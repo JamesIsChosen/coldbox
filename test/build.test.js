@@ -105,6 +105,43 @@ test('two builds are byte-identical regardless of caller locale and timezone', (
   assert.deepEqual(secondSidecar, firstSidecar);
 });
 
+// P0.16 F4 remediation fallout, caught by the real browser-harness run on a
+// machine with actual network access (the harness's own copy of this check,
+// scripts/run-browser-harness.js's verifyDevOnlyDependency, requires
+// Playwright and could not run in every environment this branch was
+// developed in). scripts/build.js derives its embedded build date from
+// `git log -- src scripts vendor` against the checkout it's run from. A
+// "dependency-free" build - node_modules absent, everything else present,
+// which is what a real checkout with npm ci skipped looks like - still has
+// its .git directory. createBuildRoot() here does not copy .git, so it does
+// not model that scenario faithfully; this test copies .git explicitly to
+// prove the build is genuinely independent of node_modules while still
+// resolving a real commit date, without requiring Playwright to catch a
+// regression in this property.
+test('a build with node_modules absent but .git present matches the real build byte-for-byte', () => {
+  runBuild();
+  const realBuild = fs.readFileSync(htmlPath);
+
+  const root = createBuildRoot();
+  try {
+    fs.cpSync(path.join(projectRoot, '.git'), path.join(root, '.git'), { recursive: true });
+    assert.equal(fs.existsSync(path.join(root, 'node_modules')), false);
+
+    const result = runBuildProcessAt(root);
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+
+    const dependencyFreeBuild = fs.readFileSync(path.join(root, 'build', 'coldbox.html'));
+    assert.deepEqual(dependencyFreeBuild, realBuild);
+    assert.doesNotMatch(
+      dependencyFreeBuild.toString('utf8'),
+      /unknown \(no git commit metadata available\)/,
+      'a checkout with .git present must resolve a real build date, not the no-metadata fallback'
+    );
+  } finally {
+    fs.rmSync(root, { force: true, recursive: true });
+  }
+});
+
 test('CSP hashes match every inline script and style block', () => {
   runBuild();
   const html = fs.readFileSync(htmlPath, 'utf8');
