@@ -66,14 +66,35 @@ $ npm test
 
 ### Verifying the licence text itself
 
-The text was retrieved from SPDX's `license-list-data` repository, which publishes it paragraph-reflowed rather than in the FSF's hard-wrapped rendering. It was then reformatted into the FSF's conventional line breaks for `LICENSE`. **That reformatting is the single highest-risk thing in this PR** — see §9 — so verify it against upstream rather than against this packet:
+The text was retrieved from SPDX's `license-list-data` repository, which publishes it paragraph-reflowed rather than in the FSF's hard-wrapped rendering. It was then reformatted into the FSF's conventional line breaks for `LICENSE`. **That hand-reflow was the single highest-risk thing in this PR**, so it was word-diffed against the SPDX source rather than eyeballed.
+
+**Result: 5535 tokens on each side, three differences, all in informational URLs.**
 
 ```
-$ curl -sO https://www.gnu.org/licenses/agpl-3.0.txt
-$ diff <(tr -s '[:space:]' ' ' < agpl-3.0.txt) <(tr -s '[:space:]' ' ' < LICENSE)
+$ diff <(tr -s '[:space:]' '\n' < agpl-spdx-source.txt | grep -v '^$') \
+       <(tr -s '[:space:]' '\n' < LICENSE            | grep -v '^$')
+18c18
+< <http://fsf.org/>
+---
+> <https://fsf.org/>
+5403c5403
+< <http://www.gnu.org/licenses/>.
+---
+> <https://www.gnu.org/licenses/>.
+5535c5535
+< <http://www.gnu.org/licenses/>.
+---
+> <https://www.gnu.org/licenses/>.
+
+$ tr -s '[:space:]' '\n' < agpl-spdx-source.txt | grep -vc '^$'   # 5535
+$ tr -s '[:space:]' '\n' < LICENSE              | grep -vc '^$'   # 5535
 ```
 
-Whitespace-normalising both sides compares the words while ignoring line wrapping, which is what actually matters legally. Expect no output. A structural spot-check is also cheap:
+Splitting on whitespace and diffing token-by-token ignores line wrapping — which carries no legal weight — while catching any dropped, added, or altered word. **Zero differences anywhere in the operative text**: no missing clause, no mangled negation, no lost word across all eighteen sections. The reflow was clean.
+
+The three deltas are the known divergence between SPDX's copy (which retains historical `http://`) and the FSF's current published `agpl-3.0.txt` (which uses `https://`). `LICENSE` matches the FSF's current form. Both schemes resolve to the same pages and neither appears in operative text — §0–§17 are untouched; the hits are the copyright header and the two "How to Apply" pointers.
+
+Structural cross-check:
 
 ```
 $ for n in $(seq 0 17); do grep -qE "^  $n\. " LICENSE || echo "section $n MISSING"; done
@@ -83,7 +104,15 @@ $ grep -c '' LICENSE
 663
 ```
 
-I could not run the `curl` diff myself: this sandbox's egress allowlist returns `403 blocked-by-allowlist` for `gnu.org`. **The licence text is therefore verified structurally but not byte-diffed against the FSF's own copy.** That gap is real and is why §9 puts it first.
+**What remains unverified, and it is now narrow.** The diff above is against SPDX, not against gnu.org — this sandbox's egress allowlist returns `403 blocked-by-allowlist` for `gnu.org`, so the FSF's own copy could not be retrieved. A reviewer with network access closes the remaining gap in one command:
+
+```
+$ curl -sO https://www.gnu.org/licenses/agpl-3.0.txt
+$ diff <(tr -s '[:space:]' '\n' < agpl-3.0.txt | grep -v '^$') \
+       <(tr -s '[:space:]' '\n' < LICENSE      | grep -v '^$')
+```
+
+Expect **no output**. If the three URL lines appear, the FSF still ships `http://` and `LICENSE` should be changed to match — a cosmetic fix with no effect on the terms, but worth making so the file byte-matches a published reference, which is the property this project values everywhere else.
 
 ## 4. Acceptance criteria
 
@@ -142,11 +171,12 @@ Not applicable — nothing touching bootstrap, CSP, storage, or rendering change
 | SIL OFL 1.1 fonts may be bundled without relicensing them | OFL permits bundling; its conditions bind the font files, not the work they ship inside | A reserved-font-name issue at most; the faces are unmodified |
 | Playwright's Apache-2.0 terms don't reach the artifact | Dev dependency contributing 0 bytes, per [ADR-0007](../adr/0007-headless-browser-harness.md) | Would need an Apache notice. Contradicted by the existing 0-byte assertion, so low risk |
 | "only" beats "or-later" | An upgrade clause delegates a future drafting decision to a third party | If the FSF publishes a v4 the project wants, it needs an explicit relicense — deliberate friction, not an accident |
-| The reviewer has network access to diff against gnu.org | Prior reviewers in this repo have demonstrably had real network access (see the P0.17 and P0.18 notes) | The licence text stays structurally-verified only, which is weaker than this project's standard |
+| The reviewer has network access to diff against gnu.org | Prior reviewers in this repo have demonstrably had real network access (see the P0.17 and P0.18 notes) | The three-token `http`/`https` delta in §3 stays unresolved. Bounded: the operative text is already word-diffed clean against SPDX |
+| SPDX's published AGPL-3.0 text is faithful to the FSF's | SPDX is the reference the OSI and the wider tooling ecosystem build on, and its texts are used for automated licence identification | If SPDX itself is wrong, the §3 diff proves only that two copies agree. The gnu.org diff is what closes this, and it is the reason §3 still asks for it despite the clean result |
 
 ## 9. What to scrutinise
 
-**First: the `LICENSE` bytes.** This is where I am least confident, and it is not close. The text was reflowed by hand from a paragraph-unwrapped source into the FSF's hard-wrapped form. Hand-reflowing four hundred lines of legal text is exactly the operation that silently drops a clause or mangles a "not". Run the whitespace-normalised diff in §3. Do not review this by reading it — read the diff.
+**First: the `LICENSE` bytes — now largely retired, but check the residue.** This was the top risk when the packet was first written: the text was hand-reflowed from a paragraph-unwrapped source, which is exactly the operation that silently drops a clause or mangles a "not". It has since been word-diffed against the SPDX source (§3): **5535 tokens each side, zero differences in operative text.** What remains is the three-token `http`/`https` delta and the fact that the comparison was against SPDX rather than gnu.org, which the sandbox cannot reach. One `curl` and one `diff` settle it — commands in §3. Do not review this by reading it; read the diff.
 
 **Second: the P0.20 placement.** I put it *before* P0.19 in the file, out of numeric order. The reasoning is in the item itself: its dependency is P0.16, and P0.19 is `👤 human-required`, so an agent reaching P0.19 stops and anything after it is unreachable. If you disagree, the alternative is P0.20 never getting picked up. Worth a second opinion — this is a judgement call about how the roadmap's pick-the-next-item algorithm interacts with the human-required marker, and I may be reading that interaction more literally than intended.
 
