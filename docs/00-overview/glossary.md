@@ -499,18 +499,111 @@ A Taproot output commits to `Q = P + H(P‖merkle_root)·G`, where `P` is the in
 
 ---
 
+## App features (in Coldbox)
+
+These entries back the in-app copy for features shipped before this help system existed (P0.1–P0.16) — see [ROADMAP.md](../05-development/ROADMAP.md)'s P0.17 entry for why that backfill lives here rather than in a dedicated guide: each is a status panel or one-time decision, not a multi-step workflow.
+
+**Capability self-check**
+::: plain
+A check the app runs the moment it opens, confirming your browser actually has everything Coldbox needs — real randomness, WebAssembly, the ability to save a file — before you rely on any of it. If something critical is missing, it says so plainly instead of pretending everything's fine.
+:::
+::: working
+A boot-time panel reporting whether `crypto.getRandomValues`, `crypto.subtle`, WebAssembly, Web Workers, camera access, and each save path are actually available in the running browser, checked independently in both the warm shell and the cold realm.
+:::
+::: technical
+Per [ROADMAP.md](../05-development/ROADMAP.md) P0.9: the check hard-fails with an explanation if `getRandomValues` is absent, and never substitutes `Math.random` — enforced independently by `scripts/lint.js`'s forbidden-construct scan of `src/capabilities.js`. See also "Argon2id" above: the vault-crypto summary here is what shows which KDF is actually active, so a silent PBKDF2 fallback can't happen invisibly.
+:::
+
+**KDF profile** (also *Fast*, *Standard*, *Paranoid*)
+::: plain
+Three preset strengths for how hard it is to guess your passphrase by brute force. Stronger takes longer to unlock your vault each time — that's the whole trade-off.
+:::
+::: working
+Three Argon2id parameter presets — Fast, Standard, and Paranoid — trading unlock time against resistance to offline passphrase-guessing, selected at vault creation and stored in the vault header so a later unlock always uses the exact parameters it was created with.
+:::
+::: technical
+See [crypto-choices.md](../02-security/crypto-choices.md) for the exact memory/iteration/parallelism figures per profile. An on-device timing benchmark is offered before vault creation so the choice reflects real hardware rather than a guess; Paranoid is flagged as likely to fail via memory allocation limits on iOS Safari.
+:::
+
+**Save integrity**
+::: plain
+A safety check that happens right after Coldbox writes your vault to disk: it immediately reopens the file it just wrote and confirms it's actually intact, *before* it tells you the save succeeded. If the write got cut off or corrupted, you find out immediately, not the next time you try to open the vault.
+:::
+::: working
+Verify-after-save behavior: after writing, Coldbox re-opens the just-written file and confirms it decrypts before clearing the in-app "unsaved changes" indicator. Filenames also carry a generation counter, so opening an older vault than the one last saved triggers a rollback warning with both dates and counters shown.
+:::
+::: technical
+See [ADR-0013](../05-development/adr/0013-save-integrity-in-warm-shell.md): this bookkeeping lives in the warm shell (filenames, generation counters, the dirty flag) rather than inside the vault format itself, since none of it is secret and duplicating it into the encrypted format would gain nothing.
+:::
+
+**Keyfile unlock**
+::: plain
+An optional second way to unlock your vault, using a file instead of (or alongside) your passphrase. It's off by default, and turning it on comes with one unmissable warning: if you lose that file, or even one byte of it changes, your vault is gone for good — there's no "forgot my keyfile" recovery.
+:::
+::: working
+Wrapped-DEK method 2: an alternative or additional unlock path using a keyfile rather than (or alongside) a passphrase. Off by default; a single altered byte in the keyfile fails to unlock, by design — there is no partial-match tolerance.
+:::
+::: technical
+See [ADR-0014](../05-development/adr/0014-keyfile-unlock-implementation-limits.md) for the exact record shape and implementation limits. Multiple unlock methods share one underlying data-encryption key via the vault format's multi-record wrapped-DEK block (see "Vault" above), so adding keyfile unlock never duplicates the encrypted compartments.
+:::
+
+**Provenance panel**
+::: plain
+A screen listing exactly what's inside this copy of Coldbox: every third-party library and its version, the security rules the app is running under, when it was built, and a way to check the file you're running hasn't been quietly altered. It's honest about the limits of that last check too — see "Hash / checksum" above.
+:::
+::: working
+Reference → Provenance lists every embedded library with its version and upstream hash (generated at build time from the same manifest `npm run verify-vendor` checks against real upstream bytes), the live CSP for both realms, the build date, and a drag-and-drop self-hash comparison.
+:::
+::: technical
+See [ADR-0015](../05-development/adr/0015-provenance-build-date-and-self-hash.md): the self-hash check is a blank-then-hash self-consistency comparison, stated in-panel to be circular (a malicious build could embed a hash matching its own bytes), pointing to [verification.md](../02-security/verification.md) for a check an attacker cannot forge.
+:::
+
+---
+
 ## Things people get wrong
 
-These aren't glossary terms so much as corrections worth stating plainly — the same warning at every depth, since the point is the correction itself, not the vocabulary.
+These aren't glossary terms so much as corrections worth stating plainly. They still carry three depths, per the compiler's own build-warning check, but the correction itself barely changes with vocabulary — only the *why* gets more precise.
 
 **"My seed phrase is my password."**
-No. A password protects an account someone else controls and can reset. A seed phrase *is* the money. Nobody can reset it.
+::: plain
+No. A password protects an account that someone else — a company — controls and can reset for you if you forget it or it leaks. A seed phrase *is* the money itself. There's no company, no reset button, and no "forgot password" link.
+:::
+::: working
+No. A password authenticates you to an account a third party custodies and can reset. A seed phrase directly encodes the keys that control the funds; there is no custodian to appeal to.
+:::
+::: technical
+See "Seed phrase" above: the BIP-39 mnemonic deterministically derives the private keys via PBKDF2-HMAC-SHA512. There is no server-side account state to reset — possession of the mnemonic *is* possession of the funds, structurally, not by policy.
+:::
 
 **"I'll remember my passphrase."**
-People don't. A passphrase you can't reproduce exactly is a wallet you can't open.
+::: plain
+People don't. And unlike a forgotten website password, there's no "forgot passphrase" link — get even one character wrong and you're looking at a different, empty wallet with no way to tell what you typed wrong.
+:::
+::: working
+People don't. A passphrase you can't reproduce exactly derives a different, valid, empty wallet with no error message pointing at the mistake.
+:::
+::: technical
+See "Passphrase" above: the passphrase is unverified input to the PBKDF2-HMAC-SHA512 salt, so there is no checksum analogous to BIP-39's word-list checksum to catch a wrong character — the derivation always succeeds, just against the wrong seed.
+:::
 
 **"My backup is fine, I wrote it down."**
-Until you've reconstructed from it, you don't know that. Untested backups fail at exactly the moment you need them.
+::: plain
+Until you've actually rebuilt the wallet from what you wrote down, you don't actually know that. Untested backups fail at exactly the moment you need them — which is the worst possible time to discover a mistake.
+:::
+::: working
+Writing a backup down and verifying it are different steps. Untested backups fail silently until the moment of actual recovery, which is precisely when failure is least recoverable.
+:::
+::: technical
+This is why Coldbox's guided workflows (see [Creating your first wallet](../03-guides/first-wallet.md) and [SLIP-39](../03-guides/backup-slip39.md)) require a reconstruction from the written/transcribed copy — not the value already held in memory — before marking a backup complete, since re-entering from the app's own state proves nothing about what was actually written down.
+:::
 
 **"The addresses match, I checked the first and last few characters."**
-Address-swapping malware generates addresses with matching prefixes and suffixes. Check the whole string, or compare fingerprints instead.
+::: plain
+Address-swapping malware is specifically built to generate a fake address with a matching start and end, since it knows people only check those. Check the whole string, or better, compare fingerprints instead — see "Fingerprint" above.
+:::
+::: working
+Address-swapping malware generates addresses with matching prefixes and suffixes precisely because that partial-comparison shortcut is common. Check the whole string, or compare fingerprints instead.
+:::
+::: technical
+Generating a vanity address matching a chosen prefix/suffix of length N is a brute-force search over roughly `58^N` (Base58) or `32^N` (Bech32) candidate private keys — cheap for the 4-6 characters a manual comparison typically checks, astronomically expensive for the full ~34-62 character address. See "Verify a receive address" in [verify-a-hardware-wallet.md](../03-guides/verify-a-hardware-wallet.md).
+:::

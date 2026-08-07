@@ -1406,11 +1406,22 @@ async function verifyHelpFramework(browser, engine) {
     await page.locator('#page-learn:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('[id^="help-glossary-cold-realm-warm-shell"]').waitFor({ state: 'visible', timeout: 3000 });
 
-    // A contextual button pointed at content that doesn't exist yet (the
-    // capability panel, honestly not backfilled - see the roadmap) must
-    // fail closed into the documented fallback notice, not silently no-op.
+    // The capability panel's contextual button now resolves to real,
+    // backfilled content (glossary:capability-self-check), not the
+    // placeholder-fallback case an earlier draft of this branch exercised.
     await page.locator('#nav-rail a[data-route="dashboard"]').click();
-    await page.locator('button.help-context-button[data-help-topic="guide:capability-self-check"]').click();
+    await page.locator('button.help-context-button[data-help-topic="glossary:capability-self-check"]').click();
+    await page.locator('#page-learn:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('#help-glossary-capability-self-check').waitFor({ state: 'visible', timeout: 3000 });
+
+    // A contextual button pointed at content that genuinely doesn't exist
+    // must still fail closed into the documented fallback notice rather
+    // than silently no-op - proven directly against the runtime function
+    // rather than against a UI button, since every shipped button now
+    // resolves to real content.
+    await page.evaluate(() => {
+      window.location.hash = 'learn/glossary%3Athis-topic-does-not-exist';
+    });
     await page.locator('#help-fallback-notice:not([hidden])').waitFor({ state: 'visible', timeout: 3000 });
 
     // Inline glossary: a term inside the rendered guide body must be

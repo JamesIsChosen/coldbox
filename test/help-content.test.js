@@ -293,10 +293,41 @@ test('a build with the real docs tree embeds HELP_CONTENT into build/coldbox.htm
   assert.doesNotMatch(html, /__COLDBOX_HELP_CONTENT__/);
 });
 
-test('a missing depth block is reported on stderr as a warning, not a build failure (roadmap P0.17 acceptance criterion)', () => {
+test('the real docs/ tree now builds with zero help-content warnings (full P0.17 backfill)', () => {
   const result = runBuild();
-  assert.equal(result.status, 0);
-  assert.match(result.stderr, /Help content warning:/);
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.doesNotMatch(
+    result.stderr,
+    /Help content warning:/,
+    'a regression here means a guide or glossary term lost its three-depth content - re-run npm run build and see which one'
+  );
+});
+
+test('a missing depth block is reported on stderr as a warning, not a build failure (roadmap P0.17 acceptance criterion)', () => {
+  // Exercised against a synthetic fixture, not the real docs/ tree, since
+  // the real tree is now fully backfilled (see the test above) and would
+  // otherwise make this test pass or fail based on unrelated future edits
+  // to prose rather than on the mechanism this test actually targets.
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-help-warn-'));
+  try {
+    for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
+      fs.cpSync(path.join(projectRoot, directory), path.join(root, directory), { recursive: true });
+    }
+    fs.writeFileSync(
+      path.join(root, 'docs', '03-guides', 'zzz-fixture-no-depth-blocks.md'),
+      '# Fixture guide with no depth blocks\n\nPlain prose only, deliberately, for this test.\n',
+      'utf8'
+    );
+    const result = spawnSync(process.execPath, [path.join(root, 'scripts', 'build.js')], {
+      cwd: root,
+      encoding: 'utf8',
+      env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' }
+    });
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.match(result.stderr, /Help content warning:.*zzz-fixture-no-depth-blocks\.md.*no ::: plain\/working\/technical blocks/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('the compiled help content in the build round-trips the real dependencies-free structural shape (glossary categories, guide slugs)', () => {
