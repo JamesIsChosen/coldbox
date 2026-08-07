@@ -73,3 +73,47 @@ If Coldbox adopts a real release/versioning process, the build date could switch
 - [dependencies.md — Provenance in-app](../dependencies.md)
 - [verification.md](../../02-security/verification.md) — the non-circular checks this panel points to
 - `test/provenance.test.js`, `scripts/build.js` (`readBuildCommitDate`, `injectExpectedHash`)
+
+## Amendment (2026-08-06): build date is scoped to product paths, not literal `HEAD`
+
+**Status of this amendment:** Accepted. Recorded here rather than as a separate ADR because it narrows the mechanism this ADR already governs without changing the decision itself (build date = a commit date, not wall-clock time) or the self-hash design (F1/F2 below did touch the self-hash UI and comparison logic, but not the blank-then-hash mechanism itself).
+
+### Context
+
+Independent review of P0.16 ([p0.16-provenance-panel.review.md](../packets/p0.16-provenance-panel.review.md), finding F4) found a real design bug in the original decision: `readBuildCommitDate()` ran `git log -1 --format=%cI HEAD`, i.e. the date of **literal** `HEAD`, whatever commit that happened to be.
+
+That is unstable under this repository's own review process. A PR packet documents the exact tip it verifies. Writing or correcting that packet requires a commit. That commit becomes the new `HEAD`. Under the original mechanism, that governance-only commit — which touches only `docs/05-development/packets/`, and nothing under `src/`, `scripts/`, or `vendor/` — changed the embedded build date, and therefore the embedded expected-hash and the final SHA-256 of `coldbox.html`, even though nothing about the product changed. The packet's own recorded hash was therefore stale the moment it was committed, by construction, every time. No amount of re-running the build could fix this; the mechanism itself guaranteed the mismatch.
+
+### Decision
+
+`readBuildCommitDate()` now scopes the `git log` query to the paths that actually feed the build:
+
+```
+git log -1 --format=%cI HEAD -- src scripts vendor
+```
+
+This asks "what is the date of the most recent commit, reachable from `HEAD`, that touched a path the build reads from" rather than "what is the date of `HEAD`." A commit that touches only `docs/`, `test/`, `README.md`, `CHANGELOG.md`, or other non-product paths is invisible to this query. The build date — and therefore every other build output, since it's the only thing in this build that varies commit-to-commit — is unaffected by such a commit. It only advances when a commit that could actually change the shipped bytes is made.
+
+### Rationale
+
+**This is the option ADR-0015's own "What would change our mind" section anticipated** ("deriving from... the last commit that touched product source rather than HEAD literally"), not a new alternative invented under review pressure.
+
+**Alternatives considered and rejected:**
+
+- **Merge-base with `main`.** Rejected: this repository's workflow is one feature branch per roadmap item, reviewed and merged in place — there is no guarantee `main` is the right stability anchor once a branch has commits both before and after a packet fix-up, and it couples the build to the reviewer's remote-tracking state rather than something computable from the commit graph alone in every checkout (a shallow clone or a detached worktree may not have `main` at all).
+- **A manually-maintained "last product commit" tag or file.** Rejected for the same reason ADR-0015 rejected a manually-maintained release-date field: an unmaintained field is worse than a derived one, and this repository has no release process to hang a manual marker on yet.
+- **Excluding only `docs/05-development/packets/`** rather than all of `docs/`. Rejected as needlessly narrow — any documentation-only commit (a typo fix in `verification.md`, a roadmap checkbox) has the identical problem, and the fix is just as cheap scoped to all of `docs/` plus the implicit exclusion of `test/` and top-level metadata files.
+
+**Why this doesn't reopen the original build-date rationale:** the property ADR-0015 needed — a value that is fixed by the source and doesn't vary with wall-clock time — still holds. This amendment only changes *which* commit's date counts as "the source," so that "the source" means "the product," not "whatever HEAD happens to be when someone runs `git log`."
+
+### Consequences
+
+**Positive:** a packet, once committed, describes bytes that do not move under it on a subsequent governance-only commit. Reviewers can build a fixed tip and its hash will still match a later re-read of the same tip after the packet is corrected, re-worded, or the roadmap marker is flipped.
+
+**Negative:** the embedded build date can now be visibly older than `HEAD`'s own commit date, which could look wrong to a reader who doesn't know this mechanism exists. The panel's existing copy already explains that this is *a* commit date rather than a build timestamp; it does not currently explain that it is specifically the *product* commit date. Worth a follow-up copy tweak if this causes confusion in practice, but not required to close this finding — the underlying value is correct and reproducible, which is the property that matters.
+
+**Risk carried forward:** if a future contributor adds a new top-level directory that also feeds the build (e.g. a `data/` directory) without adding it to `BUILD_DATE_SOURCE_PATHS` in `scripts/build.js`, a commit to that new directory would silently fail to advance the build date. This is the same category of risk as any hand-maintained path list; `test/provenance.test.js` pins the current path set's behavior so a regression there would need to be a deliberate, reviewed change, not a silent one.
+
+### Verification
+
+Confirmed by building the same commit from two different checkout paths (a fresh worktree at a separate filesystem path) under different locale/timezone, per the review protocol's determinism requirement — see the regenerated [p0.16-provenance-panel.md](../packets/p0.16-provenance-panel.md) packet §3 for the actual commands and hashes. Also confirmed directly: a synthetic two-commit repository (one product commit, one docs-only commit as the new `HEAD`) embeds the first commit's date, not the second's — `test/provenance.test.js`, "a commit touching only docs/ ... does not change the build date."
