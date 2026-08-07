@@ -40,6 +40,14 @@ Independent review ([p0.16-provenance-panel.review.md](docs/05-development/packe
 
 Roadmap item stays `[~]` — the marker is the independent reviewer's to flip, not the author's.
 
+### Fixed — P0.16 fresh re-review R2-F1 (2026-08-07)
+
+A fresh independent re-review of the F1–F6 remediation confirmed every functional and browser-level acceptance criterion (including a full `npm run test:browser` PASS in Chromium and Firefox) but returned FAIL on one remaining finding:
+
+- **R2-F1 (blocking).** The F4 governance-only-commit test in `test/provenance.test.js` created a synthetic commit with `GIT_COMMITTER_DATE: '2020-01-01T00:00:00Z'`, then asserted the build embedded the hardcoded string `'2020-01-01T00:00:00+00:00'`. Both strings name the same UTC instant, but different `git` versions render `git log --format=%cI`'s strict-ISO UTC offset differently for it (`Z` vs `+00:00`) depending on how the commit date was supplied — so the test's pass/fail depended on the reviewing machine's git version, not on the actual property under test (that a governance-only commit doesn't move the embedded build date). Confirmed this was a test-fixture defect, not a product regression: independent product-level F4 checks (two-checkout-path/timezone/locale build reproducibility, product-source-tip hash matching the exact reviewed tip) all passed in the same review. Fixed by capturing git's own answer for the synthetic product commit immediately after creating it (`git log -1 --format=%cI HEAD`), then comparing the build's embedded date against that captured value instead of a hand-typed string — representation-independent by construction, since both sides go through the identical `git log --format=%cI` command. This is a `test/`-only change; it does not touch `src/`, `scripts/`, or `vendor/`, so it does not advance the embedded build date or change `coldbox.html`'s bytes at all (confirmed: hash unchanged at `d20cc46a97adcddf9a99dbad7101ea98df0355a42b1e0959530fe9cf77b6ba73`).
+
+Roadmap item stays `[~]`.
+
 ### Added — P0.15 keyfile unlock (2026-08-06)
 
 - **Wrapped-DEK method 2 (passphrase + keyfile).** `src/cold/vault.js` can now wrap the vault DEK under `Argon2id(passphrase || SHA-512(keyfile), salt, params)`, per [vault-format.md](docs/01-spec/vault-format.md)'s existing method-2 specification. A vault created with a keyfile carries a method-2 record in place of the method-1 record — the keyfile is required, not an optional alternative, so losing it or altering a single byte makes the vault permanently unopenable. This is stated in bold in the cold-realm UI before the keyfile toggle can be used, and the toggle is **off by default**.
