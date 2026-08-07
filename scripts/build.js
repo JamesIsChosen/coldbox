@@ -362,6 +362,35 @@ function ensureTrailingLf(contents) {
   return `${contents.replace(/\n*$/, '')}\n`;
 }
 
+// Writes a file "atomically": write the full contents to a process-unique
+// temp file in the same directory, then rename it over the real path.
+// fs.renameSync is atomic on both POSIX and Windows when source and
+// destination are on the same volume (which they always are here, since the
+// temp file is created inside buildRoot itself), so a concurrent reader can
+// only ever observe the old complete file or the new complete file - never a
+// half-written one.
+//
+// This matters because build/coldbox.html is a fixed, shared path that
+// multiple independent `node scripts/build.js` invocations can legitimately
+// target at the same time - e.g. test/build.test.js, test/help-content.test.js,
+// and test/provenance.test.js each spawn their own build against the real
+// project tree, and Node's test runner runs test *files* concurrently by
+// default. A plain fs.writeFileSync(htmlPath, ...) opens the destination
+// with O_TRUNC and then writes in one or more syscalls; a second process's
+// truncate-then-write can interleave with an in-flight write from a first
+// process, so a reader can land on a truncated or doubly-truncated file
+// (reproduced locally by hammering concurrent builds + reads against the
+// same path - see docs/05-development/packets/p0.18-ci.md). Writing to a
+// unique temp name first and renaming into place removes that window
+// entirely, regardless of how many builds are racing or how the OS
+// schedules their writes.
+function writeFileAtomic(targetPath, data) {
+  const uniqueSuffix = `${process.pid}-${crypto.randomBytes(6).toString('hex')}`;
+  const tempPath = `${targetPath}.tmp-${uniqueSuffix}`;
+  fs.writeFileSync(tempPath, data);
+  fs.renameSync(tempPath, targetPath);
+}
+
 function writeBuild(document) {
   const output = Buffer.from(document, 'utf8');
   const digest = crypto.createHash('sha256').update(output).digest('hex');
@@ -369,8 +398,8 @@ function writeBuild(document) {
   const hashPath = path.join(buildRoot, 'coldbox.html.sha256');
 
   fs.mkdirSync(buildRoot, { recursive: true });
-  fs.writeFileSync(htmlPath, output);
-  fs.writeFileSync(hashPath, `${digest}  build/coldbox.html\n`, 'utf8');
+  writeFileAtomic(htmlPath, output);
+  writeFileAtomic(hashPath, `${digest}  build/coldbox.html\n`);
 
   return { digest, htmlPath, hashPath };
 }
