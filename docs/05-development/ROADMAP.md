@@ -137,17 +137,19 @@ Nothing above this phase is safe to build until the container is trustworthy.
 
 ### Trust surface
 
-- [ ] **P0.16 — Provenance panel and self-hash verifier**
+- [x] **P0.16 — Provenance panel and self-hash verifier**
   *Deps: P0.15*
   Every embedded library with version and upstream hash; the full CSP allowlist; build date; expected hash; drag-and-drop self-hash drop zone.
   **Accept:** listed hashes match `dependencies.md`; **the drop zone states plainly that self-verification is circular** and points to [verification.md](../02-security/verification.md).
   🌐 *Drop-zone behaviour verified by the P0.3a harness via file upload emulation.*
+  **Help-content deferral (recorded 2026-08-06, per doc-hygiene.md rather than left as an unstated packet assumption):** no feature shipped before P0.17 exists — including this one — has three-depth `docs/03-guides/` content compiled into the app, because the `::: plain / working / technical` compiler P0.17 builds does not exist yet. `docs/03-guides/README.md` documents the block syntax, but grepping the guide tree today shows zero files actually using it. This item's in-panel copy (library list, CSP display, circularity disclosure, expected-hash labeling) is plain-language UI text living directly in `src/index.html`/`src/main.js`, not guide content, and is not exempt from ordinary review for clarity — it is exempt from the three-depth *pipeline* specifically because that pipeline is P0.17's deliverable, not this item's. See P0.17 below for the backfill obligation this creates.
 
 - [ ] **P0.17 — Help framework**
   *Deps: P0.5*
   Three-depth content model; build-time compilation of `docs/00-overview/glossary.md` and `docs/03-guides/`; contextual `?`; inline glossary; offline search.
   **Accept:** all three depths render and switch; a documented feature missing a depth block produces a build warning; search works with no network.
   🌐 *Rendering and depth switching verified by the P0.3a harness.*
+  **Backfill obligation:** every feature shipped at P0.1–P0.16 has user-facing in-app copy but no `docs/03-guides/` three-depth content compiled into it, because the compiler this item builds does not exist until this item ships. This item must backfill three-depth guide content for those features (including P0.16's provenance panel) as part of standing up the pipeline — not deferred further, and not scope creep, since each prior item explicitly deferred it here rather than skipping it silently.
 
 - [ ] **P0.18 — CI** ⚠️ *needs repository secrets configured by the human before the attestation step works*
   *Deps: P0.16, P0.17*

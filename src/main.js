@@ -63,6 +63,18 @@ __COLDBOX_QR_ENCODER__
     camera: document.getElementById('capability-detail-camera'),
     savePaths: document.getElementById('capability-detail-save-paths')
   };
+  var provenanceLibraryList = document.getElementById('provenance-library-list');
+  var provenanceBuildDate = document.getElementById('provenance-build-date');
+  var provenanceCspWarm = document.getElementById('provenance-csp-warm');
+  var provenanceCspCold = document.getElementById('provenance-csp-cold');
+  var provenanceDropZone = document.getElementById('provenance-drop-zone');
+  var provenanceDropInput = document.getElementById('provenance-drop-input');
+  var provenanceDropChoose = document.getElementById('provenance-drop-choose');
+  var provenanceDropResult = document.getElementById('provenance-drop-result');
+  var provenanceExpectedHash = document.getElementById('provenance-expected-hash');
+  var PROVENANCE_LIBRARIES = __COLDBOX_PROVENANCE_LIBRARIES__;
+  var PROVENANCE_BUILD_DATE = __COLDBOX_BUILD_DATE__;
+  var PROVENANCE_MAX_DROP_BYTES = 16 * 1024 * 1024;
   var vaultStatus = document.getElementById('vault-status');
   var vaultStatusTitle = document.getElementById('vault-status-title');
   var vaultStatusCopy = document.getElementById('vault-status-copy');
@@ -432,6 +444,256 @@ __COLDBOX_QR_ENCODER__
       'Ready',
       'Required randomness and all detected optional capability checks are available in this browser.'
     );
+  }
+
+  // P0.16: the provenance panel is static, build-time data plus two values
+  // read straight off the live DOM (the warm CSP meta tag and the embedded
+  // cold-realm srcdoc string), so there is exactly one copy of each fact -
+  // nothing here is a second transcription of dependencies.md or csp-policy.md.
+  function renderProvenanceLibraryList() {
+    if (!provenanceLibraryList) {
+      return;
+    }
+    while (provenanceLibraryList.firstChild) {
+      provenanceLibraryList.removeChild(provenanceLibraryList.firstChild);
+    }
+    if (!Array.isArray(PROVENANCE_LIBRARIES) || PROVENANCE_LIBRARIES.length === 0) {
+      var empty = document.createElement('p');
+      empty.className = 'provenance-loading';
+      empty.textContent = 'No embedded libraries were recorded in this build.';
+      provenanceLibraryList.appendChild(empty);
+      return;
+    }
+    PROVENANCE_LIBRARIES.forEach(function (library) {
+      var row = document.createElement('article');
+      row.className = 'provenance-library-row';
+      row.setAttribute('role', 'listitem');
+
+      var name = document.createElement('h4');
+      name.textContent = String(library.name) + ' · v' + String(library.version);
+      row.appendChild(name);
+
+      var hash = document.createElement('p');
+      hash.className = 'provenance-library-hash';
+      hash.textContent = 'SHA-256: ' + String(library.sha256);
+      row.appendChild(hash);
+
+      var source = document.createElement('p');
+      source.className = 'provenance-library-source';
+      source.textContent = 'Upstream: ' + String(library.url);
+      row.appendChild(source);
+
+      provenanceLibraryList.appendChild(row);
+    });
+  }
+
+  function extractCspFromMarkup(markup) {
+    if (typeof markup !== 'string') {
+      return null;
+    }
+    var match = markup.match(/<meta http-equiv="Content-Security-Policy" content="([^"]*)">/i);
+    return match ? match[1] : null;
+  }
+
+  function renderProvenanceCsp() {
+    if (provenanceCspWarm) {
+      var warmMeta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
+      provenanceCspWarm.textContent = warmMeta && warmMeta.getAttribute('content')
+        ? warmMeta.getAttribute('content')
+        : 'Unavailable: no CSP meta tag found in this document.';
+    }
+    if (provenanceCspCold) {
+      var coldCsp = extractCspFromMarkup(coldRealmDocument);
+      provenanceCspCold.textContent = coldCsp
+        || 'Unavailable: no CSP meta tag found in the embedded cold-realm document.';
+    }
+  }
+
+  function renderProvenanceBuildDate() {
+    if (!provenanceBuildDate) {
+      return;
+    }
+    provenanceBuildDate.textContent = typeof PROVENANCE_BUILD_DATE === 'string' && PROVENANCE_BUILD_DATE
+      ? PROVENANCE_BUILD_DATE
+      : 'Unknown (no source commit date was available at build time).';
+  }
+
+  function setProvenanceDropResult(state, message) {
+    if (!provenanceDropResult) {
+      return;
+    }
+    provenanceDropResult.setAttribute('data-state', state);
+    provenanceDropResult.textContent = message;
+  }
+
+  function currentExpectedHash() {
+    var meta = document.querySelector('meta[name="coldbox-expected-hash"]');
+    var value = meta ? meta.getAttribute('content') : null;
+    return typeof value === 'string' && /^[0-9a-f]{64}$/.test(value) ? value : null;
+  }
+
+  // F1 remediation (review of P0.16): the compiled expected hash must be
+  // visible in the UI, not just present in a hidden meta tag, so a user can
+  // read it off-screen (or compare it against an independently-computed
+  // value) without having to view source. Deliberately labeled in the
+  // markup so it is never mistaken for coldbox.html.sha256 - see the note
+  // above this element and ADR-0015 for why the two values differ.
+  function renderProvenanceExpectedHash() {
+    if (!provenanceExpectedHash) {
+      return;
+    }
+    var expected = currentExpectedHash();
+    provenanceExpectedHash.textContent = expected
+      || 'Unavailable: no readable coldbox-expected-hash value in this document.';
+  }
+
+  // Reproduces exactly what the build does: the expected-hash meta tag's own
+  // value is blanked to 64 zero characters before hashing, because the tag
+  // cannot contain the hash of a document that includes that very value.
+  // This is why the check is a self-consistency check, not independent proof
+  // - a hostile build could blank-and-hash however it likes and always
+  // report a match. The panel text says this; this function does not try to
+  // hide it.
+  function blankExpectedHashMeta(text) {
+    return text.replace(
+      /(<meta name="coldbox-expected-hash" content=")[0-9a-f]{64}(">)/i,
+      '$1' + '0'.repeat(64) + '$2'
+    );
+  }
+
+  function hexByte(value) {
+    var hex = value.toString(16);
+    return hex.length < 2 ? '0' + hex : hex;
+  }
+
+  function computeSelfHash(arrayBuffer) {
+    if (!window.crypto || !window.crypto.subtle || typeof window.crypto.subtle.digest !== 'function') {
+      return Promise.reject(new Error('crypto.subtle is unavailable in this browser. Use the command-line instructions instead.'));
+    }
+    if (typeof window.TextDecoder !== 'function' || typeof window.TextEncoder !== 'function') {
+      return Promise.reject(new Error('UTF-8 text encoding is unavailable in this browser. Use the command-line instructions instead.'));
+    }
+    var text;
+    try {
+      text = new window.TextDecoder('utf-8', { fatal: false }).decode(arrayBuffer);
+    } catch (error) {
+      return Promise.reject(new Error('The dropped file could not be decoded as UTF-8 text.'));
+    }
+    var declaredMatch = text.match(/<meta name="coldbox-expected-hash" content="([0-9a-f]{64})">/i);
+    if (!declaredMatch) {
+      return Promise.reject(new Error(
+        'The dropped file has no coldbox-expected-hash tag. It may not be a Coldbox build, or predates this check.'
+      ));
+    }
+    // F2 remediation (review of P0.16): blanking-then-hashing alone cannot
+    // detect corruption confined to the hash field itself, because the
+    // field is erased before hashing either way. So the field's own
+    // as-declared value in the dropped file is captured here too, and
+    // handleProvenanceDropFile requires BOTH the blank-then-hash result AND
+    // this declared value to equal the running copy's expected hash before
+    // reporting a match. A byte flipped inside the hash field changes
+    // declaredHash but leaves computedHash unchanged - the declaredHash
+    // check is what catches that case.
+    var declaredHash = declaredMatch[1];
+    var blanked = blankExpectedHashMeta(text);
+    var blankedBytes = new window.TextEncoder().encode(blanked);
+    return window.crypto.subtle.digest('SHA-256', blankedBytes).then(function (digestBuffer) {
+      var bytes = new Uint8Array(digestBuffer);
+      var hex = '';
+      for (var i = 0; i < bytes.length; i += 1) {
+        hex += hexByte(bytes[i]);
+      }
+      return { computedHash: hex, declaredHash: declaredHash };
+    });
+  }
+
+  function handleProvenanceDropFile(file) {
+    if (!file) {
+      return;
+    }
+    if (typeof file.size === 'number' && file.size > PROVENANCE_MAX_DROP_BYTES) {
+      setProvenanceDropResult('error', 'That file is too large to hash here (limit ' + String(PROVENANCE_MAX_DROP_BYTES) + ' bytes). Use the command-line instructions instead.');
+      return;
+    }
+    var expected = currentExpectedHash();
+    if (!expected) {
+      setProvenanceDropResult('error', 'This running copy has no readable expected-hash value, so nothing can be compared.');
+      return;
+    }
+    setProvenanceDropResult('checking', 'Hashing the dropped file…');
+    var reader = new FileReader();
+    reader.onerror = function () {
+      setProvenanceDropResult('error', 'Could not read the dropped file.');
+    };
+    reader.onload = function () {
+      var result = reader.result;
+      if (!(result instanceof ArrayBuffer)) {
+        setProvenanceDropResult('error', 'Could not read the dropped file.');
+        return;
+      }
+      computeSelfHash(result).then(function (outcome) {
+        // Both must hold: the blank-then-hash comparison (catches corruption
+        // anywhere outside the hash field) and the declared-value comparison
+        // (catches corruption inside the hash field itself, which blanking
+        // would otherwise erase before it could be seen). See F2 in the
+        // P0.16 review remediation and the comment on computeSelfHash.
+        if (outcome.computedHash === expected && outcome.declaredHash === expected) {
+          setProvenanceDropResult(
+            'match',
+            'Match. The dropped file\'s self-consistency hash equals this running copy\'s. Remember: this is circular and does not rule out a deliberately tampered build - see the note above.'
+          );
+        } else {
+          setProvenanceDropResult(
+            'mismatch',
+            'Mismatch. The dropped file\'s self-consistency hash does not equal this running copy\'s. Do not trust this file; verify with the command-line hash and signature instead.'
+          );
+        }
+      }, function (error) {
+        setProvenanceDropResult('error', error && error.message ? error.message : 'Could not hash the dropped file.');
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function initProvenanceDropZone() {
+    if (provenanceDropChoose && provenanceDropInput) {
+      provenanceDropChoose.addEventListener('click', function () {
+        provenanceDropInput.click();
+      });
+    }
+    if (provenanceDropInput) {
+      provenanceDropInput.addEventListener('change', function () {
+        if (provenanceDropInput.files && provenanceDropInput.files.length > 0) {
+          handleProvenanceDropFile(provenanceDropInput.files[0]);
+        }
+        provenanceDropInput.value = '';
+      });
+    }
+    if (provenanceDropZone) {
+      provenanceDropZone.addEventListener('dragover', function (event) {
+        event.preventDefault();
+      });
+      provenanceDropZone.addEventListener('drop', function (event) {
+        event.preventDefault();
+        var files = event.dataTransfer && event.dataTransfer.files;
+        if (files && files.length > 0) {
+          handleProvenanceDropFile(files[0]);
+        }
+      });
+      provenanceDropZone.addEventListener('keydown', function (event) {
+        if ((event.key === 'Enter' || event.key === ' ') && provenanceDropInput) {
+          event.preventDefault();
+          provenanceDropInput.click();
+        }
+      });
+    }
+  }
+
+  function renderProvenancePanel() {
+    renderProvenanceLibraryList();
+    renderProvenanceCsp();
+    renderProvenanceBuildDate();
+    renderProvenanceExpectedHash();
   }
 
   function setCapabilityFailure(reason) {
@@ -1863,6 +2125,8 @@ __COLDBOX_QR_ENCODER__
     'Locked'
   );
   renderRoute(false);
+  renderProvenancePanel();
+  initProvenanceDropZone();
 
   if (themeToggle) {
     themeToggle.addEventListener('click', function () {

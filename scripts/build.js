@@ -24,6 +24,16 @@ const qrVendorTarball = path.join(
   '1.4.4',
   'package.tgz'
 );
+const vendorManifestPath = path.join(projectRoot, 'vendor', 'vendor-manifest.json');
+
+// The self-hash meta tag cannot contain the hash of a document that includes
+// its own final value, so the build hashes the document with this fixed,
+// same-length placeholder in place of the real digest, then substitutes the
+// real digest in afterward (see injectExpectedHash below). The in-app drop
+// zone reproduces the identical blank-then-hash procedure, so the check is
+// an honest self-consistency check rather than a claim of independent proof.
+const EXPECTED_HASH_PLACEHOLDER = '0'.repeat(64);
+const EXPECTED_HASH_META_BLANK = `<meta name="coldbox-expected-hash" content="${EXPECTED_HASH_PLACEHOLDER}">`;
 
 // Keep the assembly manifest explicit and ordered. The output must never depend
 // on filesystem enumeration order.
@@ -43,6 +53,79 @@ const coldRealmManifest = Object.freeze([
 function readSource(file) {
   const contents = fs.readFileSync(path.join(sourceRoot, file), 'utf8');
   return normalizeLineEndings(contents);
+}
+
+// Single source of truth for the in-app provenance panel: the same manifest
+// `npm run verify-vendor` checks against real upstream release bytes. Sorted
+// explicitly rather than trusting JSON key order, per the no-unsorted-
+// iteration determinism rule.
+function readVendorManifestLibraries() {
+  const manifest = JSON.parse(fs.readFileSync(vendorManifestPath, 'utf8'));
+  const artifacts = Array.isArray(manifest.artifacts) ? manifest.artifacts : [];
+  return artifacts
+    .map((artifact) => Object.freeze({
+      name: artifact.name,
+      version: artifact.version,
+      sha256: artifact.sha256,
+      url: artifact.url
+    }))
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+}
+
+// Deliberately not a wall-clock build timestamp - see build.md's "no
+// timestamps in output" determinism requirement and the note this same
+// string carries in the provenance panel itself.
+//
+// ADR-0015 originally used the date of literal HEAD. That broke down in
+// practice (see the ADR-0015 amendment dated 2026-08-06 / the P0.16 review
+// F4 finding): a commit that touches only governance paths - a PR packet
+// under docs/05-development/packets/, the roadmap checkbox, the changelog -
+// still moves HEAD, and HEAD's date fed straight into this field. That
+// makes the build's own bytes change every time the packet describing those
+// bytes is committed, so the packet can never truthfully describe the tip
+// it ships on.
+//
+// Fixed by scoping the git-log query to the paths that actually feed the
+// build: everything readSource()/the vendor manifest/the vendor tarball
+// draw from. A commit touching only docs/, test/, or top-level metadata
+// files is invisible to this query, so the build date - and therefore every
+// other build output - stays fixed across governance-only commits. It only
+// advances when a commit that could actually change the product is made.
+//
+// Still degrades to a labeled "unknown" rather than failing the build when
+// git metadata is unavailable (e.g. a source tarball without history),
+// since this field is informational and not a security boundary.
+const BUILD_DATE_SOURCE_PATHS = Object.freeze(['src', 'scripts', 'vendor']);
+
+function readBuildCommitDate() {
+  const result = spawnSync(
+    'git',
+    ['log', '-1', '--format=%cI', 'HEAD', '--', ...BUILD_DATE_SOURCE_PATHS],
+    { cwd: projectRoot, encoding: 'utf8' }
+  );
+  if (!result.error && result.status === 0 && result.stdout && result.stdout.trim()) {
+    return result.stdout.trim();
+  }
+  return 'unknown (no git commit metadata available)';
+}
+
+function jsonScriptLiteral(value) {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026');
+}
+
+function injectExpectedHash(document) {
+  const occurrences = document.split(EXPECTED_HASH_META_BLANK).length - 1;
+  if (occurrences !== 1) {
+    throw new Error('Expected exactly one blanked provenance expected-hash meta tag');
+  }
+  const blankedDigest = crypto.createHash('sha256').update(Buffer.from(document, 'utf8')).digest('hex');
+  return document.replace(
+    EXPECTED_HASH_META_BLANK,
+    `<meta name="coldbox-expected-hash" content="${blankedDigest}">`
+  );
 }
 
 function readQrEncoderSource() {
@@ -81,6 +164,7 @@ function injectOnce(template, token, contents) {
 
 function assemble() {
   let document = readSource('index.html');
+  document = injectOnce(document, '__COLDBOX_EXPECTED_HASH__', EXPECTED_HASH_PLACEHOLDER);
   const protocolSource = readSource('protocol.js');
   const airgapSource = readSource('airgap.js');
   const capabilitiesSource = readSource('capabilities.js');
@@ -96,10 +180,17 @@ function assemble() {
   mainScript = injectOnce(
     mainScript,
     '__COLDBOX_COLD_REALM_DOCUMENT__',
-    JSON.stringify(coldRealmDocument)
-      .replace(/</g, '\\u003c')
-      .replace(/>/g, '\\u003e')
-      .replace(/&/g, '\\u0026')
+    jsonScriptLiteral(coldRealmDocument)
+  );
+  mainScript = injectOnce(
+    mainScript,
+    '__COLDBOX_PROVENANCE_LIBRARIES__',
+    jsonScriptLiteral(readVendorManifestLibraries())
+  );
+  mainScript = injectOnce(
+    mainScript,
+    '__COLDBOX_BUILD_DATE__',
+    jsonScriptLiteral(readBuildCommitDate())
   );
   const warmStyles = injectOnce(
     readSource('styles.css'),
@@ -284,7 +375,8 @@ function verifyForbiddenConstructLint() {
 
 verifyVendorOffline();
 verifyForbiddenConstructLint();
-const document = injectCspHashes(assemble());
-assertNoUnresolvedPlaceholders(document);
+const assembled = injectCspHashes(assemble());
+assertNoUnresolvedPlaceholders(assembled);
+const document = injectExpectedHash(assembled);
 const result = writeBuild(document);
 console.log(`Built build/coldbox.html (${result.digest})`);

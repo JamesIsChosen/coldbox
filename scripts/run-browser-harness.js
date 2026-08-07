@@ -208,7 +208,19 @@ function createHandshakeResponseSuppressedFixture() {
 }
 
 function stripWarmCsp(document) {
-  const matches = document.match(/<meta http-equiv="Content-Security-Policy"[^>]*>/g) || [];
+  // Scoped to before the first <script> tag, i.e. the document's <head>,
+  // where the one real warm CSP <meta> tag lives. P0.16's provenance panel
+  // added extractCspFromMarkup() to src/main.js, whose own regex literal -
+  // /<meta http-equiv="Content-Security-Policy" content="([^"]*)">/i - is
+  // legitimate JavaScript source text that ends up embedded verbatim inside
+  // the built document's inline <script> block. A document-wide match on
+  // this same pattern finds that regex literal as a spurious second "meta
+  // tag", even though it's JS code describing a tag, not a tag. Scoping the
+  // search to head-only content finds exactly the one real tag regardless
+  // of what later inline script code says about meta tags as text.
+  const headEndIndex = document.indexOf('<script');
+  const searchRegion = headEndIndex === -1 ? document : document.slice(0, headEndIndex);
+  const matches = searchRegion.match(/<meta http-equiv="Content-Security-Policy"[^>]*>/g) || [];
   assert.equal(matches.length, 1, 'Expected exactly one warm CSP meta tag');
   return document.replace(matches[0], '');
 }
@@ -1222,6 +1234,118 @@ async function verifyKeyfileUiAndRegressions(browser, engine) {
   }
 }
 
+async function verifyProvenancePanel(browser, engine) {
+  // P0.16: the Reference route's provenance panel and self-hash drop zone.
+  // The drop zone is exercised with real file bytes via Playwright's
+  // setInputFiles, which is the file-upload emulation the roadmap's 🌐
+  // marker on this item calls for.
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#nav-rail a[data-route="reference"]').click();
+    await page.locator('#page-reference:not([hidden])').waitFor({ state: 'visible' });
+
+    const libraryRows = page.locator('#provenance-library-list .provenance-library-row');
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(projectRoot, 'vendor', 'vendor-manifest.json'), 'utf8')
+    );
+    assert.equal(
+      await libraryRows.count(),
+      manifest.artifacts.length,
+      `${engine}: provenance panel must list every vendor-manifest artifact`
+    );
+    const nobleHashesRow = page.locator('#provenance-library-list .provenance-library-row', {
+      hasText: '@noble/hashes'
+    });
+    await nobleHashesRow.waitFor({ state: 'visible' });
+    const nobleHashesArtifact = manifest.artifacts.find((artifact) => artifact.name === '@noble/hashes');
+    assert.match(await nobleHashesRow.textContent(), new RegExp(escapedRegExp(nobleHashesArtifact.sha256)));
+
+    const buildDateText = await page.locator('#provenance-build-date').textContent();
+    assert.notEqual(buildDateText.trim(), 'Loading…', `${engine}: build date did not render`);
+    assert.notEqual(buildDateText.trim(), '', `${engine}: build date is empty`);
+
+    const warmCspText = await page.locator('#provenance-csp-warm').textContent();
+    assert.match(warmCspText, /connect-src/, `${engine}: warm CSP panel text missing connect-src`);
+    assert.match(warmCspText, /api\.coingecko\.com/, `${engine}: warm CSP panel text missing the documented allowlist`);
+
+    const coldCspText = await page.locator('#provenance-csp-cold').textContent();
+    assert.match(coldCspText, /connect-src 'none'/, `${engine}: cold CSP panel text missing connect-src 'none'`);
+
+    assert.match(
+      await page.locator('.provenance-section', { hasText: 'Verify this file' }).textContent(),
+      /circular/i,
+      `${engine}: drop zone must state plainly that self-verification is circular`
+    );
+
+    // --- F1: the compiled expected hash must be visible in the panel, and
+    // must equal the value in the document's own coldbox-expected-hash meta
+    // tag (the same quantity the drop zone compares against). ---
+    const declaredExpectedHash = await page.evaluate(() => {
+      const meta = document.querySelector('meta[name="coldbox-expected-hash"]');
+      return meta ? meta.getAttribute('content') : null;
+    });
+    assert.match(declaredExpectedHash || '', /^[0-9a-f]{64}$/, `${engine}: running copy has no readable expected-hash meta value`);
+    const visibleExpectedHashText = (await page.locator('#provenance-expected-hash').textContent()).trim();
+    assert.equal(
+      visibleExpectedHashText,
+      declaredExpectedHash,
+      `${engine}: visible expected-hash value must equal the build's expected-hash meta value`
+    );
+
+    // --- self-drop: the exact built file must report a match ---
+    const builtBytes = fs.readFileSync(buildPath);
+    await page.locator('#provenance-drop-input').setInputFiles({
+      name: 'coldbox.html',
+      mimeType: 'text/html',
+      buffer: builtBytes
+    });
+    await page.locator('#provenance-drop-result[data-state="match"]').waitFor({ state: 'visible', timeout: 5000 });
+
+    // --- a one-byte-tampered copy of the same file must report a mismatch ---
+    const tamperedBytes = Buffer.from(builtBytes);
+    const titleIndex = tamperedBytes.indexOf(Buffer.from('<title>Coldbox</title>', 'utf8'));
+    assert.notEqual(titleIndex, -1, `${engine}: fixture could not locate a byte to tamper`);
+    tamperedBytes[titleIndex] ^= 1;
+    await page.locator('#provenance-drop-input').setInputFiles({
+      name: 'coldbox-tampered.html',
+      mimeType: 'text/html',
+      buffer: tamperedBytes
+    });
+    await page.locator('#provenance-drop-result[data-state="mismatch"]').waitFor({ state: 'visible', timeout: 5000 });
+
+    // --- F2: a byte flipped *inside the declared expected-hash field itself*
+    // must also report a mismatch. This is the adversarial case the P0.16
+    // review proved false-PASSed under the old blank-then-hash-only
+    // comparison, because blanking the field before hashing erases the very
+    // byte that was corrupted. ---
+    const hashFieldTamperedBytes = Buffer.from(builtBytes);
+    const declaredHashBuffer = Buffer.from(declaredExpectedHash, 'utf8');
+    const hashFieldIndex = hashFieldTamperedBytes.indexOf(declaredHashBuffer);
+    assert.notEqual(hashFieldIndex, -1, `${engine}: fixture could not locate the declared expected-hash bytes to tamper`);
+    const originalFirstNibble = String.fromCharCode(hashFieldTamperedBytes[hashFieldIndex]);
+    const replacementNibble = originalFirstNibble === '0' ? '1' : '0';
+    hashFieldTamperedBytes[hashFieldIndex] = replacementNibble.charCodeAt(0);
+    await page.locator('#provenance-drop-input').setInputFiles({
+      name: 'coldbox-hashfield-tampered.html',
+      mimeType: 'text/html',
+      buffer: hashFieldTamperedBytes
+    });
+    await page.locator('#provenance-drop-result[data-state="mismatch"]').waitFor({ state: 'visible', timeout: 5000 });
+
+    // --- an unrelated file must fail closed with a clear error, never a false match ---
+    await page.locator('#provenance-drop-input').setInputFiles({
+      name: 'not-coldbox.html',
+      mimeType: 'text/html',
+      buffer: Buffer.from('<html><body>not a build</body></html>', 'utf8')
+    });
+    await page.locator('#provenance-drop-result[data-state="error"]').waitFor({ state: 'visible', timeout: 5000 });
+
+    console.log(`${engine}: provenance panel library list, CSP text, build date, visible expected hash, and self-hash drop zone (match/mismatch/hash-field-tamper/error) verified`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyDevOnlyDependency() {
   const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
   assert.equal(packageJson.dependencies?.playwright, undefined);
@@ -1237,6 +1361,22 @@ async function verifyDevOnlyDependency() {
         { recursive: true }
       );
     }
+    // P0.16 F4 fallout: scripts/build.js now derives the embedded build date
+    // from `git log -- src scripts vendor` (see ADR-0015's 2026-08-06
+    // amendment). This fixture's whole point is proving the build needs no
+    // devDependency (in particular, no Playwright) - it was never meant to
+    // prove the build needs no *git checkout*, and a real "node_modules
+    // absent" checkout still has its .git directory. Without copying it, the
+    // dependency-free build fell back to the "unknown (no git commit
+    // metadata available)" branch while the real build embedded an actual
+    // date, so the two byte-identical builds legitimately diverged - not a
+    // regression in build.js, but this fixture no longer modeling a real
+    // checkout. Copying .git restores that fidelity.
+    fs.cpSync(
+      path.join(projectRoot, '.git'),
+      path.join(temporaryRoot, '.git'),
+      { recursive: true }
+    );
     assert.equal(fs.existsSync(path.join(temporaryRoot, 'node_modules')), false);
 
     const result = spawnSync(
@@ -1294,6 +1434,7 @@ async function run() {
       await verifyTamperFixture(browser, engine);
       await verifyReusableAssertions(browser, engine);
       await verifyKeyfileUiAndRegressions(browser, engine);
+      await verifyProvenancePanel(browser, engine);
     } finally {
       await browser.close();
     }
