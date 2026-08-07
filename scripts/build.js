@@ -362,6 +362,49 @@ function ensureTrailingLf(contents) {
   return `${contents.replace(/\n*$/, '')}\n`;
 }
 
+// Writes a file "atomically": write the full contents to a process-unique
+// temp file in the same directory, then rename it over the real path.
+//
+// The guarantee this actually provides, and that is actually tested: a
+// concurrent READER of targetPath, with a SINGLE writer in flight, can only
+// ever observe the previous complete file or the new complete file - never
+// a half-written one. That's what matters for this project's own usage: a
+// plain fs.writeFileSync(htmlPath, ...) opens the destination with O_TRUNC
+// and then writes in one or more syscalls, so a reader could previously
+// land on a truncated or doubly-truncated file if it read mid-write
+// (reproduced locally by hammering concurrent builds + reads against the
+// same path - see docs/05-development/packets/p0.18-ci.md §14, R2-F1).
+// Writing to a unique temp name first and renaming into place removes that
+// reader-sees-partial-file window entirely.
+//
+// What this does NOT guarantee: safety under multiple concurrent WRITERS
+// racing each other to the same targetPath. POSIX rename(2) is atomic with
+// no failure mode of this kind, but on Windows, renaming onto a destination
+// that another process (or even the OS's own file-close bookkeeping, an
+// antivirus scanner, etc.) has momentarily open can fail with EPERM/EBUSY-
+// shaped errors - confirmed by an independent reviewer, who reproduced a
+// real `EPERM: operation not permitted, rename` from this line under six
+// concurrent real `node scripts/build.js` processes targeting one shared
+// path on Windows (docs/05-development/packets/p0.18-ci.md §15, R3-F1).
+// This function does not retry or otherwise paper over that failure - it
+// fails closed (throws) rather than silently succeeding with a partial
+// write, which is the correct behavior given it isn't attempted here, but
+// it means writeFileAtomic/writeBuild is not safe to call from more than
+// one process against the same targetPath at the same time.
+//
+// This project's actual usage never triggers that scenario: `npm test`
+// runs with `--test-concurrency=1` (serializing test files, so their
+// spawned build child processes never race each other), and a normal
+// `node scripts/build.js` invocation is a single process. Multi-writer
+// robustness was deliberately left out of scope rather than built and left
+// untested - see the R3-F1 remediation in the packet for the reasoning.
+function writeFileAtomic(targetPath, data) {
+  const uniqueSuffix = `${process.pid}-${crypto.randomBytes(6).toString('hex')}`;
+  const tempPath = `${targetPath}.tmp-${uniqueSuffix}`;
+  fs.writeFileSync(tempPath, data);
+  fs.renameSync(tempPath, targetPath);
+}
+
 function writeBuild(document) {
   const output = Buffer.from(document, 'utf8');
   const digest = crypto.createHash('sha256').update(output).digest('hex');
@@ -369,8 +412,8 @@ function writeBuild(document) {
   const hashPath = path.join(buildRoot, 'coldbox.html.sha256');
 
   fs.mkdirSync(buildRoot, { recursive: true });
-  fs.writeFileSync(htmlPath, output);
-  fs.writeFileSync(hashPath, `${digest}  build/coldbox.html\n`, 'utf8');
+  writeFileAtomic(htmlPath, output);
+  writeFileAtomic(hashPath, `${digest}  build/coldbox.html\n`);
 
   return { digest, htmlPath, hashPath };
 }

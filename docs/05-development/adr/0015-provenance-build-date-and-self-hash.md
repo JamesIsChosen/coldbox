@@ -13,7 +13,7 @@ P0.16 requires the Reference → Provenance panel to show, among other things, a
 
 **A file cannot contain the true hash of itself.** SHA-256 of a byte string that includes its own digest is not a fixed point of the hash function in any generally computable sense. If the "expected hash" field is meant to be *the* SHA-256 of the shipped file (the same value in `coldbox.html.sha256`), embedding it inside the file necessarily changes the file, and therefore its real hash, invalidating the embedded value. SPEC.md §6.4 already anticipates this and says the check is circular; that only describes the *security property*, not how to make the mechanism work at all.
 
-Both are genuinely ambiguous in the existing docs — SPEC.md says a value is "compiled into" the build and compared, but not what that value actually is or how a self-referential quantity gets computed. Per [AGENTS.md](../../AGENTS.md) §4, this is exactly the kind of gap that should be resolved deliberately and recorded, not guessed silently.
+Both are genuinely ambiguous in the existing docs — SPEC.md says a value is "compiled into" the build and compared, but not what that value actually is or how a self-referential quantity gets computed. Per [AGENTS.md](../../../AGENTS.md) §4, this is exactly the kind of gap that should be resolved deliberately and recorded, not guessed silently.
 
 ## Decision
 

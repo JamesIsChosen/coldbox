@@ -7,7 +7,7 @@
 
 ## Context
 
-P0.14 needs three things: verify-after-save (re-read a written file and confirm it matches before clearing the unsaved-changes flag), generational filenames, and rollback detection via a save counter. [vault-format.md](../01-spec/vault-format.md) and [threat-model.md](../02-security/threat-model.md) already described the target behaviour before this item started; what they did not settle was *where the save counter and its timestamp live*.
+P0.14 needs three things: verify-after-save (re-read a written file and confirm it matches before clearing the unsaved-changes flag), generational filenames, and rollback detection via a save counter. [vault-format.md](../../01-spec/vault-format.md) and [threat-model.md](../../02-security/threat-model.md) already described the target behaviour before this item started; what they did not settle was *where the save counter and its timestamp live*.
 
 Two constraints shape the answer.
 
@@ -72,7 +72,7 @@ If a later item needs cross-device or cross-browser-profile save provenance (the
 
 ## References
 
-- [vault-format.md § Save and load](../01-spec/vault-format.md)
-- [threat-model.md § Vault rollback](../02-security/threat-model.md)
+- [vault-format.md § Save and load](../../01-spec/vault-format.md)
+- [threat-model.md § Vault rollback](../../02-security/threat-model.md)
 - [ADR-0001](0001-two-realm-architecture.md), [ADR-0012](0012-recovery-checkpoint.md) — related realm-boundary and persistence reasoning
 - [review-protocol.md](../review-protocol.md) — the human-merge tier this decision avoids entering
