@@ -533,3 +533,184 @@ test('P0.11/P0.13 keeps the vault API cold-only while exposing only the bounded 
   assert.match(vaultSource, /function openSession/);
   assert.match(vaultSource, /cbx\/secret\/v1/);
 });
+
+// --- P0.15 keyfile unlock (wrapped-DEK method 2) ---
+
+function methodIdOf(vault) {
+  // The wrapped-DEK block starts immediately after the fixed 65-byte header.
+  return vault[65];
+}
+
+test('P0.15 a vault created without a keyfile is byte-identical in shape to a method-1-only vault', async () => {
+  const context = createRealContext();
+  const vault = await context.__coldboxVault.create({
+    passphrase: 'no keyfile here',
+    profile: 'fast',
+    publicData: { note: 'passphrase only' }
+  });
+  const header = context.__coldboxVault.inspectHeader(vault);
+  assert.equal(header.wrappedDekLength, 64, 'off by default: no keyfile means the historic 64-byte method-1 record');
+  assert.equal(methodIdOf(vault), 1, 'method id 1 (passphrase) when no keyfile is supplied');
+});
+
+test('P0.15 keyfile unlock: correct passphrase and correct keyfile unlocks; wraps as method 2', async () => {
+  const context = createRealContext();
+  const keyfile = context.__coldboxCrypto.randomBytes(4096);
+  const publicData = { wallets: [{ id: 'kf-wallet' }] };
+  const secretData = { seeds: [{ id: 'kf-seed', storedSecret: { mnemonic: 'test only' } }] };
+
+  const vault = await context.__coldboxVault.create({
+    passphrase: 'keyfile vault passphrase',
+    profile: 'fast',
+    publicData,
+    secretData,
+    keyfile,
+    keyfileHint: 'my-keyfile.bin'
+  });
+
+  const header = context.__coldboxVault.inspectHeader(vault);
+  assert.equal(methodIdOf(vault), 2, 'method id 2 (passphrase+keyfile) when a keyfile is supplied');
+  assert.equal(header.wrappedDekLength, 4 + 'my-keyfile.bin'.length + 60);
+
+  const opened = await context.__coldboxVault.open(vault, 'keyfile vault passphrase', undefined, keyfile);
+  assert.equal(JSON.stringify(opened.publicData), JSON.stringify(publicData));
+  assert.equal(JSON.stringify(opened.secretData), JSON.stringify(secretData));
+});
+
+test('P0.15 keyfile unlock fails closed with the exact original passphrase but no keyfile supplied', async () => {
+  const context = createRealContext();
+  const keyfile = context.__coldboxCrypto.randomBytes(2048);
+  const vault = await context.__coldboxVault.create({
+    passphrase: 'requires a keyfile',
+    profile: 'fast',
+    publicData: { wallets: [] },
+    keyfile
+  });
+
+  await expectAuthenticationFailure(
+    () => context.__coldboxVault.open(vault, 'requires a keyfile')
+  );
+});
+
+test('P0.15 keyfile unlock fails closed on a one-byte-altered keyfile, indistinguishably from a wrong passphrase', async () => {
+  const context = createRealContext();
+  const keyfile = context.__coldboxCrypto.randomBytes(8192);
+  const vault = await context.__coldboxVault.create({
+    passphrase: 'byte altered keyfile test',
+    profile: 'fast',
+    publicData: { wallets: [] },
+    keyfile
+  });
+
+  // Sanity: the untouched keyfile unlocks.
+  const opened = await context.__coldboxVault.open(vault, 'byte altered keyfile test', undefined, keyfile);
+  assert.equal(JSON.stringify(opened.publicData), JSON.stringify({ wallets: [] }));
+
+  const alteredKeyfile = new Uint8Array(keyfile);
+  alteredKeyfile[0] ^= 1;
+  let alteredError;
+  try {
+    await context.__coldboxVault.open(vault, 'byte altered keyfile test', undefined, alteredKeyfile);
+  } catch (error) {
+    alteredError = error;
+  }
+  let wrongPassphraseError;
+  try {
+    await context.__coldboxVault.open(vault, 'wrong passphrase entirely', undefined, keyfile);
+  } catch (error) {
+    wrongPassphraseError = error;
+  }
+  assert.ok(alteredError, 'a one-byte-altered keyfile must fail closed, not throw silently or open');
+  assert.equal(alteredError.message, 'Vault authentication failed.');
+  assert.equal(wrongPassphraseError.message, 'Vault authentication failed.');
+  assert.equal(
+    alteredError.message,
+    wrongPassphraseError.message,
+    'a byte-altered keyfile and a wrong passphrase must be indistinguishable errors'
+  );
+  assert.equal(alteredError.code, wrongPassphraseError.code);
+});
+
+test('P0.15 regression: passphrase-only vaults are unaffected by the keyfile feature existing', async () => {
+  const context = createRealContext();
+  const passphrase = 'passphrase only regression';
+  const publicData = { wallets: [{ id: 'plain' }] };
+  const secretData = { seeds: [{ storedSecret: { mnemonic: 'test only' } }] };
+  const vault = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fast',
+    publicData,
+    secretData
+  });
+
+  // Opens exactly as before - no keyfile argument at all.
+  const opened = await context.__coldboxVault.open(vault, passphrase);
+  assert.equal(JSON.stringify(opened.publicData), JSON.stringify(publicData));
+  assert.equal(JSON.stringify(opened.secretData), JSON.stringify(secretData));
+
+  // Erroneously supplying a keyfile to a passphrase-only vault does not break it -
+  // there is no method-2 record to consult, so the extra credential is ignored.
+  const strayKeyfile = context.__coldboxCrypto.randomBytes(256);
+  const openedWithStrayKeyfile = await context.__coldboxVault.open(vault, passphrase, undefined, strayKeyfile);
+  assert.equal(JSON.stringify(openedWithStrayKeyfile.publicData), JSON.stringify(publicData));
+
+  await expectAuthenticationFailure(() => context.__coldboxVault.open(vault, 'wrong passphrase'));
+});
+
+test('P0.15 openSession round-trips a keyfile vault and save() preserves the wrapped-DEK block', async () => {
+  const context = createRealContext();
+  const keyfile = context.__coldboxCrypto.randomBytes(1024);
+  const passphrase = 'keyfile session passphrase';
+  const vault = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fast',
+    publicData: { wallets: [{ id: 'session' }] },
+    secretData: { seeds: [{ storedSecret: { mnemonic: 'test only' } }] },
+    keyfile
+  });
+
+  const session = await context.__coldboxVault.openSession(vault, passphrase, 'offline', keyfile);
+  assert.equal(JSON.stringify(session.publicData), JSON.stringify({ wallets: [{ id: 'session' }] }));
+  const saved = await session.save();
+  assert.equal(methodIdOf(saved), 2, 'a re-saved keyfile vault keeps its method-2 wrapped-DEK record');
+
+  const reopened = await context.__coldboxVault.open(saved, passphrase, undefined, keyfile);
+  assert.equal(JSON.stringify(reopened.publicData), JSON.stringify({ wallets: [{ id: 'session' }] }));
+  await expectAuthenticationFailure(() => context.__coldboxVault.open(saved, passphrase));
+});
+
+test('P0.15 create() rejects an empty keyfile and an oversized keyfile, failing closed rather than deriving from weak material', async () => {
+  const context = createFormatContext();
+  await expectSerializationFailure(() => context.__coldboxVault.create({
+    passphrase: 'pw',
+    publicData: {},
+    keyfile: new context.Uint8Array(0)
+  }));
+
+  const maxKeyfileBytes = context.__coldboxVault.constants.maxKeyfileBytes;
+  const oversized = new context.Uint8Array(maxKeyfileBytes + 1);
+  await expectSerializationFailure(() => context.__coldboxVault.create({
+    passphrase: 'pw',
+    publicData: {},
+    keyfile: oversized
+  }));
+});
+
+test('P0.15 the keyfile hint is filename-only display metadata, never the keyfile bytes', async () => {
+  const tracked = createPublicTrackingContext();
+  const context = tracked.context;
+  const keyfile = context.__coldboxCrypto.randomBytes(512);
+  const vault = await context.__coldboxVault.create({
+    passphrase: 'hint test passphrase',
+    profile: 'fast',
+    publicData: {},
+    keyfile,
+    keyfileHint: 'wallet-keyfile.bin'
+  });
+  const recordLength = vault[65 + 2] << 8 | vault[65 + 3];
+  const hintBytes = vault.slice(65 + 4, 65 + 4 + (recordLength - 60));
+  const hintText = new TextDecoder().decode(hintBytes);
+  assert.equal(hintText, 'wallet-keyfile.bin');
+  // The hint never contains the keyfile's own bytes.
+  assert.notEqual(hintText.length, keyfile.length);
+});
