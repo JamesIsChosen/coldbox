@@ -115,7 +115,11 @@ Phase 0 is in progress. Nothing here is usable for real funds yet.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+**GNU Affero General Public License v3.0 only** (`AGPL-3.0-only`) — see [LICENSE](LICENSE).
+
+Fork it, sell it, build on it. The condition is that if you distribute a modified version, you release the source of your modifications under the same licence, so anyone holding your build can rebuild it and check what it does. That is the same property the [reproducible build](docs/02-security/verification.md) exists to give — the licence just makes it binding on whoever ships next. If you do distribute a modified version, please also change the name, so users can tell whose build they are verifying.
+
+Reasoning and rejected alternatives in [ADR-0018](docs/05-development/adr/0018-agplv3-license.md).
 
 ## Security
 

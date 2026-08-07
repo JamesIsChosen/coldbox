@@ -25,6 +25,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0015](0015-provenance-build-date-and-self-hash.md) | Provenance panel build date is the source commit date, and the self-hash is a blank-then-hash self-consistency check | Accepted |
 | [0016](0016-help-content-compiler-and-search.md) | Help content is compiled from block-scoped markdown, and search text is derived at runtime, not precomputed | Accepted |
 | [0017](0017-ci-workflow-structure.md) | CI workflow structure — two-OS matrix, a separate always-run browser job, and gated release attestation | Accepted |
+| [0018](0018-agplv3-license.md) | AGPLv3 rather than MIT, and what §5(d) obliges the app to display | Accepted |
 
 ## When to write one
 

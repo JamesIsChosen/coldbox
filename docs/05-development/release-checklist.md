@@ -25,6 +25,15 @@ Copy this into the release issue and tick as you go.
 - [ ] Node version matches `.nvmrc`
 - [ ] `git status` clean
 
+### Licence compliance
+
+Tagging a release is a conveyance under the AGPL, so these are gates, not courtesies. See [ADR-0018](adr/0018-agplv3-license.md).
+
+- [ ] **[P0.20](ROADMAP.md) has shipped** — the app displays Appropriate Legal Notices in its own UI. AGPLv3 §5(d) requires this of an interactive UI, and a release without it is a non-compliant conveyance
+- [ ] Embedded licence text is byte-identical to `LICENSE` (the P0.20 test asserts this; confirm it ran)
+- [ ] Every vendored artifact's licence is still recorded in [dependencies.md](dependencies.md), and none has changed to something AGPL-incompatible since the last release
+- [ ] `package.json` `license` field reads `AGPL-3.0-only`
+
 ### Documentation
 
 - [ ] CHANGELOG updated with all changes

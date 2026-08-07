@@ -984,7 +984,11 @@ Each GitHub release: the HTML, its `.sha256`, a detached GPG `.asc` signature, t
 
 ### 20.3 Repository hygiene
 
-`SECURITY.md` with a responsible-disclosure path and explicit scope. `LICENSE` — **MIT recommended** for maximum reuse and minimum friction in the wallet ecosystem, where it's the prevailing norm; Apache-2.0 is the alternative if you want an explicit patent grant. `CONTRIBUTING.md`. Issue and PR templates. A clear no-warranty disclaimer, present in both the repo and the app.
+`SECURITY.md` with a responsible-disclosure path and explicit scope. `LICENSE` — **GNU Affero General Public License v3.0 only** (`AGPL-3.0-only`). Copyleft rather than the ecosystem-norm permissive licence, because the central claim of this project is that the file in your hands can be rebuilt from source you can read, and a permissive licence lets a modified single-file build be distributed with no source obligation at all. Reasoning, rejected alternatives, and the vendored-dependency compatibility analysis in [ADR-0018](../05-development/adr/0018-agplv3-license.md). `CONTRIBUTING.md`. Issue and PR templates. A clear no-warranty disclaimer, present in both the repo and the app.
+
+**AGPLv3 §5(d) makes the in-app licence notice a shipping requirement, not a courtesy.** An interactive UI conveying a covered work must display Appropriate Legal Notices — copyright, absence of warranty, the right to convey under the same licence, and how to view the licence text. The provenance panel carries them, and the full licence text ships inside the bundle. No release may be tagged before that lands; see [ROADMAP.md](../05-development/ROADMAP.md) P0.20 and [release-checklist.md](../05-development/release-checklist.md).
+
+**What the AGPL does and does not buy, stated precisely.** §5(c) is the clause doing the work: a distributed modified version must be licensed as a whole under the same terms, with prominent notices that it was modified and when. §13's remote-network-interaction clause binds only someone who modifies Coldbox *and* serves it over a network — the hosted deployment this section warns against, and nothing else, since Coldbox is designed to run from `file://`. The licence is not a privacy control and confers no runtime guarantee whatsoever; the no-telemetry claim below rests on the CSP allowlist and the absence of analytics code, both checkable in the source, and would be equally true under any licence.
 
 **A hosted copy is not offered.** Serving this from GitHub Pages would invite people to generate real keys on a page they didn't verify, delivered over a connection they don't control — the exact failure mode the design exists to prevent. Download, verify, run locally. The README says so in the first screenful.
 
@@ -1096,7 +1100,7 @@ My pick would be **Cairn** — it carries the inheritance and continuity meaning
 | 7 | **QuickHash binaries dropped**, replaced by a built-in hasher with no size ceiling: streaming, multi-algorithm single-pass, recursive folder hashing, and interoperable `sha256sum`/JSON manifests with diff and verify modes (§11.2) |
 | 8 | **No duress compartment.** Removed |
 | — | **Companion to hardware wallets, not a replacement** (§14a) |
-| — | **FOSS on GitHub**, MIT, reproducible builds (§20) |
+| — | **FOSS on GitHub**, AGPL-3.0-only, reproducible builds (§20). Copyleft chosen over the earlier MIT recommendation so a modified single-file build cannot be distributed without its source — [ADR-0018](../05-development/adr/0018-agplv3-license.md) |
 | — | **Plain-English Help at three depth levels**, single-sourced with repo docs (§18) |
 
 ### 23.2 Still open

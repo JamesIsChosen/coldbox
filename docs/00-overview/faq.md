@@ -118,7 +118,12 @@ Reproducible builds. Anyone can rebuild from source and get byte-identical outpu
 Because it would invite people to generate real keys on a page they never verified, delivered over a connection they don't control — precisely the failure mode this design exists to prevent. Download, verify, run locally.
 
 **Can I fork it?**
-MIT licensed. Fork it, sell it, build on it. If you distribute a modified version, please change the name so users can tell whose build they're verifying.
+Yes. It's licensed AGPLv3. Fork it, sell it, build on it. The one condition is that if you *distribute* your modified version — or host it for other people to use — you have to publish your source under the same licence. That way anyone holding your build can rebuild it and see exactly what it does, which is the whole point of this project. Please also change the name, so users can tell whose build they're verifying.
+
+Modifying it for your own use and never handing it to anyone? No obligation at all. The licence only applies when you pass a copy on.
+
+**Does the AGPL protect my privacy?**
+No, and it would be dishonest to imply it does. A licence governs who may copy and modify the code; it does nothing to a program while it runs. What actually stops Coldbox from sending your data anywhere is the `connect-src 'none'` policy in the sealed realm and the fact that there is no analytics code to find — both of which you can check yourself in the source. The licence's contribution is narrower: it means someone who ships a *changed* Coldbox has to show you what they changed.
 
 **How do I report a bug?**
 GitHub issues for ordinary bugs. For anything that could put funds at risk, use private vulnerability reporting — see [SECURITY.md](../../SECURITY.md).

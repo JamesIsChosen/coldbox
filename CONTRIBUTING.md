@@ -119,4 +119,6 @@ Be decent. Assume good faith. Critique code, not people. Anyone who makes partic
 
 ## License
 
-Contributions are licensed under [MIT](LICENSE), same as the project.
+Contributions are licensed under the [GNU Affero General Public License v3.0 only](LICENSE), same as the project. By opening a pull request you are licensing your contribution under those terms.
+
+You keep the copyright in what you write — there is no CLA and no copyright assignment. One practical consequence: once your work is merged, relicensing the project would need your agreement as well as the maintainer's. That is deliberate. See [ADR-0018](docs/05-development/adr/0018-agplv3-license.md).
