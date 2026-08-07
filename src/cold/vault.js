@@ -17,9 +17,15 @@
   var KDF_PBKDF2 = 2;
   var CIPHER_AES_GCM = 1;
   var METHOD_PASSPHRASE = 1;
+  var METHOD_PASSPHRASE_KEYFILE = 2;
   var ERROR_MESSAGE = 'Vault authentication failed.';
   var SERIALIZE_ERROR = 'Vault serialization failed.';
   var SIZE_LIMIT_ERROR = 'Vault exceeds the 64 MiB size limit.';
+  // Implementation limits, not wire-format fields, matching the pattern the
+  // vault-size limit already establishes (vault-format.md's "Implementation
+  // size limit"). See ADR-0014 for why these two numbers were chosen.
+  var MAX_KEYFILE_BYTES = 64 * 1024 * 1024;
+  var MAX_KEYFILE_HINT_BYTES = 255;
   var PROFILES = cryptoLayer && cryptoLayer.profiles;
 
   function authenticationError() {
@@ -368,6 +374,80 @@
     return record;
   }
 
+  function keyfileHintBytes(hint) {
+    if (hint === undefined || hint === null || hint === '') {
+      return new Uint8Array(0);
+    }
+    if (typeof hint !== 'string') {
+      throw serializationError();
+    }
+    if (!noble || typeof noble.utf8ToBytes !== 'function') {
+      throw new Error('UTF-8 encoding is unavailable.');
+    }
+    var encoded = noble.utf8ToBytes(hint);
+    if (encoded.length > MAX_KEYFILE_HINT_BYTES) {
+      // The hint is filename-only, display metadata, never security-relevant -
+      // truncating rather than refusing keeps a long filename from blocking
+      // vault creation. See ADR-0014.
+      encoded = encoded.slice(0, MAX_KEYFILE_HINT_BYTES);
+    }
+    return encoded;
+  }
+
+  function keyfileRecord(nonce, wrappedDek, hintBytes) {
+    var recordLength = hintBytes.length + 60;
+    var record = new Uint8Array(4 + recordLength);
+    record[0] = METHOD_PASSPHRASE_KEYFILE;
+    record[1] = 0;
+    writeUint16(record, 2, recordLength);
+    record.set(hintBytes, 4);
+    record.set(nonce, 4 + hintBytes.length);
+    record.set(wrappedDek, 4 + hintBytes.length + NONCE_LENGTH);
+    return record;
+  }
+
+  function normalizeKeyfileBytes(value) {
+    if (value === undefined || value === null) {
+      return null;
+    }
+    if (!isBytes(value)) {
+      throw serializationError();
+    }
+    var bytes = copyBytes(value);
+    if (bytes.length === 0) {
+      // An empty keyfile provides no protection at all and almost certainly
+      // means the caller passed the wrong value. Fail closed rather than
+      // silently deriving from zero bytes.
+      throw serializationError();
+    }
+    if (bytes.length > MAX_KEYFILE_BYTES) {
+      throw serializationError();
+    }
+    return bytes;
+  }
+
+  function requireDigest(errorFactory) {
+    if (!noble || typeof noble.sha512 !== 'function' || typeof noble.utf8ToBytes !== 'function') {
+      throw errorFactory();
+    }
+  }
+
+  // KEK material for method 2 per vault-format.md: Argon2id(passphrase ||
+  // SHA-512(keyfile), salt, params). The keyfile's own bytes never leave this
+  // function - only their digest is combined with the passphrase, and the
+  // combined material is zeroed by the caller once the derivation returns.
+  function combinePassphraseKeyfile(passphrase, keyfileBytes, errorFactory) {
+    requireDigest(errorFactory);
+    var passphraseBytes = typeof passphrase === 'string'
+      ? noble.utf8ToBytes(passphrase)
+      : copyBytes(passphrase);
+    var digest = noble.sha512(keyfileBytes);
+    var combined = concatBytes([passphraseBytes, digest]);
+    zeroBytes(passphraseBytes);
+    zeroBytes(digest);
+    return combined;
+  }
+
   function hkdfSubkey(dek, info) {
     if (!noble || typeof noble.hkdf !== 'function' || typeof noble.sha512 !== 'function'
       || typeof noble.utf8ToBytes !== 'function') {
@@ -410,6 +490,8 @@
     var secretKey = null;
     var publicPlain = null;
     var secretPlain = null;
+    var keyMaterial = null;
+    var keyfileBytes = null;
     try {
       requireVaultHealth(serializationError);
       if (!options || options.passphrase === undefined || !cryptoLayer
@@ -424,23 +506,29 @@
       }
       var requestedProfile = options.profile !== undefined ? options.profile : options.profileName;
       var profileName = requestedProfile === undefined ? 'standard' : normalizedProfile(requestedProfile);
+      keyfileBytes = normalizeKeyfileBytes(options.keyfile);
+      var hintBytes = keyfileBytes ? keyfileHintBytes(options.keyfileHint) : new Uint8Array(0);
       var salt = cryptoLayer.randomBytes(SALT_LENGTH);
       dek = cryptoLayer.randomBytes(DEK_LENGTH);
       publicPlain = paddedJson(publicData);
       secretPlain = hasSecret ? paddedJson(options.secretData) : null;
       var publicNonce = cryptoLayer.randomBytes(NONCE_LENGTH);
       var secretNonce = cryptoLayer.randomBytes(NONCE_LENGTH);
+      keyMaterial = keyfileBytes
+        ? combinePassphraseKeyfile(options.passphrase, keyfileBytes, serializationError)
+        : options.passphrase;
       // The header records the KDF the derivation actually used, reported by
       // deriveKey itself. Reading cryptoLayer.getKdfDetails() here would read
       // mutable module state that a concurrent derivation or a silent PBKDF2
       // fallback can change, producing a header that disagrees with the key
       // and therefore a permanently unopenable vault.
-      var derived = await cryptoLayer.deriveKey(options.passphrase, salt, profileName);
+      var derived = await cryptoLayer.deriveKey(keyMaterial, salt, profileName);
       kek = derived.key;
+      var recordLength = keyfileBytes ? (4 + hintBytes.length + 60) : 64;
       var header = makeHeader(
         derived.profileId,
         salt,
-        64,
+        recordLength,
         publicPlain.length + TAG_LENGTH,
         secretPlain ? secretPlain.length + TAG_LENGTH : 0
       );
@@ -453,9 +541,12 @@
         secretKey = hkdfSubkey(dek, 'cbx/secret/v1');
         secretCiphertext = await aesGcm('encrypt', secretKey, secretNonce, secretPlain, header);
       }
+      var wrappedRecord = keyfileBytes
+        ? keyfileRecord(wrappedNonce, wrappedDek, hintBytes)
+        : passphraseRecord(wrappedNonce, wrappedDek);
       var vault = concatBytes([
         header,
-        passphraseRecord(wrappedNonce, wrappedDek),
+        wrappedRecord,
         publicNonce,
         publicCiphertext,
         secretNonce,
@@ -477,40 +568,87 @@
       zeroBytes(secretKey);
       zeroBytes(publicPlain);
       zeroBytes(secretPlain);
+      if (options && keyMaterial !== options.passphrase) {
+        zeroBytes(keyMaterial);
+      }
+      zeroBytes(keyfileBytes);
     }
   }
 
-  async function unwrapDek(records, passphrase, header) {
+  async function tryUnwrapWithKey(records, matchesRecord, kek, header) {
+    for (var index = 0; index < records.length; index += 1) {
+      var record = records[index];
+      if (!matchesRecord(record)) {
+        continue;
+      }
+      try {
+        var dek = await aesGcm('decrypt', kek, record.nonce, record.wrappedDek, header.bytes);
+        if (dek.length === DEK_LENGTH) {
+          return dek;
+        }
+        zeroBytes(dek);
+      } catch (error) {
+        // Try the next supported record without exposing which record failed.
+      }
+    }
+    return null;
+  }
+
+  function isPassphraseRecord(record) {
+    return record.methodId === METHOD_PASSPHRASE && record.flags === 0 && record.methodData.length === 0;
+  }
+
+  function isKeyfileRecord(record) {
+    return record.methodId === METHOD_PASSPHRASE_KEYFILE && record.flags === 0;
+  }
+
+  // Tries every wrapped-DEK record this vault carries against every unlock
+  // credential this caller supplied. A vault created without a keyfile has no
+  // method-2 record, so supplying one is simply never consulted - passphrase-
+  // only vaults are unaffected by this function existing. A vault created
+  // with a keyfile has no method-1 record, so passphrase alone can never
+  // unwrap it. Every failure path - wrong passphrase, missing keyfile, or a
+  // byte-altered keyfile - converges on the same authenticationError(), never
+  // revealing which credential or which record was wrong.
+  async function unwrapDek(records, passphrase, header, keyfile) {
     if (!cryptoLayer || typeof cryptoLayer.deriveKey !== 'function') {
       throw authenticationError();
     }
     var profileName = profileFromHeader(header);
-    var kek = null;
+    var passphraseKek = null;
+    var keyfileKek = null;
+    var keyMaterial = null;
     try {
-      var derived = await cryptoLayer.deriveKey(passphrase, header.salt, profileName);
-      kek = derived.key;
-      for (var index = 0; index < records.length; index += 1) {
-        var record = records[index];
-        if (record.methodId !== METHOD_PASSPHRASE || record.flags !== 0 || record.methodData.length !== 0) {
-          continue;
-        }
-        try {
-          var dek = await aesGcm('decrypt', kek, record.nonce, record.wrappedDek, header.bytes);
-          if (dek.length === DEK_LENGTH) {
-            return dek;
-          }
-          zeroBytes(dek);
-        } catch (error) {
-          // Try the next supported record without exposing which record failed.
+      var hasPassphraseRecord = records.some(isPassphraseRecord);
+      if (hasPassphraseRecord) {
+        var derivedPassphrase = await cryptoLayer.deriveKey(passphrase, header.salt, profileName);
+        passphraseKek = derivedPassphrase.key;
+        var dek = await tryUnwrapWithKey(records, isPassphraseRecord, passphraseKek, header);
+        if (dek) {
+          return dek;
         }
       }
+
+      var hasKeyfileRecord = records.some(isKeyfileRecord);
+      if (hasKeyfileRecord && keyfile) {
+        keyMaterial = combinePassphraseKeyfile(passphrase, keyfile, authenticationError);
+        var derivedKeyfile = await cryptoLayer.deriveKey(keyMaterial, header.salt, profileName);
+        keyfileKek = derivedKeyfile.key;
+        var keyfileDek = await tryUnwrapWithKey(records, isKeyfileRecord, keyfileKek, header);
+        if (keyfileDek) {
+          return keyfileDek;
+        }
+      }
+
       throw authenticationError();
     } finally {
-      zeroBytes(kek);
+      zeroBytes(passphraseKek);
+      zeroBytes(keyfileKek);
+      zeroBytes(keyMaterial);
     }
   }
 
-  async function openVault(value, passphrase, mode) {
+  async function openVault(value, passphrase, mode, keyfile) {
     var dek = null;
     var publicKey = null;
     var secretKey = null;
@@ -538,7 +676,7 @@
       var secretNonceOffset = publicCipherOffset + header.publicLength;
       var secretNonce = bytes.slice(secretNonceOffset, secretNonceOffset + NONCE_LENGTH);
       var secretCiphertext = bytes.slice(secretNonceOffset + NONCE_LENGTH);
-      dek = await unwrapDek(records, passphrase, header);
+      dek = await unwrapDek(records, passphrase, header, keyfile);
       publicKey = hkdfSubkey(dek, 'cbx/public/v1');
       publicPlain = await aesGcm('decrypt', publicKey, publicNonce, publicCiphertext, header.bytes);
       var publicData = parsePaddedJson(publicPlain);
@@ -568,8 +706,8 @@
     }
   }
 
-  async function openPublicVault(value, passphrase) {
-    return openVault(value, passphrase, 'online');
+  async function openPublicVault(value, passphrase, keyfile) {
+    return openVault(value, passphrase, 'online', keyfile);
   }
 
   function createVaultSession(state) {
@@ -684,7 +822,7 @@
     });
   }
 
-  async function openVaultSession(value, passphrase, mode) {
+  async function openVaultSession(value, passphrase, mode, keyfile) {
     var bytes = null;
     var headerBytes = null;
     var wrappedBlock = null;
@@ -720,7 +858,7 @@
       var secretNonceOffset = publicCipherOffset + header.publicLength;
       secretNonce = bytes.slice(secretNonceOffset, secretNonceOffset + NONCE_LENGTH);
       secretCiphertext = bytes.slice(secretNonceOffset + NONCE_LENGTH);
-      dek = await unwrapDek(records, passphrase, header);
+      dek = await unwrapDek(records, passphrase, header, keyfile);
       publicKey = hkdfSubkey(dek, 'cbx/public/v1');
       publicPlain = await aesGcm('decrypt', publicKey, publicNonce, publicCiphertext, headerBytes);
       var publicData = parsePaddedJson(publicPlain);
@@ -778,8 +916,8 @@
     }
   }
 
-  async function openSession(value, passphrase, mode) {
-    return openVaultSession(value, passphrase, mode);
+  async function openSession(value, passphrase, mode, keyfile) {
+    return openVaultSession(value, passphrase, mode, keyfile);
   }
 
   function inspectHeader(value) {
@@ -803,9 +941,13 @@
       nonceLength: NONCE_LENGTH,
       tagLength: TAG_LENGTH,
       maxVaultBytes: MAX_VAULT_BYTES,
+      maxKeyfileBytes: MAX_KEYFILE_BYTES,
+      maxKeyfileHintBytes: MAX_KEYFILE_HINT_BYTES,
       kdfArgon2id: KDF_ARGON2ID,
       kdfPbkdf2: KDF_PBKDF2,
-      cipherAesGcm: CIPHER_AES_GCM
+      cipherAesGcm: CIPHER_AES_GCM,
+      methodPassphrase: METHOD_PASSPHRASE,
+      methodPassphraseKeyfile: METHOD_PASSPHRASE_KEYFILE
     }),
     create: createVault,
     serialize: createVault,

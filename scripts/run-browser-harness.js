@@ -20,6 +20,46 @@ const COLD_CANARY_ERROR_FRAGMENT = 'localhost:9/cold-csp-canary';
 const WARM_CANARY_URL = 'https://coldbox.invalid/csp-canary';
 const COLD_CANARY_URL = 'http://localhost:9/cold-csp-canary';
 
+// F1 regression support: patches window.FileReader.prototype.readAsArrayBuffer
+// inside every document/frame this init script runs in (including the cold
+// realm's srcdoc iframe) so a per-filename artificial completion delay can be
+// requested via window.__coldboxTestReadDelays. A delayed read is proxied
+// through a real, undelayed shadow FileReader so the underlying bytes are
+// genuinely read from disk; only the *delivery* of onload/onerror to the
+// caller-visible reader is deferred. This lets a test force two real
+// FileReader reads (started in a chosen order) to *complete* in the opposite
+// order, which is what F1's stale-callback protection must survive.
+const FILE_READER_ORDER_CONTROL_SCRIPT = `(function () {
+  var originalRead = window.FileReader.prototype.readAsArrayBuffer;
+  window.__coldboxTestReadDelays = window.__coldboxTestReadDelays || {};
+  window.FileReader.prototype.readAsArrayBuffer = function (file) {
+    var reader = this;
+    var delay = window.__coldboxTestReadDelays[file.name] || 0;
+    if (!delay) {
+      return originalRead.call(reader, file);
+    }
+    var shadow = new window.FileReader();
+    shadow.onload = function () {
+      var shadowResult = shadow.result;
+      window.setTimeout(function () {
+        Object.defineProperty(reader, 'result', { value: shadowResult, configurable: true });
+        Object.defineProperty(reader, 'readyState', { value: 2, configurable: true });
+        if (typeof reader.onload === 'function') {
+          reader.onload({ target: reader });
+        }
+      }, delay);
+    };
+    shadow.onerror = function () {
+      window.setTimeout(function () {
+        if (typeof reader.onerror === 'function') {
+          reader.onerror({ target: reader });
+        }
+      }, delay);
+    };
+    originalRead.call(shadow, file);
+  };
+})();`;
+
 function fileUrl(file) {
   return pathToFileURL(file).href;
 }
@@ -256,6 +296,18 @@ async function openPage(browser, file) {
 
 async function closePage(page) {
   await page.close();
+}
+
+// F1 support: same as openPage, but injects FILE_READER_ORDER_CONTROL_SCRIPT
+// before the document (and every child frame, including the cold realm's
+// srcdoc iframe) first runs, so the page's own FileReader usage is wrapped
+// from the very first read.
+async function openPageWithFileReaderControl(browser, file) {
+  const page = await browser.newPage();
+  const harness = await createHarness(page);
+  await page.addInitScript(FILE_READER_ORDER_CONTROL_SCRIPT);
+  await page.goto(fileUrl(file), { waitUntil: 'load' });
+  return { harness, page };
 }
 
 async function getColdFrame(page, engine) {
@@ -1011,6 +1063,165 @@ async function verifyReusableAssertions(browser, engine) {
   }
 }
 
+async function verifyKeyfileUiAndRegressions(browser, engine) {
+  // F3: keyfile toggle/warning/input UI requirements, executed against the
+  // real built file:// artifact, plus the F1 (stale FileReader ordering) and
+  // F2 (lock leaves stale keyfile UI) regressions. Runs in both Chromium and
+  // Firefox via the normal per-engine loop in run().
+  const { page } = await openPageWithFileReaderControl(browser, buildPath);
+  try {
+    // The keyfile controls live inside the cold iframe, which is reachable
+    // regardless of warm-shell routing - but #vault-save-manual and the
+    // other warm-shell save/lock/status controls this test also drives live
+    // inside #page-vault, which is `hidden` until the vault route is
+    // navigated to (matching the existing round-trip test's sequencing).
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+
+    const coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-vault-passphrase:not([disabled])').waitFor({ state: 'attached', timeout: 10000 });
+
+    const toggle = coldFrame.locator('#cold-vault-keyfile-toggle');
+    const warning = coldFrame.locator('#cold-vault-keyfile-warning');
+    const keyfileInput = coldFrame.locator('#cold-vault-keyfile-input');
+    const keyfileStatus = coldFrame.locator('#cold-vault-keyfile-status');
+    const passphraseInput = coldFrame.locator('#cold-vault-passphrase');
+
+    // --- F3: fresh load / off-by-default / warning wiring ---
+    assert.equal(await toggle.isChecked(), false, `${engine}: keyfile toggle must be unchecked on fresh load`);
+    assert.equal(await toggle.isDisabled(), false, `${engine}: keyfile toggle should be enabled once the cold realm is ready`);
+    assert.equal(await keyfileInput.isDisabled(), true, `${engine}: keyfile input must stay disabled before opt-in`);
+    assert.equal(await warning.isHidden(), true, `${engine}: keyfile warning must be hidden before opt-in`);
+
+    await toggle.check();
+    assert.equal(await warning.isVisible(), true, `${engine}: checking the toggle must immediately reveal the warning`);
+    const warningText = (await warning.textContent()) || '';
+    assert.match(
+      warningText,
+      /permanent(ly)?[\s\S]*unrecoverabl[ey]/i,
+      `${engine}: warning text must plainly state that loss/alteration causes permanent, unrecoverable loss`
+    );
+    assert.match(warningText, /los(ing|t|es)/i, `${engine}: warning text must mention losing the keyfile`);
+    assert.match(warningText, /byte/i, `${engine}: warning text must mention byte-level alteration`);
+    assert.equal(await keyfileInput.isDisabled(), false, `${engine}: keyfile input must become usable once the toggle is enabled`);
+    console.log(`${engine}: fresh-load off-by-default state and warning wiring verified`);
+
+    // --- F1: two out-of-order FileReader completions; only the latest
+    // active selection may ever be committed ---
+    const staleName = 'coldbox-f1-stale-a.bin';
+    const freshName = 'coldbox-f1-fresh-b.bin';
+    const staleBytes = Buffer.alloc(128, 0xa1);
+    const freshBytes = Buffer.alloc(64, 0xb2);
+    await coldFrame.evaluate(({ stale, fresh }) => {
+      window.__coldboxTestReadDelays = {};
+      window.__coldboxTestReadDelays[stale] = 400;
+      window.__coldboxTestReadDelays[fresh] = 0;
+    }, { stale: staleName, fresh: freshName });
+
+    // Select the slow file A first (read will not complete for ~400ms)...
+    await keyfileInput.setInputFiles({ name: staleName, mimeType: 'application/octet-stream', buffer: staleBytes });
+    // ...then, before A's read can complete, select the fast file B.
+    await keyfileInput.setInputFiles({ name: freshName, mimeType: 'application/octet-stream', buffer: freshBytes });
+    await coldFrame.locator('#cold-vault-keyfile-status')
+      .filter({ hasText: /^Keyfile loaded \(64 bytes\)/ })
+      .waitFor({ state: 'visible', timeout: 10000 });
+
+    // Wait well past A's artificial delay. If F1 regresses, A's stale onload
+    // lands here and silently replaces B's already-committed selection.
+    await page.waitForTimeout(700);
+    assert.match(
+      (await keyfileStatus.textContent()) || '',
+      /^Keyfile loaded \(64 bytes\)/,
+      `${engine}: F1 regression - a stale keyfile read overwrote the current selection's status`
+    );
+
+    // Prove it at the cryptographic layer, not just in the status text: only
+    // B's bytes may actually unlock the vault this selection creates.
+    await passphraseInput.fill('browser f1 regression phrase');
+    await coldFrame.locator('#cold-vault-create').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+
+    await page.locator('#vault-save-manual').click();
+    await page.waitForFunction(() => document.querySelector('#vault-manual-data').value.length > 0);
+    const f1VaultText = await page.locator('#vault-manual-data').inputValue();
+
+    await page.locator('#vault-lock').click();
+    await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible' });
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible' });
+
+    await page.locator('#vault-manual-data').fill(f1VaultText);
+    await page.locator('#vault-load-manual').click();
+    await page.locator('#vault-status[data-state="pending"]').waitFor({ state: 'visible' });
+    await coldFrame.locator('#cold-vault-status[data-state="pending"]').waitFor({ state: 'visible' });
+
+    // Wrong (stale A) bytes must fail...
+    await toggle.check();
+    await passphraseInput.fill('browser f1 regression phrase');
+    await keyfileInput.setInputFiles({ name: staleName, mimeType: 'application/octet-stream', buffer: staleBytes });
+    await coldFrame.locator('#cold-vault-keyfile-status')
+      .filter({ hasText: /^Keyfile loaded \(128 bytes\)/ })
+      .waitFor({ state: 'visible', timeout: 10000 });
+    await coldFrame.locator('#cold-vault-unlock').click();
+    await coldFrame.locator('#cold-vault-status').filter({ hasText: /Unlock failed/ }).waitFor({ state: 'visible', timeout: 10000 });
+    assert.notEqual(
+      await coldFrame.locator('#cold-vault-status').getAttribute('data-state'),
+      'unlocked',
+      `${engine}: F1 regression - the vault unlocked with the stale (never-committed) keyfile bytes`
+    );
+
+    // ...and the actually-committed fresh (B) bytes must succeed.
+    await keyfileInput.setInputFiles({ name: freshName, mimeType: 'application/octet-stream', buffer: freshBytes });
+    await coldFrame.locator('#cold-vault-keyfile-status')
+      .filter({ hasText: /^Keyfile loaded \(64 bytes\)/ })
+      .waitFor({ state: 'visible', timeout: 10000 });
+    await passphraseInput.fill('browser f1 regression phrase');
+    await coldFrame.locator('#cold-vault-unlock').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    console.log(`${engine}: F1 stale FileReader ordering could not replace or clear the active keyfile selection`);
+
+    // --- F2: lock destroys keyfile bytes and must also clear the visible
+    // file-input/status UI, then re-selecting the same file must work ---
+    await page.locator('#vault-lock').click();
+    await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible' });
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible' });
+
+    await coldFrame.locator('#cold-vault-keyfile-status')
+      .filter({ hasText: /^No keyfile selected/ })
+      .waitFor({ state: 'visible', timeout: 10000 });
+    const keyfileInputValueAfterLock = await keyfileInput.evaluate((element) => element.value);
+    assert.equal(
+      keyfileInputValueAfterLock,
+      '',
+      `${engine}: F2 regression - lock left the keyfile file input's value stale`
+    );
+
+    // Reload the encrypted vault first (this itself funnels through
+    // clearVaultSession a second time, per handleVaultMessage's
+    // 'vault.open' handling - the point is that keyfile re-selection below
+    // must still work after that, not just after the manual lock above).
+    await page.locator('#vault-manual-data').fill(f1VaultText);
+    await page.locator('#vault-load-manual').click();
+    await page.locator('#vault-status[data-state="pending"]').waitFor({ state: 'visible' });
+    await coldFrame.locator('#cold-vault-status[data-state="pending"]').waitFor({ state: 'visible' });
+
+    // Re-select the exact same file (name + bytes) that was active before
+    // lock. The input's value was cleared by every intervening
+    // clearVaultSession call specifically so this new selection is
+    // guaranteed to register as a change.
+    await toggle.check();
+    await keyfileInput.setInputFiles({ name: freshName, mimeType: 'application/octet-stream', buffer: freshBytes });
+    await coldFrame.locator('#cold-vault-keyfile-status')
+      .filter({ hasText: /^Keyfile loaded \(64 bytes\)/ })
+      .waitFor({ state: 'visible', timeout: 10000 });
+    await passphraseInput.fill('browser f1 regression phrase');
+    await coldFrame.locator('#cold-vault-unlock').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    console.log(`${engine}: F2 lock cleared keyfile status/input, and re-selecting the same file worked normally`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyDevOnlyDependency() {
   const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
   assert.equal(packageJson.dependencies?.playwright, undefined);
@@ -1082,6 +1293,7 @@ async function run() {
       await verifyUntamperedFixture(browser, engine);
       await verifyTamperFixture(browser, engine);
       await verifyReusableAssertions(browser, engine);
+      await verifyKeyfileUiAndRegressions(browser, engine);
     } finally {
       await browser.close();
     }

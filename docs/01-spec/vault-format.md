@@ -74,6 +74,8 @@ Per record:
 
 **Method 2** — KEK = Argon2id(passphrase ‖ SHA-512(keyfile), salt, params). Record data holds a keyfile hint (filename only, never contents). One altered byte in the keyfile makes the vault permanently unopenable — stated at setup, in bold.
 
+A vault created with a keyfile carries a method-2 record in place of a method-1 record, not alongside one — the keyfile is required, not an alternative unlock path. The v1 implementation refuses a keyfile larger than **64 MiB**, the same implementation ceiling as the whole vault file below, and refuses an empty (zero-byte) keyfile outright since it would add no protection while still carrying the "permanent loss" warning. The keyfile hint is capped at 255 UTF-8 bytes and silently truncated past that, since it is pure display metadata with no cryptographic role. Rationale for these four implementation choices, none of which are wire-format fields: [ADR-0014](../05-development/adr/0014-keyfile-unlock-implementation-limits.md).
+
 **Method 3** — the DEK is split via SLIP-39. Record data holds the group configuration and share metadata, never share material. Reconstructing a threshold yields the DEK directly. This is the inheritance path. *Phase 2.*
 
 ---

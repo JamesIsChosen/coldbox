@@ -12,6 +12,14 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
+### Added — P0.15 keyfile unlock (2026-08-06)
+
+- **Wrapped-DEK method 2 (passphrase + keyfile).** `src/cold/vault.js` can now wrap the vault DEK under `Argon2id(passphrase || SHA-512(keyfile), salt, params)`, per [vault-format.md](docs/01-spec/vault-format.md)'s existing method-2 specification. A vault created with a keyfile carries a method-2 record in place of the method-1 record — the keyfile is required, not an optional alternative, so losing it or altering a single byte makes the vault permanently unopenable. This is stated in bold in the cold-realm UI before the keyfile toggle can be used, and the toggle is **off by default**.
+- **Fails closed on a one-byte-altered keyfile**, with an error indistinguishable from a wrong passphrase (`Vault authentication failed.` in both cases — no detail about which credential or byte was wrong).
+- **Passphrase-only vaults are unaffected.** No wire-format or behavior change for any vault created without a keyfile; `unwrapDek()` only ever consults a method-2 record when the vault actually carries one, and only if a keyfile was supplied at open time.
+- New cold-realm UI: a keyfile toggle (unchecked by default), an unmissable red warning that appears the moment it's checked, and a file input whose bytes are read via `FileReader` and never leave the sealed cold-realm document — no message type carries keyfile bytes, and they are never logged.
+- Implementation limits (64 MiB keyfile size ceiling, 255-byte hint cap, empty-keyfile rejection) recorded in [ADR-0014](docs/05-development/adr/0014-keyfile-unlock-implementation-limits.md).
+
 ### Added — P0.14 save integrity (2026-08-06)
 
 - **Verify-after-save.** The File System Access save path re-reads the file it just wrote and confirms the bytes are byte-identical before clearing the unsaved-changes flag; a truncated or corrupted read-back leaves the vault marked dirty and says so instead of silently reporting success.
