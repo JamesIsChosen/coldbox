@@ -7,7 +7,7 @@
 
 ## Context
 
-[vault-format.md](../01-spec/vault-format.md) already fully specifies wrapped-DEK method 2 at the byte level:
+[vault-format.md](../../01-spec/vault-format.md) already fully specifies wrapped-DEK method 2 at the byte level:
 
 > **Method 2** — KEK = Argon2id(passphrase ‖ SHA-512(keyfile), salt, params). Record data holds a keyfile hint (filename only, never contents). One altered byte in the keyfile makes the vault permanently unopenable — stated at setup, in bold.
 
@@ -18,7 +18,7 @@ That settles the cryptographic construction and the wire shape of the record (`1
 3. **What upper bound, if any, applies to the keyfile hint (the "filename only" method data)?**
 4. **Is an empty (zero-byte) keyfile accepted?**
 
-None of these are settled by vault-format.md, and per [AGENTS.md §4](../../AGENTS.md) and [ROADMAP.md](../ROADMAP.md)'s framing, a vault-format-adjacent question that the spec doesn't settle gets an ADR rather than a guess.
+None of these are settled by vault-format.md, and per [AGENTS.md §4](../../../AGENTS.md) and [ROADMAP.md](../ROADMAP.md)'s framing, a vault-format-adjacent question that the spec doesn't settle gets an ADR rather than a guess.
 
 ## Decision
 
@@ -36,7 +36,7 @@ None of these are settled by vault-format.md, and per [AGENTS.md §4](../../AGEN
 
 **Why a generic `Vault serialization failed.` rather than a distinct keyfile-size error.** vault-format.md's own size-limit design (`Vault exceeds the 64 MiB size limit.`) is deliberately a *distinct, non-authentication* error precisely because file size is already observable before any decryption is attempted — labeling it separately leaks nothing new. A keyfile's size, by contrast, is chosen by the same person who is also entering the passphrase, at creation time, before there is any secret material downstream to protect the boundary of. There is no confidentiality reason to distinguish "keyfile too large" from any other malformed-input rejection at creation, so it stays inside the same generic failure the rest of `createVault()`'s input validation already uses.
 
-**Why truncate the hint instead of refusing a long filename.** The hint is explicitly non-cryptographic per vault-format.md ("filename only, never contents"); refusing vault creation over a long filename would be a usability cost with no corresponding security benefit. 255 bytes comfortably exceeds every common filesystem's own filename limit (255 bytes is itself the POSIX/`ext4`/NTFS practical ceiling), so truncation in practice only ever affects a hint that was already unusually long by any filesystem's own standard.
+**Why truncate the hint instead of refusing a long filename.** The hint is explicitly non-cryptographic per vault-format.md ("filename only, never contents"); refusing vault creation over a long filename would be a usability cost with no corresponding security benefit. 255 is a Coldbox application/format choice, not a claim about any filesystem's ceiling - filesystem filename limits are not a single universal number or even a single unit (for example, `ext4` limits filenames to 255 bytes, while Microsoft's NTFS documentation states a 255-*Unicode-character* maximum, which is not the same quantity as 255 bytes for non-ASCII names). Coldbox's 255-byte hint cap only needs to comfortably cover the filenames people actually pick as keyfiles in practice; it is not derived from, and does not need to equal, any particular filesystem's own limit.
 
 **Why reject rather than accept an empty keyfile.** This is the one place a permissive default would be actively misleading: the UI warns "losing or altering the keyfile means permanent loss," and a zero-byte keyfile satisfies neither the letter (nothing meaningful to lose) nor the spirit (nothing meaningful to alter) of that warning while still displaying it. Fail-closed here costs nothing — a person who genuinely wants "no keyfile" already has that: don't check the box.
 
@@ -73,7 +73,7 @@ If keyfile sizes in the tens of megabytes turn out to be common in practice (e.g
 
 ## References
 
-- [vault-format.md § Wrapped-DEK block](../01-spec/vault-format.md)
-- [vault-format.md § Implementation size limit](../01-spec/vault-format.md)
+- [vault-format.md § Wrapped-DEK block](../../01-spec/vault-format.md)
+- [vault-format.md § Implementation size limit](../../01-spec/vault-format.md)
 - [ROADMAP.md — P0.15](../ROADMAP.md)
 - [doc-hygiene.md Rule 4 — no orphan numbers](../doc-hygiene.md)
