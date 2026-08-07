@@ -84,7 +84,7 @@ __COLDBOX_STYLES__
         <section class="realm-status" id="cold-realm-status" data-cold-state="starting" aria-labelledby="cold-realm-status-title" aria-live="polite">
           <div class="realm-status-copy">
             <p class="eyebrow">Security boundary / P0.8</p>
-            <h2 id="cold-realm-status-title">Establishing the sealed realm
+            <h2 id="cold-realm-status-title"><span id="cold-realm-status-title-text">Establishing the sealed realm</span>
               <button type="button" class="icon-button help-context-button" data-help-topic="glossary:cold-realm-warm-shell" aria-label="What is the sealed realm?">?</button>
             </h2>
             <p id="cold-realm-status-copy">The secret-capable side of Coldbox is starting inside an opaque sandbox. The shell will stay locked down if that boundary cannot be established.</p>
@@ -101,7 +101,7 @@ __COLDBOX_STYLES__
         <section class="airgap-banner" id="airgap-banner" data-airgap-state="checking" aria-labelledby="airgap-banner-title" aria-live="polite">
           <div class="airgap-banner-copy">
             <p class="eyebrow">Airgap guard / P0.8</p>
-            <h2 id="airgap-banner-title">Checking the airgap guard
+            <h2 id="airgap-banner-title"><span id="airgap-banner-title-text">Checking the airgap guard</span>
               <button type="button" class="icon-button help-context-button" data-help-topic="glossary:airgapped" aria-label="What does airgapped mean?">?</button>
             </h2>
             <p id="airgap-banner-copy">Coldbox is confirming both CSP policies and the private cold-realm channel before vault operations can be considered.</p>
@@ -298,7 +298,7 @@ __COLDBOX_STYLES__
           <section class="vault-status" id="vault-status" data-state="locked" aria-labelledby="vault-status-title" aria-live="polite">
             <div>
               <p class="panel-kicker">Session state</p>
-              <h2 id="vault-status-title">Vault is locked
+              <h2 id="vault-status-title"><span id="vault-status-title-text">Vault is locked</span>
                 <button type="button" class="icon-button help-context-button" data-help-topic="glossary:vault" aria-label="What is the vault?">?</button>
               </h2>
               <p id="vault-status-copy">Load an encrypted vault, then enter its unlock phrase in the sealed realm. The warm shell never receives it.</p>

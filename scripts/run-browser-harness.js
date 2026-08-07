@@ -103,6 +103,41 @@ function requireBrowserBinaries() {
   );
 }
 
+// R2-F1 remediation: the P0.17 build now reads docs/00-overview/glossary.md
+// and docs/03-guides/*.md (see scripts/help-content.js), so every temporary
+// build root this harness creates - not just the one
+// verifyDevOnlyDependency() builds - needs docs/ copied alongside
+// scripts/src/vendor or its build.js invocation fails closed on ENOENT
+// before the fixture's actual point is reached. The prior remediation fixed
+// only verifyDevOnlyDependency() by hand, missed the other three build-root
+// creators, and the reviewer caught it. Routing every temporary build root
+// through this one helper is the fix the reviewer explicitly asked for:
+// there is now exactly one place that knows the full build input list, so
+// it cannot drift out of sync with scripts/build.js's actual dependencies
+// again.
+function copyBuildInputsInto(temporaryRoot, { includeGit = false } = {}) {
+  for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
+    fs.cpSync(
+      path.join(projectRoot, directory),
+      path.join(temporaryRoot, directory),
+      { recursive: true }
+    );
+  }
+  if (includeGit) {
+    // P0.16 F4 fallout: scripts/build.js derives the embedded build date from
+    // `git log -- src scripts vendor` (see ADR-0015's 2026-08-06 amendment).
+    // Fixtures proving "no devDependency required" would otherwise fall back
+    // to the "unknown (no git commit metadata available)" branch while the
+    // real build embeds an actual date, diverging for a reason unrelated to
+    // what the fixture is meant to prove.
+    fs.cpSync(
+      path.join(projectRoot, '.git'),
+      path.join(temporaryRoot, '.git'),
+      { recursive: true }
+    );
+  }
+}
+
 function createTamperedFixture() {
   const originalPath = path.join(fixtureRoot, 'tamper.html');
   const original = fs.readFileSync(originalPath, 'utf8');
@@ -141,13 +176,7 @@ function createTamperedBuildFixture() {
 
 function createColdReadySuppressedFixture() {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-browser-timeout-'));
-  for (const directory of ['scripts', 'src', 'vendor']) {
-    fs.cpSync(
-      path.join(projectRoot, directory),
-      path.join(temporaryRoot, directory),
-      { recursive: true }
-    );
-  }
+  copyBuildInputsInto(temporaryRoot);
 
   const coldMainPath = path.join(temporaryRoot, 'src', 'cold', 'main.js');
   const original = fs.readFileSync(coldMainPath, 'utf8');
@@ -177,13 +206,7 @@ function createColdReadySuppressedFixture() {
 
 function createHandshakeResponseSuppressedFixture() {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-browser-handshake-timeout-'));
-  for (const directory of ['scripts', 'src', 'vendor']) {
-    fs.cpSync(
-      path.join(projectRoot, directory),
-      path.join(temporaryRoot, directory),
-      { recursive: true }
-    );
-  }
+  copyBuildInputsInto(temporaryRoot);
 
   const coldMainPath = path.join(temporaryRoot, 'src', 'cold', 'main.js');
   const original = fs.readFileSync(coldMainPath, 'utf8');
@@ -272,13 +295,7 @@ function createCspStrippedFixture(kind) {
 
 function createMissingRandomnessFixture() {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-browser-capability-'));
-  for (const directory of ['scripts', 'src', 'vendor']) {
-    fs.cpSync(
-      path.join(projectRoot, directory),
-      path.join(temporaryRoot, directory),
-      { recursive: true }
-    );
-  }
+  copyBuildInputsInto(temporaryRoot);
   const capabilityPath = path.join(temporaryRoot, 'src', 'capabilities.js');
   const original = fs.readFileSync(capabilityPath, 'utf8');
   const disabled = original.replace(
@@ -1355,6 +1372,42 @@ async function verifyHelpFramework(browser, engine) {
   // interaction in a real browser.
   const { page } = await openPage(browser, buildPath);
   try {
+    // R2-F2 regression: cold-realm-status, airgap-banner, and vault-status
+    // each rewrite their <h2> title's .textContent as the app settles
+    // (starting -> ready, checking -> amber/green, and so on). Before the
+    // fix, that wholesale rewrite deleted the contextual help button
+    // nested inside the same <h2>, so a check that only ever looked at the
+    // five buttons in the *static* pre-render markup would have missed the
+    // defect entirely - three of the five were gone by the time a real user
+    // could ever click one. Waiting for the app to fully settle first, then
+    // counting, is the only way this check can catch a regression here.
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#airgap-banner[data-airgap-state="amber"], #airgap-banner[data-airgap-state="green"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#capability-panel[data-capability-state="ready"], #capability-panel[data-capability-state="ready-with-warnings"]').waitFor({ state: 'visible', timeout: 5000 });
+
+    const settledButtonCount = await page.locator('button.help-context-button[data-help-topic]').count();
+    assert.equal(settledButtonCount, 5, `${engine}: all five contextual help buttons must survive app initialization, found ${settledButtonCount}`);
+
+    // Exercise every one of the five mappings, not just two of them - each
+    // must land on real, rendered glossary content, proving the button
+    // both still exists in the settled DOM and still resolves correctly.
+    const contextualHelpMappings = [
+      { topic: 'glossary:cold-realm-warm-shell', anchorPrefix: 'help-glossary-cold-realm-warm-shell', route: 'dashboard' },
+      { topic: 'glossary:airgapped', anchorPrefix: 'help-glossary-airgapped', route: 'dashboard' },
+      { topic: 'glossary:capability-self-check', anchorPrefix: 'help-glossary-capability-self-check', route: 'dashboard' },
+      { topic: 'glossary:vault', anchorPrefix: 'help-glossary-vault', route: 'vault' },
+      { topic: 'glossary:provenance-panel', anchorPrefix: 'help-glossary-provenance-panel', route: 'reference' }
+    ];
+    for (const mapping of contextualHelpMappings) {
+      await page.locator(`#nav-rail a[data-route="${mapping.route}"]`).click();
+      const button = page.locator(`button.help-context-button[data-help-topic="${mapping.topic}"]`);
+      await button.waitFor({ state: 'visible', timeout: 3000 });
+      await button.click();
+      await page.locator('#page-learn:not([hidden])').waitFor({ state: 'visible' });
+      await page.locator(`[id^="${mapping.anchorPrefix}"]`).waitFor({ state: 'visible', timeout: 3000 });
+    }
+
     await page.locator('#nav-rail a[data-route="learn"]').click();
     await page.locator('#page-learn:not([hidden])').waitFor({ state: 'visible' });
 
@@ -1399,20 +1452,10 @@ async function verifyHelpFramework(browser, engine) {
     await page.locator('.help-search-result', { hasText: 'xpub' }).first().click();
     await page.locator('#help-glossary-xpub').waitFor({ state: 'visible', timeout: 3000 });
 
-    // Contextual '?' help: clicking the cold-realm panel's help button must
-    // land on its mapped glossary entry, not just switch routes.
-    await page.locator('#nav-rail a[data-route="dashboard"]').click();
-    await page.locator('button.help-context-button[data-help-topic^="glossary:cold-realm-warm-shell"]').click();
-    await page.locator('#page-learn:not([hidden])').waitFor({ state: 'visible' });
-    await page.locator('[id^="help-glossary-cold-realm-warm-shell"]').waitFor({ state: 'visible', timeout: 3000 });
-
-    // The capability panel's contextual button now resolves to real,
-    // backfilled content (glossary:capability-self-check), not the
-    // placeholder-fallback case an earlier draft of this branch exercised.
-    await page.locator('#nav-rail a[data-route="dashboard"]').click();
-    await page.locator('button.help-context-button[data-help-topic="glossary:capability-self-check"]').click();
-    await page.locator('#page-learn:not([hidden])').waitFor({ state: 'visible' });
-    await page.locator('#help-glossary-capability-self-check').waitFor({ state: 'visible', timeout: 3000 });
+    // Contextual '?' help for all five panels, including that each button
+    // survives real app initialization, was already exercised in full at
+    // the top of this function (R2-F2 regression coverage) - not repeated
+    // here.
 
     // A contextual button pointed at content that genuinely doesn't exist
     // must still fail closed into the documented fallback notice rather
@@ -1446,40 +1489,7 @@ async function verifyDevOnlyDependency() {
   const built = fs.readFileSync(buildPath);
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-browser-build-'));
   try {
-    // P0.17 fallout: scripts/build.js now also reads the help corpus from
-    // docs/00-overview/glossary.md and docs/03-guides/*.md (see
-    // scripts/help-content.js). This fixture's job is proving the build
-    // needs no devDependency (in particular, no Playwright) - it was never
-    // meant to prove the build needs no docs/ tree, and a real "node_modules
-    // absent" checkout still has its docs/ directory. Without copying it,
-    // the dependency-free build fails closed on ENOENT before either engine
-    // ever reaches verifyHelpFramework(), which defeats the whole point of
-    // this fixture existing in the browser harness. Copying docs/ restores
-    // that fidelity, matching the .git fix applied for the same reason
-    // below (P0.16 F4 fallout).
-    for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
-      fs.cpSync(
-        path.join(projectRoot, directory),
-        path.join(temporaryRoot, directory),
-        { recursive: true }
-      );
-    }
-    // P0.16 F4 fallout: scripts/build.js now derives the embedded build date
-    // from `git log -- src scripts vendor` (see ADR-0015's 2026-08-06
-    // amendment). This fixture's whole point is proving the build needs no
-    // devDependency (in particular, no Playwright) - it was never meant to
-    // prove the build needs no *git checkout*, and a real "node_modules
-    // absent" checkout still has its .git directory. Without copying it, the
-    // dependency-free build fell back to the "unknown (no git commit
-    // metadata available)" branch while the real build embedded an actual
-    // date, so the two byte-identical builds legitimately diverged - not a
-    // regression in build.js, but this fixture no longer modeling a real
-    // checkout. Copying .git restores that fidelity.
-    fs.cpSync(
-      path.join(projectRoot, '.git'),
-      path.join(temporaryRoot, '.git'),
-      { recursive: true }
-    );
+    copyBuildInputsInto(temporaryRoot, { includeGit: true });
     assert.equal(fs.existsSync(path.join(temporaryRoot, 'node_modules')), false);
 
     const result = spawnSync(

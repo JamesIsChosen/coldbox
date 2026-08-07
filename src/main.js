@@ -25,14 +25,22 @@ __COLDBOX_QR_ENCODER__
   var moreTab = document.getElementById('mobile-more-tab');
   var moreClose = document.getElementById('mobile-more-close');
   var coldRealmStatus = document.getElementById('cold-realm-status');
-  var coldRealmStatusTitle = document.getElementById('cold-realm-status-title');
+  // R2-F2 remediation: this used to point at the <h2> itself, whose
+  // .textContent assignment below silently deleted the contextual help
+  // button nested inside it (a text/element sibling, wiped along with the
+  // old text on every status update). Pointing at the dedicated child span
+  // instead leaves the button - a sibling of the span within the same <h2>
+  // - untouched by every rewrite below.
+  var coldRealmStatusTitle = document.getElementById('cold-realm-status-title-text');
   var coldRealmStatusCopy = document.getElementById('cold-realm-status-copy');
   var coldRealmStatusLabel = document.getElementById('cold-realm-status-label');
   var coldRealmFailure = document.getElementById('cold-realm-failure');
   var protocolWarning = document.getElementById('protocol-warning');
   var coldRealmHost = document.getElementById('cold-realm-host');
   var airgapBanner = document.getElementById('airgap-banner');
-  var airgapBannerTitle = document.getElementById('airgap-banner-title');
+  // R2-F2 remediation: see the coldRealmStatusTitle comment above - same
+  // fix, same reason (this title also has a nested contextual help button).
+  var airgapBannerTitle = document.getElementById('airgap-banner-title-text');
   var airgapBannerCopy = document.getElementById('airgap-banner-copy');
   var airgapBannerLabel = document.getElementById('airgap-banner-label');
   var capabilityPanel = document.getElementById('capability-panel');
@@ -90,7 +98,9 @@ __COLDBOX_QR_ENCODER__
   var helpSearchCorpus = null;
   var PROVENANCE_MAX_DROP_BYTES = 16 * 1024 * 1024;
   var vaultStatus = document.getElementById('vault-status');
-  var vaultStatusTitle = document.getElementById('vault-status-title');
+  // R2-F2 remediation: see the coldRealmStatusTitle comment above - same
+  // fix, same reason (this title also has a nested contextual help button).
+  var vaultStatusTitle = document.getElementById('vault-status-title-text');
   var vaultStatusCopy = document.getElementById('vault-status-copy');
   var vaultStatusLabel = document.getElementById('vault-status-label');
   var vaultFileInput = document.getElementById('vault-file-input');
