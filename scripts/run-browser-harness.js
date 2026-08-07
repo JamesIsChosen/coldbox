@@ -208,7 +208,19 @@ function createHandshakeResponseSuppressedFixture() {
 }
 
 function stripWarmCsp(document) {
-  const matches = document.match(/<meta http-equiv="Content-Security-Policy"[^>]*>/g) || [];
+  // Scoped to before the first <script> tag, i.e. the document's <head>,
+  // where the one real warm CSP <meta> tag lives. P0.16's provenance panel
+  // added extractCspFromMarkup() to src/main.js, whose own regex literal -
+  // /<meta http-equiv="Content-Security-Policy" content="([^"]*)">/i - is
+  // legitimate JavaScript source text that ends up embedded verbatim inside
+  // the built document's inline <script> block. A document-wide match on
+  // this same pattern finds that regex literal as a spurious second "meta
+  // tag", even though it's JS code describing a tag, not a tag. Scoping the
+  // search to head-only content finds exactly the one real tag regardless
+  // of what later inline script code says about meta tags as text.
+  const headEndIndex = document.indexOf('<script');
+  const searchRegion = headEndIndex === -1 ? document : document.slice(0, headEndIndex);
+  const matches = searchRegion.match(/<meta http-equiv="Content-Security-Policy"[^>]*>/g) || [];
   assert.equal(matches.length, 1, 'Expected exactly one warm CSP meta tag');
   return document.replace(matches[0], '');
 }
