@@ -137,7 +137,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
 
 ### Trust surface
 
-- [~] **P0.16 — Provenance panel and self-hash verifier**
+- [x] **P0.16 — Provenance panel and self-hash verifier**
   *Deps: P0.15*
   Every embedded library with version and upstream hash; the full CSP allowlist; build date; expected hash; drag-and-drop self-hash drop zone.
   **Accept:** listed hashes match `dependencies.md`; **the drop zone states plainly that self-verification is circular** and points to [verification.md](../02-security/verification.md).
