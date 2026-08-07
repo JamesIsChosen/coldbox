@@ -1222,6 +1222,84 @@ async function verifyKeyfileUiAndRegressions(browser, engine) {
   }
 }
 
+async function verifyProvenancePanel(browser, engine) {
+  // P0.16: the Reference route's provenance panel and self-hash drop zone.
+  // The drop zone is exercised with real file bytes via Playwright's
+  // setInputFiles, which is the file-upload emulation the roadmap's 🌐
+  // marker on this item calls for.
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#nav-rail a[data-route="reference"]').click();
+    await page.locator('#page-reference:not([hidden])').waitFor({ state: 'visible' });
+
+    const libraryRows = page.locator('#provenance-library-list .provenance-library-row');
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(projectRoot, 'vendor', 'vendor-manifest.json'), 'utf8')
+    );
+    assert.equal(
+      await libraryRows.count(),
+      manifest.artifacts.length,
+      `${engine}: provenance panel must list every vendor-manifest artifact`
+    );
+    const nobleHashesRow = page.locator('#provenance-library-list .provenance-library-row', {
+      hasText: '@noble/hashes'
+    });
+    await nobleHashesRow.waitFor({ state: 'visible' });
+    const nobleHashesArtifact = manifest.artifacts.find((artifact) => artifact.name === '@noble/hashes');
+    assert.match(await nobleHashesRow.textContent(), new RegExp(escapedRegExp(nobleHashesArtifact.sha256)));
+
+    const buildDateText = await page.locator('#provenance-build-date').textContent();
+    assert.notEqual(buildDateText.trim(), 'Loading…', `${engine}: build date did not render`);
+    assert.notEqual(buildDateText.trim(), '', `${engine}: build date is empty`);
+
+    const warmCspText = await page.locator('#provenance-csp-warm').textContent();
+    assert.match(warmCspText, /connect-src/, `${engine}: warm CSP panel text missing connect-src`);
+    assert.match(warmCspText, /api\.coingecko\.com/, `${engine}: warm CSP panel text missing the documented allowlist`);
+
+    const coldCspText = await page.locator('#provenance-csp-cold').textContent();
+    assert.match(coldCspText, /connect-src 'none'/, `${engine}: cold CSP panel text missing connect-src 'none'`);
+
+    assert.match(
+      await page.locator('.provenance-section', { hasText: 'Verify this file' }).textContent(),
+      /circular/i,
+      `${engine}: drop zone must state plainly that self-verification is circular`
+    );
+
+    // --- self-drop: the exact built file must report a match ---
+    const builtBytes = fs.readFileSync(buildPath);
+    await page.locator('#provenance-drop-input').setInputFiles({
+      name: 'coldbox.html',
+      mimeType: 'text/html',
+      buffer: builtBytes
+    });
+    await page.locator('#provenance-drop-result[data-state="match"]').waitFor({ state: 'visible', timeout: 5000 });
+
+    // --- a one-byte-tampered copy of the same file must report a mismatch ---
+    const tamperedBytes = Buffer.from(builtBytes);
+    const titleIndex = tamperedBytes.indexOf(Buffer.from('<title>Coldbox</title>', 'utf8'));
+    assert.notEqual(titleIndex, -1, `${engine}: fixture could not locate a byte to tamper`);
+    tamperedBytes[titleIndex] ^= 1;
+    await page.locator('#provenance-drop-input').setInputFiles({
+      name: 'coldbox-tampered.html',
+      mimeType: 'text/html',
+      buffer: tamperedBytes
+    });
+    await page.locator('#provenance-drop-result[data-state="mismatch"]').waitFor({ state: 'visible', timeout: 5000 });
+
+    // --- an unrelated file must fail closed with a clear error, never a false match ---
+    await page.locator('#provenance-drop-input').setInputFiles({
+      name: 'not-coldbox.html',
+      mimeType: 'text/html',
+      buffer: Buffer.from('<html><body>not a build</body></html>', 'utf8')
+    });
+    await page.locator('#provenance-drop-result[data-state="error"]').waitFor({ state: 'visible', timeout: 5000 });
+
+    console.log(`${engine}: provenance panel library list, CSP text, build date, and self-hash drop zone (match/mismatch/error) verified`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyDevOnlyDependency() {
   const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
   assert.equal(packageJson.dependencies?.playwright, undefined);
@@ -1294,6 +1372,7 @@ async function run() {
       await verifyTamperFixture(browser, engine);
       await verifyReusableAssertions(browser, engine);
       await verifyKeyfileUiAndRegressions(browser, engine);
+      await verifyProvenancePanel(browser, engine);
     } finally {
       await browser.close();
     }

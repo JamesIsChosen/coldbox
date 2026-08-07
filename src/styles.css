@@ -818,6 +818,161 @@ samp {
 }
 
 /* --------------------------------------------------------------------------
+ * Provenance panel (P0.16)
+ * -------------------------------------------------------------------------- */
+
+.provenance-panel {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: clamp(2rem, 5vw, 3.25rem);
+}
+
+.provenance-panel-header h2 {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2.4vw, 1.8rem);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+.provenance-panel-header p {
+  max-width: 52rem;
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.provenance-section {
+  padding: clamp(1.1rem, 2.5vw, 1.6rem);
+  border: var(--outline-width) solid var(--outline);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-hard-lg);
+}
+
+.provenance-section h3 {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+
+.provenance-section p {
+  margin: 0.6rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.provenance-section-note code {
+  font-size: 0.85em;
+}
+
+.provenance-value {
+  color: var(--text) !important;
+  font-size: 0.95rem !important;
+}
+
+.provenance-library-list {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.9rem;
+}
+
+.provenance-library-row {
+  padding: 0.75rem 0.85rem;
+  border: var(--outline-width-thin) solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.provenance-library-row h4 {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+.provenance-library-hash,
+.provenance-library-source {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.provenance-csp {
+  margin: 0.7rem 0 0;
+  padding: 0.85rem;
+  border: var(--outline-width-thin) solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.provenance-drop-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: var(--outline-width) dashed var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  text-align: center;
+  cursor: pointer;
+}
+
+.provenance-drop-zone:focus-visible {
+  outline: 0.2rem solid var(--fill-cyan);
+  outline-offset: 0.2rem;
+}
+
+.provenance-drop-zone p {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.provenance-drop-result {
+  margin: 0.75rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.provenance-drop-result[data-state="idle"] {
+  display: none;
+}
+
+.provenance-drop-result[data-state="checking"] {
+  color: var(--muted);
+}
+
+.provenance-drop-result[data-state="match"] {
+  color: var(--fill-green);
+}
+
+.provenance-drop-result[data-state="mismatch"],
+.provenance-drop-result[data-state="error"] {
+  color: var(--fill-red);
+}
+
+/* --------------------------------------------------------------------------
  * Pages
  * -------------------------------------------------------------------------- */
 
