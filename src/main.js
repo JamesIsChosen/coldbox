@@ -71,6 +71,7 @@ __COLDBOX_QR_ENCODER__
   var provenanceDropInput = document.getElementById('provenance-drop-input');
   var provenanceDropChoose = document.getElementById('provenance-drop-choose');
   var provenanceDropResult = document.getElementById('provenance-drop-result');
+  var provenanceExpectedHash = document.getElementById('provenance-expected-hash');
   var PROVENANCE_LIBRARIES = __COLDBOX_PROVENANCE_LIBRARIES__;
   var PROVENANCE_BUILD_DATE = __COLDBOX_BUILD_DATE__;
   var PROVENANCE_MAX_DROP_BYTES = 16 * 1024 * 1024;
@@ -531,6 +532,21 @@ __COLDBOX_QR_ENCODER__
     return typeof value === 'string' && /^[0-9a-f]{64}$/.test(value) ? value : null;
   }
 
+  // F1 remediation (review of P0.16): the compiled expected hash must be
+  // visible in the UI, not just present in a hidden meta tag, so a user can
+  // read it off-screen (or compare it against an independently-computed
+  // value) without having to view source. Deliberately labeled in the
+  // markup so it is never mistaken for coldbox.html.sha256 - see the note
+  // above this element and ADR-0015 for why the two values differ.
+  function renderProvenanceExpectedHash() {
+    if (!provenanceExpectedHash) {
+      return;
+    }
+    var expected = currentExpectedHash();
+    provenanceExpectedHash.textContent = expected
+      || 'Unavailable: no readable coldbox-expected-hash value in this document.';
+  }
+
   // Reproduces exactly what the build does: the expected-hash meta tag's own
   // value is blanked to 64 zero characters before hashing, because the tag
   // cannot contain the hash of a document that includes that very value.
@@ -563,11 +579,22 @@ __COLDBOX_QR_ENCODER__
     } catch (error) {
       return Promise.reject(new Error('The dropped file could not be decoded as UTF-8 text.'));
     }
-    if (!/<meta name="coldbox-expected-hash" content="[0-9a-f]{64}">/i.test(text)) {
+    var declaredMatch = text.match(/<meta name="coldbox-expected-hash" content="([0-9a-f]{64})">/i);
+    if (!declaredMatch) {
       return Promise.reject(new Error(
         'The dropped file has no coldbox-expected-hash tag. It may not be a Coldbox build, or predates this check.'
       ));
     }
+    // F2 remediation (review of P0.16): blanking-then-hashing alone cannot
+    // detect corruption confined to the hash field itself, because the
+    // field is erased before hashing either way. So the field's own
+    // as-declared value in the dropped file is captured here too, and
+    // handleProvenanceDropFile requires BOTH the blank-then-hash result AND
+    // this declared value to equal the running copy's expected hash before
+    // reporting a match. A byte flipped inside the hash field changes
+    // declaredHash but leaves computedHash unchanged - the declaredHash
+    // check is what catches that case.
+    var declaredHash = declaredMatch[1];
     var blanked = blankExpectedHashMeta(text);
     var blankedBytes = new window.TextEncoder().encode(blanked);
     return window.crypto.subtle.digest('SHA-256', blankedBytes).then(function (digestBuffer) {
@@ -576,7 +603,7 @@ __COLDBOX_QR_ENCODER__
       for (var i = 0; i < bytes.length; i += 1) {
         hex += hexByte(bytes[i]);
       }
-      return { computedHash: hex };
+      return { computedHash: hex, declaredHash: declaredHash };
     });
   }
 
@@ -605,7 +632,12 @@ __COLDBOX_QR_ENCODER__
         return;
       }
       computeSelfHash(result).then(function (outcome) {
-        if (outcome.computedHash === expected) {
+        // Both must hold: the blank-then-hash comparison (catches corruption
+        // anywhere outside the hash field) and the declared-value comparison
+        // (catches corruption inside the hash field itself, which blanking
+        // would otherwise erase before it could be seen). See F2 in the
+        // P0.16 review remediation and the comment on computeSelfHash.
+        if (outcome.computedHash === expected && outcome.declaredHash === expected) {
           setProvenanceDropResult(
             'match',
             'Match. The dropped file\'s self-consistency hash equals this running copy\'s. Remember: this is circular and does not rule out a deliberately tampered build - see the note above.'
@@ -661,6 +693,7 @@ __COLDBOX_QR_ENCODER__
     renderProvenanceLibraryList();
     renderProvenanceCsp();
     renderProvenanceBuildDate();
+    renderProvenanceExpectedHash();
   }
 
   function setCapabilityFailure(reason) {

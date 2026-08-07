@@ -74,17 +74,35 @@ function readVendorManifestLibraries() {
 
 // Deliberately not a wall-clock build timestamp - see build.md's "no
 // timestamps in output" determinism requirement and the note this same
-// string carries in the provenance panel itself. The commit date is fixed by
-// the source (HEAD), so it does not vary between two builds of the same
-// commit regardless of when or where `npm run build` runs. Missing git
-// metadata (e.g. a source tarball without history) degrades to a labeled
-// "unknown" rather than failing the build, since this field is informational
-// and not a security boundary.
+// string carries in the provenance panel itself.
+//
+// ADR-0015 originally used the date of literal HEAD. That broke down in
+// practice (see the ADR-0015 amendment dated 2026-08-06 / the P0.16 review
+// F4 finding): a commit that touches only governance paths - a PR packet
+// under docs/05-development/packets/, the roadmap checkbox, the changelog -
+// still moves HEAD, and HEAD's date fed straight into this field. That
+// makes the build's own bytes change every time the packet describing those
+// bytes is committed, so the packet can never truthfully describe the tip
+// it ships on.
+//
+// Fixed by scoping the git-log query to the paths that actually feed the
+// build: everything readSource()/the vendor manifest/the vendor tarball
+// draw from. A commit touching only docs/, test/, or top-level metadata
+// files is invisible to this query, so the build date - and therefore every
+// other build output - stays fixed across governance-only commits. It only
+// advances when a commit that could actually change the product is made.
+//
+// Still degrades to a labeled "unknown" rather than failing the build when
+// git metadata is unavailable (e.g. a source tarball without history),
+// since this field is informational and not a security boundary.
+const BUILD_DATE_SOURCE_PATHS = Object.freeze(['src', 'scripts', 'vendor']);
+
 function readBuildCommitDate() {
-  const result = spawnSync('git', ['log', '-1', '--format=%cI', 'HEAD'], {
-    cwd: projectRoot,
-    encoding: 'utf8'
-  });
+  const result = spawnSync(
+    'git',
+    ['log', '-1', '--format=%cI', 'HEAD', '--', ...BUILD_DATE_SOURCE_PATHS],
+    { cwd: projectRoot, encoding: 'utf8' }
+  );
   if (!result.error && result.status === 0 && result.stdout && result.stdout.trim()) {
     return result.stdout.trim();
   }
