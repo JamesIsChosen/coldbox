@@ -45,6 +45,15 @@ __COLDBOX_CAPABILITIES__
   // and whenever the keyfile toggle is switched off.
   var keyfileBytes = null;
   var keyfileName = '';
+  // F1 remediation: a monotonically increasing generation token plus the
+  // currently in-flight FileReader (if any). Every asynchronous keyfile read
+  // captures the generation that was current when it started; its onload/
+  // onerror callbacks are a complete no-op unless that generation is still
+  // current and the callback's own reader is still the active one. This
+  // stops a stale (superseded) read from ever overwriting or clearing a
+  // newer selection, regardless of completion order.
+  var keyfileGeneration = 0;
+  var activeKeyfileReader = null;
   var idleTimer = null;
   var lastEscapeAt = 0;
   var onlineMode = true;
@@ -131,7 +140,32 @@ __COLDBOX_CAPABILITIES__
     }
   }
 
+  // F1 remediation: invalidates any in-flight keyfile FileReader so its
+  // eventual onload/onerror callback becomes a no-op, and bumps the
+  // generation token so a callback already past its generation check cannot
+  // slip through. Safe to call with no reader in flight.
+  function invalidateActiveKeyfileRead() {
+    keyfileGeneration += 1;
+    if (activeKeyfileReader) {
+      try {
+        activeKeyfileReader.abort();
+      } catch (error) {
+        // FileReader.abort() should not throw, but a stale/foreign reader
+        // implementation must never be allowed to break teardown.
+      }
+      activeKeyfileReader = null;
+    }
+  }
+
+  // F1/F2 remediation: the single coherent reset path for the keyfile
+  // selection. Invalidates any in-flight read, zeroes the retained bytes and
+  // filename, clears the file input's value (so re-selecting the same file
+  // still fires a change event), and resets the visible status text. Called
+  // on explicit clear, toggle-off, and - via clearVaultSession - every lock/
+  // session-teardown path (manual lock, idle auto-lock, panic hide, and
+  // runtime-health closure all funnel through clearVaultSession).
   function clearKeyfileSelection() {
+    invalidateActiveKeyfileRead();
     zeroKeyfile();
     if (keyfileInput) {
       keyfileInput.value = '';
@@ -202,7 +236,11 @@ __COLDBOX_CAPABILITIES__
     if (passphraseInput) {
       passphraseInput.value = '';
     }
-    zeroKeyfile();
+    // F2 remediation: route through the same coherent reset path the user-
+    // facing "clear" action uses, so lock/session teardown never leaves the
+    // file input value or visible "loaded" status stale relative to the
+    // now-zeroed keyfileBytes.
+    clearKeyfileSelection();
     setSessionEvidence('locked');
     updateVaultControls();
   }
@@ -769,6 +807,11 @@ __COLDBOX_CAPABILITIES__
   if (keyfileInput && typeof window.FileReader === 'function') {
     keyfileInput.addEventListener('change', function () {
       var file = keyfileInput.files && keyfileInput.files[0];
+      // F1 remediation: every new selection (including a cleared/empty
+      // selection) invalidates whatever read was previously in flight
+      // before anything else happens, so a stale callback can never land
+      // after this point believes it is still current.
+      invalidateActiveKeyfileRead();
       if (!file) {
         clearKeyfileSelection();
         return;
@@ -781,12 +824,32 @@ __COLDBOX_CAPABILITIES__
       }
       zeroKeyfile();
       setKeyfileStatus('Reading keyfile inside the sealed realm...');
+      // Capture this request's generation now, after invalidation above, so
+      // it is the current one. Only a callback that fires while this exact
+      // generation is still current, and whose reader is still the active
+      // one, may mutate keyfile state.
+      var readGeneration = keyfileGeneration;
       var reader = new window.FileReader();
+      activeKeyfileReader = reader;
+      function isStaleCallback() {
+        return readGeneration !== keyfileGeneration
+          || reader !== activeKeyfileReader
+          || !keyfileToggle
+          || !keyfileToggle.checked;
+      }
       reader.onerror = function () {
+        if (isStaleCallback()) {
+          return;
+        }
+        activeKeyfileReader = null;
         clearKeyfileSelection();
         setKeyfileStatus('Could not read the selected keyfile.');
       };
       reader.onload = function () {
+        if (isStaleCallback()) {
+          return;
+        }
+        activeKeyfileReader = null;
         var result = reader.result;
         if (!(result instanceof ArrayBuffer) || result.byteLength === 0) {
           clearKeyfileSelection();
