@@ -31,6 +31,32 @@ const hashPath = path.join(projectRoot, 'build', 'coldbox.html.sha256');
 // flagged.
 const NO_MACHINE_PATHS = /[A-Za-z]:\\(?!u003c|u003e|u0026)|\/Users\/|\/home\//;
 
+// P0.20: PROVENANCE_LICENSE_TEXT is the first embedded value that is raw
+// multi-line prose rather than single-line HTML, so it is the first value
+// whose JSON.stringify() encoding can legitimately contain the plain
+// control-character escape `\n` mid-sentence. The real repository LICENSE
+// has several sentences that end a line with a colon (e.g. "...supplement
+// the terms of this License with terms:\n"), which is "letter, colon,
+// backslash, n" - the same shape this check looks for, and unlike F2's
+// \u003c/\u003e/\u0026 case there is no way to extend the exclusion to
+// cover it without also blinding the check to real "C:\temp",
+// "C:\repo", "C:\node_modules"-shaped absolute paths (those are exactly as
+// plausible as this collision, so excluding bare "n"/"r"/"t" after a drive
+// letter would be a net loss of real detection power, not a fix).
+//
+// Resolved by excluding only the one substring this check cannot usefully
+// evaluate: the embedded licence text itself, whose byte-identity to the
+// repository's own path-free LICENSE file is independently proven by
+// test/legal-notices.test.js. Every other byte of the build - including the
+// surrounding assignment statement, every other embedded value, and the
+// rest of the document - is still checked in full.
+function stripEmbeddedLicenseText(html) {
+  return html.replace(
+    /var PROVENANCE_LICENSE_TEXT = "(?:[^"\\]|\\.)*";/,
+    'var PROVENANCE_LICENSE_TEXT = "";'
+  );
+}
+
 // Mirrors scripts/build.js's jsonScriptLiteral() exactly. Not imported
 // directly because build.js runs its build as top-level side effects on
 // require (it's a CLI script, not a library module) - requiring it here
@@ -79,6 +105,10 @@ function createBuildRoot() {
   for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
     fs.cpSync(path.join(projectRoot, directory), path.join(root, directory), { recursive: true });
   }
+  // P0.20: build.js now reads the repository LICENSE file directly (see
+  // readLicenseText()), so every isolated build root needs a copy or the
+  // build fails with ENOENT before assembling anything.
+  fs.copyFileSync(path.join(projectRoot, 'LICENSE'), path.join(root, 'LICENSE'));
   return root;
 }
 
@@ -118,7 +148,7 @@ test('build assembles one HTML file and emits its SHA-256 sidecar', () => {
   assert.match(html.toString('utf8'), /<title>Coldbox<\/title>/);
   assert.doesNotMatch(html.toString('utf8'), /__COLDBOX_/);
   assert.equal(sidecar, `${digest}  build/coldbox.html\n`);
-  assert.doesNotMatch(html.toString('utf8'), NO_MACHINE_PATHS);
+  assert.doesNotMatch(stripEmbeddedLicenseText(html.toString('utf8')), NO_MACHINE_PATHS);
   assert.equal(html.includes(0x0d), false, 'generated HTML must use LF line endings');
   assert.equal(Buffer.from(sidecar, 'utf8').includes(0x0d), false, 'sidecar must use LF line endings');
 });

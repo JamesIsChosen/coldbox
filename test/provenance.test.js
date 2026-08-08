@@ -38,6 +38,9 @@ function createBuildRoot() {
   for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
     fs.cpSync(path.join(projectRoot, directory), path.join(root, directory), { recursive: true });
   }
+  // P0.20: build.js reads the repository LICENSE file directly; every
+  // isolated build root needs a copy or the build fails with ENOENT.
+  fs.copyFileSync(path.join(projectRoot, 'LICENSE'), path.join(root, 'LICENSE'));
   return root;
 }
 
