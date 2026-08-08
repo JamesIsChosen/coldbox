@@ -109,11 +109,11 @@ This is not a reason for alarm, and modern platform RNGs are well-scrutinised. I
 
 ### Mixing — the recommended approach
 
-Combine dice entropy with CSPRNG output: XOR them, then hash the result.
+Combine physical/manual entropy with fresh CSPRNG output: XOR them, then hash the result.
 
 ```
  dice / coins / cards / hex          CSPRNG
-  (your physical entropy)      (crypto.getRandomValues)
+  (physical/manual source)     (crypto.getRandomValues)
             │                            │
             └───────────  XOR  ──────────┘
                            │
@@ -122,9 +122,27 @@ Combine dice entropy with CSPRNG output: XOR them, then hash the result.
               mixed entropy (128–256 bits)
 ```
 
-The property this gives you: **neither source alone determines the outcome.** A weighted die can't compromise the result if the RNG is sound. A backdoored RNG can't compromise it if your dice are fair. You'd need both to fail simultaneously.
+The Entropy Lab shows **two different strength answers because they describe different threat assumptions**:
 
-This is the default for anything holding real value. If you record no manual entropy at all, there is nothing to XOR against — Entropy Lab falls back to using CSPRNG output directly (the section above), instant but without the diagram's defense-in-depth property.
+- **Normal output strength** — the selected output size (128/160/192/224/256 bits) when the device CSPRNG is functioning correctly. The mixed path always consumes at least that many fresh CSPRNG bits, so a 256-bit selection does not silently fall to 32-bit normal strength merely because only 32 physical bits were supplied.
+- **Independent-source fallback strength** — the conservative physical/manual entropy that remains if the device RNG is completely compromised or predictable. This uses the same integer accounting as the security gate: coin flips contribute 1 bit each, discard-mode dice 2 bits per accepted roll, base-6 dice/cards use the conservative `BigInt` possibility-space floor, and manual hex contributes 4 bits per digit. It never counts device-RNG simulations.
+
+Examples for a 256-bit selection:
+
+| Sources | Normal output strength | Independent-source fallback |
+|---|---:|---:|
+| sound CSPRNG + 0 physical bits | 256 bits | 0 bits — CSPRNG-only security |
+| sound CSPRNG + 32 physical bits | 256 bits | ~32 bits |
+| sound CSPRNG + 128 physical bits | 256 bits | ~128 bits |
+| sound CSPRNG + ≥256 physical bits | 256 bits | ~256 bits — **full two-source protection** |
+
+The independent physical/manual count itself is not artificially capped to the selected target. If 300 conservative independent bits were collected for a 256-bit output, the UI may show `300 / 256 bits`; the fallback strength of that 256-bit output is still bounded by the 256-bit output length.
+
+**Full two-source protection** means the independent physical/manual contribution itself reaches the selected output size. Only then does the strong statement apply: a weighted/manual source cannot compromise the result if the RNG is sound, and a completely compromised RNG still does not reduce the result below the selected target if the independent source is sound. With only a partial manual contribution, the CSPRNG still supplies the full normal output strength, while the displayed fallback honestly shows the smaller amount that survives a total RNG compromise.
+
+The Entropy Lab's **Generate with device RNG** dice/coin/card/hex controls are simulations, not a substitute for the physical/manual side. They use the same device RNG as CSPRNG, are labeled `Device RNG` in the logs, and receive **zero independent-source credit**. They may remain in the transformation for simulation convenience, but they never increase the fallback figure or trigger the full-protection state.
+
+If no dice/coin/card/hex source material is recorded, Entropy Lab uses the requested fresh CSPRNG bytes directly. If only device-RNG-generated simulations are recorded, they may be included in the XOR/hash transformation, but the security classification remains **CSPRNG-only security** with `0 bits` independent fallback because the same device RNG controls both inputs.
 
 ### Human-chosen passphrases
 

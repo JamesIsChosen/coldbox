@@ -9,31 +9,48 @@
   //
   // Design, and why it looks the way it does, is recorded in
   // docs/05-development/adr/0022-entropy-lab-mixing.md (revised after the
-  // P1.1 review round — see that ADR's amendment note). Summary: manual
-  // sources (dice, coins, cards, hex) are accumulated exactly, with no
-  // floating-point arithmetic anywhere on this path — every "how many bits do
+  // P1.1 review round — see that ADR's amendment note). Summary: source
+  // values (dice, coins, cards, hex) are accumulated exactly, with no
+  // floating-point arithmetic anywhere on the security-accounting path — every "how many bits do
   // we have" answer is computed from an integer bit-length so two runs on two
   // machines can never disagree by a rounding error.
   //
-  // Two mix paths, both fail-closed and both consume ("burn") the CSPRNG
-  // bytes they use so a second mix() call can never silently replay them -
-  //   - No manual entropy recorded: CSPRNG is a source in its own right per
-  //     entropy-and-strength.md ("256 bits by definition"), so the requested
-  //     number of fresh CSPRNG bytes is returned directly.
-  //   - Manual entropy recorded: output is exactly SHA-256(manualBytes XOR
-  //     csprngBytes) truncated to the requested length, matching the literal
-  //     formula documented in entropy-and-strength.md and first-wallet.md. A
-  //     single SHA-256 block is 32 bytes, which already covers every valid
-  //     target size (128-256 bits = 16-32 bytes), so no block-counter
-  //     expansion is needed and none is used. The manual side must
-  //     independently reach the requested bit count before mixing is
-  //     allowed — defense in depth, so a compromised or backdoored CSPRNG
-  //     cannot reduce security below the target even though it also
-  //     contributes to the output.
+  // Two generation paths, both fail-closed and both consume ("burn") fresh
+  // CSPRNG bytes so a second mix() call can never silently replay them -
+  //   - No dice/coin/card/hex source material recorded: CSPRNG is a source in
+  //     its own right per entropy-and-strength.md, so the requested number of
+  //     fresh CSPRNG bytes is returned directly.
+  //   - Any source material recorded: sourceBytes is XORed against an equal-
+  //     length fresh CSPRNG slice and SHA-256 hashed. When sourceBytes is
+  //     shorter than the selected output, it is right-padded with zero bytes
+  //     to the target length *for the XOR only* so the normal-operation result
+  //     still consumes at least targetBits of fresh CSPRNG entropy. Existing
+  //     full-length serialization remains byte-for-byte unchanged.
+  //
+  // Security accounting is deliberately separate from transformation bytes.
+  // Genuine physical/manual values receive conservative independent-source
+  // credit; device-RNG-generated dice/coins/cards/hex receive zero. A partial
+  // manual contribution may therefore strengthen fallback security without
+  // being mislabeled as full two-source protection. Full two-source protection
+  // is true only when independent manual credit reaches the selected target.
 
   var noble = global.__coldboxNobleCrypto;
 
   var VALID_TARGET_BITS = Object.freeze([128, 160, 192, 224, 256]);
+  var PROVENANCE_MANUAL = 'manual';
+  var PROVENANCE_DEVICE_RNG = 'device-rng';
+
+  function normalizeProvenance(provenance) {
+    var normalized = provenance === undefined ? PROVENANCE_MANUAL : provenance;
+    if (normalized !== PROVENANCE_MANUAL && normalized !== PROVENANCE_DEVICE_RNG) {
+      throw new Error('Entropy Lab: provenance must be manual or device-rng.');
+    }
+    return normalized;
+  }
+
+  function isIndependentManual(provenance) {
+    return provenance === PROVENANCE_MANUAL;
+  }
 
   function isValidTargetBits(bits) {
     return VALID_TARGET_BITS.indexOf(bits) !== -1;
@@ -93,6 +110,18 @@
     return output;
   }
 
+  function rightPadBytes(bytes, byteLength) {
+    if (bytes.length > byteLength) {
+      throw new Error('Entropy Lab internal error: cannot pad bytes to a shorter length.');
+    }
+    if (bytes.length === byteLength) {
+      return new Uint8Array(bytes);
+    }
+    var output = new Uint8Array(byteLength);
+    output.set(bytes, 0);
+    return output;
+  }
+
   function xorBytes(left, right) {
     if (left.length !== right.length) {
       throw new Error('Entropy Lab internal error: XOR operands must be equal length.');
@@ -136,11 +165,12 @@
   //                     the deck empties (log2(remaining) bits).
   //
   // These were originally one shared exactBits array for coin/discard-dice/
-  // hex combined; a round of hands-on testing after the second review round
-  // found that sharing state made a per-source Reset button impossible to
-  // implement without also wiping the other two sources sharing the array,
-  // so they were split. manualEntropyBytes' concatenation order (below) is
-  // fixed and load-bearing for test vectors, same as before the split.
+  // hex combined. Per-source Reset still needs source-local arrays for the UI,
+  // but serialization now also keeps exactBitEvents: a chronological ledger
+  // carrying source kind, exact bits, and provenance. Reset filters only the
+  // requested source from that ledger; remaining events retain their order.
+  // sourceEntropyBytes flattens the surviving ledger once and pads once, which
+  // preserves the original exact-bit serialization semantics.
   //
   // Every add*/reset* function pushes a {kind, undo} entry onto
   // session.history; undo(session) pops and calls the top entry's undo().
@@ -153,11 +183,21 @@
   function createSession() {
     return {
       coinBits: [],
+      coinProvenance: [],
       discardDiceBits: [],
+      discardDiceProvenance: [],
       hexBits: [],
+      hexProvenance: [],
+      // Chronological ledger for the exact-bit sources (coin, discard-dice,
+      // hex). Reset removes only matching events and leaves the surviving
+      // events in their original relative order, so serialization can flatten
+      // once and pad once exactly as the pre-Reset implementation did.
+      exactBitEvents: [],
       diceDigits: [],
+      diceProvenance: [],
       diceValue: 0n,
       cardOrder: [],
+      cardProvenance: [],
       cardRemaining: Array.from({ length: 52 }, function (_, i) { return i; }),
       // Pool size recorded *before* each draw, in draw order. Kept separate
       // from cardOrder.length because a reshuffle (startNewCardShuffle)
@@ -165,7 +205,7 @@
       // cardValue, so a second (or third...) pass through the deck keeps
       // compounding entropy into the same factorial-number-system
       // accumulator rather than starting over. cardGuaranteedBits/
-      // manualEntropyBytes multiply this array, not a formula assuming a
+      // sourceEntropyBytes multiplies this array, not a formula assuming a
       // single unbroken 52-down-to-0 sequence.
       cardDrawPoolSizes: [],
       cardValue: 0n,
@@ -222,7 +262,6 @@
   }
 
   function addBitsToArray(session, array, bitArray, label) {
-    var start = array.length;
     for (var i = 0; i < bitArray.length; i += 1) {
       var bit = bitArray[i];
       if (bit !== 0 && bit !== 1) {
@@ -232,16 +271,48 @@
     }
   }
 
-  function addCoin(session, isHeads) {
+  function appendExactBitEvent(session, kind, bits, provenance) {
+    var event = {
+      kind: kind,
+      bits: bits.slice(),
+      provenance: provenance
+    };
+    session.exactBitEvents.push(event);
+    return event;
+  }
+
+  function removeExactBitEvent(session, event) {
+    var index = session.exactBitEvents.indexOf(event);
+    if (index !== -1) {
+      session.exactBitEvents.splice(index, 1);
+    }
+  }
+
+  function resetExactBitEvents(session, kind) {
+    session.exactBitEvents = session.exactBitEvents.filter(function (event) {
+      return event.kind !== kind;
+    });
+  }
+
+  function addCoin(session, isHeads, provenance) {
+    var source = normalizeProvenance(provenance);
+    var bit = isHeads ? 1 : 0;
     var start = session.coinBits.length;
-    addBitsToArray(session, session.coinBits, [isHeads ? 1 : 0], 'coin flip');
+    var provenanceStart = session.coinProvenance.length;
+    addBitsToArray(session, session.coinBits, [bit], 'coin flip');
+    session.coinProvenance.push(source);
+    var exactEvent = appendExactBitEvent(session, 'coin', [bit], source);
     pushHistory(session, 'coin', function () {
       session.coinBits.length = start;
+      session.coinProvenance.length = provenanceStart;
+      removeExactBitEvent(session, exactEvent);
     });
   }
 
   function resetCoin(session) {
     session.coinBits = [];
+    session.coinProvenance = [];
+    resetExactBitEvents(session, 'coin');
     purgeHistoryKind(session, 'coin');
   }
 
@@ -250,41 +321,52 @@
   // rejection-sampling construction for turning a biased-width die into
   // exactly uniform bits without wasting the whole roll on log2(6) fractional
   // bookkeeping. Returns whether the roll was accepted.
-  function addDiceDiscard(session, face) {
+  function addDiceDiscard(session, face, provenance) {
     if (!Number.isInteger(face) || face < 1 || face > 6) {
       throw new Error('Entropy Lab: die face must be an integer 1-6.');
     }
+    var source = normalizeProvenance(provenance);
     if (face > 4) {
       pushHistory(session, 'dice', function () {});
       return false;
     }
     var value = face - 1; // 0..3
+    var bits = [(value >> 1) & 1, value & 1];
     var start = session.discardDiceBits.length;
-    addBitsToArray(session, session.discardDiceBits, [(value >> 1) & 1, value & 1], 'discard-mapped die roll');
+    var provenanceStart = session.discardDiceProvenance.length;
+    addBitsToArray(session, session.discardDiceBits, bits, 'discard-mapped die roll');
+    session.discardDiceProvenance.push(source);
+    var exactEvent = appendExactBitEvent(session, 'dice', bits, source);
     pushHistory(session, 'dice', function () {
       session.discardDiceBits.length = start;
+      session.discardDiceProvenance.length = provenanceStart;
+      removeExactBitEvent(session, exactEvent);
     });
     return true;
   }
 
-  function addHexNibble(session, nibble) {
+  function addHexNibble(session, nibble, provenance) {
     if (!Number.isInteger(nibble) || nibble < 0 || nibble > 15) {
       throw new Error('Entropy Lab: hex nibble must be an integer 0-15.');
     }
+    var source = normalizeProvenance(provenance);
+    var bits = [(nibble >> 3) & 1, (nibble >> 2) & 1, (nibble >> 1) & 1, nibble & 1];
     var start = session.hexBits.length;
-    addBitsToArray(
-      session,
-      session.hexBits,
-      [(nibble >> 3) & 1, (nibble >> 2) & 1, (nibble >> 1) & 1, nibble & 1],
-      'hex nibble'
-    );
+    var provenanceStart = session.hexProvenance.length;
+    addBitsToArray(session, session.hexBits, bits, 'hex nibble');
+    session.hexProvenance.push(source);
+    var exactEvent = appendExactBitEvent(session, 'hex', bits, source);
     pushHistory(session, 'hex', function () {
       session.hexBits.length = start;
+      session.hexProvenance.length = provenanceStart;
+      removeExactBitEvent(session, exactEvent);
     });
   }
 
   function resetHex(session) {
     session.hexBits = [];
+    session.hexProvenance = [];
+    resetExactBitEvents(session, 'hex');
     purgeHistoryKind(session, 'hex');
   }
 
@@ -292,17 +374,21 @@
   // representable range by 6, so n rolls span [0, 6^n) — a range whose
   // bit-length gives the guaranteed bits via guaranteedBitsForRange, with no
   // per-roll floating point.
-  function addDiceBase6(session, face) {
+  function addDiceBase6(session, face, provenance) {
     if (!Number.isInteger(face) || face < 1 || face > 6) {
       throw new Error('Entropy Lab: die face must be an integer 1-6.');
     }
+    var source = normalizeProvenance(provenance);
     var previousValue = session.diceValue;
     var previousDigits = session.diceDigits.length;
+    var previousProvenance = session.diceProvenance.length;
     session.diceValue = session.diceValue * 6n + BigInt(face - 1);
     session.diceDigits.push(face - 1);
+    session.diceProvenance.push(source);
     pushHistory(session, 'dice', function () {
       session.diceValue = previousValue;
       session.diceDigits.length = previousDigits;
+      session.diceProvenance.length = previousProvenance;
     });
   }
 
@@ -312,8 +398,11 @@
   // case a single combined reset needs to handle cleanly.
   function resetDice(session) {
     session.diceDigits = [];
+    session.diceProvenance = [];
     session.diceValue = 0n;
     session.discardDiceBits = [];
+    session.discardDiceProvenance = [];
+    resetExactBitEvents(session, 'dice');
     purgeHistoryKind(session, 'dice');
   }
 
@@ -329,26 +418,30 @@
   // SPEC.md 11; chaining shuffles multiplies further ranges into the same
   // accumulator, matching entropy-and-strength.md's "1 shuffle ~= 225 bits,
   // 2 shuffles" row for a 256-bit target.
-  function addCard(session, cardId) {
+  function addCard(session, cardId, provenance) {
     if (!Number.isInteger(cardId) || cardId < 0 || cardId > 51) {
       throw new Error('Entropy Lab: card id must be an integer 0-51.');
     }
+    var source = normalizeProvenance(provenance);
     var rank = session.cardRemaining.indexOf(cardId);
     if (rank === -1) {
       throw new Error('Entropy Lab: that card was already drawn this shuffle.');
     }
     var previousValue = session.cardValue;
     var previousOrder = session.cardOrder.length;
+    var previousProvenance = session.cardProvenance.length;
     var previousPoolSizes = session.cardDrawPoolSizes.length;
     var previousRemaining = session.cardRemaining.slice();
     var remainingCountBeforeDraw = session.cardRemaining.length;
     session.cardValue = session.cardValue * BigInt(remainingCountBeforeDraw) + BigInt(rank);
     session.cardRemaining.splice(rank, 1);
     session.cardOrder.push(cardId);
+    session.cardProvenance.push(source);
     session.cardDrawPoolSizes.push(remainingCountBeforeDraw);
     pushHistory(session, 'card', function () {
       session.cardValue = previousValue;
       session.cardOrder.length = previousOrder;
+      session.cardProvenance.length = previousProvenance;
       session.cardDrawPoolSizes.length = previousPoolSizes;
       session.cardRemaining = previousRemaining;
     });
@@ -356,6 +449,7 @@
 
   function resetCards(session) {
     session.cardOrder = [];
+    session.cardProvenance = [];
     session.cardValue = 0n;
     session.cardDrawPoolSizes = [];
     session.cardRemaining = Array.from({ length: 52 }, function (_, i) { return i; });
@@ -408,11 +502,28 @@
 
   // --- Reporting -------------------------------------------------------------
 
+  function independentExactBitCount(session) {
+    var bits = 0;
+    for (var i = 0; i < session.exactBitEvents.length; i += 1) {
+      var event = session.exactBitEvents[i];
+      if (isIndependentManual(event.provenance)) {
+        bits += event.bits.length;
+      }
+    }
+    return bits;
+  }
+
   function diceGuaranteedBits(session) {
-    if (session.diceDigits.length === 0) {
+    var manualRolls = 0;
+    for (var i = 0; i < session.diceProvenance.length; i += 1) {
+      if (isIndependentManual(session.diceProvenance[i])) {
+        manualRolls += 1;
+      }
+    }
+    if (manualRolls === 0) {
       return 0;
     }
-    return guaranteedBitsForRange(6n ** BigInt(session.diceDigits.length));
+    return guaranteedBitsForRange(6n ** BigInt(manualRolls));
   }
 
   function cardRange(session) {
@@ -424,46 +535,94 @@
   }
 
   function cardGuaranteedBits(session) {
-    if (session.cardOrder.length === 0) {
+    var range = 1n;
+    var manualDraws = 0;
+    for (var i = 0; i < session.cardDrawPoolSizes.length; i += 1) {
+      if (isIndependentManual(session.cardProvenance[i])) {
+        range *= BigInt(session.cardDrawPoolSizes[i]);
+        manualDraws += 1;
+      }
+    }
+    if (manualDraws === 0) {
       return 0;
     }
-    return guaranteedBitsForRange(cardRange(session));
+    return guaranteedBitsForRange(range);
   }
 
   // CSPRNG bytes are "256 bits by definition" (entropy-and-strength.md) —
   // full guaranteed entropy per byte, whether they end up used alone (no
-  // manual entropy recorded) or XORed against manual entropy during mixing.
+  // source values recorded) or XORed against source material during mixing.
   // Counts only *available* (unspent) bytes — see availableCsprngBytes.
   function csprngGuaranteedBits(session) {
     return availableCsprngBytes(session).length * 8;
   }
 
-  // The conservative, hard-floor bit count the meter and the mix gate use
-  // for *manually recorded* entropy (dice, coins, cards, hex) only —
-  // "guaranteed" because it is derived from the size of the possibility
-  // space, never from the actual sampled value, per SPEC.md 11.1a's
-  // min-entropy accounting. CSPRNG bits are reported separately
-  // (csprngGuaranteedBits) rather than summed in here: see mix()'s comment
-  // for why a CSPRNG-only session and a manual+CSPRNG mix use different
-  // gates rather than one combined total.
-  function guaranteedBits(session) {
-    return session.coinBits.length + session.discardDiceBits.length + session.hexBits.length
-      + diceGuaranteedBits(session) + cardGuaranteedBits(session);
+  function deviceRngDerivedValueCount(session) {
+    var count = 0;
+    for (var i = 0; i < session.exactBitEvents.length; i += 1) {
+      if (session.exactBitEvents[i].provenance === PROVENANCE_DEVICE_RNG) {
+        count += 1;
+      }
+    }
+    for (var j = 0; j < session.diceProvenance.length; j += 1) {
+      if (session.diceProvenance[j] === PROVENANCE_DEVICE_RNG) {
+        count += 1;
+      }
+    }
+    for (var k = 0; k < session.cardProvenance.length; k += 1) {
+      if (session.cardProvenance[k] === PROVENANCE_DEVICE_RNG) {
+        count += 1;
+      }
+    }
+    return count;
   }
 
-  // Concatenation order is fixed and load-bearing for test/entropy-lab.test.js's
-  // vectors: coin bits, then discard-dice bits, then hex bits, then the
-  // base-6 dice accumulator, then the card accumulator. Any source not used
-  // contributes zero bytes at its position, same as before the exactBits
-  // split — three separate (possibly empty) bit arrays packed independently
-  // is equivalent to packing one concatenated array, since bitsToBytes pads
-  // each to a whole byte boundary the same way whichever way it's split.
-  function manualEntropyBytes(session) {
-    var pieces = [
-      bitsToBytes(session.coinBits),
-      bitsToBytes(session.discardDiceBits),
-      bitsToBytes(session.hexBits)
-    ];
+  // The conservative, hard-floor bit count the meter and mixed-mode gate use
+  // for genuinely independent/manual entropy only. Device-RNG-generated dice,
+  // coins, cards, and hex are retained as source material for simulation and
+  // may participate in the eventual hash, but contribute *zero* to this gate -
+  // counting them here would let one compromised RNG control both sides of the
+  // advertised defense-in-depth construction.
+  function guaranteedBits(session) {
+    return independentExactBitCount(session) + diceGuaranteedBits(session)
+      + cardGuaranteedBits(session);
+  }
+
+  function strengthSummary(session, targetBits) {
+    if (!isValidTargetBits(targetBits)) {
+      throw new Error(`Entropy Lab: targetBits must be one of ${VALID_TARGET_BITS.join(', ')}.`);
+    }
+    var independentBits = guaranteedBits(session);
+    var fallbackBits = Math.min(independentBits, targetBits);
+    var fullTwoSourceProtection = independentBits >= targetBits;
+    var mode = independentBits === 0
+      ? 'csprng-only'
+      : (fullTwoSourceProtection ? 'full-two-source' : 'partial-independent-fallback');
+    return {
+      normalOutputBits: targetBits,
+      independentBits: independentBits,
+      fallbackBits: fallbackBits,
+      fullTwoSourceProtection: fullTwoSourceProtection,
+      mode: mode
+    };
+  }
+
+  // Preserve the pre-Reset exact-bit wire format: coin/discard-dice/hex bits
+  // are serialized in chronological insertion order, flattened to one bit
+  // stream and padded exactly once. Base-6 dice and cards remain the same
+  // fixed trailing accumulator fields as before. Provenance affects independent-source security credit, never byte encoding.
+  // The resulting source bytes may therefore contain both genuine manual and
+  // device-RNG-derived simulation values; the name intentionally does not call
+  // this aggregate "manual" entropy.
+  function sourceEntropyBytes(session) {
+    var exactBits = [];
+    for (var i = 0; i < session.exactBitEvents.length; i += 1) {
+      var eventBits = session.exactBitEvents[i].bits;
+      for (var bitIndex = 0; bitIndex < eventBits.length; bitIndex += 1) {
+        exactBits.push(eventBits[bitIndex]);
+      }
+    }
+    var pieces = [bitsToBytes(exactBits)];
     if (session.diceDigits.length > 0) {
       pieces.push(bigIntToBytes(session.diceValue, bytesNeededForRange(6n ** BigInt(session.diceDigits.length))));
     }
@@ -489,57 +648,56 @@
       throw new Error(`Entropy Lab: targetBits must be one of ${VALID_TARGET_BITS.join(', ')}.`);
     }
     var targetBytes = targetBits / 8;
-    var manualBytes = manualEntropyBytes(session);
+    var sourceBytes = sourceEntropyBytes(session);
 
-    if (manualBytes.length === 0) {
-      // Pure-CSPRNG path (SPEC.md 11: CSPRNG is a source in its own right,
-      // not only a mixing ingredient; entropy-and-strength.md: "256 bits by
-      // definition"). No manual entropy means there is nothing to XOR
-      // against, so the requested number of fresh bytes is used directly
-      // rather than hashed — hashing CSPRNG output would not add security
-      // and would contradict that section's literal description.
+    if (sourceBytes.length === 0) {
+      // Pure-CSPRNG path: with no dice/coin/card/hex source material there is
+      // nothing to XOR against, so the requested fresh bytes are used directly.
       var availableForDirect = availableCsprngBytes(session);
       if (availableForDirect.length < targetBytes) {
-        throw new Error(`Entropy Lab: need ${targetBytes} CSPRNG bytes for a ${targetBits}-bit CSPRNG-only draw; have ${availableForDirect.length}. Draw more CSPRNG bytes, or record some manual (dice/coin/card/hex) entropy to mix instead.`);
+        throw new Error(`Entropy Lab: need ${targetBytes} CSPRNG bytes for a ${targetBits}-bit CSPRNG-only draw; have ${availableForDirect.length}. Draw more CSPRNG bytes.`);
       }
       var direct = new Uint8Array(availableForDirect.slice(0, targetBytes));
-      // Advancing the offset, never shortening session.csprngBytes itself,
-      // is what makes this consumption survive undo of an earlier draw —
-      // see createSession's comment on csprngConsumed.
       session.csprngConsumed += targetBytes;
       return direct;
     }
 
-    // Mixed path. The manual side must independently reach the target
-    // *before* CSPRNG is allowed to help — defense in depth, so a
-    // compromised/backdoored CSPRNG cannot pull security below the target
-    // even though it also contributes to the final output (ADR-0022).
-    var available = guaranteedBits(session);
-    if (available < targetBits) {
-      throw new Error(`Entropy Lab: only ${available} guaranteed manual bits collected; ${targetBits} are required before mixing. Keep collecting, or clear manual entropy to use a CSPRNG-only draw instead.`);
-    }
+    // Mixed transformation path. Independent-source credit is *not* a gate on
+    // normal generation strength: a sound CSPRNG can supply the selected output
+    // strength even when physical/manual entropy is partial or absent. Instead,
+    // guaranteedBits()/strengthSummary() report how much fallback remains if the
+    // device RNG is completely compromised, and only target-reaching independent
+    // credit earns the "full two-source protection" claim.
+    //
+    // To support partial source material without weakening normal-operation
+    // strength, the XOR input is at least targetBytes long. A shorter serialized
+    // source is right-padded with zeros solely for the XOR; sourceEntropyBytes()
+    // itself and all established full-length serialization vectors remain
+    // unchanged. If source material is longer than the target, the established
+    // behavior of mixing every serialized source byte is preserved.
     if (!noble || typeof noble.sha256 !== 'function') {
       throw new Error('Entropy Lab: SHA-256 is unavailable; refusing to mix without it.');
     }
+    var mixLength = Math.max(targetBytes, sourceBytes.length);
     var availableForMix = availableCsprngBytes(session);
-    if (availableForMix.length < manualBytes.length) {
-      throw new Error(`Entropy Lab: need at least ${manualBytes.length} CSPRNG bytes to XOR against manual entropy; have ${availableForMix.length}. Draw more CSPRNG bytes.`);
+    if (availableForMix.length < mixLength) {
+      throw new Error(`Entropy Lab: need at least ${mixLength} fresh CSPRNG bytes for this ${targetBits}-bit output; have ${availableForMix.length}. Draw more CSPRNG bytes.`);
     }
-    var csprngSlice = availableForMix.slice(0, manualBytes.length);
-    var xored = xorBytes(manualBytes, csprngSlice);
-    // A single SHA-256 block is 32 bytes, which already covers the largest
-    // valid target (256 bits = 32 bytes), so the digest is truncated
-    // directly rather than expanded — matching the literal
-    // SHA-256(manual XOR csprng) formula in entropy-and-strength.md and
-    // first-wallet.md, with no block-counter construction of our own.
+    var sourceForMix = sourceBytes.length === mixLength
+      ? sourceBytes
+      : rightPadBytes(sourceBytes, mixLength);
+    var csprngSlice = availableForMix.slice(0, mixLength);
+    var xored = xorBytes(sourceForMix, csprngSlice);
     var digest = noble.sha256(xored);
     var output = new Uint8Array(digest.slice(0, targetBytes));
-    session.csprngConsumed += manualBytes.length;
+    session.csprngConsumed += mixLength;
     return output;
   }
 
   global.__coldboxEntropyLab = Object.freeze({
     VALID_TARGET_BITS: VALID_TARGET_BITS,
+    PROVENANCE_MANUAL: PROVENANCE_MANUAL,
+    PROVENANCE_DEVICE_RNG: PROVENANCE_DEVICE_RNG,
     isValidTargetBits: isValidTargetBits,
     createSession: createSession,
     undoLast: undoLast,
@@ -556,11 +714,13 @@
     addCsprngBytes: addCsprngBytes,
     resetCsprng: resetCsprng,
     guaranteedBits: guaranteedBits,
+    strengthSummary: strengthSummary,
     diceGuaranteedBits: diceGuaranteedBits,
     cardGuaranteedBits: cardGuaranteedBits,
     csprngGuaranteedBits: csprngGuaranteedBits,
+    deviceRngDerivedValueCount: deviceRngDerivedValueCount,
     availableCsprngBytes: availableCsprngBytes,
-    manualEntropyBytes: manualEntropyBytes,
+    sourceEntropyBytes: sourceEntropyBytes,
     mix: mix,
     // Exposed for testing against independently-computed vectors only; not
     // used by the wiring in main.js.
@@ -571,6 +731,7 @@
       bytesNeededForRange: bytesNeededForRange,
       xorBytes: xorBytes,
       concatBytes: concatBytes,
+      rightPadBytes: rightPadBytes,
       bitsToBytes: bitsToBytes
     }
   });

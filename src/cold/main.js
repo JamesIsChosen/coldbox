@@ -71,6 +71,11 @@ __COLDBOX_CAPABILITIES__
   var entropyCsprngStatus = document.getElementById('cold-entropy-csprng-status');
   var entropyUndoButton = document.getElementById('cold-entropy-undo');
   var entropyMeter = document.getElementById('cold-entropy-meter');
+  var entropyOutputStrength = document.getElementById('cold-entropy-output-strength');
+  var entropyIndependentStrength = document.getElementById('cold-entropy-independent-strength');
+  var entropyFallbackStrength = document.getElementById('cold-entropy-fallback-strength');
+  var entropySimulatedCount = document.getElementById('cold-entropy-simulated-count');
+  var entropyCsprngStrength = document.getElementById('cold-entropy-csprng-strength');
   var entropyTargetSelect = document.getElementById('cold-entropy-target');
   var entropyMixButton = document.getElementById('cold-entropy-mix-run');
   var entropyMixStatus = document.getElementById('cold-entropy-mix-status');
@@ -175,7 +180,7 @@ __COLDBOX_CAPABILITIES__
         button.textContent = cardLabel(cardId);
         (function (id) {
           button.addEventListener('click', function () {
-            drawCard(id);
+            drawCard(id, entropyLab.PROVENANCE_MANUAL);
           });
         }(cardId));
         entropyCardGrid.appendChild(button);
@@ -197,15 +202,18 @@ __COLDBOX_CAPABILITIES__
       entropyCardLog.textContent = 'None yet.';
       return;
     }
-    entropyCardLog.textContent = entropySession.cardOrder.map(cardLabel).join(', ');
+    entropyCardLog.textContent = formatProvenanceLog(
+      entropySession.cardOrder.map(function (cardId) { return cardLabel(cardId); }),
+      entropySession.cardProvenance
+    );
   }
 
-  function drawCard(cardId) {
+  function drawCard(cardId, provenance) {
     if (!entropyLabReady() || !entropySession) {
       return;
     }
     try {
-      entropyLab.addCard(entropySession, cardId);
+      entropyLab.addCard(entropySession, cardId, provenance);
     } catch (error) {
       if (entropyMixStatus) {
         entropyMixStatus.textContent = error.message;
@@ -216,9 +224,10 @@ __COLDBOX_CAPABILITIES__
   }
 
   // Uniform integer in [0, maxExclusive) via rejection sampling on fresh
-  // CSPRNG bytes — used only by the "Generate random" conveniences below, to
-  // fill in a source's manual entropy without ever using Math.random or
-  // introducing modulo bias. maxExclusive is always small here (<=52), so a
+  // CSPRNG bytes — used only by the "Generate with device RNG" conveniences
+  // below. entropy-lab.js records those values with device-rng provenance so
+  // they contribute zero independent-manual security credit. maxExclusive is
+  // always small here (<=52), so a
   // single JS number (not BigInt) is safe throughout.
   function drawUniformInt(maxExclusive) {
     if (!cryptoLayer || typeof cryptoLayer.randomBytes !== 'function') {
@@ -291,16 +300,68 @@ __COLDBOX_CAPABILITIES__
     entropyMixOutputLabel.hidden = false;
   }
 
+  function formatEntropyFallback(strength) {
+    if (strength.fallbackBits === 0) {
+      return '0 bits — CSPRNG-only security';
+    }
+    if (strength.fullTwoSourceProtection) {
+      return '~' + strength.fallbackBits + ' bits — full two-source protection';
+    }
+    return '~' + strength.fallbackBits + ' bits — partial independent fallback';
+  }
+
+  function formatProvenanceLog(values, provenances) {
+    var manual = [];
+    var device = [];
+    for (var index = 0; index < values.length; index += 1) {
+      if (provenances[index] === entropyLab.PROVENANCE_DEVICE_RNG) {
+        device.push(values[index]);
+      } else {
+        manual.push(values[index]);
+      }
+    }
+    var parts = [];
+    if (manual.length > 0) {
+      parts.push('Physical/manual: ' + manual.join(', '));
+    }
+    if (device.length > 0) {
+      parts.push('Device RNG: ' + device.join(', '));
+    }
+    return parts.length === 0 ? 'None yet.' : parts.join(' · ');
+  }
+
   function updateEntropyMeter() {
-    if (!entropyMeter || !entropySession) {
+    if (!entropyMeter || !entropySession || !entropyTargetSelect) {
       return;
     }
-    var bits = entropyLab.guaranteedBits(entropySession);
+    var targetBits = Number(entropyTargetSelect.value);
+    var strength = entropyLab.strengthSummary(entropySession, targetBits);
+    var simulated = entropyLab.deviceRngDerivedValueCount(entropySession);
     var csprngBits = entropyLab.csprngGuaranteedBits(entropySession);
-    entropyMeter.setAttribute('data-guaranteed-bits', String(bits));
+
+    entropyMeter.setAttribute('data-guaranteed-bits', String(strength.independentBits));
+    entropyMeter.setAttribute('data-independent-bits', String(strength.independentBits));
+    entropyMeter.setAttribute('data-device-rng-values', String(simulated));
     entropyMeter.setAttribute('data-csprng-bits', String(csprngBits));
-    entropyMeter.textContent = 'Collected: ' + bits + ' guaranteed bit' + (bits === 1 ? '' : 's')
-      + ' from dice/coins/cards/hex, plus ' + csprngBits + ' fresh CSPRNG bit' + (csprngBits === 1 ? '' : 's') + '.';
+    entropyMeter.setAttribute('data-output-strength-bits', String(strength.normalOutputBits));
+    entropyMeter.setAttribute('data-fallback-bits', String(strength.fallbackBits));
+    entropyMeter.setAttribute('data-full-two-source-protection', String(strength.fullTwoSourceProtection));
+
+    if (entropyOutputStrength) {
+      entropyOutputStrength.textContent = strength.normalOutputBits + ' bits';
+    }
+    if (entropyIndependentStrength) {
+      entropyIndependentStrength.textContent = strength.independentBits + ' / ' + targetBits + ' bits';
+    }
+    if (entropyFallbackStrength) {
+      entropyFallbackStrength.textContent = formatEntropyFallback(strength);
+    }
+    if (entropySimulatedCount) {
+      entropySimulatedCount.textContent = simulated + ' (0 independent bits)';
+    }
+    if (entropyCsprngStrength) {
+      entropyCsprngStrength.textContent = csprngBits + ' bits';
+    }
   }
 
   // Single source of truth for the CSPRNG status line, reporting only
@@ -321,7 +382,7 @@ __COLDBOX_CAPABILITIES__
   // options.preserveOutput: when true, does not clear a just-displayed mix
   // result. Only the mix button's success path passes this — every other
   // caller (adding entropy, undo, changing the target size) wants the old
-  // result cleared, since it review found a stale result surviving further
+  // result cleared, since review found a stale result surviving further
   // input. The mix button still needs this function's other effects (the
   // meter, CSPRNG status, and undo button must reflect newly spent CSPRNG
   // bytes immediately, not only after some later unrelated action — a
@@ -354,15 +415,19 @@ __COLDBOX_CAPABILITIES__
     }
     var parts = [];
     if (entropySession.diceDigits.length > 0) {
-      parts.push('base-6: ' + entropySession.diceDigits.map(function (digit) { return digit + 1; }).join(', '));
+      parts.push('base-6 — ' + formatProvenanceLog(
+        entropySession.diceDigits.map(function (digit) { return String(digit + 1); }),
+        entropySession.diceProvenance
+      ));
     }
     var discardBits = entropySession.discardDiceBits;
     if (discardBits.length > 0) {
       var discardFaces = [];
       for (var i = 0; i + 2 <= discardBits.length; i += 2) {
-        discardFaces.push(((discardBits[i] << 1) | discardBits[i + 1]) + 1);
+        var face = ((discardBits[i] << 1) | discardBits[i + 1]) + 1;
+        discardFaces.push(String(face));
       }
-      parts.push('discard-mode: ' + discardFaces.join(', '));
+      parts.push('discard-mode — ' + formatProvenanceLog(discardFaces, entropySession.discardDiceProvenance));
     }
     entropyDiceLog.textContent = parts.length === 0 ? 'None yet.' : parts.join(' · ');
   }
@@ -383,7 +448,10 @@ __COLDBOX_CAPABILITIES__
     }
     entropyCoinLog.textContent = entropySession.coinBits.length === 0
       ? 'None yet.'
-      : entropySession.coinBits.map(function (bit) { return bit ? 'H' : 'T'; }).join(', ');
+      : formatProvenanceLog(
+        entropySession.coinBits.map(function (bit) { return bit ? 'H' : 'T'; }),
+        entropySession.coinProvenance
+      );
   }
 
   function updateEntropyHexStatus() {
@@ -413,13 +481,13 @@ __COLDBOX_CAPABILITIES__
       var nibble = (bits[i] << 3) | (bits[i + 1] << 2) | (bits[i + 2] << 1) | bits[i + 3];
       digits.push(nibble.toString(16));
     }
-    entropyHexLog.textContent = digits.join(' ');
+    entropyHexLog.textContent = formatProvenanceLog(digits, entropySession.hexProvenance);
   }
 
   // options.preserveOutput: when true, does not clear a just-displayed mix
   // result. Only the mix button's success path passes this — every other
   // caller (adding entropy, undo, changing the target size) wants the old
-  // result cleared, since it review found a stale result surviving further
+  // result cleared, since review found a stale result surviving further
   // input. The mix button still needs this function's other effects (the
   // meter, CSPRNG status, and undo button must reflect newly spent CSPRNG
   // bytes immediately, not only after some later unrelated action — a
@@ -481,26 +549,47 @@ __COLDBOX_CAPABILITIES__
     }
     var targetBits = Number(entropyTargetSelect.value);
     var targetBytes = targetBits / 8;
-    var manualBytes = entropyLab.manualEntropyBytes(entropySession);
+    var sourceBytes = entropyLab.sourceEntropyBytes(entropySession);
     var availableBytes = entropyLab.availableCsprngBytes(entropySession).length;
-    if (manualBytes.length === 0) {
+    var strength = entropyLab.strengthSummary(entropySession, targetBits);
+    var simulated = entropyLab.deviceRngDerivedValueCount(entropySession);
+
+    if (sourceBytes.length === 0) {
       if (availableBytes < targetBytes) {
-        entropyMixStatus.textContent = 'No manual entropy recorded. Need ' + targetBytes + ' fresh CSPRNG bytes for a CSPRNG-only draw; have ' + availableBytes + '.';
+        entropyMixStatus.textContent = 'CSPRNG-only security: need ' + targetBytes + ' fresh CSPRNG bytes for the selected ' + targetBits + '-bit output; have ' + availableBytes + '. Independent-source fallback is 0 bits.';
       } else {
-        entropyMixStatus.textContent = 'Ready for a CSPRNG-only ' + targetBits + '-bit draw (no manual entropy recorded — record dice/coin/card/hex entropy first to mix instead).';
+        entropyMixStatus.textContent = 'Ready for a ' + targetBits + '-bit CSPRNG-only draw. Normal output strength is ' + targetBits + ' bits if the device RNG is sound; independent-source fallback is 0 bits.';
       }
       return;
     }
-    var available = entropyLab.guaranteedBits(entropySession);
-    if (available < targetBits) {
-      entropyMixStatus.textContent = 'Collected ' + available + ' of ' + targetBits + ' guaranteed manual bits needed before mixing.';
+
+    var mixBytesNeeded = Math.max(targetBytes, sourceBytes.length);
+    if (availableBytes < mixBytesNeeded) {
+      var pendingSecurityState;
+      if (strength.fullTwoSourceProtection) {
+        pendingSecurityState = ' Independent physical/manual entropy already reaches the target; full two-source protection becomes available once enough fresh CSPRNG bytes are drawn.';
+      } else if (strength.fallbackBits === 0) {
+        pendingSecurityState = ' This remains CSPRNG-only security with 0-bit independent-source fallback.';
+      } else {
+        pendingSecurityState = ' This is not full two-source protection; independent-source fallback is ~' + strength.fallbackBits + ' bits.';
+      }
+      entropyMixStatus.textContent = 'Need ' + mixBytesNeeded + ' fresh CSPRNG bytes for this ' + targetBits + '-bit output; have ' + availableBytes + '.' + pendingSecurityState;
       return;
     }
-    if (availableBytes < manualBytes.length) {
-      entropyMixStatus.textContent = 'Need ' + manualBytes.length + ' CSPRNG bytes to mix against; have ' + availableBytes + '.';
+
+    if (strength.fullTwoSourceProtection) {
+      entropyMixStatus.textContent = 'Ready for a ' + targetBits + '-bit output with full two-source protection. Independent physical/manual credit: ' + strength.independentBits + ' bits; fallback if the device RNG is compromised: ~' + strength.fallbackBits + ' bits.';
       return;
     }
-    entropyMixStatus.textContent = 'Ready to mix ' + targetBits + ' bits.';
+
+    if (strength.fallbackBits === 0) {
+      entropyMixStatus.textContent = 'Ready for a ' + targetBits + '-bit output with CSPRNG-only security. Independent-source fallback: 0 bits.'
+        + (simulated > 0 ? ' ' + simulated + ' simulated value(s) use the same device RNG and add 0 independent bits.' : '');
+      return;
+    }
+
+    entropyMixStatus.textContent = 'Ready for a ' + targetBits + '-bit output under normal device-RNG operation. Independent-source fallback: ~' + strength.fallbackBits + ' bits from ' + strength.independentBits + ' bits of conservative physical/manual credit; this is not full two-source protection.'
+      + (simulated > 0 ? ' ' + simulated + ' simulated value(s) add 0 independent bits.' : '');
   }
 
   // Reads a "how many" input used by the various "Generate random" rows,
@@ -537,8 +626,8 @@ __COLDBOX_CAPABILITIES__
           Number
         );
         if (parsed.accepted.length === 0) {
-          if (entropyMixStatus) {
-            entropyMixStatus.textContent = parsed.rejected.length > 0
+          if (entropyDiceStatus) {
+            entropyDiceStatus.textContent = parsed.rejected.length > 0
               ? 'No valid die faces found (only digits 1-6 count). Rejected: ' + parsed.rejected.join('')
               : 'Enter at least one die face (1-6) first.';
           }
@@ -551,8 +640,8 @@ __COLDBOX_CAPABILITIES__
           entropyDiceFace.value = '';
         }
         updateEntropyLabControls();
-        if (entropyMixStatus) {
-          entropyMixStatus.textContent = 'Added ' + parsed.accepted.length + ' base-6 roll' + (parsed.accepted.length === 1 ? '' : 's') + '.'
+        if (entropyDiceStatus) {
+          entropyDiceStatus.textContent = 'Added ' + parsed.accepted.length + ' base-6 roll' + (parsed.accepted.length === 1 ? '' : 's') + '.'
             + (parsed.rejected.length > 0 ? ' Ignored invalid character(s): ' + parsed.rejected.join('') : '');
         }
       });
@@ -566,8 +655,8 @@ __COLDBOX_CAPABILITIES__
           Number
         );
         if (parsed.accepted.length === 0) {
-          if (entropyMixStatus) {
-            entropyMixStatus.textContent = parsed.rejected.length > 0
+          if (entropyDiceStatus) {
+            entropyDiceStatus.textContent = parsed.rejected.length > 0
               ? 'No valid die faces found (only digits 1-6 count). Rejected: ' + parsed.rejected.join('')
               : 'Enter at least one die face (1-6) first.';
           }
@@ -583,8 +672,8 @@ __COLDBOX_CAPABILITIES__
           entropyDiceFace.value = '';
         }
         updateEntropyLabControls();
-        if (entropyMixStatus) {
-          entropyMixStatus.textContent = 'Kept ' + acceptedRolls + ' of ' + parsed.accepted.length + ' roll(s) (discard mode only keeps 1-4).'
+        if (entropyDiceStatus) {
+          entropyDiceStatus.textContent = 'Kept ' + acceptedRolls + ' of ' + parsed.accepted.length + ' roll(s) (discard mode only keeps 1-4).'
             + (parsed.rejected.length > 0 ? ' Ignored invalid character(s): ' + parsed.rejected.join('') : '');
         }
       });
@@ -595,18 +684,18 @@ __COLDBOX_CAPABILITIES__
         var count = readRandomCount(entropyDiceRandomCount, 10);
         try {
           for (var i = 0; i < count; i += 1) {
-            entropyLab.addDiceBase6(entropySession, drawUniformInt(6) + 1);
+            entropyLab.addDiceBase6(entropySession, drawUniformInt(6) + 1, entropyLab.PROVENANCE_DEVICE_RNG);
           }
         } catch (error) {
-          if (entropyMixStatus) {
-            entropyMixStatus.textContent = error.message;
-          }
           updateEntropyLabControls();
+          if (entropyDiceStatus) {
+            entropyDiceStatus.textContent = error.message;
+          }
           return;
         }
         updateEntropyLabControls();
-        if (entropyMixStatus) {
-          entropyMixStatus.textContent = 'Generated ' + count + ' random base-6 dice roll(s).';
+        if (entropyDiceStatus) {
+          entropyDiceStatus.textContent = 'Generated ' + count + ' base-6 dice roll(s) with the device RNG. They receive 0 independent-manual credit.';
         }
       });
     }
@@ -636,18 +725,18 @@ __COLDBOX_CAPABILITIES__
         var count = readRandomCount(entropyCoinRandomCount, 10);
         try {
           for (var i = 0; i < count; i += 1) {
-            entropyLab.addCoin(entropySession, drawUniformInt(2) === 1);
+            entropyLab.addCoin(entropySession, drawUniformInt(2) === 1, entropyLab.PROVENANCE_DEVICE_RNG);
           }
         } catch (error) {
-          if (entropyMixStatus) {
-            entropyMixStatus.textContent = error.message;
-          }
           updateEntropyLabControls();
+          if (entropyCoinStatus) {
+            entropyCoinStatus.textContent = error.message;
+          }
           return;
         }
         updateEntropyLabControls();
-        if (entropyMixStatus) {
-          entropyMixStatus.textContent = 'Generated ' + count + ' random coin flip(s).';
+        if (entropyCoinStatus) {
+          entropyCoinStatus.textContent = 'Generated ' + count + ' coin flip(s) with the device RNG. They receive 0 independent-manual credit.';
         }
       });
     }
@@ -664,8 +753,8 @@ __COLDBOX_CAPABILITIES__
         try {
           entropyLab.startNewCardShuffle(entropySession);
         } catch (error) {
-          if (entropyMixStatus) {
-            entropyMixStatus.textContent = error.message;
+          if (entropyCardShuffleStatus) {
+            entropyCardShuffleStatus.textContent = error.message;
           }
           return;
         }
@@ -683,20 +772,17 @@ __COLDBOX_CAPABILITIES__
               entropyLab.startNewCardShuffle(entropySession);
             }
             var pickIndex = drawUniformInt(entropySession.cardRemaining.length);
-            entropyLab.addCard(entropySession, entropySession.cardRemaining[pickIndex]);
+            entropyLab.addCard(entropySession, entropySession.cardRemaining[pickIndex], entropyLab.PROVENANCE_DEVICE_RNG);
             drawn += 1;
           }
         } catch (error) {
-          if (entropyMixStatus) {
-            entropyMixStatus.textContent = error.message;
-          }
           updateEntropyLabControls();
+          if (entropyCardShuffleStatus) {
+            entropyCardShuffleStatus.textContent = error.message;
+          }
           return;
         }
         updateEntropyLabControls();
-        if (entropyMixStatus) {
-          entropyMixStatus.textContent = 'Generated ' + drawn + ' random card draw(s).';
-        }
       });
     }
 
@@ -715,8 +801,8 @@ __COLDBOX_CAPABILITIES__
           function (ch) { return parseInt(ch, 16); }
         );
         if (parsed.accepted.length === 0) {
-          if (entropyMixStatus) {
-            entropyMixStatus.textContent = parsed.rejected.length > 0
+          if (entropyHexStatus) {
+            entropyHexStatus.textContent = parsed.rejected.length > 0
               ? 'No valid hex digits found (0-9, a-f only). Rejected: ' + parsed.rejected.join('')
               : 'Enter at least one hex digit (0-9, a-f) first.';
           }
@@ -729,8 +815,8 @@ __COLDBOX_CAPABILITIES__
           entropyHexInput.value = '';
         }
         updateEntropyLabControls();
-        if (entropyMixStatus) {
-          entropyMixStatus.textContent = 'Added ' + parsed.accepted.length + ' hex digit' + (parsed.accepted.length === 1 ? '' : 's') + '.'
+        if (entropyHexStatus) {
+          entropyHexStatus.textContent = 'Added ' + parsed.accepted.length + ' hex digit' + (parsed.accepted.length === 1 ? '' : 's') + '.'
             + (parsed.rejected.length > 0 ? ' Ignored invalid character(s): ' + parsed.rejected.join('') : '');
         }
       });
@@ -741,18 +827,18 @@ __COLDBOX_CAPABILITIES__
         var count = readRandomCount(entropyHexRandomCount, 10);
         try {
           for (var i = 0; i < count; i += 1) {
-            entropyLab.addHexNibble(entropySession, drawUniformInt(16));
+            entropyLab.addHexNibble(entropySession, drawUniformInt(16), entropyLab.PROVENANCE_DEVICE_RNG);
           }
         } catch (error) {
-          if (entropyMixStatus) {
-            entropyMixStatus.textContent = error.message;
-          }
           updateEntropyLabControls();
+          if (entropyHexStatus) {
+            entropyHexStatus.textContent = error.message;
+          }
           return;
         }
         updateEntropyLabControls();
-        if (entropyMixStatus) {
-          entropyMixStatus.textContent = 'Generated ' + count + ' random hex digit(s).';
+        if (entropyHexStatus) {
+          entropyHexStatus.textContent = 'Generated ' + count + ' hex digit(s) with the device RNG. They receive 0 independent-manual credit.';
         }
       });
     }
@@ -804,8 +890,7 @@ __COLDBOX_CAPABILITIES__
 
     if (entropyTargetSelect) {
       entropyTargetSelect.addEventListener('change', function () {
-        setEntropyMixOutput(null);
-        updateEntropyMixStatus();
+        updateEntropyLabControls();
       });
     }
 
@@ -834,7 +919,13 @@ __COLDBOX_CAPABILITIES__
         updateEntropyLabControls({ preserveOutput: true });
         setEntropyMixOutput(mixed);
         if (entropyMixStatus) {
-          entropyMixStatus.textContent = 'Mixed ' + targetBits + ' bits. Seed Forge (P1.3) is not built yet; this output is not carried anywhere.';
+          var strength = entropyLab.strengthSummary(entropySession, targetBits);
+          var securityText = strength.fullTwoSourceProtection
+            ? ' Full two-source protection: independent-source fallback is ~' + strength.fallbackBits + ' bits.'
+            : (strength.fallbackBits === 0
+              ? ' CSPRNG-only security: independent-source fallback is 0 bits.'
+              : ' Normal output strength is ' + targetBits + ' bits if the device RNG is sound; independent-source fallback is ~' + strength.fallbackBits + ' bits, not full two-source protection.');
+          entropyMixStatus.textContent = 'Mixed ' + targetBits + ' bits.' + securityText + ' Seed Forge (P1.3) is not built yet; this output is not carried anywhere.';
         }
       });
     }

@@ -49,13 +49,18 @@ function hex(bytes) {
 // 4-byte counter prefix that does not match this formula, and this
 // reference function is deliberately as literal as possible so a mismatch
 // like that cannot slip past it again.
-function referenceMix(manualBytes, csprngBytes, targetBits) {
-  const xored = Buffer.alloc(manualBytes.length);
-  for (let i = 0; i < manualBytes.length; i += 1) {
-    xored[i] = manualBytes[i] ^ csprngBytes[i];
+function referenceMix(sourceBytes, csprngBytes, targetBits) {
+  const targetBytes = targetBits / 8;
+  const mixLength = Math.max(targetBytes, sourceBytes.length);
+  assert.ok(csprngBytes.length >= mixLength, 'reference CSPRNG must cover the full XOR input');
+  const sourceForMix = Buffer.alloc(mixLength);
+  Buffer.from(sourceBytes).copy(sourceForMix);
+  const xored = Buffer.alloc(mixLength);
+  for (let i = 0; i < mixLength; i += 1) {
+    xored[i] = sourceForMix[i] ^ csprngBytes[i];
   }
   const digest = crypto.createHash('sha256').update(xored).digest();
-  return digest.subarray(0, targetBits / 8);
+  return digest.subarray(0, targetBytes);
 }
 
 test('mix() matches an independent Node-crypto reimplementation of literal SHA-256(manual XOR csprng), single byte', () => {
@@ -75,10 +80,10 @@ test('mix() matches an independent Node-crypto reimplementation of literal SHA-2
   assert.equal(hex(expected), 'd9767ebda5c2860ea7d035cb7146741a');
 
   for (let bit = 7; bit >= 0; bit -= 1) {
-    session.coinBits.push((manual[0] >> bit) & 1);
+    lab.addCoin(session, ((manual[0] >> bit) & 1) === 1);
   }
   while (session.coinBits.length < 128) {
-    session.coinBits.push(0);
+    lab.addCoin(session, false);
   }
   lab.addCsprngBytes(session, new Uint8Array(csprngBuffer));
   const actual = lab.mix(session, 128);
@@ -99,11 +104,11 @@ test('mix() matches an independent Node-crypto reimplementation, multi-byte XOR,
 
   for (let byteIndex = 0; byteIndex < manual.length; byteIndex += 1) {
     for (let bit = 7; bit >= 0; bit -= 1) {
-      session.coinBits.push((manual[byteIndex] >> bit) & 1);
+      lab.addCoin(session, ((manual[byteIndex] >> bit) & 1) === 1);
     }
   }
   while (session.coinBits.length < 256) {
-    session.coinBits.push(0);
+    lab.addCoin(session, false);
   }
   lab.addCsprngBytes(session, new Uint8Array(csprngBuffer));
   const actual = lab.mix(session, 256);
@@ -122,7 +127,7 @@ test('mix() consumes ("burns") the CSPRNG bytes it used, so a second mix() witho
   const first = lab.mix(session, 128);
   assert.equal(first.length, 16);
   assert.equal(lab.availableCsprngBytes(session).length, 0);
-  assert.throws(() => lab.mix(session, 128), /need at least 16 csprng bytes/i);
+  assert.throws(() => lab.mix(session, 128), /need at least 16 fresh csprng bytes/i);
 
   // Confirm it is not merely refusing on principle: drawing fresh bytes lets
   // it proceed again, and the new output differs from the first (different
@@ -136,7 +141,7 @@ test('mix() falls back to a direct CSPRNG-only draw when no manual entropy is re
   const context = createContext();
   const lab = context.__coldboxEntropyLab;
   const session = lab.createSession();
-  assert.equal(lab.manualEntropyBytes(session).length, 0);
+  assert.equal(lab.sourceEntropyBytes(session).length, 0);
   assert.throws(() => lab.mix(session, 128), /need 16 csprng bytes/i);
 
   const fresh = new Uint8Array(16);
@@ -167,7 +172,7 @@ test('undoing a draw can never resurrect CSPRNG bytes a mix() already spent (rou
   lab.addCsprngBytes(session, new Uint8Array(16).fill(0xbb)); // draw B
   assert.equal(lab.availableCsprngBytes(session).length, 32);
 
-  lab.mix(session, 128); // consumes exactly A's 16 bytes (manualEntropyBytes is 16 bytes for 128 exact coin bits)
+  lab.mix(session, 128); // consumes exactly A's 16 bytes (sourceEntropyBytes is 16 bytes for 128 exact coin bits)
   assert.equal(lab.availableCsprngBytes(session).length, 16);
   assert.deepEqual([...lab.availableCsprngBytes(session)], new Array(16).fill(0xbb));
 
@@ -201,15 +206,29 @@ test('guaranteedBits() (manual) is 0 for a CSPRNG-only session, but csprngGuaran
   assert.equal(lab.csprngGuaranteedBits(session), 256);
 });
 
-test('mix() fails closed when manual guaranteed bits are short of the target (mixed path)', () => {
+test('mix() preserves selected normal output strength with partial independent entropy by consuming at least targetBytes of fresh CSPRNG', () => {
   const context = createContext();
   const lab = context.__coldboxEntropyLab;
   const session = lab.createSession();
-  for (let i = 0; i < 100; i += 1) {
-    lab.addCoin(session, i % 2 === 0);
+  for (let i = 0; i < 32; i += 1) {
+    lab.addCoin(session, i % 2 === 0); // 32 conservative independent bits
   }
-  lab.addCsprngBytes(session, new Uint8Array(32));
-  assert.throws(() => lab.mix(session, 128), /only 100 guaranteed manual bits/);
+  const source = lab.sourceEntropyBytes(session);
+  assert.equal(source.length, 4);
+  const csprng = new Uint8Array(32).fill(0x5a);
+  lab.addCsprngBytes(session, csprng);
+  const expected = referenceMix(Buffer.from(source), Buffer.from(csprng), 256);
+  const actual = lab.mix(session, 256);
+  assert.equal(actual.length, 32);
+  assert.equal(hex(actual), hex(expected));
+  assert.equal(lab.availableCsprngBytes(session).length, 0, 'partial-source 256-bit output must consume all 32 fresh CSPRNG bytes');
+  assert.deepEqual(JSON.parse(JSON.stringify(lab.strengthSummary(session, 256))), {
+    normalOutputBits: 256,
+    independentBits: 32,
+    fallbackBits: 32,
+    fullTwoSourceProtection: false,
+    mode: 'partial-independent-fallback'
+  });
 });
 
 test('mix() fails closed when the CSPRNG buffer is shorter than the manual entropy it must XOR against', () => {
@@ -220,7 +239,7 @@ test('mix() fails closed when the CSPRNG buffer is shorter than the manual entro
     lab.addCoin(session, i % 2 === 0);
   }
   lab.addCsprngBytes(session, new Uint8Array(4)); // 16 bytes of manual entropy, only 4 CSPRNG bytes
-  assert.throws(() => lab.mix(session, 128), /need at least 16 csprng bytes/i);
+  assert.throws(() => lab.mix(session, 128), /need at least 16 fresh csprng bytes/i);
 });
 
 test('mix() rejects a target bit count outside the BIP-39 ENT sizes', () => {
@@ -381,14 +400,14 @@ test('hex nibbles append exactly 4 MSB-first bits per digit', () => {
   assert.equal(lab.guaranteedBits(session), 8);
 });
 
-test('manualEntropyBytes concatenates exact-bit, dice, and card material in a fixed, testable order', () => {
+test('sourceEntropyBytes concatenates exact-bit, dice, and card material in a fixed, testable order', () => {
   const context = createContext();
   const lab = context.__coldboxEntropyLab;
   const session = lab.createSession();
   lab.addHexNibble(session, 0xf); // hexBits: 1111 -> 1 byte 0xf0 (padded)
   lab.addDiceBase6(session, 1); // digit 0, range 6, 1 byte needed
   lab.addCard(session, 51); // rank 51 of 52, 1 byte needed
-  const bytes = lab.manualEntropyBytes(session);
+  const bytes = lab.sourceEntropyBytes(session);
   // hexBits (4 bits -> 1 byte, 0xf0) + dice byte (0x00, value 0 in a
   // 1-byte field since bit-length(6)=3 -> 1 byte) + card byte (rank 51,
   // bit-length(52)=6 -> 1 byte, value 51 = 0x33).
@@ -539,4 +558,302 @@ test('resetting one source never disturbs a different source\'s guaranteed-bit a
   const after = lab.guaranteedBits(session);
   assert.equal(before - after, 4);
   assert.equal(after, lab.guaranteedBits(session));
+});
+
+test('device-RNG-generated dice alone contribute zero independent fallback while normal CSPRNG-backed generation remains available', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  for (let i = 0; i < 60; i += 1) {
+    lab.addDiceBase6(session, (i % 6) + 1, lab.PROVENANCE_DEVICE_RNG);
+  }
+  assert.equal(lab.guaranteedBits(session), 0);
+  assert.equal(lab.deviceRngDerivedValueCount(session), 60);
+  assert.deepEqual(JSON.parse(JSON.stringify(lab.strengthSummary(session, 128))), {
+    normalOutputBits: 128,
+    independentBits: 0,
+    fallbackBits: 0,
+    fullTwoSourceProtection: false,
+    mode: 'csprng-only'
+  });
+  const needed = Math.max(16, lab.sourceEntropyBytes(session).length);
+  lab.addCsprngBytes(session, new Uint8Array(needed).fill(0xa5));
+  assert.equal(lab.mix(session, 128).length, 16);
+});
+
+test('device-RNG-generated coins alone contribute zero independent-manual bits', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  for (let i = 0; i < 256; i += 1) {
+    lab.addCoin(session, i % 2 === 0, lab.PROVENANCE_DEVICE_RNG);
+  }
+  assert.equal(lab.guaranteedBits(session), 0);
+  assert.equal(lab.deviceRngDerivedValueCount(session), 256);
+});
+
+test('device-RNG-generated cards alone contribute zero independent-manual bits', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  for (let card = 0; card < 52; card += 1) {
+    lab.addCard(session, card, lab.PROVENANCE_DEVICE_RNG);
+  }
+  assert.equal(lab.cardGuaranteedBits(session), 0);
+  assert.equal(lab.guaranteedBits(session), 0);
+  assert.equal(lab.deviceRngDerivedValueCount(session), 52);
+});
+
+test('device-RNG-generated hex alone contributes zero independent-manual bits', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  for (let i = 0; i < 64; i += 1) {
+    lab.addHexNibble(session, i % 16, lab.PROVENANCE_DEVICE_RNG);
+  }
+  assert.equal(lab.guaranteedBits(session), 0);
+  assert.equal(lab.deviceRngDerivedValueCount(session), 64);
+});
+
+test('any combination of device-RNG-generated source values still has zero independent-manual security credit', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  lab.addDiceBase6(session, 6, lab.PROVENANCE_DEVICE_RNG);
+  lab.addCoin(session, true, lab.PROVENANCE_DEVICE_RNG);
+  lab.addCard(session, 0, lab.PROVENANCE_DEVICE_RNG);
+  lab.addHexNibble(session, 0xf, lab.PROVENANCE_DEVICE_RNG);
+  assert.equal(lab.guaranteedBits(session), 0);
+  assert.equal(lab.deviceRngDerivedValueCount(session), 4);
+  assert.ok(lab.sourceEntropyBytes(session).length > 0, 'simulated values remain auditable source material');
+  const strength = lab.strengthSummary(session, 128);
+  assert.equal(strength.normalOutputBits, 128);
+  assert.equal(strength.fallbackBits, 0);
+  assert.equal(strength.fullTwoSourceProtection, false);
+  const needed = Math.max(16, lab.sourceEntropyBytes(session).length);
+  lab.addCsprngBytes(session, new Uint8Array(needed).fill(0x3c));
+  assert.equal(lab.mix(session, 128).length, 16, 'generated-only simulations may be transformed, but remain CSPRNG-only security');
+});
+
+test('actual manually entered values still receive independent-manual credit while generated values receive none', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  lab.addCoin(session, true); // 1 independent bit
+  lab.addHexNibble(session, 0xa); // 4 independent bits
+  lab.addDiceBase6(session, 1); // floor(log2(6)) = 2 independent bits
+  lab.addCard(session, 0); // floor(log2(52)) = 5 independent bits
+  const manualOnly = lab.guaranteedBits(session);
+  assert.equal(manualOnly, 12);
+
+  lab.addCoin(session, false, lab.PROVENANCE_DEVICE_RNG);
+  lab.addHexNibble(session, 0xb, lab.PROVENANCE_DEVICE_RNG);
+  lab.addDiceBase6(session, 2, lab.PROVENANCE_DEVICE_RNG);
+  lab.addCard(session, 1, lab.PROVENANCE_DEVICE_RNG);
+  assert.equal(lab.guaranteedBits(session), manualOnly);
+  assert.equal(lab.deviceRngDerivedValueCount(session), 4);
+});
+
+test('mixing succeeds with sufficient real manual entropy even when device-RNG simulated values are also present', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  for (let i = 0; i < 32; i += 1) {
+    lab.addHexNibble(session, i % 16); // 128 independent bits
+  }
+  lab.addDiceBase6(session, 6, lab.PROVENANCE_DEVICE_RNG);
+  lab.addCoin(session, true, lab.PROVENANCE_DEVICE_RNG);
+  assert.equal(lab.guaranteedBits(session), 128);
+  assert.equal(lab.deviceRngDerivedValueCount(session), 2);
+  const sourceBytes = lab.sourceEntropyBytes(session);
+  lab.addCsprngBytes(session, new Uint8Array(sourceBytes.length).fill(0xa5));
+  const mixed = lab.mix(session, 128);
+  assert.equal(mixed.length, 16);
+});
+
+test('CSPRNG-only generation still works when no dice/coin/card/hex values were recorded', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  const bytes = new Uint8Array(16).fill(0x5a);
+  lab.addCsprngBytes(session, bytes);
+  assert.equal(hex(lab.mix(session, 128)), hex(bytes));
+});
+
+
+test('strengthSummary distinguishes normal output strength from independent-source fallback across CSPRNG-only, partial, and full states', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+
+  assert.deepEqual(JSON.parse(JSON.stringify(lab.strengthSummary(session, 256))), {
+    normalOutputBits: 256,
+    independentBits: 0,
+    fallbackBits: 0,
+    fullTwoSourceProtection: false,
+    mode: 'csprng-only'
+  });
+
+  for (let i = 0; i < 32; i += 1) lab.addCoin(session, i % 2 === 0);
+  assert.equal(lab.strengthSummary(session, 256).fallbackBits, 32);
+  assert.equal(lab.strengthSummary(session, 256).fullTwoSourceProtection, false);
+
+  for (let i = 32; i < 256; i += 1) lab.addCoin(session, i % 2 === 0);
+  const full = lab.strengthSummary(session, 256);
+  assert.equal(full.independentBits, 256);
+  assert.equal(full.fallbackBits, 256);
+  assert.equal(full.fullTwoSourceProtection, true);
+  assert.equal(full.mode, 'full-two-source');
+});
+
+test('generated simulations never increase independent fallback, including when mixed with genuine manual values', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  for (let i = 0; i < 20; i += 1) lab.addCoin(session, i % 2 === 0);
+  const before = lab.strengthSummary(session, 256);
+
+  for (let i = 0; i < 100; i += 1) lab.addCoin(session, i % 2 === 0, lab.PROVENANCE_DEVICE_RNG);
+  for (let i = 0; i < 10; i += 1) lab.addHexNibble(session, i, lab.PROVENANCE_DEVICE_RNG);
+  const after = lab.strengthSummary(session, 256);
+  assert.equal(after.independentBits, before.independentBits);
+  assert.equal(after.fallbackBits, before.fallbackBits);
+  assert.equal(lab.deviceRngDerivedValueCount(session), 110);
+});
+
+test('Undo decreases fallback only when the undone operation carried genuine manual entropy', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  lab.addCoin(session, true); // +1 independent bit
+  lab.addCoin(session, false, lab.PROVENANCE_DEVICE_RNG); // +0 independent bits
+  assert.equal(lab.strengthSummary(session, 128).fallbackBits, 1);
+  assert.equal(lab.undoLast(session), true); // generated coin
+  assert.equal(lab.strengthSummary(session, 128).fallbackBits, 1);
+  assert.equal(lab.undoLast(session), true); // manual coin
+  assert.equal(lab.strengthSummary(session, 128).fallbackBits, 0);
+});
+
+test('per-source Reset decreases fallback for genuine manual data but generated-value Reset cannot remove nonexistent independent credit', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  for (let i = 0; i < 16; i += 1) lab.addHexNibble(session, i % 16); // 64 manual bits
+  for (let i = 0; i < 40; i += 1) lab.addCoin(session, i % 2 === 0, lab.PROVENANCE_DEVICE_RNG);
+  assert.equal(lab.strengthSummary(session, 128).fallbackBits, 64);
+  lab.resetCoin(session);
+  assert.equal(lab.strengthSummary(session, 128).fallbackBits, 64);
+  lab.resetHex(session);
+  assert.equal(lab.strengthSummary(session, 128).fallbackBits, 0);
+});
+
+test('changing the selected target recalculates fallback cap and full-two-source readiness without altering collected independent entropy', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  for (let i = 0; i < 160; i += 1) lab.addCoin(session, i % 2 === 0);
+  const at128 = lab.strengthSummary(session, 128);
+  const at256 = lab.strengthSummary(session, 256);
+  assert.equal(at128.independentBits, 160);
+  assert.equal(at128.fallbackBits, 128, 'fallback cannot exceed the selected output size');
+  assert.equal(at128.fullTwoSourceProtection, true);
+  assert.equal(at256.independentBits, 160, 'independent count is not artificially capped to the target');
+  assert.equal(at256.fallbackBits, 160);
+  assert.equal(at256.fullTwoSourceProtection, false);
+});
+
+test('post-mix strength accounting stays tied to source provenance while Reset removes stale fallback credit', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  for (let i = 0; i < 32; i += 1) lab.addCoin(session, i % 2 === 0);
+  lab.addCsprngBytes(session, new Uint8Array(16).fill(0x7e));
+  lab.mix(session, 128);
+  assert.equal(lab.strengthSummary(session, 128).fallbackBits, 32, 'mixing burns CSPRNG but does not erase the physical source record');
+  lab.resetCoin(session);
+  assert.equal(lab.strengthSummary(session, 128).fallbackBits, 0, 'reset must immediately remove the old fallback claim');
+});
+
+test('coin + hex exact-bit serialization crosses the source boundary without inserting padding', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  lab.addCoin(session, true);       // 1
+  lab.addHexNibble(session, 0x8);   // 1000 => combined 11000... => c0
+  assert.equal(hex(lab.sourceEntropyBytes(session)), 'c0');
+});
+
+test('coin + discard-dice + hex exact-bit serialization pads only once across all three sources', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  lab.addCoin(session, true);       // 1
+  lab.addDiceDiscard(session, 2);   // 01
+  lab.addHexNibble(session, 0x8);   // 1000 => 1011000... => b0
+  assert.equal(hex(lab.sourceEntropyBytes(session)), 'b0');
+});
+
+test('exact-bit serialization preserves chronological ordering across source types', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const coinThenHex = lab.createSession();
+  lab.addCoin(coinThenHex, true);
+  lab.addHexNibble(coinThenHex, 0x8);
+
+  const hexThenCoin = lab.createSession();
+  lab.addHexNibble(hexThenCoin, 0x8);
+  lab.addCoin(hexThenCoin, true);
+
+  assert.equal(hex(lab.sourceEntropyBytes(coinThenHex)), 'c0');
+  assert.equal(hex(lab.sourceEntropyBytes(hexThenCoin)), '88');
+  assert.notEqual(hex(lab.sourceEntropyBytes(coinThenHex)), hex(lab.sourceEntropyBytes(hexThenCoin)));
+});
+
+test('reset removes one exact-bit source while preserving surviving event order and one-time padding', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  lab.addCoin(session, true);       // survives
+  lab.addHexNibble(session, 0xf);   // removed
+  lab.addDiceDiscard(session, 2);   // survives: 01
+  lab.addCoin(session, false);      // survives: 0 => 1 01 0 => a0
+  lab.resetHex(session);
+  assert.equal(hex(lab.sourceEntropyBytes(session)), 'a0');
+});
+
+test('undo after mixed-source exact-bit operations removes the exact event without corrupting earlier source ordering', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  lab.addCoin(session, true);
+  lab.addHexNibble(session, 0x8);
+  lab.addCoin(session, false);
+  assert.equal(hex(lab.sourceEntropyBytes(session)), 'c0'); // 1 1000 0 = 110000
+  assert.equal(lab.undoLast(session), true); // remove last coin
+  assert.equal(hex(lab.sourceEntropyBytes(session)), 'c0'); // 1 1000 = 11000
+  assert.equal(lab.undoLast(session), true); // remove hex
+  assert.equal(hex(lab.sourceEntropyBytes(session)), '80');
+});
+
+test('resetting one exact-bit source does not break a surviving source history entry', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  lab.addCoin(session, true);
+  lab.addHexNibble(session, 0xa);
+  lab.resetCoin(session);
+  assert.equal(hex(lab.sourceEntropyBytes(session)), 'a0');
+  assert.equal(lab.undoLast(session), true, 'surviving hex history entry remains undoable');
+  assert.equal(lab.sourceEntropyBytes(session).length, 0);
+});
+
+test('provenance rejects unknown values instead of silently treating them as manual', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  assert.throws(() => lab.addCoin(session, true, 'mystery'), /provenance must be manual or device-rng/);
+  assert.throws(() => lab.addDiceBase6(session, 1, 'mystery'), /provenance must be manual or device-rng/);
+  assert.throws(() => lab.addHexNibble(session, 0, 'mystery'), /provenance must be manual or device-rng/);
+  assert.throws(() => lab.addCard(session, 0, 'mystery'), /provenance must be manual or device-rng/);
+  assert.equal(lab.guaranteedBits(session), 0);
 });

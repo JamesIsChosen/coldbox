@@ -432,12 +432,38 @@ body {
   top: 0;
   z-index: 5;
   margin: 0.6rem 0 0;
-  padding: 0.35rem 0.55rem;
+  padding: 0.5rem 0.6rem;
   border-left: 0.28rem solid var(--cold-yellow);
   background: var(--cold-surface);
+  color: var(--cold-text);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.cold-entropy-strength-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.12rem 0;
+}
+
+.cold-entropy-strength-row strong {
   color: var(--cold-yellow);
-  font-size: 0.78rem;
-  font-weight: 800;
+  text-align: right;
+}
+
+.cold-entropy-strength-secondary {
+  color: var(--cold-muted);
+  font-size: 0.68rem;
+}
+
+#cold-entropy-strength-help {
+  margin: 0.35rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.66rem;
+  font-weight: 600;
+  line-height: 1.35;
 }
 
 #cold-entropy-dice-random-row,
@@ -466,10 +492,11 @@ body {
 #cold-entropy-hex-random-row input,
 #cold-entropy-csprng-draw-row input {
   width: 5rem;
-  min-height: 2.25rem;
+  min-height: 2.75rem;
   margin-top: 0;
 }
 
+.cold-entropy-device-rng-note,
 #cold-entropy-dice-status,
 #cold-entropy-coin-status,
 #cold-entropy-hex-status,
@@ -501,14 +528,14 @@ body {
    the full 52-card layout never reflows mid-shuffle. */
 #cold-entropy-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(2.6rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(2.75rem, 1fr));
   gap: 0.3rem;
   margin-top: 0.5rem;
 }
 
 #cold-entropy-card-grid button {
-  min-width: 0;
-  min-height: 2.5rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   margin: 0;
   padding: 0.2rem;
   font-size: 0.72rem;
@@ -536,6 +563,11 @@ body {
 /* Raw entropy is key material once mixed — the same monospace, data-only
    treatment as the KDF timings and the passphrase field, per
    design-system.md §4. */
+#cold-entropy-mix-output[hidden],
+#cold-entropy-mix-output-label[hidden] {
+  display: none;
+}
+
 #cold-entropy-mix-output {
   display: block;
   margin-top: 0.3rem;
