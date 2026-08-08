@@ -9,6 +9,7 @@ __COLDBOX_CAPABILITIES__
   var capabilities = window.__coldboxCapabilities;
   var cryptoLayer = window.__coldboxCrypto;
   var vaultLayer = window.__coldboxVault;
+  var entropyLab = window.__coldboxEntropyLab;
   var readyMarker = document.getElementById('cold-ready');
   var protocolWarning = document.getElementById('cold-protocol-warning');
   var details = document.getElementById('cold-realm-details');
@@ -35,6 +36,27 @@ __COLDBOX_CAPABILITIES__
   var keyfileWarning = document.getElementById('cold-vault-keyfile-warning');
   var keyfileInput = document.getElementById('cold-vault-keyfile-input');
   var keyfileStatus = document.getElementById('cold-vault-keyfile-status');
+  var entropyDiceFace = document.getElementById('cold-entropy-dice-face');
+  var entropyDiceBase6Add = document.getElementById('cold-entropy-dice-base6-add');
+  var entropyDiceDiscardAdd = document.getElementById('cold-entropy-dice-discard-add');
+  var entropyCoinHeads = document.getElementById('cold-entropy-coin-heads');
+  var entropyCoinTails = document.getElementById('cold-entropy-coin-tails');
+  var entropyCardSelect = document.getElementById('cold-entropy-card-select');
+  var entropyCardAdd = document.getElementById('cold-entropy-card-add');
+  var entropyHexInput = document.getElementById('cold-entropy-hex-input');
+  var entropyHexAdd = document.getElementById('cold-entropy-hex-add');
+  var entropyCsprngDraw = document.getElementById('cold-entropy-csprng-draw');
+  var entropyCsprngStatus = document.getElementById('cold-entropy-csprng-status');
+  var entropyUndoButton = document.getElementById('cold-entropy-undo');
+  var entropyMeter = document.getElementById('cold-entropy-meter');
+  var entropyTargetSelect = document.getElementById('cold-entropy-target');
+  var entropyMixButton = document.getElementById('cold-entropy-mix-run');
+  var entropyMixStatus = document.getElementById('cold-entropy-mix-status');
+  var entropyMixOutputLabel = document.getElementById('cold-entropy-mix-output-label');
+  var entropyMixOutput = document.getElementById('cold-entropy-mix-output');
+  var entropySession = entropyLab ? entropyLab.createSession() : null;
+  var CARD_RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  var CARD_SUITS = ['♠', '♥', '♦', '♣'];
   var vaultCryptoReady = false;
   var vaultBusy = false;
   var vaultUnlocked = false;
@@ -83,6 +105,259 @@ __COLDBOX_CAPABILITIES__
     if (value && typeof value.fill === 'function') {
       value.fill(0);
     }
+  }
+
+  function bytesToHex(bytes) {
+    var hex = '';
+    for (var index = 0; index < bytes.length; index += 1) {
+      hex += bytes[index].toString(16).padStart(2, '0');
+    }
+    return hex;
+  }
+
+  // --- Entropy Lab (P1.1) ---------------------------------------------------
+  //
+  // Local only: no message crosses to the warm shell, and nothing here is
+  // gated on the warm-cold handshake, only on the same crypto self-test that
+  // gates vault creation (entropyLabReady below). All accumulation and mixing
+  // logic lives in src/cold/entropy-lab.js; this section only wires the DOM.
+
+  function populateCardOptions() {
+    if (!entropyCardSelect) {
+      return;
+    }
+    entropyCardSelect.textContent = '';
+    for (var suitIndex = 0; suitIndex < CARD_SUITS.length; suitIndex += 1) {
+      for (var rankIndex = 0; rankIndex < CARD_RANKS.length; rankIndex += 1) {
+        var cardId = suitIndex * CARD_RANKS.length + rankIndex;
+        var option = document.createElement('option');
+        option.value = String(cardId);
+        option.textContent = CARD_RANKS[rankIndex] + CARD_SUITS[suitIndex];
+        entropyCardSelect.appendChild(option);
+      }
+    }
+  }
+
+  function entropyLabReady() {
+    return Boolean(entropyLab) && vaultCryptoReady;
+  }
+
+  function setEntropyMixOutput(bytes) {
+    if (!entropyMixOutput || !entropyMixOutputLabel) {
+      return;
+    }
+    if (!bytes) {
+      entropyMixOutput.hidden = true;
+      entropyMixOutputLabel.hidden = true;
+      entropyMixOutput.textContent = '';
+      return;
+    }
+    entropyMixOutput.textContent = bytesToHex(bytes);
+    entropyMixOutput.hidden = false;
+    entropyMixOutputLabel.hidden = false;
+  }
+
+  function updateEntropyMeter() {
+    if (!entropyMeter || !entropySession) {
+      return;
+    }
+    var bits = entropyLab.guaranteedBits(entropySession);
+    entropyMeter.setAttribute('data-guaranteed-bits', String(bits));
+    entropyMeter.textContent = 'Collected: ' + bits + ' guaranteed bit' + (bits === 1 ? '' : 's') + '.';
+  }
+
+  function updateEntropyLabControls() {
+    var ready = entropyLabReady();
+    var controls = [
+      entropyDiceFace, entropyDiceBase6Add, entropyDiceDiscardAdd,
+      entropyCoinHeads, entropyCoinTails,
+      entropyCardSelect, entropyCardAdd,
+      entropyHexInput, entropyHexAdd,
+      entropyCsprngDraw, entropyUndoButton, entropyTargetSelect, entropyMixButton
+    ];
+    for (var index = 0; index < controls.length; index += 1) {
+      if (controls[index]) {
+        controls[index].disabled = !ready;
+      }
+    }
+    if (!ready) {
+      return;
+    }
+    if (entropyUndoButton) {
+      entropyUndoButton.disabled = entropySession.history.length === 0;
+    }
+    updateEntropyMeter();
+    updateEntropyMixStatus();
+  }
+
+  function updateEntropyMixStatus() {
+    if (!entropyMixStatus || !entropySession || !entropyTargetSelect) {
+      return;
+    }
+    var targetBits = Number(entropyTargetSelect.value);
+    var available = entropyLab.guaranteedBits(entropySession);
+    var manualByteLength = entropyLab.manualEntropyBytes(entropySession).length;
+    if (available < targetBits) {
+      entropyMixStatus.textContent = 'Collected ' + available + ' of ' + targetBits + ' guaranteed bits needed.';
+      return;
+    }
+    if (entropySession.csprngBytes.length < manualByteLength) {
+      entropyMixStatus.textContent = 'Need ' + manualByteLength + ' CSPRNG bytes to mix against; have ' + entropySession.csprngBytes.length + '.';
+      return;
+    }
+    entropyMixStatus.textContent = 'Ready to mix ' + targetBits + ' bits.';
+  }
+
+  function handleEntropyDiceFace() {
+    var value = Number(entropyDiceFace.value);
+    if (!Number.isInteger(value) || value < 1 || value > 6) {
+      return null;
+    }
+    return value;
+  }
+
+  function wireEntropyLab() {
+    if (!entropyLab || !entropySession) {
+      return;
+    }
+    populateCardOptions();
+
+    if (entropyDiceBase6Add) {
+      entropyDiceBase6Add.addEventListener('click', function () {
+        var face = handleEntropyDiceFace();
+        if (face === null) {
+          return;
+        }
+        entropyLab.addDiceBase6(entropySession, face);
+        updateEntropyLabControls();
+      });
+    }
+
+    if (entropyDiceDiscardAdd) {
+      entropyDiceDiscardAdd.addEventListener('click', function () {
+        var face = handleEntropyDiceFace();
+        if (face === null) {
+          return;
+        }
+        var accepted = entropyLab.addDiceDiscard(entropySession, face);
+        updateEntropyLabControls();
+        if (!accepted && entropyMixStatus) {
+          entropyMixStatus.textContent = 'Roll of ' + face + ' discarded (only 1-4 count); reroll.';
+        }
+      });
+    }
+
+    if (entropyCoinHeads) {
+      entropyCoinHeads.addEventListener('click', function () {
+        entropyLab.addCoin(entropySession, true);
+        updateEntropyLabControls();
+      });
+    }
+    if (entropyCoinTails) {
+      entropyCoinTails.addEventListener('click', function () {
+        entropyLab.addCoin(entropySession, false);
+        updateEntropyLabControls();
+      });
+    }
+
+    if (entropyCardAdd) {
+      entropyCardAdd.addEventListener('click', function () {
+        if (!entropyCardSelect || entropyCardSelect.value === '') {
+          return;
+        }
+        var cardId = Number(entropyCardSelect.value);
+        try {
+          entropyLab.addCard(entropySession, cardId);
+        } catch (error) {
+          if (entropyMixStatus) {
+            entropyMixStatus.textContent = error.message;
+          }
+          return;
+        }
+        var drawnOption = entropyCardSelect.querySelector('option[value="' + cardId + '"]');
+        if (drawnOption) {
+          drawnOption.remove();
+        }
+        updateEntropyLabControls();
+      });
+    }
+
+    if (entropyHexAdd) {
+      entropyHexAdd.addEventListener('click', function () {
+        var raw = (entropyHexInput && entropyHexInput.value || '').trim().toLowerCase();
+        if (!/^[0-9a-f]$/.test(raw)) {
+          return;
+        }
+        entropyLab.addHexNibble(entropySession, parseInt(raw, 16));
+        if (entropyHexInput) {
+          entropyHexInput.value = '';
+        }
+        updateEntropyLabControls();
+      });
+    }
+
+    if (entropyCsprngDraw) {
+      entropyCsprngDraw.addEventListener('click', function () {
+        if (!cryptoLayer || typeof cryptoLayer.randomBytes !== 'function') {
+          if (entropyCsprngStatus) {
+            entropyCsprngStatus.textContent = 'crypto.getRandomValues is unavailable; refusing to draw.';
+          }
+          return;
+        }
+        var drawn;
+        try {
+          drawn = cryptoLayer.randomBytes(32);
+        } catch (error) {
+          if (entropyCsprngStatus) {
+            entropyCsprngStatus.textContent = 'CSPRNG draw failed: ' + error.message;
+          }
+          return;
+        }
+        entropyLab.addCsprngBytes(entropySession, drawn);
+        zeroBytes(drawn);
+        if (entropyCsprngStatus) {
+          entropyCsprngStatus.textContent = entropySession.csprngBytes.length + ' CSPRNG bytes drawn.';
+        }
+        updateEntropyLabControls();
+      });
+    }
+
+    if (entropyUndoButton) {
+      entropyUndoButton.addEventListener('click', function () {
+        entropyLab.undoLast(entropySession);
+        if (entropyCsprngStatus) {
+          entropyCsprngStatus.textContent = entropySession.csprngBytes.length + ' CSPRNG bytes drawn.';
+        }
+        setEntropyMixOutput(null);
+        updateEntropyLabControls();
+      });
+    }
+
+    if (entropyTargetSelect) {
+      entropyTargetSelect.addEventListener('change', updateEntropyMixStatus);
+    }
+
+    if (entropyMixButton) {
+      entropyMixButton.addEventListener('click', function () {
+        var targetBits = Number(entropyTargetSelect.value);
+        var mixed;
+        try {
+          mixed = entropyLab.mix(entropySession, targetBits);
+        } catch (error) {
+          setEntropyMixOutput(null);
+          if (entropyMixStatus) {
+            entropyMixStatus.textContent = error.message;
+          }
+          return;
+        }
+        setEntropyMixOutput(mixed);
+        if (entropyMixStatus) {
+          entropyMixStatus.textContent = 'Mixed ' + targetBits + ' bits. Seed Forge (P1.3) is not built yet; this output is not carried anywhere.';
+        }
+      });
+    }
+
+    updateEntropyLabControls();
   }
 
   function setSessionEvidence(state) {
@@ -769,6 +1044,7 @@ __COLDBOX_CAPABILITIES__
     }
     updateVaultControls();
     updateBenchmarkAvailability();
+    updateEntropyLabControls();
     window.parent.postMessage({ type: 'cold.ready' }, '*');
   }
 
@@ -1010,6 +1286,7 @@ __COLDBOX_CAPABILITIES__
   }
 
   installThrowContract();
+  wireEntropyLab();
   window.addEventListener('message', handleGlobalMessage);
   document.documentElement.setAttribute('data-cold-state', 'checking');
   document.documentElement.setAttribute('data-airgap-state', 'checking');

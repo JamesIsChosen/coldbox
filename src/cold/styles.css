@@ -306,3 +306,161 @@ body {
   font-size: 0.7rem;
   line-height: 1.45;
 }
+
+/* Entropy Lab (P1.1). Same shell language as the KDF and vault surfaces
+   above: comic border, drop shadow, no motion, colour paired with text. */
+
+#cold-entropy-lab {
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.75rem;
+  border: 0.16rem solid var(--cold-outline);
+  border-radius: 0.35rem;
+  background: var(--cold-surface);
+  box-shadow: 0.2rem 0.2rem 0 var(--cold-drop);
+}
+
+#cold-entropy-lab-help,
+#cold-entropy-lab-note {
+  max-width: 48rem;
+  margin: 0.3rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+#cold-entropy-lab-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+#cold-entropy-lab-inputs fieldset {
+  min-width: 12rem;
+  padding: 0.5rem 0.6rem;
+  border: 0.14rem dashed var(--cold-outline);
+  border-radius: 0.35rem;
+}
+
+#cold-entropy-lab-inputs legend {
+  padding: 0 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+#cold-entropy-dice-help,
+#cold-entropy-card-help {
+  margin: 0.35rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+#cold-entropy-lab-inputs label {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--cold-text);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+#cold-entropy-lab-inputs input,
+#cold-entropy-lab-inputs select,
+#cold-entropy-mix select {
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  margin-top: 0.25rem;
+  padding: 0.35rem 0.5rem;
+  border: 0.14rem solid var(--cold-outline);
+  border-radius: 0.3rem;
+  background: var(--cold-bg);
+  color: var(--cold-text);
+  font: inherit;
+  font-size: 0.76rem;
+}
+
+/* Every button in this section is a physical-world input control (a die
+   face, a coin side, a card, a hex digit), so the touch target floor matters
+   more here than almost anywhere else in the app. */
+#cold-entropy-lab button,
+#cold-entropy-undo,
+#cold-entropy-mix-run {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  margin-top: 0.4rem;
+  margin-right: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  border: 0.13rem solid var(--cold-drop);
+  border-radius: 0.3rem;
+  background: var(--cold-green);
+  box-shadow: 0.15rem 0.15rem 0 var(--cold-drop);
+  color: var(--cold-ink);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+#cold-entropy-lab button:focus-visible,
+#cold-entropy-lab-inputs input:focus-visible,
+#cold-entropy-lab-inputs select:focus-visible,
+#cold-entropy-mix select:focus-visible {
+  outline: 0.2rem solid var(--cold-pink);
+  outline-offset: 0.18rem;
+}
+
+/* Same rationale as the KDF benchmark button: solid disabled fill, not an
+   opacity wash, so the state never drifts below the contrast floor. */
+#cold-entropy-lab button:disabled {
+  background: var(--cold-disabled-fill);
+  box-shadow: none;
+  color: var(--cold-ink);
+  cursor: not-allowed;
+}
+
+#cold-entropy-meter {
+  margin: 0.6rem 0 0;
+  padding-left: 0.55rem;
+  border-left: 0.28rem solid var(--cold-yellow);
+  color: var(--cold-yellow);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+#cold-entropy-mix {
+  margin-top: 0.65rem;
+  padding-top: 0.55rem;
+  border-top: 0.13rem solid var(--cold-outline);
+}
+
+#cold-entropy-mix-status {
+  margin: 0.35rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.72rem;
+}
+
+#cold-entropy-mix-output-label {
+  margin: 0.5rem 0 0;
+  color: var(--cold-red);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+/* Raw entropy is key material once mixed — the same monospace, data-only
+   treatment as the KDF timings and the passphrase field, per
+   design-system.md §4. */
+#cold-entropy-mix-output {
+  display: block;
+  margin-top: 0.3rem;
+  padding: 0.5rem 0.6rem;
+  border: 0.16rem solid var(--cold-red);
+  border-radius: 0.3rem;
+  background: var(--cold-bg);
+  color: var(--cold-text);
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.74rem;
+  word-break: break-all;
+}

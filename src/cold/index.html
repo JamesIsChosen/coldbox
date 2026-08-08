@@ -53,11 +53,66 @@ __COLDBOX_COLD_STYLES__
       </div>
       <p id="cold-vault-help">The warm shell can carry encrypted bytes only. This input and decrypted compartments remain inside the opaque frame.</p>
     </section>
+    <section id="cold-entropy-lab" aria-label="Entropy Lab">
+      <p class="eyebrow">Entropy Lab / P1.1</p>
+      <p id="cold-entropy-lab-help">Collect entropy from dice, coin flips, cards, or typed hex, then mix it with fresh CSPRNG bytes. Neither source alone can determine the result.</p>
+      <div id="cold-entropy-lab-inputs">
+        <fieldset id="cold-entropy-dice">
+          <legend>Dice</legend>
+          <label id="cold-entropy-dice-face-label" for="cold-entropy-dice-face">Die face (1-6)</label>
+          <input id="cold-entropy-dice-face" type="number" min="1" max="6" step="1" inputmode="numeric" disabled>
+          <button id="cold-entropy-dice-base6-add" type="button" disabled>Add roll (base-6)</button>
+          <button id="cold-entropy-dice-discard-add" type="button" disabled>Add roll (4-outcome discard)</button>
+          <p id="cold-entropy-dice-help">Base-6 keeps every roll (log2(6) bits each). Discard mode keeps only 1-4 (exactly 2 unbiased bits) and rerolls 5-6.</p>
+        </fieldset>
+        <fieldset id="cold-entropy-coin">
+          <legend>Coin</legend>
+          <button id="cold-entropy-coin-heads" type="button" disabled>Heads</button>
+          <button id="cold-entropy-coin-tails" type="button" disabled>Tails</button>
+        </fieldset>
+        <fieldset id="cold-entropy-card">
+          <legend>Playing cards</legend>
+          <label id="cold-entropy-card-label" for="cold-entropy-card-select">Card drawn</label>
+          <select id="cold-entropy-card-select" disabled></select>
+          <button id="cold-entropy-card-add" type="button" disabled>Add card</button>
+          <p id="cold-entropy-card-help">Drawn cards cannot repeat this session; a full 52-card deck contributes about 225 bits.</p>
+        </fieldset>
+        <fieldset id="cold-entropy-hex">
+          <legend>Hex</legend>
+          <label id="cold-entropy-hex-label" for="cold-entropy-hex-input">Hex digit (0-f)</label>
+          <input id="cold-entropy-hex-input" type="text" maxlength="1" inputmode="text" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <button id="cold-entropy-hex-add" type="button" disabled>Add hex digit</button>
+        </fieldset>
+        <fieldset id="cold-entropy-csprng">
+          <legend>CSPRNG</legend>
+          <button id="cold-entropy-csprng-draw" type="button" disabled>Draw 32 CSPRNG bytes</button>
+          <p id="cold-entropy-csprng-status" role="status" aria-live="polite">0 CSPRNG bytes drawn.</p>
+        </fieldset>
+      </div>
+      <button id="cold-entropy-undo" type="button" disabled>Undo last</button>
+      <p id="cold-entropy-meter" role="status" aria-live="polite" data-guaranteed-bits="0">Collected: 0 guaranteed bits.</p>
+      <div id="cold-entropy-mix">
+        <label id="cold-entropy-target-label" for="cold-entropy-target">Output size</label>
+        <select id="cold-entropy-target" disabled>
+          <option value="128">128 bits (12-word seed)</option>
+          <option value="160">160 bits</option>
+          <option value="192">192 bits (18-word seed)</option>
+          <option value="224">224 bits</option>
+          <option value="256">256 bits (24-word seed)</option>
+        </select>
+        <button id="cold-entropy-mix-run" type="button" disabled>Mix entropy</button>
+        <p id="cold-entropy-mix-status" role="status" aria-live="polite">Not enough entropy collected yet.</p>
+        <p id="cold-entropy-mix-output-label" hidden>Mixed entropy (hex). This is raw key material — treat it like a seed.</p>
+        <output id="cold-entropy-mix-output" hidden></output>
+      </div>
+      <p id="cold-entropy-lab-note">Seed Forge (P1.3), which turns this into a BIP-39 mnemonic, has not been built yet. The mixed bytes stay in this sealed realm and are not carried anywhere.</p>
+    </section>
   </main>
   <script>
 __COLDBOX_CRYPTO_VENDOR_SOURCE__
 __COLDBOX_CRYPTO_LAYER__
 __COLDBOX_VAULT_LAYER__
+__COLDBOX_ENTROPY_LAB_LAYER__
 __COLDBOX_COLD_SCRIPT__
   </script>
 </body>
