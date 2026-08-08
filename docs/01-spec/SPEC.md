@@ -1,10 +1,10 @@
-# Coldbox — Specification v0.4
+# Coldbox — Specification v0.5
 
 **A single-file, portable crypto toolkit, wallet registry, and portfolio manager.**
 **Secrets are cryptographically incapable of reaching the network. Everything else works online.**
 
 Status: Draft for review. Phase 0 in progress.
-Date: 2026-08-02 · Supersedes v0.3 · *"Coldbox" is a working name — see §22*
+Date: 2026-08-08 · Supersedes v0.4 · *"Coldbox" is a working name — see §22*
 
 ---
 
@@ -111,13 +111,13 @@ This is what makes the portfolio work: your holdings, addresses, and cost basis 
 
 | | Cold Mode (offline) | Warm Mode (online) |
 |---|---|---|
-| Detection | No network interface detected | Network detected |
+| Detection | Warm shell records repeated failure of all active reachability probes | Any probe succeeds, or reachability is checking/unknown |
 | Public compartment | ✅ Full read/write | ✅ Read/write (or ❌ under `strict`) |
 | Secret compartment | ✅ Full | ❌ Never |
 | Tools (entropy, BIP-39, derivation, SLIP-39, recovery) | ✅ | ✅ *(inside the cold realm)* |
 | Vault save | ✅ | ⚠️ Public compartment only; re-encrypts secret ciphertext without decrypting it |
-| Prices / balances | ❌ Last-known values, shown with age | ✅ |
-| Banner | Green "airgapped" | Amber "online — secrets sealed" |
+| Prices / balances | ❌ Last-known values, shown with age | ✅ when reachable |
+| Status | Green **no external reachability detected** + cold realm sealed | Amber **online / checking — secrets sealed** + independent cold-realm state |
 
 Note the vault-save nuance: in Warm Mode the secret compartment is copied through as opaque ciphertext, so you can add a wallet or a transaction online without ever touching your seeds, and without losing them on save.
 
@@ -235,11 +235,11 @@ The allowlist is **pinned at build time** and visible in the Reference → Prove
 
 Inside the cold realm: overwrite `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, and `navigator.sendBeacon` with throwing stubs on both the exposed objects and their prototype owners, then freeze the replacement properties. Defense in depth behind the CSP, not instead of it.
 
-Live signals: `navigator.onLine`, `navigator.connection`, and a CSP canary — a request the policy must reject. If it *isn't* rejected, CSP isn't active and the app goes to full lockdown and refuses to open the vault.
+The warm shell continuously monitors **external reachability**. `navigator.onLine`, `navigator.connection`, `online`/`offline`, focus, and connection-change events are hints and recheck triggers only; they are never the authority. The authority is a small active probe set to two already-allowlisted, unrelated public endpoints. Any successful probe establishes **online** immediately. Coldbox declares **no external reachability detected** only after all probe endpoints fail for consecutive rounds. While checking, stale, contradictory, or unknown, it fails **online-safe** and keeps secrets sealed. Stable state is refreshed on a fixed cadence while the app is open (ADR-0024 target: one primary check every 10 seconds, with immediate event-triggered rechecks and a backup/confirmation sequence after failure). See [ADR-0024](../05-development/adr/0024-warm-reachability-monitor.md).
 
-Banner states: **checking** while the airgap is being established; green **airgapped**; amber **online — secrets sealed** or **network state unknown — secrets sealed**; red **CSP failure / locked down**. Re-evaluated on `online`/`offline` events, tab focus, connection changes, and a 5-second interval.
+The CSP canary is separate: it is a deliberately policy-violating request used to prove that the browser is enforcing the cold/warm policies. If the exact expected violation is not observed, the app enters full lockdown and refuses vault operations. A reachability probe succeeding is normal; a CSP canary succeeding is a security failure.
 
-**Honesty note shown in the UI:** `navigator.onLine` reports whether a network interface exists, not whether the internet is reachable. It catches Wi-Fi-left-on; a blackholed link can read as offline. Mode detection is a convenience. The actual guarantee is the cold realm's CSP, which does not depend on detection being correct.
+The status surface shows **two independent facts**: (1) warm-shell external reachability — online, no reachability detected, or checking/unknown — and (2) cold-realm isolation — sealed or locked down. It never labels failed probes as proof of a physical airgap. Automatic probes carry no vault/address/asset/user data, but they do expose ordinary connection metadata (IP, time, user agent) to the probe operators; that privacy cost is disclosed in [api-sources.md](../04-reference/api-sources.md).
 
 ### 6.4 Self-integrity verification
 
@@ -315,7 +315,7 @@ Querying your own addresses against a third-party API links your IP address to t
 1. **Point it at your own node.** The `localhost` CSP entries exist for exactly this.
 2. **Use Tor Browser.** The app runs fine in it.
 3. **Use a VPN.** Weaker — you're trusting the VPN instead.
-4. **Query selectively.** Balance lookup is **opt-in per address, never automatic.** There is no background sync. You press a button, per address or per account, and the app tells you what it is about to reveal and to whom before it does.
+4. **Query selectively.** Balance lookup is **opt-in per address, never automatic.** There is no background balance/history sync. You press a button, per address or per account, and the app tells you what it is about to reveal and to whom before it does. The content-free reachability monitor in §6.3 is the only automatic warm-shell network traffic.
 
 This warning appears the first time you use balance lookup, and the setting defaults to off.
 
@@ -384,9 +384,16 @@ The KDF calculator (§11.2) benchmarks on your slowest device first — a vault 
 
 Each compartment serializes to JSON, then is **padded to the next 64 KiB boundary with random bytes** so file size doesn't reveal how many wallets you own. Compression is deliberately *not* applied: compressing before encrypting leaks information through ciphertext length.
 
-### 8.5 Save and load
+### 8.5 Vault identity, creation, save and load
 
-Three save paths, because this is the weakest link in "any device":
+A new vault has two identifiers with deliberately different trust/privacy properties:
+
+- **Vault name** — a user-chosen **public** warm-shell label used for the Vault Library and filename. It must never contain secrets.
+- **Vault ID** — a random non-secret UUID generated inside the cold realm and stored in the authenticated public compartment. It survives moving the `.cbx` to another device and namespaces save-integrity bookkeeping. It is not a device/browser fingerprint; see [ADR-0025](../05-development/adr/0025-vault-identity-library-and-save-ux.md).
+
+Creation is a distinct flow: choose the public vault name, then enter **new unlock phrase** and **confirm unlock phrase** inside the cold realm. Confirmation exists only for creation; opening an existing vault asks for the phrase once. A mismatch creates nothing. On success the vault is **UNLOCKED · NOT SAVED** until a save path receives encrypted bytes.
+
+Three save paths remain because portability is the weakest link in "any device":
 
 | Path | Where | Mechanism |
 |---|---|---|
@@ -394,9 +401,11 @@ Three save paths, because this is the weakest link in "any device":
 | **Blob download** | Desktop, most Android | `<a download>` + `createObjectURL` |
 | **Manual export** | Any supported running Coldbox browser context | Base64 in a select-all textarea, `navigator.share` where available, multi-part QR for locked-down devices. iOS Safari-from-Files is not currently claimed; see [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md). |
 
-The app detects available paths at boot. Manual export is not an afterthought — for a phone-primary user in a supported running context it may be the normal flow, so it gets a real UI with chunk counts and reassembly instructions. Loading is symmetric: picker, drag-and-drop, or paste. A file that never reaches a supported execution context has no save-path claim; Quick Look is not a substitute.
+The app detects available save mechanisms at boot. **Save vault** is the primary post-create action; lower-level File System Access/download/manual choices remain available and their verification limitations stay explicit. Saving never sends plaintext to the warm shell: the cold realm emits only encrypted `.cbx` bytes. A normal user-requested lock warns when the warm shell knows the current vault is dirty/unsaved and offers save-first, lock-without-saving, or cancel. Panic hide, idle timeout, network-mode changes, and security-health failures lock immediately and never wait for storage.
 
-Also: **generational filenames** (`coldbox-vault-0047.cbx`) so you accumulate history rather than clobbering; **rollback detection** via highest-save-counter-seen, read from the filename and therefore advisory rather than cryptographic (see [vault-format.md](vault-format.md#rollback-detection)); **verify-after-save**, which re-reads the file where the save path allows it (File System Access) and confirms the bytes are identical before clearing the unsaved-changes flag — blob download and the manual/QR handoff cannot be read back and so never clear it automatically; and honest corruption messaging — a failed AEAD tag means "wrong passphrase *or* damaged file," and the two are cryptographically indistinguishable.
+Loading becomes a **Vault Library**. Coldbox cannot silently enumerate the filesystem: the user explicitly grants a folder where `showDirectoryPicker()` is supported or selects multiple `.cbx` files as the portable fallback. The warm shell lists only those granted files and groups Coldbox-generated names by Vault-ID suffix/generation. The user selects a vault *before* entering one unlock phrase inside the sealed realm. Filename metadata is advisory; after unlock, the full authenticated Vault ID must agree before the warm shell associates the file with that library entry.
+
+Generational filenames are **per vault**, e.g. `Bitcoin-Savings--7f3a91c2--0047.cbx`, where the human name is a sanitized public slug, `7f3a91c2` is a short display suffix of the Vault ID, and `0047` is that vault's generation. The full Vault ID, not the short suffix or filename, is the identity. Rollback bookkeeping remains warm-shell/advisory but is namespaced per Vault ID instead of one global counter. Legacy v1 filenames remain openable; see [vault-format.md](vault-format.md#legacy-v1-vaults-and-filenames) and [ADR-0025](../05-development/adr/0025-vault-identity-library-and-save-ux.md). **Verify-after-save** still re-reads File System Access output before clearing the dirty flag; download/manual paths cannot prove what landed and therefore stay unverified until reopened or a verified save succeeds. A failed AEAD tag remains "wrong passphrase *or* damaged file" because the two are cryptographically indistinguishable.
 
 ### 8.6 Memory hygiene and its limits
 
@@ -850,7 +859,7 @@ Per-device setup checklist, tamper check on arrival, firmware update log with re
 
 > **[design-system.md](design-system.md) is authoritative for anything a user can see** — tokens, typography, components, the copy contract, and the accessibility floors. It supersedes the visual direction originally given in this section. Rationale in [ADR-0009](../05-development/adr/0009-comic-visual-language.md). The rules below that are *not* purely visual — secret display, mobile, accessibility, onboarding — remain in force.
 
-High-contrast dark by default with a light mode for printing, rendered in the comic visual language: heavy outlines, flat fills, hard offset shadows, halftone field. **Security surfaces take the shell and none of the behaviour** — no tilt, no animation, no stickers — and the display face never carries a seed word, address, key, hash, path, or amount. Data is always monospace. Status colors carry meaning: green = airgapped/verified, amber = online/attention, red = danger/secret-visible, and color is never the only channel.
+High-contrast dark by default with a light mode for printing, rendered in the comic visual language: heavy outlines, flat fills, hard offset shadows, halftone field. **Security surfaces take the shell and none of the behaviour** — no tilt, no animation, no stickers — and the display face never carries a seed word, address, key, hash, path, or amount. Data is always monospace. Status colors carry meaning: green = verified / no external reachability detected, amber = online/checking/attention, red = danger/secret-visible or isolation failure, and color is never the only channel.
 
 **Secret display rules, no exceptions:** masked by default; press-and-hold or explicit toggle with 30 s auto-remask; red border and "secret visible" indicator; word-by-word numbered display for mnemonics with a large-print mode for transcription; per-field opt-in copy with a visible 30-second clipboard countdown; no secret ever in the URL, page title, `localStorage`, or session-restore data.
 
@@ -1001,7 +1010,7 @@ Each GitHub release: the HTML, its `.sha256`, a detached GPG `.asc` signature, t
 
 **A hosted copy is not offered.** Serving this from GitHub Pages would invite people to generate real keys on a page they didn't verify, delivered over a connection they don't control — the exact failure mode the design exists to prevent. Download, verify, run locally. The README says so in the first screenful.
 
-**No telemetry, verifiably.** The claim is checkable: the CSP allowlist is in the source, and there is no analytics code to find.
+**No telemetry or analytics, verifiably.** The claim is checkable: the CSP allowlist is in source, the fixed content-free reachability probes are documented in §6.3/API sources, and there is no Coldbox collector or analytics code to find.
 
 ---
 

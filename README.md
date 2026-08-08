@@ -2,9 +2,9 @@
 
 **A single-file, offline-first crypto toolkit, wallet registry, and portfolio manager. A companion to your hardware wallets — not a replacement for them.**
 
-One HTML file. No install, no server, no runtime. Copy it to a USB stick and open it on Windows, macOS, Linux, iOS, or Android.
+One HTML file. No install, no server, no runtime. Copy it to a USB stick and open it in a supported local-file/browser context on Windows, macOS, Linux, or Android. Direct local execution from iOS Files is a portability target, not a current support claim; see [ADR-0010](docs/05-development/adr/0010-ios-local-html-execution.md).
 
-> ⚠️ **Pre-release.** Foundation work is underway; no wallet, vault, or cryptographic features exist yet. Nothing here should be used to secure real funds. See the [roadmap](docs/05-development/ROADMAP.md) for current progress.
+> ⚠️ **Pre-release · not audited.** Do not use Coldbox to secure real funds yet. See the [roadmap](docs/05-development/ROADMAP.md) for the only authoritative item-level status.
 
 ---
 

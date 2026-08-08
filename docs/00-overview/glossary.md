@@ -266,7 +266,7 @@ A device that has never connected, and never will connect, to any network. The s
 A device permanently isolated from any network connection (Wi-Fi, Bluetooth, cellular, cable) so that no remote attacker can ever reach it directly.
 :::
 ::: technical
-True airgapping removes the network primitives entirely rather than merely disabling them in software; Coldbox's cold realm approximates this inside a browser via `connect-src 'none'` CSP plus a runtime network-primitive guard, verified by the P0.3a browser harness, but a genuinely airgapped physical device remains the stronger guarantee since it has no network stack to misconfigure.
+True airgapping removes the network interfaces entirely rather than inferring their state from browser APIs. Coldbox's cold realm creates a separate browser-enforced no-network boundary via `connect-src 'none'` plus runtime guards; the warm shell may probe external reachability for user feedback, but neither `navigator.onLine` nor failed probes can prove that a physical cable, radio, VPN, or alternate route is absent. A genuinely airgapped physical device remains the stronger environmental guarantee.
 :::
 
 **Cold storage / hot wallet**
@@ -300,6 +300,28 @@ The `.cbx` encrypted file that stores Coldbox's data: wallet/address records, no
 :::
 ::: technical
 See [vault-format.md](../01-spec/vault-format.md) for the exact byte layout: a header (KDF parameters, cipher id, compartment lengths) forms the AEAD's associated data, and a multi-record wrapped-DEK block lets several unlock methods (passphrase, keyfile) share one underlying data-encryption key without duplicating the compartments.
+:::
+
+**Vault ID**
+::: plain
+A random code created with the vault so Coldbox can tell two vaults apart even if you rename or move their files. It identifies the vault, not your computer.
+:::
+::: working
+A non-secret UUID generated inside the cold realm at new-vault creation and stored in the authenticated public compartment. Coldbox uses it to namespace per-vault save history and to verify that a filename/library entry still refers to the vault it claims. Legacy v1 vaults that predate this field use their existing random header salt as a compatibility bookkeeping key.
+:::
+::: technical
+The canonical ID is a CSPRNG UUID carried in the already-whitelisted public-compartment `id` field; no new secret-bearing message type is needed. The short filename suffix is only a display hint and is checked against the full ID after unlock. A device/browser fingerprint was explicitly rejected because it links unrelated vaults on the same device, can change with browser/device state, and fails the portability requirement when a `.cbx` moves to another device. See [ADR-0025](../05-development/adr/0025-vault-identity-library-and-save-ux.md).
+:::
+
+**Vault name**
+::: plain
+The human-readable name shown in the Vault Library and used in the `.cbx` filename. It is public — do not put secrets in it.
+:::
+::: working
+A warm-shell filename/library label chosen before creation. Because arbitrary free-form text is not allowed to cross from the cold realm to the network-capable warm shell, the name is intentionally outside the encrypted secret boundary and is visible to the filesystem.
+:::
+::: technical
+Names are sanitized into portable filename slugs and paired with a short Vault-ID suffix and a per-vault generation counter. The authenticated vault identity is the UUID, not the mutable filename. External renames are therefore allowed but may change the displayed name; the ID check after unlock prevents a renamed file from being silently associated with the wrong vault.
 :::
 
 **Cold realm / warm shell** (in Coldbox)

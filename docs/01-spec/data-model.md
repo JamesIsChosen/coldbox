@@ -6,6 +6,14 @@ Entities stored in the vault. Compartment assignment is load-bearing: it determi
 
 ---
 
+## Vault metadata 🔵
+
+Every newly created vault carries a non-secret `id` UUID in its authenticated public compartment. This identifies the **vault file lineage**, not any Seed/Wallet/Device record and not the computer running Coldbox. Human-readable vault names are public warm-shell filename/library metadata and are deliberately not a Cold → Warm free-form field. See [ADR-0025](../05-development/adr/0025-vault-identity-library-and-save-ux.md).
+
+Legacy format-v1 vaults without this field remain valid and use their random header salt only as a warm-shell compatibility namespace until an explicit migration exists.
+
+---
+
 ## Entities
 
 ### Seed 🔵 / 🔒

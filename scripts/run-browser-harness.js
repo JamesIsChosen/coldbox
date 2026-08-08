@@ -1618,7 +1618,7 @@ async function verifyHelpFramework(browser, engine) {
       await button.waitFor({ state: 'visible', timeout: 3000 });
       await button.click();
       await page.locator('#page-learn:not([hidden])').waitFor({ state: 'visible' });
-      await page.locator(`[id^="${mapping.anchorPrefix}"]`).waitFor({ state: 'visible', timeout: 3000 });
+      await page.locator(`#${mapping.anchorPrefix}`).waitFor({ state: 'visible', timeout: 3000 });
     }
 
     await page.locator('#nav-rail a[data-route="learn"]').click();

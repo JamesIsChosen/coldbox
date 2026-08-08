@@ -123,7 +123,7 @@ Manual entry always works and always overrides a fetched value. Each transaction
 
 Querying an address tells the API operator that **your IP address is interested in that address**. Permanently, in their logs. For Bitcoin this is a real deanonymization vector.
 
-So: **opt-in per address, never automatic, no background sync, default off.** Before the first lookup the app shows exactly what it will send and to whom.
+So: **balance/history lookup is opt-in per address, never automatic, with no background balance sync and default off.** The separate content-free reachability monitor does not include an address, asset, balance, Vault ID/name, or user input. Before the first balance lookup the app shows exactly what it will send and to whom.
 
 **Mitigations, best first:**
 

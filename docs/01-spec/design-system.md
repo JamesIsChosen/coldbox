@@ -91,7 +91,7 @@ Flat, saturated, identical in both themes, always outlined, always carrying `--f
 | `--fill-cyan` | `#00f0ff` | Current selection, active nav, identity |
 | `--fill-pink` | `#ff007a` | Focus rings, accent marks |
 | `--fill-red` | `#e02020` | Failure, lockdown (white text — the one exception) |
-| `--fill-green` | `#4ade80` | Verified, airgapped, available |
+| `--fill-green` | `#4ade80` | Verified, no external reachability detected, available |
 | `--fill-disabled` | `#8e8e9c` | Disabled controls; use the surface's dark ink token |
 
 ### Paper
@@ -168,7 +168,7 @@ The yellow masthead, sticky at the top of every route and present at every width
 
 Its height is `--app-bar-height`, which is also what the nav rail's `top` and `height` are computed from — one token, so the two cannot drift apart and leave a gap or a clipped rail.
 
-Chrome, not a security surface: the tilts and the button press are fine here because nothing on the bar reports boundary state. The airgap banner does that, one screen down, and stays still.
+Chrome, not a security surface: the tilts and the button press are fine here because nothing on the bar reports boundary state. The network/sealed-realm status surface does that, one screen down, and stays still.
 
 **The badge says what is true.** The mockup's read `AIR-GAPPED VAULT v2.0` — the wrong noun and a version that does not exist. It now reads `Pre-release · Not audited`, which is what the README leads with and what §2 requires.
 
@@ -228,7 +228,7 @@ Cards use the paper tokens, not the shell surface tokens, and carry `--paper-ink
 
 A surface is a security surface if it **reports the live state of a security boundary**, or if it renders, accepts, or is adjacent to secret material.
 
-The distinction that does the work is *reporting state* versus *explaining the design*. The airgap banner reports: it tells you, right now, whether the guard is green. The dashboard stage explains: it describes how the two realms are arranged and renders nothing that can change. Explaining may be lively. Reporting may not — because the moment a reporting surface fails, any whimsy on it reads as the interface not taking the failure seriously.
+The distinction that does the work is *reporting state* versus *explaining the design*. The network/sealed-realm status surface reports: it tells you, right now, both the warm-shell reachability classification and whether the cold guard is healthy. The dashboard stage explains: it describes how the two realms are arranged and renders nothing that can change. Explaining may be lively. Reporting may not — because the moment a reporting surface fails, any whimsy on it reads as the interface not taking the failure seriously.
 
 Today the security surfaces are:
 

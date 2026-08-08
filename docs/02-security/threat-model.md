@@ -58,7 +58,7 @@ Zero runtime dependencies. All libraries vendored, pinned, and hashed, with `ver
 
 Argon2id (64 MiB, t=3) plus AES-256-GCM. Indistinguishable from random after the header; padded so size reveals nothing; KDF parameters in AAD so they can't be downgraded.
 
-P0.11 implements the v1 header as AAD, wraps the random DEK in a record list, derives `cbx/public/v1` and `cbx/secret/v1` with distinct HKDF-SHA-512 info strings, and keeps the vault API inside the cold realm. Vault entry points fail closed until the cold CSP canary, runtime network guard, required randomness, and crypto bootstrap have established the guarded state; mode detection consumes the shared airgap snapshot. Wrong passphrases and damaged ciphertext return the same authentication error, while the public 64 MiB implementation limit is reported distinctly.
+P0.11 implements the v1 header as AAD, wraps the random DEK in a record list, derives `cbx/public/v1` and `cbx/secret/v1` with distinct HKDF-SHA-512 info strings, and keeps the vault API inside the cold realm. Vault entry points fail closed until the cold CSP canary, runtime network guard, required randomness, and crypto bootstrap have established the guarded state; mode detection consumes the conservative warm-shell reachability classification defined by ADR-0024. Wrong passphrases and damaged ciphertext return the same authentication error, while the public 64 MiB implementation limit is reported distinctly.
 
 *Residual:* a weak passphrase. Argon2id buys time proportional to passphrase entropy. Six Diceware words is beyond reach; a dictionary word isn't.
 
@@ -109,7 +109,13 @@ Countered by a mandatory verify-your-shares step before a backup can be marked c
 
 ### Vault rollback
 
-Monotonic save counter, generational filenames, prominent warning when opening an older vault than the highest seen. Advisory, not cryptographic — see [vault-format.md](../01-spec/vault-format.md#rollback-detection) for exactly what it does and does not catch.
+Per-vault monotonic save counter, generational filenames, prominent warning when opening an older generation than the highest seen for that Vault ID. Advisory, not cryptographic — see [vault-format.md](../01-spec/vault-format.md#rollback-detection) for exactly what it does and does not catch.
+
+### Network-status deception / stale interface state
+
+Browser interface state is not a trustworthy proxy for real reachability: Windows virtual adapters, captive portals, VPNs, blackholed links, and stale `navigator.onLine` values can all mislead it. The warm shell therefore uses `navigator.onLine`/connection events only as triggers and performs content-free probes to two already-allowlisted public hosts. Any success establishes online immediately; only consecutive all-host failures establish **no external reachability detected**. Unknown, stale, or contradictory results fail online-safe and keep the secret compartment sealed.
+
+*Residual:* probe endpoints can both be blocked while some other route still exists, and no browser API can prove that radios/cables are physically absent. This monitor improves operator awareness; it does not replace a real airgap. The cold realm's `connect-src 'none'`, runtime network/provider guards, and fail-closed bootstrap remain the exfiltration boundary. The probes themselves expose the user's ordinary IP/time/browser connection metadata to their operators; they carry no Coldbox state. See [ADR-0024](../05-development/adr/0024-warm-reachability-monitor.md).
 
 ### Address–IP correlation
 
@@ -182,11 +188,11 @@ Breaking one of these is a security regression, not a feature change:
 1. Secrets never enter the warm shell.
 2. The cold realm's CSP always includes `connect-src 'none'`.
 3. If the cold realm cannot be established, the app **fails closed**.
-4. No telemetry. The CSP allowlist in source is the complete set of reachable hosts.
+4. No telemetry or analytics. The warm shell may make the fixed content-free reachability probes documented in CSP/API-source docs; the CSP allowlist in source is still the complete set of reachable hosts, and the cold realm reaches none of them.
 5. Builds are reproducible and the published hash is independently verifiable.
 6. **Coldbox builds, signs, and broadcasts nothing.** No code path constructs a transaction, produces a signature, or transmits one. See [SPEC §1.3](../01-spec/SPEC.md) and [ADR-0019](../05-development/adr/0019-no-transaction-workbench.md).
 
-**On commitment 4 and wallet extensions.** A 2026-08 proposal to use an injected wallet provider would have made commitment 4 false as written, because provider calls are not subject to page CSP — see below and [ADR-0020](../05-development/adr/0020-injected-providers-rejected-and-neutered.md). **The feature was rejected rather than the commitment amended**, so commitment 4 stands unqualified. That was the deciding consideration: these commitments are valuable because they are checkable by reading the source, and a carve-out is a cost paid by every future reader, not only by users of the feature.
+**On commitment 4.** The reachability monitor is an explicit, content-free use of the existing warm-shell network allowance, not analytics: it sends no vault/user state and has no Coldbox-controlled collector. A 2026-08 proposal to use an injected wallet provider would have created an unlisted extension-mediated channel outside page CSP — see below and [ADR-0020](../05-development/adr/0020-injected-providers-rejected-and-neutered.md). **That feature was rejected**, so the source CSP plus the narrowly documented warm probe behavior remain the complete page-network contract. That was the deciding consideration: these commitments are valuable because they are checkable by reading the source, and a carve-out is a cost paid by every future reader, not only by users of the feature.
 
 Commitment 6 restates in security terms what [SPEC §1.3](../01-spec/SPEC.md) states as a product non-goal, so that a regression is judged here as well as there.
 

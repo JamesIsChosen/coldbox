@@ -1,7 +1,7 @@
 # ADR-0013: Save-integrity bookkeeping lives in the warm shell, not the vault format
 
-**Status:** Accepted
-**Date:** 2026-08-06
+**Status:** Accepted · amended by [ADR-0025](0025-vault-identity-library-and-save-ux.md) for per-vault generation namespaces
+**Date:** 2026-08-05
 
 ---
 
@@ -51,7 +51,7 @@ review-protocol.md holds three items to a stricter merge bar because they are th
 ### Negative
 
 - Rollback detection is defeated by a simple rename. This is disclosed in-app (the banner explains the check is advisory) and in docs, not hidden.
-- The save counter is per-browser-profile, not per-person or per-device. Opening the same vault from a second browser (or after clearing `localStorage`) resets what "highest seen" means there. This matches how the existing theme preference and other UI-only `localStorage` state already behaves.
+- The advisory save history remains per-browser-profile, not per-person or per-device. Under the ADR-0025 amendment each vault has its own high-water record within that browser profile. Opening the same vault from a second browser (or after clearing `localStorage`) resets what "highest seen" means there. This matches how other UI-only `localStorage` state behaves.
 - `File.lastModified` (used only as a human-readable date alongside the counter, never as the rollback trigger itself) reflects filesystem mtime, which some sync tools and manual copies do not preserve faithfully. It is disclosed as context, not treated as authoritative.
 
 ### Risks
@@ -69,6 +69,8 @@ review-protocol.md holds three items to a stricter merge bar because they are th
 ## What would change our mind
 
 If a later item needs cross-device or cross-browser-profile save provenance (the multi-device conflict case above), or needs the rollback check to survive a rename, the counter and timestamp would need to move into the public compartment — an authenticated, cold-realm-originated value instead of a warm-shell heuristic. That is a schema change to the public compartment's message payload (though still not a vault-format byte-layout change) and would need its own review at the appropriate tier.
+
+**P0.19 amendment (2026-08-08):** multi-vault library UX makes one browser-global counter ambiguous. ADR-0025 keeps this ADR's core decision — save-integrity bookkeeping remains warm-shell/advisory and does not enter the byte header — but keys the high-water record by stable Vault ID (or the documented legacy header-salt namespace). Filenames become name + Vault-ID suffix + per-vault generation.
 
 ## References
 

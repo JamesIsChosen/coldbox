@@ -157,6 +157,21 @@ If any of these ever fires, the CSP has failed and something is badly wrong — 
 
 ---
 
+## Warm-shell reachability probes
+
+The warm shell is deliberately network-capable and continuously distinguishes **confirmed external reachability** from **no external reachability detected**. This does **not** loosen the cold policy.
+
+The monitor sends small `GET` requests using `mode: 'no-cors'`, `credentials: 'omit'`, `cache: 'no-store'`, and `referrerPolicy: 'no-referrer'`, to two already-allowlisted hosts operated by different parties. It consumes no response body; an opaque fulfilled response is sufficient for reachability:
+
+- `https://api.coinbase.com/v2/time`
+- `https://mempool.space/api/blocks/tip/height`
+
+No vault name, Vault ID, address, asset, balance, user input, or other Coldbox state is included. Any successful probe establishes online immediately; Coldbox reports no reachability only after two consecutive all-endpoint failures. The cadence is fixed independently of vault/user activity so timing does not become a vault-state side channel. Unknown/stale/error states remain online-safe. The ordinary IP address, time, TLS/browser metadata, and generic requested path can still be logged by those operators; [api-sources.md](../04-reference/api-sources.md) discloses this.
+
+These probes are **not telemetry**: they are not sent to a Coldbox-controlled collector and carry no application state. They are also not a physical-cable detector. A firewall that blocks both hosts can produce a false offline-looking result, which is why the UI never calls probe failure proof of an airgap and why the secret guarantee continues to come from the cold CSP/runtime boundary. Decision: [ADR-0024](../05-development/adr/0024-warm-reachability-monitor.md).
+
+---
+
 ## The CSP canary
 
 The app deliberately attempts a request the policy must reject. The warm shell attempts `https://coldbox.invalid/csp-canary`. The cold realm attempts `http://localhost:9/cold-csp-canary`; `http://localhost:*` is permitted by the warm policy, so a matching cold `connect-src` violation cannot be supplied solely by the inherited warm policy.
@@ -181,6 +196,7 @@ Every release must verify:
 5. No allowlisted endpoint redirects to a non-allowlisted host.
 6. The warm shell cannot read into the cold realm iframe.
 7. The build's script hash matches the meta tag.
+8. Warm-shell reachability probes transition online/offline classifications without changing the cold realm's `connect-src 'none'`; unknown/probe-error states remain online-safe.
 
 Manual, across the full browser matrix, because `file://` CSP behaviour varies. See [testing](../05-development/testing.md).
 

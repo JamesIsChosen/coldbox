@@ -31,7 +31,7 @@ Off by default, deliberately. An encrypted file on a general-purpose computer is
 Currently, the data is gone. There is no reset, no recovery email, nobody to call. From Phase 2, recovery shares provide a second route in. Until then: write it down and store it physically.
 
 **Can the app phone home?**
-The secret half has no network capability at all — CSP `connect-src 'none'` removes the mechanisms. The other half can only reach a fixed list of hosts written in the source, which you can read. There is no analytics code to find.
+The secret half has no network capability at all — CSP `connect-src 'none'` removes the mechanisms. The warm shell can only reach the fixed hosts written in the source. It makes small, content-free reachability probes to two of those existing public endpoints while Coldbox is open so the status display can detect a cable/Wi-Fi loss more reliably than `navigator.onLine` alone. Those requests expose ordinary connection metadata such as your IP address and time to the endpoint operators, but carry no vault, address, asset, or user-entered data. There is no Coldbox analytics or telemetry collector. See [ADR-0024](../05-development/adr/0024-warm-reachability-monitor.md).
 
 **What if my computer has malware?**
 Then you have a serious problem no browser tool can fix. It could read what's on screen or log your keystrokes. What Coldbox *can* do is catch a specific, common attack: malware that swaps a displayed receive address. Independent derivation exposes that. See [verify a hardware wallet](../03-guides/verify-a-hardware-wallet.md).

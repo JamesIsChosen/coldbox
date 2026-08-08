@@ -12,6 +12,13 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
+### Changed — P0.19 device-matrix remediation design (2026-08-08)
+
+- Windows Chrome/Firefox hands-on testing exposed two user-facing blockers before the rest of the physical matrix proceeds: vault creation/save/library state was not understandable enough to complete the required create → save → reload → open flow, and the network banner stayed stale when Ethernet reachability changed because it ultimately trusted `navigator.onLine`.
+- [ADR-0024](docs/05-development/adr/0024-warm-reachability-monitor.md) replaces interface-state authority with warm-shell active reachability probes to two already-allowlisted providers, keeps checking/unknown online-safe, separates warm reachability from cold-realm isolation, and explicitly refuses to call probe failure proof of a physical airgap.
+- [ADR-0025](docs/05-development/adr/0025-vault-identity-library-and-save-ux.md) defines creation-only phrase confirmation, public vault names, cold-generated portable random Vault IDs (device fingerprints rejected), a user-granted multi-vault library, prominent unsaved/save state, per-vault generational filenames, and zeroization-preserving lock semantics. Existing v1 `.cbx` bytes remain compatible.
+- This entry records the **accepted remediation contract**, not a claim that the runtime implementation or P0.19 acceptance is complete. The ROADMAP remains the only authoritative item-level status.
+
 ### Added — P1.1 Entropy Lab: dice, coins, cards, hex, CSPRNG, mixing (2026-08-07)
 
 - **`src/cold/entropy-lab.js`** (new cold-realm module, wired into the build via a new `entropy-lab.js` component/`__COLDBOX_ENTROPY_LAB_LAYER__` token in `scripts/build.js`): collects entropy from dice (base-6, kept in an exact `BigInt` accumulator; and a 4-outcome discard mapping that keeps rolls 1-4 as exactly 2 unbiased bits and rerolls 5-6), coin flips (1 bit), playing cards drawn without replacement (factorial-number-system accumulator, ~225 bits for a full 52-card deck), and typed hex digits (4 bits each). A running "guaranteed bits" meter is a conservative floor — `bitLength(possibility-space-size) - 1` — computed entirely in integer/`BigInt` arithmetic, never a float, so the security gate can't be tipped by rounding. Per-operation undo, including for a rejected (5/6) discard roll.

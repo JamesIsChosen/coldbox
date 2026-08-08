@@ -79,5 +79,5 @@ These are promises the code is expected to keep. A change that breaks one is a s
 1. Secrets never enter the warm shell.
 2. The cold realm's CSP always includes `connect-src 'none'`.
 3. If the cold realm cannot be established, the app **fails closed** — it refuses to open a vault rather than silently degrading.
-4. No telemetry, no analytics, no external resource loads. The CSP allowlist in the source is the complete list of hosts the app can ever contact.
+4. No telemetry and no analytics. The warm shell may make fixed, content-free reachability probes to already-allowlisted hosts so the network-status UI can refresh while the app is open; those probes carry no vault, address, asset, or user-entered data. The CSP allowlist in source remains the complete list of hosts the app can contact. The cold realm contacts none of them.
 5. Builds are reproducible, and the published hash is verifiable by anyone.

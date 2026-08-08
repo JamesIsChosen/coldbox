@@ -20,7 +20,7 @@ Both requirements are legitimate. The resolution is two documents.
 
 CSP permits `connect-src` to a pinned allowlist of price and blockchain hosts.
 
-Owns: UI chrome and routing, live prices, balance lookups, portfolio engine, public registry views, help content, file hashing of non-secret files.
+Owns: UI chrome and routing, **active external-reachability monitoring**, live prices, balance lookups, portfolio engine, public registry views, Vault Library/file handles and public filenames, help content, file hashing of non-secret files.
 
 **Never receives a secret.** No seed, no private key, no decrypted secret compartment, no vault passphrase.
 
@@ -82,7 +82,7 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 | `vault.saveRequest` | `{ }` | Cold realm returns ciphertext |
 | `vault.lock` | `{ }` | |
 | `panic.hide` | `{ }` | Locks the cold session and asks the warm shell to conceal the app |
-| `mode.set` | `{ online: bool }` | Cold realm decides what to permit |
+| `mode.set` | `{ online: bool }` | Conservative warm-shell reachability classification. `true` means reachable **or checking/unknown**; `false` is sent only after the active offline threshold is met |
 | `derive.request` | `{ accountRef, scriptType, range }` | References a wallet by id; never carries key material |
 | `publicData.request` | `{ collections[] }` | Ask for public compartment contents |
 | `ui.navigate` | `{ section }` | |
@@ -117,7 +117,7 @@ This is not a style preference. The schema invariant below permits only structur
 
 `different-account` deserves its own code rather than being folded into `match`: an address that matches a record in a *different* account than expected is a real and confusing situation, and collapsing it into a plain match would hide it.
 
-The public projection deliberately contains no free-form text fields. It permits only structurally typed public values: UUIDs, eight-hex-digit fingerprints, validated extended public keys, validated public addresses, and numeric accounting values. Any string-bearing field outside that closed projection, including labels, notes, names, tags, locations, and unknown nested records, is rejected rather than forwarded. Recognizable extended-private-key forms, WIF forms, mnemonic-shaped phrases, and raw 32-byte private-key hex are also rejected. This is the only honest way to enforce the literal no-passphrase/no-secret-plaintext invariant; arbitrary prose cannot be distinguished from a secret by regex. All non-vault messages have a 4 MiB aggregate sanitized-payload limit, and encrypted `vault.open`/`vault.bytes` payloads have a 64 MiB byte limit.
+The public projection deliberately contains no free-form text fields. It permits only structurally typed public values: UUIDs, eight-hex-digit fingerprints, validated extended public keys, validated public addresses, and numeric accounting values. The new Vault ID uses the existing UUID-safe `publicCompartment.id` field. **Vault names do not cross cold → warm**: they are explicit public warm-shell/filename metadata, because arbitrary names could contain a passphrase or other secret if a user typed one by mistake. Any string-bearing field outside the closed projection, including labels, notes, names, tags, locations, and unknown nested records, is rejected rather than forwarded. Recognizable extended-private-key forms, WIF forms, mnemonic-shaped phrases, and raw 32-byte private-key hex are also rejected. This is the only honest way to enforce the literal no-passphrase/no-secret-plaintext invariant; arbitrary prose cannot be distinguished from a secret by regex. All non-vault messages have a 4 MiB aggregate sanitized-payload limit, and encrypted `vault.open`/`vault.bytes` payloads have a 64 MiB byte limit.
 
 ---
 
@@ -154,20 +154,19 @@ The public projection deliberately contains no free-form text fields. It permits
 
 ## Mode determination
 
-| | Cold Mode | Warm Mode |
+| | Cold Mode | Warm Mode / online-safe |
 |---|---|---|
-| Trigger | No network detected | Network detected |
+| Trigger | All warm-shell reachability probes fail for consecutive rounds | Any probe succeeds, or status is checking/unknown/stale |
 | Public compartment | Read/write | Read/write (or sealed under `strict`) |
 | Secret compartment | Available | **Never decrypted** |
 | Tools | All | All — inside the cold realm |
-| Vault save | Full offline | Public and secret compartments re-encrypted with fresh nonces |
-| Vault save | Online-safe | Public re-encrypted; secret nonce and ciphertext copied as opaque bytes |
+| Vault save | Full offline | Public re-encrypted; secret nonce and ciphertext copied as opaque bytes |
 
-Detection uses `navigator.onLine`, `navigator.connection`, and the CSP canary.
+The **warm shell**, not the cold realm, owns active reachability monitoring. Browser interface signals (`navigator.onLine`, `navigator.connection`, `online`/`offline`, focus/change events) trigger checks but are not trusted as the verdict. Small content-free fetches to two already-allowlisted providers establish real outbound reachability: any success flips to online immediately; only consecutive all-endpoint failures permit `mode.set { online:false }`. Checking, stale, contradictory, timeout, and monitor errors are all online-safe. See [ADR-0024](../05-development/adr/0024-warm-reachability-monitor.md).
 
-P0.13 sends the detected mode over the private channel. The cold realm defaults to online-safe behavior until that signal arrives: an online unlock uses the public-only vault opener, which never derives `cbx/secret/v1`; a full unlock is available only after the warm shell reports offline. A mode change to online clears the active cold session.
+The cold realm never probes. Its `connect-src 'none'`, runtime network-primitive/provider neutering, and private channel remain unchanged. P0.13's conservative mode rule therefore still holds: an online-safe unlock never derives `cbx/secret/v1`; a full unlock is available only after warm reports the offline threshold. A transition back to online immediately clears the active cold session.
 
-**`navigator.onLine` is not reliable** — it reports whether a network interface exists, not whether the internet is reachable. It catches Wi-Fi-left-on; a blackholed link can read as offline. Mode detection is a convenience feature. The actual guarantee is the cold realm's CSP, which does not depend on detection being correct.
+**Reachability is not physical-airgap proof.** A firewall can block the chosen probe hosts while another route exists; a captive portal or virtual adapter can confuse browser signals. The UI says **no external reachability detected**, never "physical airgap confirmed." The cold CSP is the secret-exfiltration guarantee; a physically disconnected/amnesic machine is the stronger environmental posture.
 
 ---
 

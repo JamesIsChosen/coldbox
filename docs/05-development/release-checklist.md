@@ -56,7 +56,7 @@ Per [testing.md](testing.md). **All seven supported execution-matrix contexts ar
 - [ ] Android Chrome from Files
 - [ ] Tails / Tor Browser
 
-Per platform: cold realm instantiates · handshake completes · capability panel accurate · vault round-trips · **Argon2id active, not PBKDF2** · a save path works · airgap banner correct.
+Per platform: cold realm/handshake healthy · capability panel accurate · **two named vaults** create-confirm-save-library-reload/unlock correctly · **Argon2id active, not PBKDF2** · a save path works · live warm-shell reachability loss/restoration is reflected while cold stays sealed/unknown fails online-safe · layout usable.
 
 ### Security review
 

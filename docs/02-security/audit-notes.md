@@ -91,7 +91,7 @@ Documented in [threat-model.md](threat-model.md). Not bugs:
 
 - JS memory cannot be reliably wiped
 - Nothing survives OS compromise or a malicious extension
-- `navigator.onLine` is unreliable; mode detection is convenience, and the CSP is the guarantee
+- Physical airgap cannot be proved from browser APIs. `navigator.onLine` is only a trigger/hint; the warm shell adds active reachability probes, but even repeated probe failure means only "no external reachability detected." The cold CSP/runtime isolation remains the secret-boundary guarantee
 - Balance lookups leak address interest to the queried API by design, mitigated and opt-in
 - A weak passphrase defeats the vault
 - The in-app self-hash verifier is circular and labelled as such

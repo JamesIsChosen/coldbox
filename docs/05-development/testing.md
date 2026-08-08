@@ -143,7 +143,7 @@ npm run test:browser
 
 `npm ci` installs the pinned Playwright package but does not download browser binaries. Install the Chromium and Firefox binaries once with the documented command before running the harness. `npm run test:browser` refuses to download anything and exits non-zero with that command if either binary is missing. The browser binaries are test tooling only and never enter `build/coldbox.html`. The reusable assertions live in `test/browser/harness.js` and cover CSP reports, tampered-script rejection, frame isolation, network primitive failures, visible elements, and viewport sizes.
 
-Covers: CSP enforcement and violation detection, post-build tamper rejection, cold realm instantiation, network primitives throwing inside the sandbox, parent-cannot-read-frame isolation, airgap banner states, responsive layout, and help rendering.
+Covers: CSP enforcement and violation detection, post-build tamper rejection, cold realm instantiation, network primitives throwing inside the sandbox, parent-cannot-read-frame isolation, network/sealed-realm status states, responsive layout, and help rendering.
 
 **What it does not cover: iOS Safari.** WebKit-on-Linux is not Safari-on-iOS, and the differences land precisely where this project is fragile — `file://` secure-context status, opaque-origin `crypto.subtle`, and blob download restrictions. A packet claiming iOS verification on the strength of harness results should be failed. See [ADR-0007](adr/0007-headless-browser-harness.md).
 
@@ -164,13 +164,13 @@ Covers: CSP enforcement and violation detection, post-build tamper rejection, co
 
 Per platform, confirm:
 
-1. Cold realm instantiates and handshake completes
-2. Capability panel accurately reports what's available
-3. Vault create → save → reload → open round-trips
-4. Argon2 loads (check vault details shows Argon2id, not PBKDF2)
-5. At least one save path works
-6. Airgap banner reflects actual network state
-7. Layout usable at that screen size
+1. Cold realm instantiates and private handshake completes; cold CSP/runtime/provider guards remain healthy
+2. Capability panel accurately reports what is available
+3. **Two named vaults** can each be created with new-phrase confirmation, visibly enter `UNLOCKED · NOT SAVED`, save, reload through the user-granted Vault Library, be selected unambiguously, and unlock with **one** phrase; locking/teardown zeroizes and an unsaved new vault is never implied durable
+4. Argon2 loads (vault details shows Argon2id, not PBKDF2)
+5. At least one save path works end-to-end on that platform; File System Access verifies read-back where available, and the generated filename/name + Vault-ID suffix + per-vault generation are understandable
+6. **Live network status:** while Coldbox remains open, remove and restore external reachability. The warm-shell status transitions between online and no-reachability/unknown from active probes (not merely `navigator.onLine`), unknown fails online-safe, and the independent cold-realm status remains sealed. Record that the UI never claims this proves a physical airgap
+7. Layout is usable at that screen size, including the Vault Library, create/confirm/save controls, and network/sealed-realm status
 
 **iOS local execution is the highest-risk portability target.** A Files preview does not establish the sandboxed execution environment. Do not substitute Quick Look, a third-party viewer, localhost, a renamed file, or another execution context for Safari-from-Files without an accepted ADR. See [ADR-0010](adr/0010-ios-local-html-execution.md).
 
