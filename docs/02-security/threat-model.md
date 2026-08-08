@@ -115,6 +115,10 @@ Monotonic save counter, generational filenames, prominent warning when opening a
 
 Balance lookups are opt-in per address, never automatic, default off, with self-hosted node support and Tor guidance. xpub scanning derives addresses locally and sends only the resulting addresses — the xpub itself never leaves the device.
 
+### A single rigged or backdoored entropy source
+
+Entropy Lab (P1.1) separates two threat assumptions instead of collapsing them into one number. Under normal operation, a sound `crypto.getRandomValues` source can supply the selected **normal output strength** (128–256 bits). Separately, **independent-source fallback strength** is derived only from conservative physical/manual entropy accounting: physically rolled dice, physical coin flips, physical shuffled-card draws, or genuinely user-supplied hex. If the device RNG is completely compromised, that independent contribution is the remaining protection, capped naturally by the selected output length. **Full two-source protection** is claimed only when the independent physical/manual contribution itself reaches the selected target; a smaller contribution is useful fallback, but does not make the whole output independent of the CSPRNG. The UI's "Generate with device RNG" conveniences are explicitly *not* a second source: their values carry `device-rng` provenance and receive zero independent-source credit, so a compromised RNG cannot manufacture its own fallback by generating simulated dice/coins/cards/hex. See [entropy-and-strength.md](../04-reference/entropy-and-strength.md) for the accounting and [ADR-0022](../05-development/adr/0022-entropy-lab-mixing.md) for the construction. Bias *detection* on the manual source itself is the Entropy Health Meter (P1.2), not yet built.
+
 ---
 
 ## Not defended

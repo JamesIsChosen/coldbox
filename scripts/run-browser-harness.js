@@ -1702,6 +1702,177 @@ async function verifyHelpFramework(browser, engine) {
   }
 }
 
+async function verifyEntropyLab(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    const coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('html[data-crypto-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
+
+    const meter = coldFrame.locator('#cold-entropy-meter');
+    const mixStatus = coldFrame.locator('#cold-entropy-mix-status');
+    const target = coldFrame.locator('#cold-entropy-target');
+    assert.match(await coldFrame.locator('#cold-entropy-dice-random').textContent(), /device RNG/i);
+    assert.match(await coldFrame.locator('#cold-entropy-coin-random').textContent(), /device RNG/i);
+    assert.match(await coldFrame.locator('#cold-entropy-card-random').textContent(), /device RNG/i);
+    assert.match(await coldFrame.locator('#cold-entropy-hex-random').textContent(), /device RNG/i);
+
+    // The sticky meter separates the selected normal output strength from the
+    // fallback that survives a completely compromised device RNG.
+    assert.equal(await meter.getAttribute('data-output-strength-bits'), '128');
+    assert.equal(await meter.getAttribute('data-fallback-bits'), '0');
+    assert.equal(await meter.getAttribute('data-full-two-source-protection'), 'false');
+    assert.match(await coldFrame.locator('#cold-entropy-fallback-strength').textContent(), /0 bits.*CSPRNG-only security/i);
+
+    // Generated dice are auditable simulations, never independent entropy.
+    await coldFrame.locator('#cold-entropy-dice-random-count').fill('20');
+    await coldFrame.locator('#cold-entropy-dice-random').click();
+    assert.equal(await meter.getAttribute('data-guaranteed-bits'), '0');
+    assert.equal(await meter.getAttribute('data-fallback-bits'), '0');
+    assert.equal(await meter.getAttribute('data-device-rng-values'), '20');
+    assert.match(await coldFrame.locator('#cold-entropy-dice-log').textContent(), /Device RNG:/);
+    assert.doesNotMatch(await coldFrame.locator('#cold-entropy-dice-log').textContent(), /Physical\/manual:/);
+    await coldFrame.locator('#cold-entropy-dice-reset').click();
+
+    // Bulk manual dice, including an invalid character, remain usable and
+    // visibly provenance-labeled as physical/manual values.
+    await coldFrame.locator('#cold-entropy-dice-face').fill('123456x');
+    await coldFrame.locator('#cold-entropy-dice-base6-add').click();
+    assert.match(await coldFrame.locator('#cold-entropy-dice-status').textContent(), /Added 6 base-6 rolls.*Ignored invalid character\(s\): x/);
+    assert.ok(Number(await meter.getAttribute('data-fallback-bits')) > 0);
+    assert.match(await coldFrame.locator('#cold-entropy-dice-log').textContent(), /Physical\/manual:/);
+    await coldFrame.locator('#cold-entropy-dice-reset').click();
+    assert.equal(await meter.getAttribute('data-fallback-bits'), '0');
+
+    // Partial real manual entropy: 8 hex digits = 32 independent bits. Adding
+    // generated simulations must not change that fallback.
+    await coldFrame.locator('#cold-entropy-hex-input').fill('01234567');
+    await coldFrame.locator('#cold-entropy-hex-add').click();
+    assert.equal(await meter.getAttribute('data-guaranteed-bits'), '32');
+    assert.equal(await meter.getAttribute('data-fallback-bits'), '32');
+    assert.equal(await meter.getAttribute('data-full-two-source-protection'), 'false');
+    assert.match(await coldFrame.locator('#cold-entropy-fallback-strength').textContent(), /~32 bits.*partial independent fallback/i);
+    assert.match(await coldFrame.locator('#cold-entropy-hex-log').textContent(), /Physical\/manual:/);
+
+    await coldFrame.locator('#cold-entropy-coin-random-count').fill('10');
+    await coldFrame.locator('#cold-entropy-coin-random').click();
+    assert.equal(await meter.getAttribute('data-fallback-bits'), '32');
+    assert.match(await coldFrame.locator('#cold-entropy-coin-log').textContent(), /Device RNG:/);
+    await coldFrame.locator('#cold-entropy-undo').click();
+    assert.equal(await meter.getAttribute('data-fallback-bits'), '32', 'undoing a generated value must not alter independent fallback');
+    await coldFrame.locator('#cold-entropy-coin-reset').click();
+    assert.equal(await meter.getAttribute('data-fallback-bits'), '32', 'resetting generated-only coin values must not alter manual hex fallback');
+
+    // A genuine manual Undo decreases fallback; Reset removes the remainder.
+    await coldFrame.locator('#cold-entropy-undo').click();
+    assert.equal(await meter.getAttribute('data-fallback-bits'), '28');
+    await coldFrame.locator('#cold-entropy-hex-reset').click();
+    assert.equal(await meter.getAttribute('data-fallback-bits'), '0');
+
+    // Card grid remains 52 stable >=44px targets; click/Undo updates state and
+    // fallback without layout removal.
+    const cardButtons = coldFrame.locator('#cold-entropy-card-grid button');
+    assert.equal(await cardButtons.count(), 52);
+    const firstCard = cardButtons.nth(0);
+    const firstCardBox = await firstCard.boundingBox();
+    assert.ok(firstCardBox && firstCardBox.width >= 44 && firstCardBox.height >= 44,
+      `${engine}: card tap target must be at least 44 x 44 CSS pixels`);
+    await firstCard.click();
+    assert.equal(await firstCard.isDisabled(), true);
+    assert.ok(Number(await meter.getAttribute('data-fallback-bits')) > 0);
+    assert.match(await coldFrame.locator('#cold-entropy-card-log').textContent(), /Physical\/manual:/);
+    await coldFrame.locator('#cold-entropy-undo').click();
+    assert.equal(await firstCard.isDisabled(), false);
+    assert.equal(await coldFrame.locator('#cold-entropy-card-log').textContent(), 'None yet.');
+    assert.equal(await meter.getAttribute('data-fallback-bits'), '0');
+
+    const randomCountBox = await coldFrame.locator('#cold-entropy-dice-random-count').boundingBox();
+    assert.ok(randomCountBox && randomCountBox.height >= 44,
+      `${engine}: random-count input tap target must be at least 44 CSS pixels high`);
+
+    // Reach the 128-bit independent target and verify the full-protection state.
+    await coldFrame.locator('#cold-entropy-hex-input').fill('0123456789abcdef0123456789abcdef');
+    await coldFrame.locator('#cold-entropy-hex-add').click();
+    assert.equal(await meter.getAttribute('data-guaranteed-bits'), '128');
+    assert.equal(await meter.getAttribute('data-fallback-bits'), '128');
+    assert.equal(await meter.getAttribute('data-full-two-source-protection'), 'true');
+    assert.match(await coldFrame.locator('#cold-entropy-fallback-strength').textContent(), /full two-source protection/i);
+
+    // Target changes recalculate fallback/full-protection messaging without
+    // altering the underlying independent count.
+    await target.selectOption('256');
+    assert.equal(await meter.getAttribute('data-output-strength-bits'), '256');
+    assert.equal(await meter.getAttribute('data-guaranteed-bits'), '128');
+    assert.equal(await meter.getAttribute('data-fallback-bits'), '128');
+    assert.equal(await meter.getAttribute('data-full-two-source-protection'), 'false');
+    assert.match(await mixStatus.textContent(), /not full two-source protection/i);
+    await target.selectOption('128');
+    assert.equal(await meter.getAttribute('data-full-two-source-protection'), 'true');
+
+    // Full manual + CSPRNG mix: 32 fresh bytes are drawn, 16 consumed for the
+    // 128-bit full-length source, and strength copy remains current post-mix.
+    await coldFrame.locator('#cold-entropy-csprng-count').fill('1');
+    await coldFrame.locator('#cold-entropy-csprng-draw').click();
+    assert.match(await coldFrame.locator('#cold-entropy-csprng-status').textContent(), /32 fresh CSPRNG bytes available/);
+    assert.match(await mixStatus.textContent(), /full two-source protection/i);
+    await coldFrame.locator('#cold-entropy-mix-run').click();
+    await coldFrame.locator('#cold-entropy-mix-output:not([hidden])').waitFor({ state: 'visible' });
+    assert.match(await coldFrame.locator('#cold-entropy-mix-output').textContent(), /^[0-9a-f]{32}$/);
+    assert.match(await mixStatus.textContent(), /Full two-source protection/i);
+    assert.equal(await meter.getAttribute('data-csprng-bits'), '128');
+    assert.equal(await meter.getAttribute('data-fallback-bits'), '128');
+    assert.match(await coldFrame.locator('#cold-entropy-csprng-status').textContent(), /16 fresh CSPRNG bytes available/);
+
+    // Reset clears the old output and immediately removes the old fallback/full
+    // protection claim instead of leaving stale strength text behind.
+    await coldFrame.locator('#cold-entropy-hex-reset').click();
+    assert.equal(await coldFrame.locator('#cold-entropy-mix-output').isHidden(), true);
+    assert.equal(await meter.getAttribute('data-fallback-bits'), '0');
+    assert.equal(await meter.getAttribute('data-full-two-source-protection'), 'false');
+
+    // Generated-only sources remain CSPRNG-only security but may still produce
+    // the selected normal output when enough fresh CSPRNG bytes are available.
+    await coldFrame.locator('#cold-entropy-dice-random-count').fill('1');
+    await coldFrame.locator('#cold-entropy-dice-random').click();
+    assert.match(await coldFrame.locator('#cold-entropy-dice-status').textContent(), /Generated 1 base-6 dice roll.*device RNG.*0 independent-manual credit/i);
+    await coldFrame.locator('#cold-entropy-coin-random-count').fill('1');
+    await coldFrame.locator('#cold-entropy-coin-random').click();
+    assert.match(await coldFrame.locator('#cold-entropy-coin-status').textContent(), /Generated 1 coin flip.*device RNG.*0 independent-manual credit/i);
+    await coldFrame.locator('#cold-entropy-card-random-count').fill('1');
+    await coldFrame.locator('#cold-entropy-card-random').click();
+    assert.match(await coldFrame.locator('#cold-entropy-card-log').textContent(), /Device RNG:/);
+    await coldFrame.locator('#cold-entropy-hex-random-count').fill('1');
+    await coldFrame.locator('#cold-entropy-hex-random').click();
+    assert.match(await coldFrame.locator('#cold-entropy-hex-status').textContent(), /Generated 1 hex digit.*device RNG.*0 independent-manual credit/i);
+    assert.equal(await meter.getAttribute('data-guaranteed-bits'), '0');
+    assert.equal(await meter.getAttribute('data-fallback-bits'), '0');
+    assert.equal(await meter.getAttribute('data-device-rng-values'), '4');
+    assert.match(await mixStatus.textContent(), /CSPRNG-only security/i);
+    assert.doesNotMatch(await mixStatus.textContent(), /full two-source protection/i);
+    await coldFrame.locator('#cold-entropy-mix-run').click();
+    await coldFrame.locator('#cold-entropy-mix-output:not([hidden])').waitFor({ state: 'visible' });
+    assert.match(await mixStatus.textContent(), /CSPRNG-only security.*fallback is 0 bits/i);
+
+    // Clearing simulations and drawing fresh bytes restores the explicit direct
+    // CSPRNG-only path with the same 0-bit independent fallback semantics.
+    await coldFrame.locator('#cold-entropy-dice-reset').click();
+    await coldFrame.locator('#cold-entropy-coin-reset').click();
+    await coldFrame.locator('#cold-entropy-card-reset').click();
+    await coldFrame.locator('#cold-entropy-hex-reset').click();
+    await coldFrame.locator('#cold-entropy-csprng-count').fill('1');
+    await coldFrame.locator('#cold-entropy-csprng-draw').click();
+    assert.equal(await meter.getAttribute('data-fallback-bits'), '0');
+    assert.match(await mixStatus.textContent(), /Ready for a 128-bit CSPRNG-only draw/);
+    await coldFrame.locator('#cold-entropy-mix-run').click();
+    await coldFrame.locator('#cold-entropy-mix-output:not([hidden])').waitFor({ state: 'visible' });
+    assert.match(await coldFrame.locator('#cold-entropy-mix-output').textContent(), /^[0-9a-f]{32}$/);
+
+    console.log(`${engine}: Entropy Lab normal-vs-fallback strength, provenance, bulk input, grid/undo/reset, CSPRNG burn, mix, and touch targets passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyDevOnlyDependency() {
   const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
   assert.equal(packageJson.dependencies?.playwright, undefined);
@@ -1753,6 +1924,7 @@ async function run() {
     const browser = await browserType.launch({ headless: true });
     try {
       await verifyBuiltFile(browser, engine);
+      await verifyEntropyLab(browser, engine);
       await verifyUnlockedRuntimeHealthLockdown(browser, engine);
       await verifyProviderNeutering(browser, engine);
       await verifyPreexistingProviderLockdown(browser, engine);

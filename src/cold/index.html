@@ -53,11 +53,115 @@ __COLDBOX_COLD_STYLES__
       </div>
       <p id="cold-vault-help">The warm shell can carry encrypted bytes only. This input and decrypted compartments remain inside the opaque frame.</p>
     </section>
+    <section id="cold-entropy-lab" aria-label="Entropy Lab">
+      <p class="eyebrow">Entropy Lab / P1.1</p>
+      <p id="cold-entropy-lab-help">Collect physical/manual entropy from dice, coin flips, shuffled cards, or genuinely user-supplied hex, then combine it with fresh CSPRNG bytes. A sound device RNG supplies the selected normal output strength; the independently collected physical/manual contribution determines how much fallback protection remains if that RNG is completely compromised. The Generate controls are simulation conveniences powered by the same device RNG as CSPRNG; generated values are labeled and receive zero independent-source credit. Recording no physical/manual entropy is supported, but that is CSPRNG-only security rather than two-source protection.</p>
+      <div id="cold-entropy-meter" role="status" aria-live="polite" data-guaranteed-bits="0" data-independent-bits="0" data-device-rng-values="0" data-csprng-bits="0" data-output-strength-bits="128" data-fallback-bits="0" data-full-two-source-protection="false">
+        <div class="cold-entropy-strength-row"><span>Normal output strength</span><strong id="cold-entropy-output-strength">128 bits</strong></div>
+        <div class="cold-entropy-strength-row"><span>Independent physical/manual entropy</span><strong id="cold-entropy-independent-strength">0 / 128 bits</strong></div>
+        <div class="cold-entropy-strength-row"><span>Fallback if device RNG is compromised</span><strong id="cold-entropy-fallback-strength">0 bits — CSPRNG-only security</strong></div>
+        <div class="cold-entropy-strength-row cold-entropy-strength-secondary"><span>Device-RNG simulated values</span><strong id="cold-entropy-simulated-count">0 (0 independent bits)</strong></div>
+        <div class="cold-entropy-strength-row cold-entropy-strength-secondary"><span>Fresh CSPRNG available</span><strong id="cold-entropy-csprng-strength">0 bits</strong></div>
+        <p id="cold-entropy-strength-help">Your device RNG can provide the full normal output strength. Independent physical/manual entropy determines how much protection remains if the device RNG is completely compromised. Full two-source protection appears only when the independent contribution reaches the selected output size.</p>
+      </div>
+      <div id="cold-entropy-lab-inputs">
+        <fieldset id="cold-entropy-dice">
+          <legend>Dice</legend>
+          <label id="cold-entropy-dice-face-label" for="cold-entropy-dice-face">Die face(s) (1-6, type or paste as many as you like)</label>
+          <input id="cold-entropy-dice-face" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" placeholder="e.g. 3241566251" disabled>
+          <button id="cold-entropy-dice-base6-add" type="button" disabled>Add roll(s) (base-6)</button>
+          <button id="cold-entropy-dice-discard-add" type="button" disabled>Add roll(s) (4-outcome discard)</button>
+          <div id="cold-entropy-dice-random-row">
+            <label id="cold-entropy-dice-random-count-label" for="cold-entropy-dice-random-count">Generate with device RNG</label>
+            <input id="cold-entropy-dice-random-count" type="number" min="1" max="1000" step="1" value="10" disabled>
+            <button id="cold-entropy-dice-random" type="button" disabled>Generate with device RNG</button>
+          </div>
+          <button id="cold-entropy-dice-reset" type="button" disabled>Reset dice</button>
+          <p id="cold-entropy-dice-status" role="status" aria-live="polite">No dice rolls recorded yet.</p>
+          <p id="cold-entropy-dice-log-label">Rolls recorded this session:</p>
+          <p id="cold-entropy-dice-log" aria-live="polite">None yet.</p>
+          <p id="cold-entropy-dice-help">Base-6 keeps every roll (log2(6) bits each). Discard mode keeps only 1-4 (exactly 2 unbiased bits) and rerolls 5-6. "Generate with device RNG" uses fresh CSPRNG bytes (rejection-sampled, unbiased) to simulate base-6 rolls. Those simulated rolls receive 0 independent-manual credit.</p>
+        </fieldset>
+        <fieldset id="cold-entropy-coin">
+          <legend>Coin</legend>
+          <button id="cold-entropy-coin-heads" type="button" disabled>Heads</button>
+          <button id="cold-entropy-coin-tails" type="button" disabled>Tails</button>
+          <div id="cold-entropy-coin-random-row">
+            <label id="cold-entropy-coin-random-count-label" for="cold-entropy-coin-random-count">Generate with device RNG</label>
+            <input id="cold-entropy-coin-random-count" type="number" min="1" max="1000" step="1" value="10" disabled>
+            <button id="cold-entropy-coin-random" type="button" disabled>Generate with device RNG</button>
+          </div>
+          <button id="cold-entropy-coin-reset" type="button" disabled>Reset coin</button>
+          <p id="cold-entropy-coin-status" role="status" aria-live="polite">No coin flips recorded yet.</p>
+          <p id="cold-entropy-coin-log-label">Flips recorded this session:</p>
+          <p id="cold-entropy-coin-log" aria-live="polite">None yet.</p>
+          <p class="cold-entropy-device-rng-note">Device-RNG-generated flips are simulation only and receive 0 independent-manual credit.</p>
+        </fieldset>
+        <fieldset id="cold-entropy-card">
+          <legend>Playing cards</legend>
+          <p id="cold-entropy-card-help">Click a card from a physical shuffled deck to record an independent manual draw. Device-RNG-generated cards are simulation only and receive 0 independent-manual credit. Click a card to draw it. A card cannot repeat within a shuffle; a full 52-card shuffle contributes about 225 bits. Once every card in the current shuffle is drawn, "Start new shuffle" becomes available so you can keep going — for example, two shuffles for a 256-bit target — without resetting what you've already collected.</p>
+          <div id="cold-entropy-card-grid" role="group" aria-label="Cards available to draw"></div>
+          <button id="cold-entropy-card-shuffle" type="button" disabled title="Draw every remaining card in this shuffle first.">Start new shuffle</button>
+          <p id="cold-entropy-card-shuffle-status" role="status" aria-live="polite">52 cards remaining in this shuffle.</p>
+          <div id="cold-entropy-card-random-row">
+            <label id="cold-entropy-card-random-count-label" for="cold-entropy-card-random-count">Generate with device RNG</label>
+            <input id="cold-entropy-card-random-count" type="number" min="1" max="52" step="1" value="5" disabled>
+            <button id="cold-entropy-card-random" type="button" disabled>Generate with device RNG</button>
+          </div>
+          <button id="cold-entropy-card-reset" type="button" disabled>Reset cards</button>
+          <p id="cold-entropy-card-log-label">Cards drawn this session:</p>
+          <p id="cold-entropy-card-log" aria-live="polite">None yet.</p>
+        </fieldset>
+        <fieldset id="cold-entropy-hex">
+          <legend>Hex</legend>
+          <label id="cold-entropy-hex-label" for="cold-entropy-hex-input">Hex digits (0-f, type or paste as many as you like)</label>
+          <input id="cold-entropy-hex-input" type="text" inputmode="text" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" placeholder="e.g. a5f30c1e" disabled>
+          <button id="cold-entropy-hex-add" type="button" disabled>Add hex digit(s)</button>
+          <div id="cold-entropy-hex-random-row">
+            <label id="cold-entropy-hex-random-count-label" for="cold-entropy-hex-random-count">Generate with device RNG</label>
+            <input id="cold-entropy-hex-random-count" type="number" min="1" max="1000" step="1" value="10" disabled>
+            <button id="cold-entropy-hex-random" type="button" disabled>Generate with device RNG</button>
+          </div>
+          <button id="cold-entropy-hex-reset" type="button" disabled>Reset hex</button>
+          <p id="cold-entropy-hex-status" role="status" aria-live="polite">No hex digits recorded yet.</p>
+          <p id="cold-entropy-hex-log-label">Digits recorded this session:</p>
+          <p id="cold-entropy-hex-log" aria-live="polite">None yet.</p>
+          <p class="cold-entropy-device-rng-note">Device-RNG-generated hex is simulation only and receives 0 independent-manual credit.</p>
+        </fieldset>
+        <fieldset id="cold-entropy-csprng">
+          <legend>CSPRNG</legend>
+          <div id="cold-entropy-csprng-draw-row">
+            <label id="cold-entropy-csprng-count-label" for="cold-entropy-csprng-count">Batches of 32 bytes</label>
+            <input id="cold-entropy-csprng-count" type="number" min="1" max="16" step="1" value="1" disabled>
+            <button id="cold-entropy-csprng-draw" type="button" disabled>Draw CSPRNG bytes</button>
+          </div>
+          <button id="cold-entropy-csprng-reset" type="button" disabled>Reset CSPRNG</button>
+          <p id="cold-entropy-csprng-status" role="status" aria-live="polite">0 fresh CSPRNG bytes available.</p>
+        </fieldset>
+      </div>
+      <button id="cold-entropy-undo" type="button" disabled>Undo last</button>
+      <div id="cold-entropy-mix">
+        <label id="cold-entropy-target-label" for="cold-entropy-target">Output size</label>
+        <select id="cold-entropy-target" disabled>
+          <option value="128">128 bits (12-word seed)</option>
+          <option value="160">160 bits</option>
+          <option value="192">192 bits (18-word seed)</option>
+          <option value="224">224 bits</option>
+          <option value="256">256 bits (24-word seed)</option>
+        </select>
+        <button id="cold-entropy-mix-run" type="button" disabled>Mix entropy</button>
+        <p id="cold-entropy-mix-status" role="status" aria-live="polite">Not enough entropy collected yet.</p>
+        <p id="cold-entropy-mix-output-label" hidden>Mixed entropy (hex). This is raw key material — treat it like a seed.</p>
+        <output id="cold-entropy-mix-output" hidden></output>
+      </div>
+      <p id="cold-entropy-lab-note">Seed Forge (P1.3), which turns this into a BIP-39 mnemonic, has not been built yet. The mixed bytes stay in this sealed realm and are not carried anywhere.</p>
+    </section>
   </main>
   <script>
 __COLDBOX_CRYPTO_VENDOR_SOURCE__
 __COLDBOX_CRYPTO_LAYER__
 __COLDBOX_VAULT_LAYER__
+__COLDBOX_ENTROPY_LAB_LAYER__
 __COLDBOX_COLD_SCRIPT__
   </script>
 </body>

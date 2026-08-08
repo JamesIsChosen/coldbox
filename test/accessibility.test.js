@@ -82,3 +82,43 @@ test('cold KDF benchmark keeps the design-system focus and mobile touch floors',
     'KDF benchmark disabled rule must not reintroduce a hard-coded colour'
   );
 });
+
+test('Entropy Lab special-case controls preserve the 44 x 44 mobile touch floor', () => {
+  const coldStyles = fs.readFileSync(path.join(__dirname, '..', 'src', 'cold', 'styles.css'), 'utf8');
+
+  assert.match(
+    coldStyles,
+    /#cold-entropy-lab button,[\s\S]*?#cold-entropy-mix-run\s*\{[\s\S]*?min-width:\s*2\.75rem;[\s\S]*?min-height:\s*2\.75rem;/,
+    'Entropy Lab buttons, including Generate/Reset/Heads/Tails/Mix/Undo, must keep the 44 x 44 floor'
+  );
+  assert.match(
+    coldStyles,
+    /#cold-entropy-lab-inputs input,[\s\S]*?#cold-entropy-mix select\s*\{[\s\S]*?min-height:\s*2\.75rem;/,
+    'Entropy Lab inputs/selects must keep the 44px height floor'
+  );
+  assert.match(
+    coldStyles,
+    /#cold-entropy-dice-random-row input,[\s\S]*?#cold-entropy-csprng-draw-row input\s*\{[\s\S]*?min-height:\s*2\.75rem;/,
+    'Random-count and CSPRNG-count special-case rows must not shrink below 44px'
+  );
+  assert.match(
+    coldStyles,
+    /#cold-entropy-card-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(2\.75rem,\s*1fr\)\);/,
+    'Card grid columns must reserve at least a 44px card width'
+  );
+  assert.match(
+    coldStyles,
+    /#cold-entropy-card-grid button\s*\{[\s\S]*?min-width:\s*2\.75rem;[\s\S]*?min-height:\s*2\.75rem;/,
+    'Every card button must remain at least 44 x 44 CSS pixels'
+  );
+  assert.doesNotMatch(
+    coldStyles.match(/#cold-entropy-card-grid button\s*\{[\s\S]*?\}/)[0],
+    /min-(?:width|height):\s*(?:0|2\.[0-6]\d*rem)/,
+    'Card-grid overrides must not reintroduce a sub-44px minimum'
+  );
+  assert.match(
+    coldStyles,
+    /#cold-entropy-mix-output\[hidden\],[\s\S]*?#cold-entropy-mix-output-label\[hidden\]\s*\{[\s\S]*?display:\s*none;/,
+    'Mixed entropy output and warning label must stay visually hidden when the hidden attribute is set'
+  );
+});

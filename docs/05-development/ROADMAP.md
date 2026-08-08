@@ -197,7 +197,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
 
 *Blocked until Phase 0 is complete.*
 
-- [ ] P1.1 Entropy Lab: dice, coins, cards, CSPRNG, mixing
+- [x] P1.1 Entropy Lab: dice, coins, cards, CSPRNG, mixing
 - [ ] P1.2 Entropy Health Meter and Bias Analyzer
 - [ ] P1.3 Seed Forge: BIP-39 generate, validate, passphrase, fingerprint
 - [ ] P1.4 Derivation engine: BIP-32 core plus Bitcoin script types
