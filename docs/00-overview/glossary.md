@@ -580,6 +580,17 @@ Reference → Provenance lists every embedded library with its version and upstr
 See [ADR-0015](../05-development/adr/0015-provenance-build-date-and-self-hash.md): the self-hash check is a blank-then-hash self-consistency comparison, stated in-panel to be circular (a malicious build could embed a hash matching its own bytes), pointing to [verification.md](../02-security/verification.md) for a check an attacker cannot forge.
 :::
 
+**Appropriate Legal Notices**
+::: plain
+The "Legal notices" section of the Provenance panel: who holds the copyright, a plain statement that this software comes with no warranty, that you're allowed to pass it on to others under the same rules it came to you under, and the complete legal text of those rules — all right here, without needing to be online.
+:::
+::: working
+The specific notices AGPLv3 §0 defines and §5(d) requires an interactive UI to display: the copyright notice, the absence of warranty, that recipients may convey the work under this licence, and how to view a copy of it. Coldbox displays them in Reference → Provenance, with the full licence text embedded in the build and expandable in place, and the licence stated by its SPDX identifier, `AGPL-3.0-only`.
+:::
+::: technical
+See [ADR-0018](../05-development/adr/0018-agplv3-license.md): a URL to the licence text was rejected outright, since it would be unreachable in the airgapped case the app is designed for and would itself be an outbound reference the `connect-src 'none'` cold-realm CSP and the project's no-network-fetch constraint forbid. The embedded text is asserted byte-identical to the repository's own `LICENSE` file by a Node test, so the two cannot silently drift.
+:::
+
 ---
 
 ## Things people get wrong
