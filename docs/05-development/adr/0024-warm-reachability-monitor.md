@@ -15,6 +15,7 @@ P0.19 real-device testing on Windows Chrome and Firefox found that unplugging Et
 4. **Any success means online immediately.** Coldbox reports **no external reachability detected** only after consecutive rounds in which every probe fails. Checking, stale, contradictory, timeout, and monitor-error states are online-safe and keep the secret compartment sealed. Stable state continues to refresh while Coldbox is open and on browser network/focus signals.
 5. The UI shows **warm reachability** and **cold isolation** as separate facts. It never equates failed probes with a physical airgap. A firewall, captive portal, VPN, virtual adapter, or provider outage can still mislead the warm monitor.
 6. A transition from offline-classified to reachable/unknown while a secret-capable vault session is open retains the existing immediate-lock behavior.
+7. **The accepted `mode.set` classification is the sole vault-mode authority inside cold.** Cold main records the validated Boolean on the cold document root; `src/cold/vault.js` reads only that recorded state. It must not re-sample `navigator.onLine`, `navigator.connection`, or `__coldboxAirgap.getNetworkSnapshot()`. Missing/invalid state is `unknown` and fails online-safe.
 
 ## Rationale
 

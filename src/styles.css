@@ -2279,3 +2279,16 @@ samp {
   font-size: 0.82rem;
   font-weight: 700;
 }
+
+
+/* P0.19 vault-library / reachability reconciliation */
+.airgap-facts { display: grid; gap: 0.25rem; margin-top: 0.65rem; }
+.airgap-facts p { margin: 0; }
+.vault-primary-actions { margin-top: 0.75rem; }
+.vault-button-primary { font-weight: 800; transform: translateY(-1px); }
+.vault-library-list { display: grid; gap: 0.5rem; margin-top: 0.75rem; }
+.vault-library-item { width: 100%; text-align: left; }
+.vault-library-item strong, .vault-library-item span { display: block; }
+.vault-library-item span { font-size: 0.8rem; opacity: 0.78; margin-top: 0.15rem; }
+.vault-lock-warning { margin-top: 1rem; }
+#vault-create-name { width: 100%; box-sizing: border-box; }

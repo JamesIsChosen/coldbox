@@ -14,10 +14,11 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 
 ### Changed — P0.19 device-matrix remediation design (2026-08-08)
 
+- Clear stale manual/QR vault exports when switching vault identity so a prior vault's encrypted bytes cannot be mistaken for the newly active vault.
 - Windows Chrome/Firefox hands-on testing exposed two user-facing blockers before the rest of the physical matrix proceeds: vault creation/save/library state was not understandable enough to complete the required create → save → reload → open flow, and the network banner stayed stale when Ethernet reachability changed because it ultimately trusted `navigator.onLine`.
 - [ADR-0024](docs/05-development/adr/0024-warm-reachability-monitor.md) replaces interface-state authority with warm-shell active reachability probes to two already-allowlisted providers, keeps checking/unknown online-safe, separates warm reachability from cold-realm isolation, and explicitly refuses to call probe failure proof of a physical airgap.
 - [ADR-0025](docs/05-development/adr/0025-vault-identity-library-and-save-ux.md) defines creation-only phrase confirmation, public vault names, cold-generated portable random Vault IDs (device fingerprints rejected), a user-granted multi-vault library, prominent unsaved/save state, per-vault generational filenames, and zeroization-preserving lock semantics. Existing v1 `.cbx` bytes remain compatible.
-- This entry records the **accepted remediation contract**, not a claim that the runtime implementation or P0.19 acceptance is complete. The ROADMAP remains the only authoritative item-level status.
+- Runtime remediation now implements that accepted contract on the P0.19 branch: strict payload-free creation gating, creation-only phrase confirmation, cold-generated random Vault UUIDs, named/per-vault save filenames and generation namespaces, the user-granted Vault Library, first-class Save + dirty-lock warning UX, and warm-only active reachability monitoring with deterministic Chromium/Firefox harness fixtures. **P0.19 itself is still not complete** until the maintainer repeats the physical device matrix; the ROADMAP remains authoritative; the cold vault layer now treats validated `mode.set` as the sole network-mode authority and ignores stale `navigator.onLine` hints.
 
 ### Added — P1.1 Entropy Lab: dice, coins, cards, hex, CSPRNG, mixing (2026-08-07)
 

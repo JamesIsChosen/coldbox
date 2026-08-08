@@ -19,7 +19,7 @@ Two constraints shape the answer.
 
 **The save counter, its timestamp, and the rollback comparison are warm-shell-only state.** They live in:
 
-- The suggested/generated filename (`coldbox-vault-0047.cbx`), read back via the `File` object's `.name` when a vault is loaded from a file.
+- The filename read back via the `File` object's `.name` when a vault is loaded from a file. Before P0.19 this used the browser-global `coldbox-vault-0047.cbx` convention; the P0.19 amendment below replaces new saves with per-vault name + Vault-ID suffix + generation filenames while retaining the old form for legacy parsing.
 - `localStorage`, under a single key, holding the highest counter this browser profile has seen plus its timestamp — non-secret, and already covered by the project's existing "`localStorage` non-essential… degrades silently" rule (SPEC.md).
 
 None of this crosses the realm boundary, changes the vault byte format, or adds a `postMessage` type. `src/save-integrity.js` is pure warm-shell logic with no DOM dependency, assembled into `src/main.js` exactly like `airgap.js`/`capabilities.js`/`protocol.js` already are.

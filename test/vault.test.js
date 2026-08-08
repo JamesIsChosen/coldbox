@@ -23,7 +23,8 @@ function baseContext() {
     ['data-crypto-state', 'ready'],
     ['data-airgap-state', 'green'],
     ['data-lockdown-state', 'none'],
-    ['data-vault-operations', 'guarded']
+    ['data-vault-operations', 'guarded'],
+    ['data-warm-network-online', 'false']
   ]);
   const document = {
     documentElement: {
@@ -55,20 +56,15 @@ function baseContext() {
     navigator: { onLine: false },
     setTimeout
   };
-  context.__networkSnapshotOverride = null;
-  context.__coldboxAirgap = Object.freeze({
-    getNetworkSnapshot() {
-      if (context.__networkSnapshotOverride) {
-        return { ...context.__networkSnapshotOverride };
-      }
-      return {
-        online: typeof context.navigator.onLine === 'boolean' ? context.navigator.onLine : null,
-        connection: 'unknown'
-      };
-    }
-  });
   context.__setVaultHealth = (name, value) => {
     attributes.set(name, String(value));
+  };
+  context.__setWarmNetworkOnline = (value) => {
+    if (value === null || value === undefined) {
+      attributes.delete('data-warm-network-online');
+      return;
+    }
+    attributes.set('data-warm-network-online', String(value));
   };
   context.__resetVaultHealth = () => {
     attributes.set('data-cold-state', 'ready');
@@ -348,7 +344,8 @@ test('P0.11 online opening never derives or decrypts the secret compartment', as
     publicData: { wallets: [] },
     secretData: { seeds: [{ mnemonic: 'test only' }] }
   });
-  context.navigator.onLine = true;
+  context.navigator.onLine = false;
+  context.__setWarmNetworkOnline(true);
   tracked.infos.length = 0;
   const opened = await context.__coldboxVault.open(vault, passphrase);
   assert.equal(opened.secretData, null);
@@ -381,7 +378,7 @@ test('P0.13 vault sessions rotate nonces, preserve online secret bytes, and clos
     compartmentNonce(offlineSecond, header, true)
   );
 
-  context.__networkSnapshotOverride = { online: true, connection: 'wifi' };
+  context.__setWarmNetworkOnline(true);
   await expectSerializationFailure(() => offlineSession.save());
   await expectSerializationFailure(() => offlineSession.save());
 
@@ -450,29 +447,58 @@ test('P0.11 refuses every vault entry point unless the cold health gate is prove
   assert.equal(JSON.stringify(opened.publicData), JSON.stringify({ wallets: [] }));
 });
 
-test('P0.11 mode detection consumes the airgap snapshot and fails closed on unknown state', async () => {
+test('P0.19 vault mode follows validated warm mode.set state, ignores navigator.onLine, and fails closed on unknown', async () => {
   const context = createFormatContext();
+
+  // Browser interface signal says offline, but validated warm reachability says
+  // online. Secret-capable creation must remain sealed.
   context.navigator.onLine = false;
-  context.__networkSnapshotOverride = { online: true, connection: 'wifi' };
+  context.__setWarmNetworkOnline(true);
   await expectSerializationFailure(
     () => context.__coldboxVault.create({
-      passphrase: 'mode gate',
+      passphrase: 'mode gate online',
       profile: 'fallback',
       publicData: {},
       secretData: { mnemonic: 'test only' }
     })
   );
 
-  context.__networkSnapshotOverride = { online: null, connection: 'unknown' };
+  // The inverse disagreement is the Windows P0.19 regression: navigator stays
+  // true while active warm probes establish no external reachability. The
+  // validated warm classification is authoritative, so offline secret use is
+  // allowed even though navigator.onLine remains true.
+  context.navigator.onLine = true;
+  context.__setWarmNetworkOnline(false);
+  const secretVault = await context.__coldboxVault.create({
+    passphrase: 'mode gate offline',
+    profile: 'fallback',
+    publicData: {},
+    secretData: { mnemonic: 'test only' }
+  });
+  const secretOpened = await context.__coldboxVault.open(secretVault, 'mode gate offline');
+  assert.equal(JSON.stringify(secretOpened.secretData), JSON.stringify({ mnemonic: 'test only' }));
+
+  // No accepted mode.set yet (or malformed state) is unknown. Unknown remains
+  // online-safe: public-only work can proceed, but explicit offline unlock is
+  // refused and secret-capable creation cannot occur.
+  context.__setWarmNetworkOnline(null);
+  await expectSerializationFailure(
+    () => context.__coldboxVault.create({
+      passphrase: 'mode gate unknown secret',
+      profile: 'fallback',
+      publicData: {},
+      secretData: { mnemonic: 'test only' }
+    })
+  );
   const publicOnly = await context.__coldboxVault.create({
-    passphrase: 'mode gate',
+    passphrase: 'mode gate unknown public',
     profile: 'fallback',
     publicData: {}
   });
-  const opened = await context.__coldboxVault.open(publicOnly, 'mode gate');
+  const opened = await context.__coldboxVault.open(publicOnly, 'mode gate unknown public');
   assert.equal(opened.secretData, null);
   await expectAuthenticationFailure(
-    () => context.__coldboxVault.open(publicOnly, 'mode gate', 'offline')
+    () => context.__coldboxVault.open(publicOnly, 'mode gate unknown public', 'offline')
   );
 });
 

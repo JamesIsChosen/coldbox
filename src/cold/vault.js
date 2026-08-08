@@ -110,15 +110,20 @@
   }
 
   function networkState() {
-    var airgap = global.__coldboxAirgap;
-    if (!airgap || typeof airgap.getNetworkSnapshot !== 'function') {
-      return 'unknown';
+    // P0.19: vault mode authority comes only from the validated warm-shell
+    // mode.set message that cold main records on the document root. The cold
+    // vault layer must not independently reinterpret navigator.onLine (or any
+    // other browser interface hint), because warm active reachability probes
+    // are deliberately the authoritative classification. Missing/invalid
+    // state remains unknown and therefore fails closed for secret-capable use.
+    var warmOnline = rootAttribute('data-warm-network-online');
+    if (warmOnline === 'true') {
+      return 'online';
     }
-    var snapshot = airgap.getNetworkSnapshot();
-    if (!snapshot || snapshot.online === null || snapshot.online === undefined) {
-      return 'unknown';
+    if (warmOnline === 'false') {
+      return 'offline';
     }
-    return snapshot.online === true ? 'online' : (snapshot.online === false ? 'offline' : 'unknown');
+    return 'unknown';
   }
 
   function resolveMode(mode) {

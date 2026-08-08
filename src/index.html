@@ -105,6 +105,10 @@ __COLDBOX_STYLES__
               <button type="button" class="icon-button help-context-button" data-help-topic="glossary:airgapped" aria-label="What does airgapped mean?">?</button>
             </h2>
             <p id="airgap-banner-copy">Coldbox is confirming both CSP policies and the private cold-realm channel before vault operations can be considered.</p>
+            <div class="airgap-facts" aria-label="Network and isolation facts">
+              <p><strong>Warm reachability:</strong> <span id="warm-reachability-status">Checking external reachability.</span></p>
+              <p><strong>Cold isolation:</strong> <span id="cold-isolation-status">Checking CSP and runtime guards.</span></p>
+            </div>
           </div>
           <div class="airgap-banner-state" aria-label="Airgap and network status">
             <span class="status-dot" aria-hidden="true"></span>
@@ -301,8 +305,12 @@ __COLDBOX_STYLES__
               <h2 id="vault-status-title"><span id="vault-status-title-text">Vault is locked</span>
                 <button type="button" class="icon-button help-context-button" data-help-topic="glossary:vault" aria-label="What is the vault?">?</button>
               </h2>
-              <p id="vault-status-copy">Load an encrypted vault, then enter its unlock phrase in the sealed realm. The warm shell never receives it.</p>
+              <p id="vault-status-copy">Choose a vault from the library, then enter its unlock phrase in the sealed realm. The warm shell never receives it.</p>
+              <p id="vault-active-meta" class="vault-help" hidden>Active vault: <strong id="vault-active-name"></strong> · <span id="vault-active-id"></span></p>
               <p class="vault-dirty-notice" id="vault-dirty-notice" data-dirty="false" hidden></p>
+              <div class="vault-actions vault-primary-actions">
+                <button class="vault-button vault-button-primary" id="vault-save-primary" type="button" disabled>Save vault</button>
+              </div>
             </div>
             <div class="vault-status-label"><span class="status-dot" aria-hidden="true"></span><span id="vault-status-label">Locked</span></div>
           </section>
@@ -312,22 +320,33 @@ __COLDBOX_STYLES__
           </section>
 
           <div class="card-grid vault-card-grid">
-            <article class="info-card vault-card">
+            <article class="info-card vault-card vault-library-card">
               <span class="card-icon" aria-hidden="true">01</span>
-              <h2>Load an encrypted vault</h2>
-              <p>Open a vault from the device. File System Access is used when available; the file input is the fallback.</p>
-              <input class="sr-only" id="vault-file-input" type="file" accept=".cbx,application/octet-stream">
+              <h2>Vault Library</h2>
+              <p>Coldbox can list only vault files or folders you explicitly grant. Select a named vault first; its unlock phrase is entered separately inside the sealed realm.</p>
+              <input class="sr-only" id="vault-file-input" type="file" accept=".cbx,application/octet-stream" multiple>
               <div class="vault-actions">
-                <button class="vault-button" id="vault-load-file" type="button">Load from device</button>
+                <button class="vault-button" id="vault-load-file" type="button">Choose vault files</button>
+                <button class="vault-button" id="vault-choose-folder" type="button">Choose vault folder</button>
+              </div>
+              <p class="vault-help" id="vault-library-empty">No vault files granted yet.</p>
+              <div id="vault-library-list" class="vault-library-list" role="list" aria-live="polite"></div>
+              <hr>
+              <h3>Create a new vault</h3>
+              <label class="vault-label" for="vault-create-name">Public vault name</label>
+              <input id="vault-create-name" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="e.g. Bitcoin Savings">
+              <p class="vault-help">This name is public and appears in filenames/library. Do not put a passphrase, seed phrase, private key, or other secret here.</p>
+              <div class="vault-actions">
+                <button class="vault-button" id="vault-create-prepare" type="button">Continue creation in sealed realm</button>
               </div>
             </article>
 
             <article class="info-card vault-card">
               <span class="card-icon" aria-hidden="true">02</span>
-              <h2>Save encrypted bytes</h2>
-              <p>Choose a platform-native file, a portable download, or the manual text handoff below. All three preserve the encrypted vault.</p>
+              <h2>Save / export encrypted vault</h2>
+              <p>The prominent Save vault button above chooses the best available durable path. File System Access is verified by reading the file back; download and manual handoff remain explicitly unverified until reopened.</p>
               <div class="vault-actions vault-actions-stack">
-                <button class="vault-button" id="vault-save-file-system" type="button">Save with File System Access</button>
+                <button class="vault-button" id="vault-save-file-system" type="button">Save with File System Access (verified)</button>
                 <button class="vault-button" id="vault-save-download" type="button">Download encrypted vault</button>
               </div>
             </article>
@@ -363,6 +382,15 @@ __COLDBOX_STYLES__
               </div>
             </article>
           </div>
+
+          <section class="protocol-warning vault-lock-warning" id="vault-lock-warning" aria-live="polite" hidden>
+            <p><strong>This vault has unsaved changes.</strong> A normal lock will zeroize the working copy. Save first if you need a durable copy.</p>
+            <div class="vault-actions">
+              <button class="vault-button vault-button-primary" id="vault-lock-save" type="button">Save first</button>
+              <button class="vault-button vault-button-danger" id="vault-lock-without-save" type="button">Lock without saving</button>
+              <button class="vault-button" id="vault-lock-cancel" type="button">Cancel</button>
+            </div>
+          </section>
 
           <section class="vault-session-actions" aria-labelledby="vault-session-actions-title">
             <div>

@@ -18,7 +18,12 @@
   // false rollback warning.
 
   var GENERATION_STORAGE_KEY = 'coldbox-vault-generation';
+  var GENERATION_STORAGE_PREFIX = 'coldbox-vault-generation:';
   var FILENAME_PATTERN = /^coldbox-vault-(\d{4,9})\.cbx$/;
+  var VAULT_FILENAME_PATTERN = /^(.+?)--([0-9a-f]{8})--(\d{4,9})\.cbx$/i;
+  var VAULT_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  var LEGACY_SALT_OFFSET = 21;
+  var LEGACY_SALT_LENGTH = 32;
   var MAX_COUNTER = 999999999;
   var MAX_ISO_LENGTH = 64;
 
@@ -35,6 +40,62 @@
 
   function defaultGeneration() {
     return { counter: 0, savedAt: null };
+  }
+
+  function normalizeNamespace(value) {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    var trimmed = value.trim();
+    return trimmed && trimmed.length <= 160 ? trimmed : null;
+  }
+
+  function storageKeyForNamespace(namespace) {
+    var normalized = normalizeNamespace(namespace);
+    return normalized ? GENERATION_STORAGE_PREFIX + encodeURIComponent(normalized) : null;
+  }
+
+  function vaultNamespace(vaultId) {
+    return typeof vaultId === 'string' && VAULT_UUID_PATTERN.test(vaultId)
+      ? 'vault:' + vaultId.toLowerCase()
+      : null;
+  }
+
+  function id8(vaultId) {
+    var namespace = vaultNamespace(vaultId);
+    return namespace ? vaultId.replace(/-/g, '').slice(0, 8).toLowerCase() : null;
+  }
+
+  function bytesToHex(bytes) {
+    var result = '';
+    for (var index = 0; index < bytes.length; index += 1) {
+      result += Number(bytes[index]).toString(16).padStart(2, '0');
+    }
+    return result;
+  }
+
+  function legacyNamespaceFromBytes(bytes) {
+    if (!bytes || typeof bytes.length !== 'number' || bytes.length < LEGACY_SALT_OFFSET + LEGACY_SALT_LENGTH) {
+      return null;
+    }
+    return 'legacy-salt:' + bytesToHex(Array.prototype.slice.call(
+      bytes,
+      LEGACY_SALT_OFFSET,
+      LEGACY_SALT_OFFSET + LEGACY_SALT_LENGTH
+    ));
+  }
+
+  function sanitizeVaultName(value) {
+    if (typeof value !== 'string') {
+      return '';
+    }
+    var trimmed = value.trim().slice(0, 80);
+    return trimmed
+      .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-')
+      .replace(/[^A-Za-z0-9._ -]+/g, '-')
+      .replace(/[ _-]+/g, '-')
+      .replace(/^[-.]+|[-.]+$/g, '')
+      .slice(0, 48);
   }
 
   // Reads the highest save generation this browser profile has recorded.
@@ -85,6 +146,49 @@
     }
   }
 
+  function readGenerationFor(storage, namespace) {
+    var key = storageKeyForNamespace(namespace);
+    if (!key) {
+      return defaultGeneration();
+    }
+    try {
+      if (!storage || typeof storage.getItem !== 'function') {
+        return defaultGeneration();
+      }
+      var raw = storage.getItem(key);
+      if (!raw) {
+        return defaultGeneration();
+      }
+      var parsed = JSON.parse(raw);
+      if (!parsed
+        || typeof parsed !== 'object'
+        || !isSafeCounter(parsed.counter)
+        || (parsed.savedAt !== null && !isIsoDate(parsed.savedAt))) {
+        return defaultGeneration();
+      }
+      return { counter: parsed.counter, savedAt: parsed.savedAt === undefined ? null : parsed.savedAt };
+    } catch (error) {
+      return defaultGeneration();
+    }
+  }
+
+  function writeGenerationFor(storage, namespace, counter, savedAt) {
+    var key = storageKeyForNamespace(namespace);
+    try {
+      if (!key
+        || !storage
+        || typeof storage.setItem !== 'function'
+        || !isSafeCounter(counter)
+        || !isIsoDate(savedAt)) {
+        return false;
+      }
+      storage.setItem(key, JSON.stringify({ counter: counter, savedAt: savedAt }));
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
   function nextCounter(generation) {
     var current = generation && isSafeCounter(generation.counter) ? generation.counter : 0;
     return current + 1;
@@ -118,6 +222,40 @@
     }
     var counter = Number(match[1]);
     return isSafeCounter(counter) ? counter : null;
+  }
+
+  function filenameForVault(name, vaultId, counter) {
+    var safeName = sanitizeVaultName(name);
+    var shortId = id8(vaultId);
+    if (!safeName || !shortId || !isSafeCounter(counter)) {
+      throw new Error('Invalid vault filename metadata.');
+    }
+    return safeName + '--' + shortId + '--' + pad4(counter) + '.cbx';
+  }
+
+  function parseVaultFilename(name) {
+    if (typeof name !== 'string') {
+      return null;
+    }
+    var trimmed = name.trim();
+    var modern = VAULT_FILENAME_PATTERN.exec(trimmed);
+    if (modern) {
+      var counter = Number(modern[3]);
+      if (!isSafeCounter(counter)) {
+        return null;
+      }
+      return Object.freeze({
+        legacy: false,
+        name: modern[1],
+        id8: modern[2].toLowerCase(),
+        counter: counter
+      });
+    }
+    var legacyCounter = parseFilename(trimmed);
+    if (legacyCounter !== null) {
+      return Object.freeze({ legacy: true, name: 'Coldbox vault', id8: null, counter: legacyCounter });
+    }
+    return null;
   }
 
   // Constant-time-shaped comparison of two byte-like values. Used to confirm
@@ -213,12 +351,22 @@
 
   var api = Object.freeze({
     generationStorageKey: GENERATION_STORAGE_KEY,
+    generationStoragePrefix: GENERATION_STORAGE_PREFIX,
     maxCounter: MAX_COUNTER,
     readGeneration: readGeneration,
     writeGeneration: writeGeneration,
+    readGenerationFor: readGenerationFor,
+    writeGenerationFor: writeGenerationFor,
+    storageKeyForNamespace: storageKeyForNamespace,
+    vaultNamespace: vaultNamespace,
+    legacyNamespaceFromBytes: legacyNamespaceFromBytes,
+    id8: id8,
+    sanitizeVaultName: sanitizeVaultName,
     nextCounter: nextCounter,
     filenameForCounter: filenameForCounter,
+    filenameForVault: filenameForVault,
     parseFilename: parseFilename,
+    parseVaultFilename: parseVaultFilename,
     bytesEqual: bytesEqual,
     evaluateRollback: evaluateRollback,
     advanceGenerationOnOpen: advanceGenerationOnOpen,

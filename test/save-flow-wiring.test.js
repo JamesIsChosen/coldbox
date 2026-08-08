@@ -59,11 +59,12 @@ test('the FSA save path only completes a verified save after checking result.ver
 test('completeVerifiedSave clears the dirty flag and advances the generation together', () => {
   const body = extractFunction(mainSource, 'completeVerifiedSave');
   assert.match(body, /saveIntegrity\.nextCounter\(saveGeneration\)/);
-  assert.match(body, /saveIntegrity\.writeGeneration\(/);
+  assert.match(body, /saveIntegrity\.writeGenerationFor\(/, 'modern vaults must persist per-vault generation state');
+  assert.match(body, /saveIntegrity\.writeGeneration\(/, 'legacy/no-namespace fallback remains compatible');
   assert.match(body, /setVaultDirty\(false\)/);
   // The dirty flag must clear last, after the generation bookkeeping - not
   // as an independent step that could run without it.
-  const writeIndex = body.indexOf('saveIntegrity.writeGeneration');
+  const writeIndex = body.indexOf('saveIntegrity.writeGenerationFor');
   const dirtyIndex = body.indexOf('setVaultDirty(false)');
   assert.ok(writeIndex < dirtyIndex, 'generation bookkeeping must precede clearing the dirty flag');
 });
@@ -111,7 +112,8 @@ test('handleVaultOpened derives dirty state from whether a file load was pending
   assert.ok(capturedIndex < clearedIndex, 'must snapshot pendingVaultLoad before resetting it');
   assert.ok(clearedIndex < dirtyIndex || capturedIndex < dirtyIndex, 'dirty state must derive from the snapshot');
   assert.match(body, /saveIntegrity\.evaluateRollback\(/, 'must run the rollback check on every loaded-file open');
-  assert.match(body, /saveIntegrity\.parseFilename\(/);
+  assert.match(body, /saveIntegrity\.parseVaultFilename\(/);
+  assert.match(body, /saveIntegrity\.vaultNamespace\(vaultId\)/, 'authenticated Vault ID must select the bookkeeping namespace');
 });
 
 // Independent review finding F1: the browser's remembered high-water mark
@@ -121,11 +123,11 @@ test('handleVaultOpened derives dirty state from whether a file load was pending
 test('handleVaultOpened advances and persists the high-water mark after evaluating rollback against the old one', () => {
   const body = extractFunction(mainSource, 'handleVaultOpened');
   assert.match(body, /saveIntegrity\.advanceGenerationOnOpen\(saveGeneration, fileInfo\)/);
-  assert.match(body, /saveIntegrity\.writeGeneration\(safeLocalStorage\(\), saveGeneration\.counter, saveGeneration\.savedAt\)/);
+  assert.match(body, /saveIntegrity\.writeGenerationFor\([\s\S]*activeVaultNamespace[\s\S]*saveGeneration\.counter[\s\S]*saveGeneration\.savedAt/, 'advanced high-water mark must persist under the active vault namespace');
 
   const evaluateIndex = body.indexOf('saveIntegrity.evaluateRollback(');
   const advanceIndex = body.indexOf('saveIntegrity.advanceGenerationOnOpen(');
-  const persistIndex = body.indexOf('saveIntegrity.writeGeneration(safeLocalStorage()');
+  const persistIndex = body.indexOf('saveIntegrity.writeGenerationFor(');
   assert.notEqual(evaluateIndex, -1);
   assert.notEqual(advanceIndex, -1);
   assert.notEqual(persistIndex, -1);
@@ -150,4 +152,32 @@ test('loadVaultFile captures filename and lastModified before the async read rac
   assert.notEqual(readIndex, -1);
   assert.ok(metaIndex < readIndex, 'fileMeta must be captured synchronously before the async read starts');
   assert.match(body, /sendVaultOpen\(new Uint8Array\(buffer\), fileMeta\)/);
+});
+
+
+test('P0.19 primary save and named modern filename are first-class warm-shell actions', () => {
+  const filenameBody = extractFunction(mainSource, 'nextSuggestedFilename');
+  const primaryBody = extractFunction(mainSource, 'savePrimaryVault');
+  assert.match(filenameBody, /saveIntegrity\.filenameForVault\(activeVaultName, activeVaultId, counter\)/);
+  assert.match(primaryBody, /showSaveFilePicker/);
+  assert.match(primaryBody, /saveWithFileSystemAccess\(\)/);
+  assert.match(primaryBody, /saveAsDownload\(\)/, 'portable fallback must still save when File System Access is absent');
+});
+
+test('P0.19 normal lock warns on dirty state while emergency lock remains immediate', () => {
+  const requestBody = extractFunction(mainSource, 'requestVaultLock');
+  const immediateBody = extractFunction(mainSource, 'sendVaultLockImmediately');
+  const panicBody = extractFunction(mainSource, 'panicHide');
+  assert.match(requestBody, /vaultDirty/);
+  assert.match(requestBody, /vaultLockWarning\.hidden = false/);
+  assert.doesNotMatch(requestBody, /sendVaultMessage\('vault\.lock'/, 'dirty warning path must not itself send lock');
+  assert.match(immediateBody, /sendVaultMessage\('vault\.lock', \{\}\)/);
+  assert.match(panicBody, /sendVaultLockImmediately\(\)/, 'panic must never wait for save confirmation');
+});
+
+test('P0.19 creation keeps public name warm and sends only a payload-free prepare gate', () => {
+  const body = extractFunction(mainSource, 'prepareNewVaultCreation');
+  assert.match(body, /pendingCreateVaultName = name\.slice\(0, 80\)/);
+  assert.match(body, /sendVaultMessage\('vault\.create\.prepare', \{\}\)/);
+  assert.doesNotMatch(body, /sendVaultMessage\([^\n]*pendingCreateVaultName/, 'public name must not cross into cold');
 });

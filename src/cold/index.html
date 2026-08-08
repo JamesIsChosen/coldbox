@@ -31,6 +31,11 @@ __COLDBOX_COLD_STYLES__
       <p id="cold-vault-status" data-state="locked" role="status" aria-live="polite">Vault is locked. Unlocking stays in this sealed realm.</p>
       <label id="cold-vault-passphrase-label" for="cold-vault-passphrase">Unlock phrase (never leaves this realm)</label>
       <input id="cold-vault-passphrase" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+      <div id="cold-vault-create-confirmation" hidden>
+        <label id="cold-vault-passphrase-confirm-label" for="cold-vault-passphrase-confirm">Confirm new unlock phrase (creation only)</label>
+        <input id="cold-vault-passphrase-confirm" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+        <p id="cold-vault-create-confirm-help">Confirmation is required only while creating a new vault. Existing-vault unlock uses the first field once.</p>
+      </div>
       <section id="cold-vault-keyfile" aria-label="Keyfile unlock (advanced, off by default)">
         <label id="cold-vault-keyfile-toggle-label" for="cold-vault-keyfile-toggle">
           <input id="cold-vault-keyfile-toggle" type="checkbox" disabled>
@@ -47,11 +52,11 @@ __COLDBOX_COLD_STYLES__
         <p id="cold-vault-keyfile-status" role="status" aria-live="polite">No keyfile selected. This input and the file's bytes stay inside this sealed realm.</p>
       </section>
       <div id="cold-vault-actions">
-        <button id="cold-vault-create" type="button" disabled>Create empty vault</button>
+        <button id="cold-vault-create" type="button" disabled>Create prepared vault</button>
         <button id="cold-vault-unlock" type="button" disabled>Unlock loaded vault</button>
         <button id="cold-vault-lock" type="button" disabled>Lock now</button>
       </div>
-      <p id="cold-vault-help">The warm shell can carry encrypted bytes only. This input and decrypted compartments remain inside the opaque frame.</p>
+      <p id="cold-vault-help">Choose a public vault name in the warm Vault page first. The warm shell can carry encrypted bytes only; unlock phrases, confirmation, keyfiles, and decrypted compartments remain inside this opaque frame.</p>
     </section>
     <section id="cold-entropy-lab" aria-label="Entropy Lab">
       <p class="eyebrow">Entropy Lab / P1.1</p>

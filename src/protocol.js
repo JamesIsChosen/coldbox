@@ -182,6 +182,10 @@
     return isRecord(value) ? {} : null;
   }
 
+  function cleanStrictEmptyPayload(value) {
+    return isRecord(value) && Object.keys(value).length === 0 ? {} : null;
+  }
+
   function cleanCapabilities(value) {
     if (!isRecord(value)) {
       return null;
@@ -360,6 +364,13 @@
       return null;
     }
     var result = {};
+    if (hasOwn(value, 'id')) {
+      var vaultId = cleanUuid(value.id);
+      if (vaultId === null) {
+        return null;
+      }
+      result.id = vaultId;
+    }
     for (var index = 0; index < COLLECTIONS.length; index += 1) {
       var collection = COLLECTIONS[index];
       if (!hasOwn(value, collection) || hasOwn(SECRET_KEYS, collection)) {
@@ -530,6 +541,7 @@
 
   var WARM_TO_COLD = Object.freeze({
     'vault.open': cleanVaultBytes,
+    'vault.create.prepare': cleanStrictEmptyPayload,
     'vault.saveRequest': cleanEmptyPayload,
     'vault.lock': cleanEmptyPayload,
     'panic.hide': cleanEmptyPayload,

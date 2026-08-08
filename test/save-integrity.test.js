@@ -399,3 +399,59 @@ test('the whole record is frozen and cannot be mutated by a caller after the fac
   const evaluation = api.evaluateRollback({ counter: 1, savedAt: null }, { counter: 1, lastModified: null });
   assert.throws(() => { evaluation.rollback = true; }, TypeError);
 });
+
+test('P0.19 vault IDs create portable per-vault generation namespaces', () => {
+  const api = load();
+  const firstId = '550e8400-e29b-41d4-a716-446655440000';
+  const secondId = '123e4567-e89b-42d3-a456-426614174000';
+  const firstNamespace = api.vaultNamespace(firstId);
+  const secondNamespace = api.vaultNamespace(secondId);
+
+  assert.equal(firstNamespace, `vault:${firstId}`);
+  assert.equal(secondNamespace, `vault:${secondId}`);
+  assert.notEqual(firstNamespace, secondNamespace);
+  assert.equal(api.id8(firstId), '550e8400');
+  assert.equal(api.vaultNamespace('same-device-fingerprint'), null, 'device identity must never become vault identity');
+
+  const storage = fakeStorage({});
+  assert.equal(api.writeGenerationFor(storage, firstNamespace, 7, '2026-08-08T12:00:00.000Z'), true);
+  assert.equal(api.writeGenerationFor(storage, secondNamespace, 2, '2026-08-08T13:00:00.000Z'), true);
+  assertGeneration(api.readGenerationFor(storage, firstNamespace), { counter: 7, savedAt: '2026-08-08T12:00:00.000Z' });
+  assertGeneration(api.readGenerationFor(storage, secondNamespace), { counter: 2, savedAt: '2026-08-08T13:00:00.000Z' });
+});
+
+test('P0.19 modern filenames carry public name, id8, and per-vault generation', () => {
+  const api = load();
+  const vaultId = '550e8400-e29b-41d4-a716-446655440000';
+
+  assert.equal(api.sanitizeVaultName('  Bitcoin Savings / 2026  '), 'Bitcoin-Savings-2026');
+  assert.equal(api.filenameForVault('Bitcoin Savings / 2026', vaultId, 7), 'Bitcoin-Savings-2026--550e8400--0007.cbx');
+
+  const parsed = api.parseVaultFilename('Bitcoin-Savings-2026--550e8400--0007.cbx');
+  assert.equal(parsed.legacy, false);
+  assert.equal(parsed.name, 'Bitcoin-Savings-2026');
+  assert.equal(parsed.id8, '550e8400');
+  assert.equal(parsed.counter, 7);
+
+  const legacy = api.parseVaultFilename('coldbox-vault-0047.cbx');
+  assert.equal(legacy.legacy, true);
+  assert.equal(legacy.counter, 47);
+  assert.equal(legacy.id8, null);
+});
+
+test('P0.19 legacy vault namespace is stable from the public v1 header salt', () => {
+  const api = load();
+  const bytes = new Uint8Array(80);
+  for (let index = 0; index < 32; index += 1) {
+    bytes[21 + index] = index + 1;
+  }
+  const first = api.legacyNamespaceFromBytes(bytes);
+  const copy = new Uint8Array(bytes);
+  const second = api.legacyNamespaceFromBytes(copy);
+
+  assert.match(first, /^legacy-salt:[0-9a-f]{64}$/);
+  assert.equal(second, first);
+  copy[21] ^= 0xff;
+  assert.notEqual(api.legacyNamespaceFromBytes(copy), first);
+  assert.equal(api.legacyNamespaceFromBytes(new Uint8Array(52)), null, 'truncated headers do not invent a namespace');
+});

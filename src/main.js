@@ -43,6 +43,8 @@ __COLDBOX_QR_ENCODER__
   var airgapBannerTitle = document.getElementById('airgap-banner-title-text');
   var airgapBannerCopy = document.getElementById('airgap-banner-copy');
   var airgapBannerLabel = document.getElementById('airgap-banner-label');
+  var warmReachabilityStatus = document.getElementById('warm-reachability-status');
+  var coldIsolationStatus = document.getElementById('cold-isolation-status');
   var capabilityPanel = document.getElementById('capability-panel');
   var capabilityPanelLabel = document.getElementById('capability-panel-label');
   var capabilitySummary = document.getElementById('capability-summary');
@@ -107,6 +109,15 @@ __COLDBOX_QR_ENCODER__
   var vaultStatusLabel = document.getElementById('vault-status-label');
   var vaultFileInput = document.getElementById('vault-file-input');
   var vaultLoadFile = document.getElementById('vault-load-file');
+  var vaultChooseFolder = document.getElementById('vault-choose-folder');
+  var vaultLibraryList = document.getElementById('vault-library-list');
+  var vaultLibraryEmpty = document.getElementById('vault-library-empty');
+  var vaultCreateName = document.getElementById('vault-create-name');
+  var vaultCreatePrepare = document.getElementById('vault-create-prepare');
+  var vaultSavePrimary = document.getElementById('vault-save-primary');
+  var vaultActiveMeta = document.getElementById('vault-active-meta');
+  var vaultActiveNameNode = document.getElementById('vault-active-name');
+  var vaultActiveIdNode = document.getElementById('vault-active-id');
   var vaultSaveFileSystem = document.getElementById('vault-save-file-system');
   var vaultSaveDownload = document.getElementById('vault-save-download');
   var vaultSaveManual = document.getElementById('vault-save-manual');
@@ -124,6 +135,10 @@ __COLDBOX_QR_ENCODER__
   var vaultManualQrCount = document.getElementById('vault-manual-qr-count');
   var vaultLoadManual = document.getElementById('vault-load-manual');
   var vaultLock = document.getElementById('vault-lock');
+  var vaultLockWarning = document.getElementById('vault-lock-warning');
+  var vaultLockSave = document.getElementById('vault-lock-save');
+  var vaultLockWithoutSave = document.getElementById('vault-lock-without-save');
+  var vaultLockCancel = document.getElementById('vault-lock-cancel');
   var vaultPanicHide = document.getElementById('vault-panic-hide');
   var panicScreen = document.getElementById('panic-screen');
   var panicReload = document.getElementById('panic-reload');
@@ -151,6 +166,22 @@ __COLDBOX_QR_ENCODER__
   var pendingVaultLoad = false;
   var pendingLoadFileMeta = null;
   var saveGeneration = { counter: 0, savedAt: null };
+  var activeVaultName = '';
+  var activeVaultId = null;
+  var activeVaultNamespace = null;
+  var pendingCreateVaultName = '';
+  var vaultLibraryEntries = [];
+  var reachabilityState = 'checking';
+  var reachabilityFailureRounds = 0;
+  var reachabilityInFlight = false;
+  var reachabilitySequence = 0;
+  var REACHABILITY_INTERVAL_MS = 10000;
+  var REACHABILITY_TIMEOUT_MS = 3500;
+  var REACHABILITY_FAILURE_THRESHOLD = 2;
+  var REACHABILITY_ENDPOINTS = Object.freeze([
+    'https://api.coinbase.com/v2/time',
+    'https://mempool.space/api/blocks/tip/height'
+  ]);
   var vaultDirtyNotice = document.getElementById('vault-dirty-notice');
   var vaultRollbackBanner = document.getElementById('vault-rollback-banner');
   var vaultRollbackBannerCopy = document.getElementById('vault-rollback-banner-copy');
@@ -1213,6 +1244,132 @@ __COLDBOX_QR_ENCODER__
     }
   }
 
+  function reachabilityDetail(state) {
+    if (state === 'reachable') {
+      return 'External reachability confirmed by the warm shell. No vault, address, asset, balance, Vault ID/name, or user-entered data is included in the probe.';
+    }
+    if (state === 'unreachable') {
+      return 'No external reachability detected after consecutive all-endpoint failures. This is not proof that the device is physically airgapped.';
+    }
+    return 'External reachability is checking or uncertain. Coldbox fails online-safe and keeps secret-capable work sealed.';
+  }
+
+  function setReachabilityState(state) {
+    reachabilityState = state;
+    root.setAttribute('data-reachability-state', state);
+    app.setAttribute('data-reachability-state', state);
+    if (warmReachabilityStatus) {
+      warmReachabilityStatus.textContent = reachabilityDetail(state);
+    }
+    updateAirgapBanner();
+  }
+
+  function probeReachabilityUrl(url) {
+    return new Promise(function (resolve) {
+      var settled = false;
+      var timeout = null;
+      var controller = typeof window.AbortController === 'function' ? new window.AbortController() : null;
+
+      function finish(reachable) {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        if (timeout !== null) {
+          window.clearTimeout(timeout);
+        }
+        resolve(Boolean(reachable));
+      }
+
+      timeout = window.setTimeout(function () {
+        if (controller) {
+          try { controller.abort(); } catch (error) { /* timeout still means no confirmed reachability */ }
+        }
+        finish(false);
+      }, REACHABILITY_TIMEOUT_MS);
+
+      try {
+        var options = {
+          method: 'GET',
+          mode: 'no-cors',
+          cache: 'no-store',
+          credentials: 'omit',
+          referrerPolicy: 'no-referrer'
+        };
+        if (controller) {
+          options.signal = controller.signal;
+        }
+        var request = window.fetch(url, options);
+        if (!request || typeof request.then !== 'function') {
+          finish(false);
+          return;
+        }
+        request.then(function () {
+          // Any resolved HTTP response proves reachability; status/body are irrelevant.
+          finish(true);
+        }, function () {
+          finish(false);
+        });
+      } catch (error) {
+        finish(false);
+      }
+    });
+  }
+
+  function runReachabilityCheck() {
+    if (reachabilityInFlight || typeof window.fetch !== 'function') {
+      if (typeof window.fetch !== 'function') {
+        setReachabilityState('unknown');
+      }
+      return;
+    }
+    reachabilityInFlight = true;
+    reachabilitySequence += 1;
+    var sequence = reachabilitySequence;
+    root.setAttribute('data-reachability-checking', 'true');
+
+    probeReachabilityUrl(REACHABILITY_ENDPOINTS[0]).then(function (primaryReachable) {
+      if (primaryReachable) {
+        return true;
+      }
+      return probeReachabilityUrl(REACHABILITY_ENDPOINTS[1]);
+    }).then(function (reachable) {
+      if (sequence !== reachabilitySequence) {
+        return;
+      }
+      if (reachable) {
+        reachabilityFailureRounds = 0;
+        setReachabilityState('reachable');
+        return;
+      }
+      reachabilityFailureRounds += 1;
+      if (reachabilityFailureRounds >= REACHABILITY_FAILURE_THRESHOLD) {
+        setReachabilityState('unreachable');
+      } else if (reachabilityState !== 'unreachable') {
+        setReachabilityState('unknown');
+      } else {
+        updateAirgapBanner();
+      }
+    }, function () {
+      if (sequence === reachabilitySequence) {
+        reachabilityFailureRounds = 0;
+        setReachabilityState('unknown');
+      }
+    }).then(function () {
+      if (sequence === reachabilitySequence) {
+        reachabilityInFlight = false;
+        root.setAttribute('data-reachability-checking', 'false');
+      }
+    }, function () {
+      if (sequence === reachabilitySequence) {
+        reachabilityInFlight = false;
+        root.setAttribute('data-reachability-checking', 'false');
+        reachabilityFailureRounds = 0;
+        setReachabilityState('unknown');
+      }
+    });
+  }
+
   function updateAirgapBanner() {
     if (!airgap) {
       return;
@@ -1223,7 +1380,11 @@ __COLDBOX_QR_ENCODER__
       snapshot.online === null ? 'unknown' : String(snapshot.online)
     );
     root.setAttribute('data-network-connection', snapshot.connection);
+    root.setAttribute('data-reachability-state', reachabilityState);
     if (airgapFailure) {
+      if (coldIsolationStatus) {
+        coldIsolationStatus.textContent = 'LOCKED DOWN: a CSP/runtime isolation check failed.';
+      }
       setAirgapBanner(
         'red',
         lockdownTitle,
@@ -1233,10 +1394,13 @@ __COLDBOX_QR_ENCODER__
       return;
     }
     if (!warmCapabilityReport || !coldCapabilityReport) {
+      if (coldIsolationStatus) {
+        coldIsolationStatus.textContent = 'Checking required realm capabilities.';
+      }
       setAirgapBanner(
         'checking',
-        'Checking the capability panel',
-        'Coldbox is confirming required randomness and optional platform capabilities before vault operations can be considered.',
+        'Checking network and cold isolation',
+        reachabilityDetail(reachabilityState),
         'Checking'
       );
       return;
@@ -1247,10 +1411,13 @@ __COLDBOX_QR_ENCODER__
       return;
     }
     if (!warmCanaryPassed || !coldCanaryPassed || handshakeState !== 'ready') {
+      if (coldIsolationStatus) {
+        coldIsolationStatus.textContent = 'Checking cold CSP, runtime guards, and private channel.';
+      }
       setAirgapBanner(
         'checking',
-        'Checking the airgap guard',
-        'Coldbox is confirming both CSP policies and the private cold-realm channel before vault operations can be considered.',
+        'Checking network and cold isolation',
+        reachabilityDetail(reachabilityState),
         'Checking'
       );
       return;
@@ -1259,23 +1426,42 @@ __COLDBOX_QR_ENCODER__
     root.setAttribute('data-vault-operations', 'guarded');
     app.setAttribute('data-lockdown-state', 'none');
     app.setAttribute('data-vault-operations', 'guarded');
-    sendColdMode(snapshot.online !== false);
-    if (snapshot.online === false) {
+    // The handshake-ready callback refreshes controls before this guarded
+    // transition. Refresh again after the gate opens so create/load controls
+    // become usable immediately rather than remaining stuck disabled.
+    updateVaultControls();
+    if (coldIsolationStatus) {
+      coldIsolationStatus.textContent = "Verified: cold connect-src 'none', runtime network guards, and the private channel are active.";
+    }
+
+    // Only a stable, consecutive all-endpoint failure permits offline mode.
+    // Every other state is online-safe, so secrets remain sealed if the
+    // monitor is uncertain or stale.
+    sendColdMode(reachabilityState !== 'unreachable');
+
+    if (reachabilityState === 'unreachable') {
       setAirgapBanner(
         'green',
-        'Airgapped / guard verified',
-        'No network interface is reported. The cold realm remains sealed by CSP and its runtime network guard.',
-        'Airgapped'
+        'No external reachability detected / cold sealed',
+        reachabilityDetail('unreachable'),
+        'No reachability'
+      );
+      return;
+    }
+    if (reachabilityState === 'reachable') {
+      setAirgapBanner(
+        'amber',
+        'External reachability confirmed / secrets sealed',
+        reachabilityDetail('reachable'),
+        'Online'
       );
       return;
     }
     setAirgapBanner(
       'amber',
-      snapshot.online === true ? 'Online / secrets sealed' : 'Network state unknown / secrets sealed',
-      snapshot.online === true
-        ? 'The warm shell may use its documented public network allowlist. Secret-capable work remains inside the airgapped cold realm.'
-        : 'The browser did not expose a definitive network state. The cold realm remains sealed by CSP and its runtime network guard.',
-      snapshot.online === true ? 'Online' : 'Unknown'
+      'Reachability uncertain / secrets sealed',
+      reachabilityDetail('unknown'),
+      'Unknown'
     );
   }
 
@@ -1400,10 +1586,24 @@ __COLDBOX_QR_ENCODER__
   function updateVaultControls() {
     var channelReady = vaultChannelReady();
     var unlocked = vaultState === 'unlocked';
+    var locked = vaultState === 'locked';
     var hasManualText = Boolean(vaultManualData && vaultManualData.value.trim());
     var hasQrChunks = manualQrChunks.length > 0;
     if (vaultLoadFile) {
-      vaultLoadFile.disabled = !channelReady;
+      vaultLoadFile.disabled = !channelReady || unlocked;
+    }
+    if (vaultChooseFolder) {
+      vaultChooseFolder.hidden = typeof window.showDirectoryPicker !== 'function';
+      vaultChooseFolder.disabled = !channelReady || unlocked || typeof window.showDirectoryPicker !== 'function';
+    }
+    if (vaultCreateName) {
+      vaultCreateName.disabled = !channelReady || !locked;
+    }
+    if (vaultCreatePrepare) {
+      vaultCreatePrepare.disabled = !channelReady || !locked;
+    }
+    if (vaultSavePrimary) {
+      vaultSavePrimary.disabled = !channelReady || !unlocked;
     }
     if (vaultSaveFileSystem) {
       vaultSaveFileSystem.disabled = !channelReady
@@ -1443,7 +1643,7 @@ __COLDBOX_QR_ENCODER__
       vaultManualQrIndex.disabled = !hasQrChunks;
     }
     if (vaultLoadManual) {
-      vaultLoadManual.disabled = !channelReady || !hasManualText;
+      vaultLoadManual.disabled = !channelReady || !hasManualText || unlocked;
     }
     if (vaultLock) {
       vaultLock.disabled = !channelReady || vaultState === 'locked';
@@ -1481,6 +1681,149 @@ __COLDBOX_QR_ENCODER__
     }
   }
 
+  function setActiveVaultMeta(name, vaultId) {
+    activeVaultName = typeof name === 'string' ? name.trim() : '';
+    activeVaultId = typeof vaultId === 'string' ? vaultId : null;
+    if (vaultActiveMeta) {
+      vaultActiveMeta.hidden = !activeVaultName && !activeVaultId;
+    }
+    if (vaultActiveNameNode) {
+      vaultActiveNameNode.textContent = activeVaultName || 'Unnamed vault';
+    }
+    if (vaultActiveIdNode) {
+      vaultActiveIdNode.textContent = activeVaultId ? 'Vault ID ' + activeVaultId : 'Legacy vault (no authenticated Vault ID)';
+    }
+  }
+
+  function displayNameFromFilename(name) {
+    if (!saveIntegrity || typeof saveIntegrity.parseVaultFilename !== 'function') {
+      return typeof name === 'string' ? name.replace(/\.cbx$/i, '') : 'Vault';
+    }
+    var parsed = saveIntegrity.parseVaultFilename(name);
+    if (parsed && parsed.name) {
+      return parsed.name.replace(/-/g, ' ');
+    }
+    return typeof name === 'string' ? name.replace(/\.cbx$/i, '') : 'Vault';
+  }
+
+  function libraryEntryForFile(file) {
+    var parsed = saveIntegrity && typeof saveIntegrity.parseVaultFilename === 'function'
+      ? saveIntegrity.parseVaultFilename(file && file.name)
+      : null;
+    return {
+      file: file,
+      displayName: displayNameFromFilename(file && file.name),
+      parsed: parsed,
+      key: String(file && file.name || '') + ':' + String(file && file.size || 0) + ':' + String(file && file.lastModified || 0)
+    };
+  }
+
+  function renderVaultLibrary() {
+    if (!vaultLibraryList) {
+      return;
+    }
+    while (vaultLibraryList.firstChild) {
+      vaultLibraryList.removeChild(vaultLibraryList.firstChild);
+    }
+    if (vaultLibraryEmpty) {
+      vaultLibraryEmpty.hidden = vaultLibraryEntries.length > 0;
+    }
+    vaultLibraryEntries.forEach(function (entry, index) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'vault-button vault-library-item';
+      button.setAttribute('role', 'listitem');
+      button.setAttribute('data-vault-library-index', String(index));
+      var title = document.createElement('strong');
+      title.textContent = entry.displayName;
+      var detail = document.createElement('span');
+      var generation = entry.parsed && entry.parsed.counter !== null
+        ? 'generation ' + String(entry.parsed.counter)
+        : 'generation unknown';
+      detail.textContent = generation + ' · ' + String(entry.file.name || 'vault.cbx');
+      button.appendChild(title);
+      button.appendChild(detail);
+      vaultLibraryList.appendChild(button);
+    });
+  }
+
+  function addVaultFiles(files) {
+    var incoming = Array.prototype.slice.call(files || []).filter(function (file) {
+      return file && typeof file.name === 'string' && /\.cbx$/i.test(file.name);
+    });
+    var known = {};
+    vaultLibraryEntries.forEach(function (entry) { known[entry.key] = true; });
+    incoming.forEach(function (file) {
+      var entry = libraryEntryForFile(file);
+      if (!known[entry.key]) {
+        known[entry.key] = true;
+        vaultLibraryEntries.push(entry);
+      }
+    });
+    vaultLibraryEntries.sort(function (left, right) {
+      var nameOrder = left.displayName.localeCompare(right.displayName);
+      if (nameOrder !== 0) { return nameOrder; }
+      var leftGeneration = left.parsed && Number.isInteger(left.parsed.counter) ? left.parsed.counter : -1;
+      var rightGeneration = right.parsed && Number.isInteger(right.parsed.counter) ? right.parsed.counter : -1;
+      return rightGeneration - leftGeneration;
+    });
+    renderVaultLibrary();
+    if (incoming.length === 0) {
+      setVaultNotice('No .cbx vault files were found in that selection.');
+    } else {
+      setVaultNotice(String(incoming.length) + ' vault file(s) added to the user-granted library. Select one to unlock.');
+    }
+  }
+
+  function prepareNewVaultCreation() {
+    if (!vaultCreateName || !saveIntegrity) {
+      setVaultNotice('Vault creation metadata is unavailable in this build.');
+      return;
+    }
+    var name = vaultCreateName.value.trim();
+    var safeFilenameName = saveIntegrity.sanitizeVaultName(name);
+    if (!name || !safeFilenameName) {
+      setVaultNotice('Enter a public vault name before creation.');
+      vaultCreateName.focus();
+      return;
+    }
+    clearManualVaultExport();
+    pendingCreateVaultName = name.slice(0, 80);
+    setActiveVaultMeta(pendingCreateVaultName, null);
+    var id = sendVaultMessage('vault.create.prepare', {});
+    if (!id) {
+      pendingCreateVaultName = '';
+      return;
+    }
+    setVaultStatus(
+      'pending',
+      'New vault is ready for its unlock phrase',
+      'Public name “' + pendingCreateVaultName + '” is prepared in the warm shell. Enter the new unlock phrase twice in the sealed realm, then choose Create prepared vault.',
+      'Creation prepared'
+    );
+  }
+
+  async function chooseVaultFolder() {
+    if (typeof window.showDirectoryPicker !== 'function') {
+      setVaultNotice('Folder access is unavailable in this browser. Choose vault files instead.');
+      return;
+    }
+    try {
+      var directory = await window.showDirectoryPicker({ mode: 'read' });
+      var files = [];
+      for await (var handle of directory.values()) {
+        if (handle && handle.kind === 'file' && /\.cbx$/i.test(handle.name || '')) {
+          files.push(await handle.getFile());
+        }
+      }
+      addVaultFiles(files);
+    } catch (error) {
+      if (!error || error.name !== 'AbortError') {
+        setVaultNotice('The selected folder could not be read. Choose vault files instead.');
+      }
+    }
+  }
+
   // The dirty flag only ever clears inside completeVerifiedSave(), after a
   // save has been read back from disk and found byte-identical to what was
   // written (P0.14). Every other caller may only set it true.
@@ -1492,8 +1835,11 @@ __COLDBOX_QR_ENCODER__
       vaultDirtyNotice.hidden = !vaultDirty;
       vaultDirtyNotice.setAttribute('data-dirty', String(vaultDirty));
       vaultDirtyNotice.textContent = vaultDirty
-        ? 'Unsaved changes: this vault has not completed a verified save yet.'
+        ? 'UNLOCKED · NOT SAVED / unsaved changes: this vault has not completed a verified save yet.'
         : '';
+    }
+    if (!vaultDirty && vaultLockWarning) {
+      vaultLockWarning.hidden = true;
     }
   }
 
@@ -1534,7 +1880,11 @@ __COLDBOX_QR_ENCODER__
       var counter = saveIntegrity.nextCounter(saveGeneration);
       var savedAt = new Date().toISOString();
       saveGeneration = { counter: counter, savedAt: savedAt };
-      saveIntegrity.writeGeneration(safeLocalStorage(), counter, savedAt);
+      if (activeVaultNamespace && typeof saveIntegrity.writeGenerationFor === 'function') {
+        saveIntegrity.writeGenerationFor(safeLocalStorage(), activeVaultNamespace, counter, savedAt);
+      } else {
+        saveIntegrity.writeGeneration(safeLocalStorage(), counter, savedAt);
+      }
     }
     setVaultDirty(false);
   }
@@ -1605,6 +1955,10 @@ __COLDBOX_QR_ENCODER__
       return;
     }
     var copy = new Uint8Array(bytes);
+    var loadMeta = fileMeta ? Object.assign({}, fileMeta) : {};
+    if (saveIntegrity && typeof saveIntegrity.legacyNamespaceFromBytes === 'function') {
+      loadMeta.legacyNamespace = saveIntegrity.legacyNamespaceFromBytes(copy);
+    }
     var id = nextVaultMessageId('open');
     var message = protocol.createMessage(
       'warm-to-cold',
@@ -1629,7 +1983,7 @@ __COLDBOX_QR_ENCODER__
       // "created fresh inside the cold realm" (dirty until first verified
       // save). A retried unlock attempt on the same file must keep this set.
       pendingVaultLoad = true;
-      pendingLoadFileMeta = fileMeta || null;
+      pendingLoadFileMeta = loadMeta;
     } catch (error) {
       pendingVaultLoad = false;
       pendingLoadFileMeta = null;
@@ -1686,6 +2040,14 @@ __COLDBOX_QR_ENCODER__
       vaultManualQrCount.textContent = 'No QR frames prepared.';
     }
     updateVaultControls();
+  }
+
+  function clearManualVaultExport() {
+    if (vaultManualData) {
+      vaultManualData.value = '';
+      vaultManualData.scrollTop = 0;
+    }
+    clearQrExport();
   }
 
   function renderQrFrame() {
@@ -1852,10 +2214,17 @@ __COLDBOX_QR_ENCODER__
     // Captured before the async read so a slow FileReader path can't race a
     // second load; used only for the advisory rollback check (P0.14) and
     // never sent anywhere - it stays in the warm shell.
+    var parsedName = saveIntegrity && typeof saveIntegrity.parseVaultFilename === 'function'
+      ? saveIntegrity.parseVaultFilename(file && file.name)
+      : null;
     var fileMeta = {
       name: file && typeof file.name === 'string' ? file.name : null,
-      lastModified: file && typeof file.lastModified === 'number' ? file.lastModified : null
+      lastModified: file && typeof file.lastModified === 'number' ? file.lastModified : null,
+      parsedName: parsedName
     };
+    pendingCreateVaultName = '';
+    clearManualVaultExport();
+    setActiveVaultMeta(displayNameFromFilename(fileMeta.name), null);
     readVaultFile(file).then(function (buffer) {
       sendVaultOpen(new Uint8Array(buffer), fileMeta);
     }, function () {
@@ -1866,23 +2235,18 @@ __COLDBOX_QR_ENCODER__
   function loadFromDevice() {
     if (typeof window.showOpenFilePicker === 'function') {
       window.showOpenFilePicker({
-        multiple: false,
+        multiple: true,
         types: [{
-          description: 'Coldbox vault',
+          description: 'Coldbox vaults',
           accept: { 'application/octet-stream': ['.cbx'] }
         }]
       }).then(function (handles) {
-        if (!handles || handles.length === 0) {
-          return null;
-        }
-        return handles[0].getFile();
-      }).then(function (file) {
-        if (file) {
-          loadVaultFile(file);
-        }
+        return Promise.all((handles || []).map(function (handle) { return handle.getFile(); }));
+      }).then(function (files) {
+        addVaultFiles(files);
       }).catch(function (error) {
         if (!error || error.name !== 'AbortError') {
-          setVaultNotice('The device file picker could not open the vault.');
+          setVaultNotice('The device file picker could not read the selected vault files.');
         }
       });
       return;
@@ -1905,10 +2269,22 @@ __COLDBOX_QR_ENCODER__
       return 'coldbox-vault.cbx';
     }
     try {
-      return saveIntegrity.filenameForCounter(saveIntegrity.nextCounter(saveGeneration));
+      var counter = saveIntegrity.nextCounter(saveGeneration);
+      if (activeVaultName && activeVaultId && typeof saveIntegrity.filenameForVault === 'function') {
+        return saveIntegrity.filenameForVault(activeVaultName, activeVaultId, counter);
+      }
+      return saveIntegrity.filenameForCounter(counter);
     } catch (error) {
       return 'coldbox-vault.cbx';
     }
+  }
+
+  function savePrimaryVault() {
+    if (typeof window.showSaveFilePicker === 'function') {
+      saveWithFileSystemAccess();
+      return;
+    }
+    saveAsDownload();
   }
 
   // File System Access is the only save path where Coldbox can read the
@@ -2074,68 +2450,104 @@ __COLDBOX_QR_ENCODER__
   }
 
   function handleVaultOpened(message) {
-    var count = publicRecordCount(message.payload.publicCompartment);
-    // pendingVaultLoad is only true when this session began from bytes the
-    // warm shell staged via sendVaultOpen() - an existing file, with no
-    // unsaved changes yet. Its absence means the cold realm's own "create"
-    // control produced this session instead, which starts dirty until its
-    // first verified save (P0.14).
+    var publicCompartment = message.payload.publicCompartment || {};
+    var count = publicRecordCount(publicCompartment);
+    var vaultId = typeof publicCompartment.id === 'string' ? publicCompartment.id : null;
     var wasLoadedFile = pendingVaultLoad;
     var loadMeta = pendingLoadFileMeta;
+    var chosenName = wasLoadedFile
+      ? (activeVaultName || displayNameFromFilename(loadMeta && loadMeta.name))
+      : (pendingCreateVaultName || activeVaultName || 'New vault');
     pendingVaultLoad = false;
     pendingLoadFileMeta = null;
+    pendingCreateVaultName = '';
+
+    activeVaultNamespace = null;
+    if (saveIntegrity) {
+      if (vaultId && typeof saveIntegrity.vaultNamespace === 'function') {
+        activeVaultNamespace = saveIntegrity.vaultNamespace(vaultId);
+      }
+      if (!activeVaultNamespace && loadMeta && loadMeta.legacyNamespace) {
+        activeVaultNamespace = loadMeta.legacyNamespace;
+      }
+      saveGeneration = activeVaultNamespace && typeof saveIntegrity.readGenerationFor === 'function'
+        ? saveIntegrity.readGenerationFor(safeLocalStorage(), activeVaultNamespace)
+        : { counter: 0, savedAt: null };
+    }
+    setActiveVaultMeta(chosenName, vaultId);
     setVaultDirty(!wasLoadedFile);
 
     var rollbackNotice = '';
+    var identityNotice = '';
     if (wasLoadedFile && saveIntegrity) {
-      var fileCounter = loadMeta && loadMeta.name ? saveIntegrity.parseFilename(loadMeta.name) : null;
+      var parsed = loadMeta && loadMeta.parsedName
+        ? loadMeta.parsedName
+        : (loadMeta && loadMeta.name && typeof saveIntegrity.parseVaultFilename === 'function'
+          ? saveIntegrity.parseVaultFilename(loadMeta.name)
+          : null);
+      var filenameIdMismatch = Boolean(
+        parsed
+        && parsed.id8
+        && vaultId
+        && typeof saveIntegrity.id8 === 'function'
+        && saveIntegrity.id8(vaultId) !== parsed.id8
+      );
+      if (filenameIdMismatch) {
+        identityNotice = ' Filename warning: the short Vault ID in the filename did not match the authenticated Vault ID, so the filename identity/generation hint was ignored.';
+      }
+      var fileCounter = !filenameIdMismatch && parsed ? parsed.counter : null;
       var fileInfo = { counter: fileCounter, lastModified: loadMeta ? loadMeta.lastModified : null };
-      // Evaluate against the generation on record BEFORE advancing it - an
-      // opened file must be judged against what this browser already knew,
-      // not against itself.
       var evaluation = saveIntegrity.evaluateRollback(saveGeneration, fileInfo);
       setVaultRollbackBanner(evaluation, loadMeta);
       if (evaluation.rollback) {
-        rollbackNotice = ' Rollback warning: see the banner above - this file is an older save generation'
-          + ' than one this browser has already recorded.';
+        rollbackNotice = ' Rollback warning: see the banner above - this file is an older save generation than one this browser has already recorded for this vault.';
       }
-      // The remembered high-water mark must be the highest generation this
-      // browser has ever *seen*, not only the highest it has *saved* -
-      // otherwise opening a newer file here, then an older one after a
-      // reload, would evade rollback detection entirely (independent review
-      // finding F1). Never lowers the record; never fires on an unparseable
-      // filename.
       saveGeneration = saveIntegrity.advanceGenerationOnOpen(saveGeneration, fileInfo);
-      saveIntegrity.writeGeneration(safeLocalStorage(), saveGeneration.counter, saveGeneration.savedAt);
+      if (activeVaultNamespace && typeof saveIntegrity.writeGenerationFor === 'function' && saveGeneration.savedAt) {
+        saveIntegrity.writeGenerationFor(
+          safeLocalStorage(),
+          activeVaultNamespace,
+          saveGeneration.counter,
+          saveGeneration.savedAt
+        );
+      }
     } else {
       setVaultRollbackBanner(null, null);
+      renderVaultLibrary();
     }
 
     setVaultStatus(
       'unlocked',
-      'Vault is unlocked',
-      (count === 0
-        ? 'The encrypted vault opened inside the sealed realm. No public records were returned to this shell.'
-        : String(count) + ' public record(s) are available to the warm shell; secret compartments remain sealed here.')
-      + rollbackNotice,
-      'Unlocked'
+      activeVaultName ? activeVaultName + ' is unlocked' : 'Vault is unlocked',
+      (!wasLoadedFile
+        ? 'New encrypted vault created in memory. SAVE VAULT now before locking, closing, timeout, or panic hide; until a durable save exists this is the only copy.'
+        : (count === 0
+          ? 'The selected encrypted vault opened inside the sealed realm. No public records were returned to this shell.'
+          : String(count) + ' public record(s) are available to the warm shell; secret compartments remain sealed here.'))
+      + rollbackNotice
+      + identityNotice,
+      wasLoadedFile ? 'Unlocked' : 'Not saved'
     );
   }
 
   function handleVaultStatus(message) {
     if (message.payload.locked) {
+      var lostUnsaved = vaultDirty;
+      setVaultDirty(false);
       setVaultStatus(
         'locked',
-        'Vault is locked',
-        'The cold realm cleared its active vault session. Encrypted bytes can still be loaded again.',
+        activeVaultName ? activeVaultName + ' is locked' : 'Vault is locked',
+        lostUnsaved
+          ? 'The cold realm zeroized the active session. Unsaved working changes were not written; reload a durable .cbx copy to unlock again.'
+          : 'The cold realm cleared its active vault session. Select or reload the encrypted .cbx file to unlock it again.',
         'Locked'
       );
     } else {
       setVaultStatus(
         'unlocked',
-        'Vault is unlocked',
+        activeVaultName ? activeVaultName + ' is unlocked' : 'Vault is unlocked',
         'The active vault session remains inside the sealed realm.',
-        'Unlocked'
+        vaultDirty ? 'Not saved' : 'Unlocked'
       );
     }
     if (message.payload.warnings.indexOf('airgap-violation') !== -1) {
@@ -2180,23 +2592,40 @@ __COLDBOX_QR_ENCODER__
     updateVaultControls();
   }
 
-  function sendVaultLock() {
+  function sendVaultLockImmediately() {
+    var hadUnsaved = vaultDirty;
     var id = sendVaultMessage('vault.lock', {});
     if (id) {
+      setVaultDirty(false);
+      if (vaultLockWarning) {
+        vaultLockWarning.hidden = true;
+      }
       setVaultStatus(
         'locked',
-        'Vault is locked',
-        vaultDirty
-          ? 'The lock request was sent to the sealed realm. Unsaved changes existed at lock time and were '
-            + 'not written to a verified save.'
+        activeVaultName ? activeVaultName + ' is locked' : 'Vault is locked',
+        hadUnsaved
+          ? 'Lock was sent immediately. Unsaved working changes were not written; the cold realm will zeroize them.'
           : 'The lock request was sent to the sealed realm. Its active bytes will be cleared there.',
         'Locked'
       );
     }
   }
 
+  function requestVaultLock() {
+    if (vaultDirty && vaultState === 'unlocked') {
+      if (vaultLockWarning) {
+        vaultLockWarning.hidden = false;
+        vaultLockWarning.scrollIntoView({ block: 'nearest' });
+      }
+      setVaultNotice('Unsaved changes exist. Save first, lock without saving, or cancel. Emergency lock paths never wait.');
+      return;
+    }
+    sendVaultLockImmediately();
+  }
+
   function panicHide() {
-    sendVaultLock();
+    // Panic is an emergency path: never wait for save confirmation.
+    sendVaultLockImmediately();
     if (app) {
       app.hidden = true;
     }
@@ -2477,14 +2906,19 @@ __COLDBOX_QR_ENCODER__
       || window.navigator.mozConnection
       || window.navigator.webkitConnection
     );
-    window.addEventListener('online', updateAirgapBanner);
-    window.addEventListener('offline', updateAirgapBanner);
-    window.addEventListener('focus', updateAirgapBanner);
-    if (connection && typeof connection.addEventListener === 'function') {
-      connection.addEventListener('change', updateAirgapBanner);
+    function triggerReachabilityCheck() {
+      updateAirgapBanner();
+      runReachabilityCheck();
     }
-    window.setInterval(updateAirgapBanner, 5000);
+    window.addEventListener('online', triggerReachabilityCheck);
+    window.addEventListener('offline', triggerReachabilityCheck);
+    window.addEventListener('focus', triggerReachabilityCheck);
+    if (connection && typeof connection.addEventListener === 'function') {
+      connection.addEventListener('change', triggerReachabilityCheck);
+    }
+    window.setInterval(runReachabilityCheck, REACHABILITY_INTERVAL_MS);
     updateAirgapBanner();
+    runReachabilityCheck();
   }
 
   function handleColdRealmMessage(event) {
@@ -2586,15 +3020,12 @@ __COLDBOX_QR_ENCODER__
   app.setAttribute('data-capability-state', 'checking');
   app.setAttribute('data-lockdown-state', 'checking');
   app.setAttribute('data-vault-operations', 'refused');
-  if (saveIntegrity) {
-    saveGeneration = saveIntegrity.readGeneration(safeLocalStorage());
-  }
   setVaultDirty(false);
   setVaultRollbackBanner(null, null);
   setVaultStatus(
     'locked',
     'Vault is locked',
-    'Load an encrypted vault, then enter its unlock phrase in the sealed realm. The warm shell never receives it.',
+    'Choose a vault from the user-granted library, or prepare a named new vault. Unlock phrases stay inside the sealed realm.',
     'Locked'
   );
   initHelp();
@@ -2626,10 +3057,34 @@ __COLDBOX_QR_ENCODER__
   if (vaultFileInput) {
     vaultFileInput.addEventListener('change', function () {
       if (vaultFileInput.files && vaultFileInput.files.length > 0) {
-        loadVaultFile(vaultFileInput.files[0]);
+        addVaultFiles(vaultFileInput.files);
       }
       vaultFileInput.value = '';
     });
+  }
+  if (vaultChooseFolder) {
+    vaultChooseFolder.addEventListener('click', chooseVaultFolder);
+  }
+  if (vaultLibraryList) {
+    vaultLibraryList.addEventListener('click', function (event) {
+      var target = event.target && event.target.closest
+        ? event.target.closest('[data-vault-library-index]')
+        : null;
+      if (!target) {
+        return;
+      }
+      var index = Number(target.getAttribute('data-vault-library-index'));
+      if (!Number.isInteger(index) || !vaultLibraryEntries[index]) {
+        return;
+      }
+      loadVaultFile(vaultLibraryEntries[index].file);
+    });
+  }
+  if (vaultCreatePrepare) {
+    vaultCreatePrepare.addEventListener('click', prepareNewVaultCreation);
+  }
+  if (vaultSavePrimary) {
+    vaultSavePrimary.addEventListener('click', savePrimaryVault);
   }
   if (vaultSaveFileSystem) {
     vaultSaveFileSystem.addEventListener('click', saveWithFileSystemAccess);
@@ -2690,7 +3145,21 @@ __COLDBOX_QR_ENCODER__
     });
   }
   if (vaultLock) {
-    vaultLock.addEventListener('click', sendVaultLock);
+    vaultLock.addEventListener('click', requestVaultLock);
+  }
+  if (vaultLockSave) {
+    vaultLockSave.addEventListener('click', savePrimaryVault);
+  }
+  if (vaultLockWithoutSave) {
+    vaultLockWithoutSave.addEventListener('click', sendVaultLockImmediately);
+  }
+  if (vaultLockCancel) {
+    vaultLockCancel.addEventListener('click', function () {
+      if (vaultLockWarning) {
+        vaultLockWarning.hidden = true;
+      }
+      setVaultNotice('Lock cancelled. The vault remains unlocked.');
+    });
   }
   if (vaultPanicHide) {
     vaultPanicHide.addEventListener('click', panicHide);

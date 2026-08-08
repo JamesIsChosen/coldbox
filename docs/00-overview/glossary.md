@@ -552,10 +552,10 @@ See [crypto-choices.md](../02-security/crypto-choices.md) for the exact memory/i
 A safety check that happens right after Coldbox writes your vault to disk: it immediately reopens the file it just wrote and confirms it's actually intact, *before* it tells you the save succeeded. If the write got cut off or corrupted, you find out immediately, not the next time you try to open the vault.
 :::
 ::: working
-Verify-after-save behavior: after writing, Coldbox re-opens the just-written file and confirms it decrypts before clearing the in-app "unsaved changes" indicator. Filenames also carry a generation counter, so opening an older vault than the one last saved triggers a rollback warning with both dates and counters shown.
+Verify-after-save behavior: after writing through File System Access, Coldbox reads the just-written ciphertext back and requires it to be byte-identical to what it wrote before clearing the in-app "unsaved changes" indicator. Filenames also carry a per-vault generation counter, so opening an older generation than the highest one that browser profile has seen for that Vault ID triggers a rollback warning with both dates and counters shown.
 :::
 ::: technical
-See [ADR-0013](../05-development/adr/0013-save-integrity-in-warm-shell.md): this bookkeeping lives in the warm shell (filenames, generation counters, the dirty flag) rather than inside the vault format itself, since none of it is secret and duplicating it into the encrypted format would gain nothing.
+See [ADR-0013](../05-development/adr/0013-save-integrity-in-warm-shell.md) and [ADR-0025](../05-development/adr/0025-vault-identity-library-and-save-ux.md): this bookkeeping lives in the warm shell (filenames, per-vault generation counters, the dirty flag) rather than inside the vault format itself. The authenticated Vault ID only namespaces the warm bookkeeping; it does not move the counter into the CBX byte layout.
 :::
 
 **Keyfile unlock**

@@ -19,6 +19,8 @@ const CANARY_ERROR_FRAGMENT = 'coldbox.invalid/csp-canary';
 const COLD_CANARY_ERROR_FRAGMENT = 'localhost:9/cold-csp-canary';
 const WARM_CANARY_URL = 'https://coldbox.invalid/csp-canary';
 const COLD_CANARY_URL = 'http://localhost:9/cold-csp-canary';
+const REACHABILITY_PRIMARY_URL = 'https://api.coinbase.com/v2/time';
+const REACHABILITY_BACKUP_URL = 'https://mempool.space/api/blocks/tip/height';
 
 // F1 regression support: patches window.FileReader.prototype.readAsArrayBuffer
 // inside every document/frame this init script runs in (including the cold
@@ -352,11 +354,63 @@ function createPreexistingProviderFixture() {
   };
 }
 
-async function openPage(browser, file) {
+async function installReachabilityRoutes(page, initialMode = 'reachable') {
+  let mode = initialMode;
+  const requests = [];
+  const handler = async (route) => {
+    requests.push(route.request().url());
+    if (mode === 'reachable') {
+      await route.fulfill({ status: 204, body: '' });
+      return;
+    }
+    await route.abort('failed');
+  };
+  await page.route(REACHABILITY_PRIMARY_URL, handler);
+  await page.route(REACHABILITY_BACKUP_URL, handler);
+  return Object.freeze({
+    setMode(nextMode) {
+      assert.ok(['reachable', 'unreachable'].includes(nextMode), 'invalid reachability fixture mode');
+      mode = nextMode;
+    },
+    requests() {
+      return requests.slice();
+    }
+  });
+}
+
+async function triggerReachabilityRound(page) {
+  await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+  await page.waitForTimeout(75);
+  await page.waitForFunction(() => document.documentElement.getAttribute('data-reachability-checking') === 'false');
+}
+
+async function prepareVaultCreation(page, coldFrame, name) {
+  await page.locator('#vault-create-name').fill(name);
+  await page.locator('#vault-create-prepare').click();
+  await coldFrame.locator('#cold-vault-create-confirmation:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+}
+
+async function createPreparedVault(page, coldFrame, phrase, name) {
+  await prepareVaultCreation(page, coldFrame, name);
+  await coldFrame.locator('#cold-vault-passphrase').fill(phrase);
+  await coldFrame.locator('#cold-vault-passphrase-confirm').fill(phrase);
+  await coldFrame.locator('#cold-vault-create').click();
+}
+
+async function lockVaultDiscardingUnsaved(page) {
+  await page.locator('#vault-lock').click();
+  const warning = page.locator('#vault-lock-warning');
+  if (await warning.isVisible()) {
+    await page.locator('#vault-lock-without-save').click();
+  }
+}
+
+async function openPage(browser, file, reachabilityMode = 'reachable') {
   const page = await browser.newPage();
+  const reachability = await installReachabilityRoutes(page, reachabilityMode);
   const harness = await createHarness(page);
   await page.goto(fileUrl(file), { waitUntil: 'load' });
-  return { harness, page };
+  return { harness, page, reachability };
 }
 
 async function closePage(page) {
@@ -367,12 +421,13 @@ async function closePage(page) {
 // before the document (and every child frame, including the cold realm's
 // srcdoc iframe) first runs, so the page's own FileReader usage is wrapped
 // from the very first read.
-async function openPageWithFileReaderControl(browser, file) {
+async function openPageWithFileReaderControl(browser, file, reachabilityMode = 'reachable') {
   const page = await browser.newPage();
+  const reachability = await installReachabilityRoutes(page, reachabilityMode);
   const harness = await createHarness(page);
   await page.addInitScript(FILE_READER_ORDER_CONTROL_SCRIPT);
   await page.goto(fileUrl(file), { waitUntil: 'load' });
-  return { harness, page };
+  return { harness, page, reachability };
 }
 
 async function getColdFrame(page, engine) {
@@ -423,7 +478,7 @@ async function createCspProbeFrame(page, engine) {
 }
 
 async function verifyBuiltFile(browser, engine) {
-  const { harness, page } = await openPage(browser, buildPath);
+  const { harness, page, reachability } = await openPage(browser, buildPath);
   try {
     await harness.expectElementVisible('#app');
     await harness.expectElementVisible('#app[data-build-state="warm-shell"]');
@@ -475,6 +530,17 @@ async function verifyBuiltFile(browser, engine) {
     await page.locator('#capability-crypto-summary').waitFor({ state: 'visible' });
     assert.match(await page.locator('#capability-crypto-summary').textContent(), /argon2id-standard/);
     await coldFrame.locator('html[data-warm-network-online="true"]').waitFor({ state: 'visible' });
+    // Make the P0.19 Windows regression deterministic: the cold frame's native
+    // browser-interface hint remains optimistic while warm active probes are
+    // later forced unreachable. Vault mode must follow validated mode.set, not
+    // this stale navigator.onLine value.
+    await coldFrame.evaluate(() => {
+      Object.defineProperty(Navigator.prototype, 'onLine', {
+        configurable: true,
+        get() { return true; }
+      });
+    });
+    assert.equal(await coldFrame.evaluate(() => navigator.onLine), true);
     await harness.expectParentCannotReadFrame();
     await harness.expectCspViolation('connect-src', { blockedURI: WARM_CANARY_URL });
     await harness.expectCspViolationInFrame(
@@ -485,23 +551,63 @@ async function verifyBuiltFile(browser, engine) {
     await harness.expectNoConsoleErrors({
       allowedFragments: [CANARY_ERROR_FRAGMENT, COLD_CANARY_ERROR_FRAGMENT]
     });
-    await page.context().setOffline(true);
+    await page.locator('html[data-reachability-state="reachable"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.ok(
+      reachability.requests().includes(REACHABILITY_PRIMARY_URL),
+      `${engine}: active reachability monitor never called the primary warm-shell probe`
+    );
+
+    // Browser interface signals are hints only. Force both allowlisted active
+    // probes to fail twice while leaving navigator.onLine untouched; only the
+    // consecutive active failures may establish offline mode.
+    reachability.setMode('unreachable');
+    await triggerReachabilityRound(page);
+    await page.locator('html[data-reachability-state="unknown"]').waitFor({ state: 'attached', timeout: 5000 });
+    await triggerReachabilityRound(page);
+    await page.locator('html[data-reachability-state="unreachable"]').waitFor({ state: 'attached', timeout: 5000 });
     await page.locator('#airgap-banner[data-airgap-state="green"]').waitFor({ state: 'visible', timeout: 5000 });
-    assert.equal(await page.locator('html').getAttribute('data-network-online'), 'false');
-    await page.context().setOffline(false);
+    await coldFrame.locator('html[data-warm-network-online="false"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(
+      await coldFrame.evaluate(() => navigator.onLine),
+      true,
+      `${engine}: test must preserve the stale navigator.onLine=true disagreement`
+    );
+    assert.match(await page.locator('#warm-reachability-status').textContent(), /not proof.*physically airgapped/i);
+
+    // Any probe success flips online-safe immediately.
+    reachability.setMode('reachable');
+    await triggerReachabilityRound(page);
+    await page.locator('html[data-reachability-state="reachable"]').waitFor({ state: 'attached', timeout: 5000 });
     await page.locator('#airgap-banner[data-airgap-state="amber"]').waitFor({ state: 'visible', timeout: 5000 });
-    assert.equal(await page.locator('html').getAttribute('data-network-online'), 'true');
+    await coldFrame.locator('html[data-warm-network-online="true"]').waitFor({ state: 'attached', timeout: 5000 });
 
     await page.locator('#nav-rail a[data-route="vault"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
-    await page.context().setOffline(true);
+    reachability.setMode('unreachable');
+    await triggerReachabilityRound(page);
+    await triggerReachabilityRound(page);
     await page.locator('#airgap-banner[data-airgap-state="green"]').waitFor({ state: 'visible', timeout: 5000 });
     await coldFrame.locator('html[data-warm-network-online="false"]').waitFor({ state: 'attached', timeout: 5000 });
+
+    // Creation confirmation is creation-only: a mismatch must create nothing,
+    // then the same prepared vault can succeed when confirmation matches.
+    await prepareVaultCreation(page, coldFrame, 'Browser Round Trip');
     await coldFrame.locator('#cold-vault-passphrase').fill('browser round-trip phrase');
+    await coldFrame.locator('#cold-vault-passphrase-confirm').fill('browser round-trip typo');
+    await coldFrame.locator('#cold-vault-create').click();
+    await coldFrame.locator('#cold-vault-status').filter({ hasText: /do not match/ }).waitFor({ state: 'visible', timeout: 5000 });
+    assert.notEqual(await coldFrame.locator('#cold-vault-status').getAttribute('data-state'), 'unlocked');
+    assert.equal(await coldFrame.locator('#cold-vault-passphrase-confirm').inputValue(), '');
+    await coldFrame.locator('#cold-vault-passphrase-confirm').fill('browser round-trip phrase');
     await coldFrame.locator('#cold-vault-create').click();
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     assert.equal(await coldFrame.locator('#cold-vault-passphrase').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-vault-passphrase-confirm').inputValue(), '');
+    const activeVaultIdText = (await page.locator('#vault-active-id').textContent()).trim();
+    const activeVaultIdMatch = /^Vault ID ([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(activeVaultIdText);
+    assert.ok(activeVaultIdMatch, `${engine}: created vault must expose a valid authenticated random UUID as public metadata`);
+    const activeVaultId = activeVaultIdMatch[1];
 
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#vault-save-download').click();
@@ -511,7 +617,11 @@ async function verifyBuiltFile(browser, engine) {
     // "Generational filenames"). This is a fresh page/context with no prior
     // localStorage save-generation record, so the first save in it is
     // always generation 1.
-    assert.equal(download.suggestedFilename(), 'coldbox-vault-0001.cbx');
+    assert.equal(
+      download.suggestedFilename(),
+      `Browser-Round-Trip--${activeVaultId.replace(/-/g, '').slice(0, 8).toLowerCase()}--0001.cbx`,
+      `${engine}: save filename must bind the public name and short authenticated Vault ID hint`
+    );
 
     await page.locator('#vault-save-manual').click();
     await page.waitForFunction(() => document.querySelector('#vault-manual-data').value.length > 0);
@@ -537,6 +647,9 @@ async function verifyBuiltFile(browser, engine) {
     assert.notEqual(secondManualVaultText, manualVaultText, `${engine}: repeated saves must rotate the public nonce`);
 
     await page.locator('#vault-lock').click();
+    await page.locator('#vault-lock-warning:not([hidden])').waitFor({ state: 'visible' });
+    assert.match(await page.locator('#vault-lock-warning').textContent(), /unsaved/i);
+    await page.locator('#vault-lock-without-save').click();
     await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible' });
     await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible' });
     const qrFrames = await page.evaluate((value) => {
@@ -561,7 +674,14 @@ async function verifyBuiltFile(browser, engine) {
     await coldFrame.locator('#cold-vault-unlock').click();
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
-    console.log(`${engine}: blob download and manual base64 load/save round-tripped through the cold realm`);
+    assert.equal(await coldFrame.locator('#cold-vault-passphrase-confirm').isVisible(), false, `${engine}: normal unlock must not show creation confirmation`);
+
+    reachability.setMode('reachable');
+    await triggerReachabilityRound(page);
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('html').getAttribute('data-cold-working-bytes'), 'cleared');
+    console.log(`${engine}: active reachability, creation confirmation, named save, dirty-lock warning, round-trip unlock, and online-transition zeroization passed`);
     await page.locator('#nav-rail .nav-link[data-route="dashboard"]').click();
     await page.waitForFunction(() => window.location.hash === '#dashboard');
 
@@ -728,8 +848,83 @@ async function verifyBuiltFile(browser, engine) {
   }
 }
 
+async function verifyVaultLibrary(browser, engine) {
+  const { page, reachability } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    const coldFrame = await getColdFrame(page, engine);
+
+    reachability.setMode('unreachable');
+    await triggerReachabilityRound(page);
+    await triggerReachabilityRound(page);
+    await coldFrame.locator('html[data-warm-network-online="false"]').waitFor({ state: 'attached', timeout: 5000 });
+
+    async function createExport(name, phrase) {
+      await createPreparedVault(page, coldFrame, phrase, name);
+      await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+      await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+      const idText = (await page.locator('#vault-active-id').textContent()).trim();
+      const idMatch = /^Vault ID ([0-9a-f-]{36})$/i.exec(idText);
+      assert.ok(idMatch, `${engine}: ${name} did not receive a Vault ID`);
+      assert.equal(
+        await page.locator('#vault-manual-data').inputValue(),
+        '',
+        `${engine}: switching to ${name} left a stale manual export from the previous vault`
+      );
+      await page.locator('#vault-save-manual').click();
+      await page.waitForFunction(() => document.querySelector('#vault-manual-data').value.length > 0);
+      const base64 = await page.locator('#vault-manual-data').inputValue();
+      await lockVaultDiscardingUnsaved(page);
+      await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+      return { id: idMatch[1], name, phrase, bytes: Buffer.from(base64, 'base64') };
+    }
+
+    const alpha = await createExport('Alpha Savings', 'alpha library phrase');
+    const beta = await createExport('Beta Travel', 'beta library phrase');
+    assert.notEqual(alpha.id, beta.id, `${engine}: two vaults created on one device must never share identity`);
+
+    function fileName(record) {
+      return `${record.name.replace(/\s+/g, '-')}--${record.id.replace(/-/g, '').slice(0, 8).toLowerCase()}--0001.cbx`;
+    }
+
+    await page.locator('#vault-file-input').setInputFiles([
+      { name: fileName(alpha), mimeType: 'application/octet-stream', buffer: alpha.bytes },
+      { name: fileName(beta), mimeType: 'application/octet-stream', buffer: beta.bytes }
+    ]);
+    const libraryItems = page.locator('#vault-library-list [data-vault-library-index]');
+    await libraryItems.nth(1).waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await libraryItems.count(), 2, `${engine}: two user-granted vaults must render as two selectable library entries`);
+    assert.match(await page.locator('#vault-library-list').textContent(), /Alpha Savings/);
+    assert.match(await page.locator('#vault-library-list').textContent(), /Beta Travel/);
+
+    async function selectUnlock(record) {
+      const item = page.locator('#vault-library-list [data-vault-library-index]', { hasText: record.name });
+      await item.click();
+      await coldFrame.locator('#cold-vault-status[data-state="pending"]').waitFor({ state: 'visible', timeout: 5000 });
+      assert.equal(await coldFrame.locator('#cold-vault-passphrase-confirm').isVisible(), false, `${engine}: existing-vault library unlock must never ask for confirmation`);
+      await coldFrame.locator('#cold-vault-passphrase').fill(record.phrase);
+      await coldFrame.locator('#cold-vault-unlock').click();
+      await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+      assert.equal((await page.locator('#vault-active-name').textContent()).trim(), record.name);
+      assert.match((await page.locator('#vault-active-id').textContent()).trim(), new RegExp(record.id, 'i'));
+    }
+
+    await selectUnlock(beta);
+    await lockVaultDiscardingUnsaved(page);
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    await selectUnlock(alpha);
+
+    console.log(`${engine}: two named portable Vault IDs were independently selectable and unlockable from the user-granted Vault Library`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyColdRealmFailure(browser, engine) {
   const page = await browser.newPage();
+  await installReachabilityRoutes(page);
   await page.addInitScript(() => {
     const createElement = Document.prototype.createElement;
     Document.prototype.createElement = function createElementWithColdFrameFailure(name) {
@@ -769,8 +964,7 @@ async function verifyUnlockedRuntimeHealthLockdown(browser, engine) {
     await page.locator('#nav-rail a[data-route="vault"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     let coldFrame = await getColdFrame(page, engine);
-    await coldFrame.locator('#cold-vault-passphrase').fill('runtime violation unlocked phrase');
-    await coldFrame.locator('#cold-vault-create').click();
+    await createPreparedVault(page, coldFrame, 'runtime violation unlocked phrase', 'Runtime Violation Vault');
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
 
@@ -798,11 +992,12 @@ async function verifyUnlockedRuntimeHealthLockdown(browser, engine) {
     await page.locator('#nav-rail a[data-route="vault"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     coldFrame = await getColdFrame(page, engine);
-    await page.context().setOffline(true);
+    opened.reachability.setMode('unreachable');
+    await triggerReachabilityRound(page);
+    await triggerReachabilityRound(page);
     await page.locator('#airgap-banner[data-airgap-state="green"]').waitFor({ state: 'visible', timeout: 5000 });
     await coldFrame.locator('html[data-warm-network-online="false"]').waitFor({ state: 'attached', timeout: 5000 });
-    await coldFrame.locator('#cold-vault-passphrase').fill('save health drift phrase');
-    await coldFrame.locator('#cold-vault-create').click();
+    await createPreparedVault(page, coldFrame, 'save health drift phrase', 'Save Health Vault');
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
 
@@ -827,8 +1022,7 @@ async function verifyPanicHide(browser, engine) {
     await page.locator('#nav-rail a[data-route="vault"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     let coldFrame = await getColdFrame(page, engine);
-    await coldFrame.locator('#cold-vault-passphrase').fill('panic session phrase');
-    await coldFrame.locator('#cold-vault-create').click();
+    await createPreparedVault(page, coldFrame, 'panic session phrase', 'Warm Panic Vault');
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     await page.keyboard.press('Escape');
@@ -853,8 +1047,7 @@ async function verifyPanicHide(browser, engine) {
     await page.locator('#nav-rail a[data-route="vault"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     coldFrame = await getColdFrame(page, engine);
-    await coldFrame.locator('#cold-vault-passphrase').fill('cold panic session phrase');
-    await coldFrame.locator('#cold-vault-create').click();
+    await createPreparedVault(page, coldFrame, 'cold panic session phrase', 'Cold Panic Vault');
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     await coldFrame.locator('body').press('Escape');
     await coldFrame.locator('body').press('Escape');
@@ -883,6 +1076,7 @@ async function verifyPanicHide(browser, engine) {
 async function verifyColdRealmTimeout(browser, engine) {
   const fixture = createColdReadySuppressedFixture();
   const page = await browser.newPage();
+  await installReachabilityRoutes(page);
   const harness = await createHarness(page);
   try {
     await page.goto(fileUrl(fixture.path), { waitUntil: 'load' });
@@ -913,6 +1107,7 @@ async function verifyColdRealmTimeout(browser, engine) {
 async function verifyHandshakeTimeout(browser, engine) {
   const fixture = createHandshakeResponseSuppressedFixture();
   const page = await browser.newPage();
+  await installReachabilityRoutes(page);
   const harness = await createHarness(page);
   try {
     await page.goto(fileUrl(fixture.path), { waitUntil: 'load' });
@@ -1311,7 +1506,9 @@ async function verifyKeyfileUiAndRegressions(browser, engine) {
 
     // Prove it at the cryptographic layer, not just in the status text: only
     // B's bytes may actually unlock the vault this selection creates.
+    await prepareVaultCreation(page, coldFrame, 'Keyfile Regression Vault');
     await passphraseInput.fill('browser f1 regression phrase');
+    await coldFrame.locator('#cold-vault-passphrase-confirm').fill('browser f1 regression phrase');
     await coldFrame.locator('#cold-vault-create').click();
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
 
@@ -1319,7 +1516,7 @@ async function verifyKeyfileUiAndRegressions(browser, engine) {
     await page.waitForFunction(() => document.querySelector('#vault-manual-data').value.length > 0);
     const f1VaultText = await page.locator('#vault-manual-data').inputValue();
 
-    await page.locator('#vault-lock').click();
+    await lockVaultDiscardingUnsaved(page);
     await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible' });
     await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible' });
 
@@ -1355,7 +1552,7 @@ async function verifyKeyfileUiAndRegressions(browser, engine) {
 
     // --- F2: lock destroys keyfile bytes and must also clear the visible
     // file-input/status UI, then re-selecting the same file must work ---
-    await page.locator('#vault-lock').click();
+    await lockVaultDiscardingUnsaved(page);
     await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible' });
     await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible' });
 
@@ -1924,6 +2121,7 @@ async function run() {
     const browser = await browserType.launch({ headless: true });
     try {
       await verifyBuiltFile(browser, engine);
+      await verifyVaultLibrary(browser, engine);
       await verifyEntropyLab(browser, engine);
       await verifyUnlockedRuntimeHealthLockdown(browser, engine);
       await verifyProviderNeutering(browser, engine);

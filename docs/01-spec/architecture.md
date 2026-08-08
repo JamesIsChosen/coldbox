@@ -79,6 +79,7 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 | Type | Payload | Notes |
 |---|---|---|
 | `vault.open` | `{ bytes }` | Ciphertext only. The passphrase is entered inside the cold realm and never crosses |
+| `vault.create.prepare` | `{}` | Strict payload-free gate: warm has a non-secret public vault name ready; the name itself never crosses into cold |
 | `vault.saveRequest` | `{ }` | Cold realm returns ciphertext |
 | `vault.lock` | `{ }` | |
 | `panic.hide` | `{ }` | Locks the cold session and asks the warm shell to conceal the app |
@@ -164,7 +165,7 @@ The public projection deliberately contains no free-form text fields. It permits
 
 The **warm shell**, not the cold realm, owns active reachability monitoring. Browser interface signals (`navigator.onLine`, `navigator.connection`, `online`/`offline`, focus/change events) trigger checks but are not trusted as the verdict. Small content-free fetches to two already-allowlisted providers establish real outbound reachability: any success flips to online immediately; only consecutive all-endpoint failures permit `mode.set { online:false }`. Checking, stale, contradictory, timeout, and monitor errors are all online-safe. See [ADR-0024](../05-development/adr/0024-warm-reachability-monitor.md).
 
-The cold realm never probes. Its `connect-src 'none'`, runtime network-primitive/provider neutering, and private channel remain unchanged. P0.13's conservative mode rule therefore still holds: an online-safe unlock never derives `cbx/secret/v1`; a full unlock is available only after warm reports the offline threshold. A transition back to online immediately clears the active cold session.
+The cold realm never probes. Its `connect-src 'none'`, runtime network-primitive/provider neutering, and private channel remain unchanged. After the typed `mode.set` message is validated on the private channel, cold main records that Boolean on its document root; the vault layer consumes **only that recorded value** as its network-mode authority and does not consult `navigator.onLine`, `navigator.connection`, or the cold airgap snapshot independently. Missing or invalid recorded state is `unknown` and remains online-safe/fail-closed. P0.13's conservative mode rule therefore still holds: an online-safe unlock never derives `cbx/secret/v1`; a full unlock is available only after warm reports the offline threshold. A transition back to online immediately clears the active cold session.
 
 **Reachability is not physical-airgap proof.** A firewall can block the chosen probe hosts while another route exists; a captive portal or virtual adapter can confuse browser signals. The UI says **no external reachability detected**, never "physical airgap confirmed." The cold CSP is the secret-exfiltration guarantee; a physically disconnected/amnesic machine is the stronger environmental posture.
 

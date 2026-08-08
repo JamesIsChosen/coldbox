@@ -44,6 +44,7 @@ test('protocol exposes only the documented message whitelist', () => {
 
   assert.deepEqual(Array.from(protocol.messageTypes('warm-to-cold')), [
     'vault.open',
+    'vault.create.prepare',
     'vault.saveRequest',
     'vault.lock',
     'panic.hide',
@@ -73,6 +74,31 @@ test('protocol exposes only the documented message whitelist', () => {
   }), null);
 });
 
+test('vault creation preparation is strictly payload-free', () => {
+  const protocol = loadProtocol();
+
+  const prepared = protocol.validateMessage('warm-to-cold', {
+    id: 'create-prepare-1',
+    type: 'vault.create.prepare',
+    payload: {}
+  });
+  assert.equal(JSON.stringify(prepared), JSON.stringify({
+    id: 'create-prepare-1',
+    type: 'vault.create.prepare',
+    payload: {}
+  }));
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'create-prepare-name',
+    type: 'vault.create.prepare',
+    payload: { name: 'Warm-only name' }
+  }), null);
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'create-prepare-secret',
+    type: 'vault.create.prepare',
+    payload: { passphrase: 'must never cross' }
+  }), null);
+});
+
 test('protocol strips unknown fields and preserves only safe values', () => {
   const protocol = loadProtocol();
   const sanitized = protocol.validateMessage('warm-to-cold', {
@@ -97,6 +123,7 @@ test('protocol strips unknown fields and preserves only safe values', () => {
     type: 'vault.opened',
     payload: {
       publicCompartment: {
+        id: SAFE_ID,
         wallets: [{ id: SAFE_ID, fingerprint: SAFE_FINGERPRINT, unknownNumber: 7 }],
         unknownCollection: [{ privateKey: 'discarded' }]
       },
@@ -107,13 +134,18 @@ test('protocol strips unknown fields and preserves only safe values', () => {
   assert.equal(JSON.stringify(publicData), JSON.stringify({
     id: 'opened-1',
     type: 'vault.opened',
-    payload: { publicCompartment: { wallets: [{ id: SAFE_ID, fingerprint: SAFE_FINGERPRINT }] } }
+    payload: { publicCompartment: { id: SAFE_ID, wallets: [{ id: SAFE_ID, fingerprint: SAFE_FINGERPRINT }] } }
   }));
   assert.equal(containsSensitiveKey(publicData), false);
   assert.equal(protocol.validateMessage('cold-to-warm', {
     id: 'opened-unsafe',
     type: 'vault.opened',
     payload: { publicCompartment: { wallets: [{ label: 'Public' }] } }
+  }), null);
+  assert.equal(protocol.validateMessage('cold-to-warm', {
+    id: 'opened-bad-vault-id',
+    type: 'vault.opened',
+    payload: { publicCompartment: { id: 'device-fingerprint-not-a-uuid', wallets: [] } }
   }), null);
 });
 
