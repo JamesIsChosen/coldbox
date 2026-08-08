@@ -137,7 +137,7 @@ Extensions can read page content and inject scripts. They operate above the laye
 
 **Coldbox does not use one.** A 2026-08 proposal to integrate wallet extensions was rejected on exactly this basis — [ADR-0020](../05-development/adr/0020-injected-providers-rejected-and-neutered.md).
 
-What that investigation did produce is a fix for a hole that exists regardless: extensions are **not** reliably excluded from sandboxed `srcdoc` frames. That is a browser implementation detail, not a guarantee, and until [P0.21](../05-development/ROADMAP.md) nothing stops an extension injecting a provider into the cold realm and nothing notices if one does. The cold realm therefore treats provider presence inside itself as an **isolation failure** — `window.ethereum` and the `eip6963:announceProvider` event neutered alongside the five network primitives, entering full lockdown if observed.
+What that investigation did produce is a fix for a hole that exists regardless: extensions are **not** reliably excluded from sandboxed `srcdoc` frames. That is a browser implementation detail, not a guarantee. The cold realm therefore treats provider presence inside itself as an **isolation failure** — `window.ethereum` and the `eip6963:announceProvider` event neutered alongside the five network primitives ([P0.21](../05-development/ROADMAP.md)), entering full lockdown if observed.
 
 Note the asymmetry: this guard is *more* important than the ones on the five network primitives, not less, because those sit behind a CSP that already blocks them, and this one has no CSP in front of it.
 

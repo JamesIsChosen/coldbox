@@ -10,6 +10,11 @@
     'EventSource',
     'sendBeacon'
   ]);
+  var PROVIDER_ANNOUNCEMENT_EVENT = 'eip6963:announceProvider';
+  var PROVIDER_PRIMITIVES = Object.freeze([
+    'window.ethereum',
+    PROVIDER_ANNOUNCEMENT_EVENT
+  ]);
 
   function isConnectViolation(event) {
     if (!event) {
@@ -176,6 +181,131 @@
     };
   }
 
+  // P0.21: sandboxed srcdoc frames are not reliably excluded from extension
+  // injection - that is a browser implementation detail, not a guarantee
+  // (ADR-0020). window.ethereum and eip6963:announceProvider are the two
+  // observable surfaces of an injected wallet provider, and neither is
+  // reachable through the CSP that blocks the five network primitives above,
+  // so this guard is defence in depth with nothing in front of it.
+  function defineOwnProviderAccessor(target, key, name, onAttempt) {
+    try {
+      Object.defineProperty(target, key, {
+        configurable: false,
+        enumerable: false,
+        get: function () {
+          return undefined;
+        },
+        set: function () {
+          if (typeof onAttempt === 'function') {
+            onAttempt(name);
+          }
+        }
+      });
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // F1 remediation (P0.21 review): a provider can already be sitting at
+  // window.ethereum by the time this guard installs - an extension that
+  // injected before Coldbox's own script ran. That is itself the isolation
+  // failure ADR-0020 requires full lockdown for, not merely a thing to
+  // silently overwrite. Detection reads only the property descriptor, never
+  // the provider object itself: a data descriptor's `value` is inspected
+  // without a call, and an accessor (get/set) descriptor - which could only
+  // belong to something other than Coldbox, since this runs before Coldbox
+  // installs its own - is treated as present without invoking the getter,
+  // so no extension-controlled code ever runs during detection.
+  function inspectExistingValue(target, key) {
+    var current = target;
+    while (current) {
+      if (Object.prototype.hasOwnProperty.call(current, key)) {
+        var descriptor;
+        try {
+          descriptor = Object.getOwnPropertyDescriptor(current, key);
+        } catch (error) {
+          return { present: true };
+        }
+        if (!descriptor) {
+          return { present: true };
+        }
+        if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+          return { present: descriptor.value !== undefined };
+        }
+        return { present: true };
+      }
+      try {
+        current = Object.getPrototypeOf(current);
+      } catch (error) {
+        return { present: true };
+      }
+    }
+    return { present: false };
+  }
+
+  function defineProviderBlocked(target, key, name, onAttempt) {
+    var existing = inspectExistingValue(target, key);
+    if (existing.present && typeof onAttempt === 'function') {
+      onAttempt(name);
+    }
+    var owner = findPropertyOwner(target, key);
+    var installedOnTarget = defineOwnProviderAccessor(target, key, name, onAttempt);
+    var installedOnOwner = owner === target
+      ? installedOnTarget
+      : defineOwnProviderAccessor(owner, key, name, onAttempt);
+    return {
+      installed: installedOnTarget && installedOnOwner,
+      preexisting: existing.present
+    };
+  }
+
+  function installProviderAnnouncementGuard(target, onAttempt) {
+    if (!target || typeof target.addEventListener !== 'function') {
+      return false;
+    }
+    try {
+      target.addEventListener(PROVIDER_ANNOUNCEMENT_EVENT, function (event) {
+        if (typeof onAttempt === 'function') {
+          onAttempt(PROVIDER_ANNOUNCEMENT_EVENT);
+        }
+        if (event && typeof event.stopImmediatePropagation === 'function') {
+          event.stopImmediatePropagation();
+        }
+      }, true);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function neuterProviders(onAttempt) {
+    var ethereumResult = defineProviderBlocked(global, 'ethereum', 'window.ethereum', onAttempt);
+    var results = [
+      {
+        name: 'window.ethereum',
+        installed: ethereumResult.installed
+      },
+      {
+        name: PROVIDER_ANNOUNCEMENT_EVENT,
+        installed: installProviderAnnouncementGuard(global, onAttempt)
+      }
+    ];
+    return {
+      failed: results.filter(function (result) { return !result.installed; }).map(function (result) {
+        return result.name;
+      }),
+      installed: results.every(function (result) { return result.installed; }),
+      // F1 remediation (P0.21 review): true if window.ethereum already held
+      // a provider when this guard installed. onAttempt() has already fired
+      // for this above (via defineProviderBlocked), driving the isolation-
+      // failure lockdown; callers must also treat this as blocking readiness
+      // even though the guard itself installed successfully.
+      preexisting: ethereumResult.preexisting,
+      primitives: PROVIDER_PRIMITIVES.slice()
+    };
+  }
+
   function getNetworkSnapshot() {
     var navigatorObject = global.navigator || {};
     var connection = navigatorObject.connection
@@ -207,6 +337,9 @@
     isCanaryViolation: isCanaryViolation,
     networkPrimitives: NETWORK_PRIMITIVES,
     neuterNetwork: neuterNetwork,
+    neuterProviders: neuterProviders,
+    providerAnnouncementEvent: PROVIDER_ANNOUNCEMENT_EVENT,
+    providerPrimitives: PROVIDER_PRIMITIVES,
     runCanary: runCanary
   });
 
