@@ -30,6 +30,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0020](0020-injected-providers-rejected-and-neutered.md) | Injected wallet providers — rejected as a feature, neutered as a threat | Accepted |
 | [0021](0021-clipboard-address-verification.md) | Clipboard address verification — warm clipboard, cold authority, two separate claims | Accepted |
 | [0022](0022-entropy-lab-mixing.md) | Entropy Lab accumulation and mixing — integer accounting, XOR-then-hash | Accepted |
+| [0023](0023-entropy-lab-seed-forge-boundary.md) | Entropy Lab's deliverable is raw entropy bytes, not a hand-off to Seed Forge | Accepted |
 
 ## When to write one
 

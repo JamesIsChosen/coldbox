@@ -55,43 +55,82 @@ __COLDBOX_COLD_STYLES__
     </section>
     <section id="cold-entropy-lab" aria-label="Entropy Lab">
       <p class="eyebrow">Entropy Lab / P1.1</p>
-      <p id="cold-entropy-lab-help">Collect entropy from dice, coin flips, cards, or typed hex, then mix it with fresh CSPRNG bytes — neither source alone can determine the result. Recording no dice/coin/card/hex entropy at all is also supported: mixing then falls back to a direct CSPRNG-only draw, instant but without the manual source's defense-in-depth.</p>
+      <p id="cold-entropy-lab-help">Collect entropy from dice, coin flips, cards, or typed hex, then mix it with fresh CSPRNG bytes — neither source alone can determine the result. Use any combination of sources you like, including just one. Recording no dice/coin/card/hex entropy at all is also supported: mixing then falls back to a direct CSPRNG-only draw, instant but without the manual source's defense-in-depth.</p>
+      <p id="cold-entropy-meter" role="status" aria-live="polite" data-guaranteed-bits="0" data-csprng-bits="0">Collected: 0 guaranteed bits from dice/coins/cards/hex, plus 0 fresh CSPRNG bits.</p>
       <div id="cold-entropy-lab-inputs">
         <fieldset id="cold-entropy-dice">
           <legend>Dice</legend>
-          <label id="cold-entropy-dice-face-label" for="cold-entropy-dice-face">Die face (1-6)</label>
-          <input id="cold-entropy-dice-face" type="number" min="1" max="6" step="1" inputmode="numeric" disabled>
-          <button id="cold-entropy-dice-base6-add" type="button" disabled>Add roll (base-6)</button>
-          <button id="cold-entropy-dice-discard-add" type="button" disabled>Add roll (4-outcome discard)</button>
-          <p id="cold-entropy-dice-help">Base-6 keeps every roll (log2(6) bits each). Discard mode keeps only 1-4 (exactly 2 unbiased bits) and rerolls 5-6.</p>
+          <label id="cold-entropy-dice-face-label" for="cold-entropy-dice-face">Die face(s) (1-6, type or paste as many as you like)</label>
+          <input id="cold-entropy-dice-face" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" placeholder="e.g. 3241566251" disabled>
+          <button id="cold-entropy-dice-base6-add" type="button" disabled>Add roll(s) (base-6)</button>
+          <button id="cold-entropy-dice-discard-add" type="button" disabled>Add roll(s) (4-outcome discard)</button>
+          <div id="cold-entropy-dice-random-row">
+            <label id="cold-entropy-dice-random-count-label" for="cold-entropy-dice-random-count">Generate random rolls</label>
+            <input id="cold-entropy-dice-random-count" type="number" min="1" max="1000" step="1" value="10" disabled>
+            <button id="cold-entropy-dice-random" type="button" disabled>Generate</button>
+          </div>
+          <button id="cold-entropy-dice-reset" type="button" disabled>Reset dice</button>
+          <p id="cold-entropy-dice-status" role="status" aria-live="polite">No dice rolls recorded yet.</p>
+          <p id="cold-entropy-dice-log-label">Rolls recorded this session:</p>
+          <p id="cold-entropy-dice-log" aria-live="polite">None yet.</p>
+          <p id="cold-entropy-dice-help">Base-6 keeps every roll (log2(6) bits each). Discard mode keeps only 1-4 (exactly 2 unbiased bits) and rerolls 5-6. "Generate random rolls" uses fresh CSPRNG bytes (rejection-sampled, unbiased) to fill in base-6 rolls for you.</p>
         </fieldset>
         <fieldset id="cold-entropy-coin">
           <legend>Coin</legend>
           <button id="cold-entropy-coin-heads" type="button" disabled>Heads</button>
           <button id="cold-entropy-coin-tails" type="button" disabled>Tails</button>
+          <div id="cold-entropy-coin-random-row">
+            <label id="cold-entropy-coin-random-count-label" for="cold-entropy-coin-random-count">Generate random flips</label>
+            <input id="cold-entropy-coin-random-count" type="number" min="1" max="1000" step="1" value="10" disabled>
+            <button id="cold-entropy-coin-random" type="button" disabled>Generate</button>
+          </div>
+          <button id="cold-entropy-coin-reset" type="button" disabled>Reset coin</button>
+          <p id="cold-entropy-coin-status" role="status" aria-live="polite">No coin flips recorded yet.</p>
+          <p id="cold-entropy-coin-log-label">Flips recorded this session:</p>
+          <p id="cold-entropy-coin-log" aria-live="polite">None yet.</p>
         </fieldset>
         <fieldset id="cold-entropy-card">
           <legend>Playing cards</legend>
-          <label id="cold-entropy-card-label" for="cold-entropy-card-select">Card drawn</label>
-          <select id="cold-entropy-card-select" disabled></select>
-          <button id="cold-entropy-card-add" type="button" disabled>Add card</button>
-          <button id="cold-entropy-card-shuffle" type="button" disabled>Start new shuffle</button>
-          <p id="cold-entropy-card-help">A card cannot repeat within a shuffle; a full 52-card shuffle contributes about 225 bits. Once every card is drawn, start a new shuffle to keep going — for example, two shuffles for a 256-bit target — without resetting what you've already collected.</p>
+          <p id="cold-entropy-card-help">Click a card to draw it. A card cannot repeat within a shuffle; a full 52-card shuffle contributes about 225 bits. Once every card in the current shuffle is drawn, "Start new shuffle" becomes available so you can keep going — for example, two shuffles for a 256-bit target — without resetting what you've already collected.</p>
+          <div id="cold-entropy-card-grid" role="group" aria-label="Cards available to draw"></div>
+          <button id="cold-entropy-card-shuffle" type="button" disabled title="Draw every remaining card in this shuffle first.">Start new shuffle</button>
+          <p id="cold-entropy-card-shuffle-status" role="status" aria-live="polite">52 cards remaining in this shuffle.</p>
+          <div id="cold-entropy-card-random-row">
+            <label id="cold-entropy-card-random-count-label" for="cold-entropy-card-random-count">Generate random cards</label>
+            <input id="cold-entropy-card-random-count" type="number" min="1" max="52" step="1" value="5" disabled>
+            <button id="cold-entropy-card-random" type="button" disabled>Generate</button>
+          </div>
+          <button id="cold-entropy-card-reset" type="button" disabled>Reset cards</button>
+          <p id="cold-entropy-card-log-label">Cards drawn this session:</p>
+          <p id="cold-entropy-card-log" aria-live="polite">None yet.</p>
         </fieldset>
         <fieldset id="cold-entropy-hex">
           <legend>Hex</legend>
-          <label id="cold-entropy-hex-label" for="cold-entropy-hex-input">Hex digit (0-f)</label>
-          <input id="cold-entropy-hex-input" type="text" maxlength="1" inputmode="text" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
-          <button id="cold-entropy-hex-add" type="button" disabled>Add hex digit</button>
+          <label id="cold-entropy-hex-label" for="cold-entropy-hex-input">Hex digits (0-f, type or paste as many as you like)</label>
+          <input id="cold-entropy-hex-input" type="text" inputmode="text" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" placeholder="e.g. a5f30c1e" disabled>
+          <button id="cold-entropy-hex-add" type="button" disabled>Add hex digit(s)</button>
+          <div id="cold-entropy-hex-random-row">
+            <label id="cold-entropy-hex-random-count-label" for="cold-entropy-hex-random-count">Generate random digits</label>
+            <input id="cold-entropy-hex-random-count" type="number" min="1" max="1000" step="1" value="10" disabled>
+            <button id="cold-entropy-hex-random" type="button" disabled>Generate</button>
+          </div>
+          <button id="cold-entropy-hex-reset" type="button" disabled>Reset hex</button>
+          <p id="cold-entropy-hex-status" role="status" aria-live="polite">No hex digits recorded yet.</p>
+          <p id="cold-entropy-hex-log-label">Digits recorded this session:</p>
+          <p id="cold-entropy-hex-log" aria-live="polite">None yet.</p>
         </fieldset>
         <fieldset id="cold-entropy-csprng">
           <legend>CSPRNG</legend>
-          <button id="cold-entropy-csprng-draw" type="button" disabled>Draw 32 CSPRNG bytes</button>
-          <p id="cold-entropy-csprng-status" role="status" aria-live="polite">0 CSPRNG bytes drawn.</p>
+          <div id="cold-entropy-csprng-draw-row">
+            <label id="cold-entropy-csprng-count-label" for="cold-entropy-csprng-count">Batches of 32 bytes</label>
+            <input id="cold-entropy-csprng-count" type="number" min="1" max="16" step="1" value="1" disabled>
+            <button id="cold-entropy-csprng-draw" type="button" disabled>Draw CSPRNG bytes</button>
+          </div>
+          <button id="cold-entropy-csprng-reset" type="button" disabled>Reset CSPRNG</button>
+          <p id="cold-entropy-csprng-status" role="status" aria-live="polite">0 fresh CSPRNG bytes available.</p>
         </fieldset>
       </div>
       <button id="cold-entropy-undo" type="button" disabled>Undo last</button>
-      <p id="cold-entropy-meter" role="status" aria-live="polite" data-guaranteed-bits="0" data-csprng-bits="0">Collected: 0 guaranteed bits from dice/coins/cards/hex, plus 0 fresh CSPRNG bits.</p>
       <div id="cold-entropy-mix">
         <label id="cold-entropy-target-label" for="cold-entropy-target">Output size</label>
         <select id="cold-entropy-target" disabled>

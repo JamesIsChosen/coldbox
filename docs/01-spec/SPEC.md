@@ -471,7 +471,7 @@ Scope: transaction, address, public key, input, output, and xpub labels. Coldbox
 
 ### 11.1 Cold realm modules
 
-**Entropy Lab 🎲** — dice (d6, base-6 and 4-outcome-discard mappings), coin flips, playing cards, hex, and CSPRNG. Big touch targets, running bit-count meter, undo. **Bias Analyzer** (replacing *Entropy Bias.html*): per-symbol frequency, chi-square with p-value, runs test, serial correlation. **Mixing**: dice entropy XOR-then-hashed with CSPRNG output so a rigged die *or* a rigged RNG alone cannot determine the result, with a diagram. Outputs 128–256 bits to Seed Forge.
+**Entropy Lab 🎲** — dice (d6, base-6 and 4-outcome-discard mappings), coin flips, playing cards, hex, and CSPRNG. Big touch targets, running bit-count meter, undo. **Bias Analyzer** (replacing *Entropy Bias.html*): per-symbol frequency, chi-square with p-value, runs test, serial correlation. **Mixing**: dice entropy XOR-then-hashed with CSPRNG output so a rigged die *or* a rigged RNG alone cannot determine the result, with a diagram. Produces 128–256 bits of raw entropy, in the same form Seed Forge will consume once it exists (P1.3) — see [ADR-0023](../05-development/adr/0023-entropy-lab-seed-forge-boundary.md) for why this is phrased as Entropy Lab's own deliverable rather than a hand-off that spans two roadmap items.
 
 #### 11.1a Entropy Health Meter
 

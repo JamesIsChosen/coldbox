@@ -421,13 +421,97 @@ body {
   cursor: not-allowed;
 }
 
+/* Sticky so the collected-entropy count stays visible while scrolling
+   through the fieldsets below it — a hands-on user test found the meter
+   easy to lose track of once it only appeared after scrolling past every
+   source's controls. Pinned to the top of the sealed realm's own scroll
+   container, with a solid background so content scrolling underneath it
+   doesn't show through. */
 #cold-entropy-meter {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   margin: 0.6rem 0 0;
-  padding-left: 0.55rem;
+  padding: 0.35rem 0.55rem;
   border-left: 0.28rem solid var(--cold-yellow);
+  background: var(--cold-surface);
   color: var(--cold-yellow);
   font-size: 0.78rem;
   font-weight: 800;
+}
+
+#cold-entropy-dice-random-row,
+#cold-entropy-coin-random-row,
+#cold-entropy-card-random-row,
+#cold-entropy-hex-random-row,
+#cold-entropy-csprng-draw-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+#cold-entropy-dice-random-row label,
+#cold-entropy-coin-random-row label,
+#cold-entropy-card-random-row label,
+#cold-entropy-hex-random-row label,
+#cold-entropy-csprng-draw-row label {
+  margin-top: 0;
+}
+
+#cold-entropy-dice-random-row input,
+#cold-entropy-coin-random-row input,
+#cold-entropy-card-random-row input,
+#cold-entropy-hex-random-row input,
+#cold-entropy-csprng-draw-row input {
+  width: 5rem;
+  min-height: 2.25rem;
+  margin-top: 0;
+}
+
+#cold-entropy-dice-status,
+#cold-entropy-coin-status,
+#cold-entropy-hex-status,
+#cold-entropy-card-log-label,
+#cold-entropy-card-log,
+#cold-entropy-dice-log-label,
+#cold-entropy-dice-log,
+#cold-entropy-coin-log-label,
+#cold-entropy-coin-log,
+#cold-entropy-hex-log-label,
+#cold-entropy-hex-log {
+  margin: 0.4rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+#cold-entropy-card-log,
+#cold-entropy-dice-log,
+#cold-entropy-coin-log,
+#cold-entropy-hex-log {
+  word-break: break-word;
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+/* Card grid: every card in a standard deck shown at once as a clickable
+   button, so "which cards are left" is visible without a dropdown —
+   drawn cards stay in the grid but disabled, rather than disappearing, so
+   the full 52-card layout never reflows mid-shuffle. */
+#cold-entropy-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.6rem, 1fr));
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+
+#cold-entropy-card-grid button {
+  min-width: 0;
+  min-height: 2.5rem;
+  margin: 0;
+  padding: 0.2rem;
+  font-size: 0.72rem;
 }
 
 #cold-entropy-mix {

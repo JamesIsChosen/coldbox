@@ -39,14 +39,35 @@ __COLDBOX_CAPABILITIES__
   var entropyDiceFace = document.getElementById('cold-entropy-dice-face');
   var entropyDiceBase6Add = document.getElementById('cold-entropy-dice-base6-add');
   var entropyDiceDiscardAdd = document.getElementById('cold-entropy-dice-discard-add');
+  var entropyDiceRandomCount = document.getElementById('cold-entropy-dice-random-count');
+  var entropyDiceRandomButton = document.getElementById('cold-entropy-dice-random');
+  var entropyDiceResetButton = document.getElementById('cold-entropy-dice-reset');
+  var entropyDiceStatus = document.getElementById('cold-entropy-dice-status');
+  var entropyDiceLog = document.getElementById('cold-entropy-dice-log');
   var entropyCoinHeads = document.getElementById('cold-entropy-coin-heads');
   var entropyCoinTails = document.getElementById('cold-entropy-coin-tails');
-  var entropyCardSelect = document.getElementById('cold-entropy-card-select');
-  var entropyCardAdd = document.getElementById('cold-entropy-card-add');
+  var entropyCoinRandomCount = document.getElementById('cold-entropy-coin-random-count');
+  var entropyCoinRandomButton = document.getElementById('cold-entropy-coin-random');
+  var entropyCoinResetButton = document.getElementById('cold-entropy-coin-reset');
+  var entropyCoinStatus = document.getElementById('cold-entropy-coin-status');
+  var entropyCoinLog = document.getElementById('cold-entropy-coin-log');
+  var entropyCardGrid = document.getElementById('cold-entropy-card-grid');
   var entropyCardShuffleButton = document.getElementById('cold-entropy-card-shuffle');
+  var entropyCardShuffleStatus = document.getElementById('cold-entropy-card-shuffle-status');
+  var entropyCardRandomCount = document.getElementById('cold-entropy-card-random-count');
+  var entropyCardRandomButton = document.getElementById('cold-entropy-card-random');
+  var entropyCardResetButton = document.getElementById('cold-entropy-card-reset');
+  var entropyCardLog = document.getElementById('cold-entropy-card-log');
   var entropyHexInput = document.getElementById('cold-entropy-hex-input');
   var entropyHexAdd = document.getElementById('cold-entropy-hex-add');
+  var entropyHexRandomCount = document.getElementById('cold-entropy-hex-random-count');
+  var entropyHexRandomButton = document.getElementById('cold-entropy-hex-random');
+  var entropyHexResetButton = document.getElementById('cold-entropy-hex-reset');
+  var entropyHexStatus = document.getElementById('cold-entropy-hex-status');
+  var entropyHexLog = document.getElementById('cold-entropy-hex-log');
+  var entropyCsprngCount = document.getElementById('cold-entropy-csprng-count');
   var entropyCsprngDraw = document.getElementById('cold-entropy-csprng-draw');
+  var entropyCsprngResetButton = document.getElementById('cold-entropy-csprng-reset');
   var entropyCsprngStatus = document.getElementById('cold-entropy-csprng-status');
   var entropyUndoButton = document.getElementById('cold-entropy-undo');
   var entropyMeter = document.getElementById('cold-entropy-meter');
@@ -129,32 +150,126 @@ __COLDBOX_CAPABILITIES__
     return CARD_RANKS[rankIndex] + CARD_SUITS[suitIndex];
   }
 
-  // Rebuilds the <select> from entropySession.cardRemaining every time,
-  // rather than incrementally adding/removing individual <option> elements.
-  // A review finding on the first version of this feature found that undo
-  // restored the session's internal state correctly but left a previously
-  // drawn card's <option> permanently missing from the selector, because
-  // draws removed options directly while undo only knew how to reverse the
-  // logic-layer accumulator. Rebuilding from the authoritative session state
-  // on every change (draw, undo, reshuffle) makes the two impossible to
-  // desync — there is no incremental option-list state to drift.
-  function refreshCardOptions() {
-    if (!entropyCardSelect || !entropySession) {
+  // Rebuilds the 52-button card grid from entropySession.cardRemaining every
+  // time, rather than incrementally adding/removing individual buttons. The
+  // predecessor of this UI was a <select> rebuilt the same way for the same
+  // reason: a review finding on the first version found that undo restored
+  // the session's internal state correctly but left the dropdown's option
+  // list desynced, because the dropdown was mutated incrementally while undo
+  // only knew how to reverse the logic-layer accumulator. Rebuilding from
+  // the authoritative session state on every change (draw, undo, reshuffle,
+  // reset) makes the two impossible to desync — there is no incremental DOM
+  // state to drift. Drawn cards stay visible but disabled, per the user
+  // request to "show all card options at once," rather than disappearing.
+  function refreshCardGrid() {
+    if (!entropyCardGrid || !entropySession) {
       return;
     }
-    var previousValue = entropyCardSelect.value;
-    entropyCardSelect.textContent = '';
-    var remaining = entropySession.cardRemaining.slice().sort(function (a, b) { return a - b; });
-    for (var i = 0; i < remaining.length; i += 1) {
-      var cardId = remaining[i];
-      var option = document.createElement('option');
-      option.value = String(cardId);
-      option.textContent = cardLabel(cardId);
-      entropyCardSelect.appendChild(option);
+    var ready = entropyLabReady();
+    if (entropyCardGrid.childElementCount !== 52) {
+      entropyCardGrid.textContent = '';
+      for (var cardId = 0; cardId < 52; cardId += 1) {
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.cardId = String(cardId);
+        button.textContent = cardLabel(cardId);
+        (function (id) {
+          button.addEventListener('click', function () {
+            drawCard(id);
+          });
+        }(cardId));
+        entropyCardGrid.appendChild(button);
+      }
     }
-    if (remaining.indexOf(Number(previousValue)) !== -1) {
-      entropyCardSelect.value = previousValue;
+    var remaining = entropySession.cardRemaining;
+    for (var i = 0; i < entropyCardGrid.children.length; i += 1) {
+      var child = entropyCardGrid.children[i];
+      var childId = Number(child.dataset.cardId);
+      child.disabled = !ready || remaining.indexOf(childId) === -1;
     }
+  }
+
+  function refreshCardLog() {
+    if (!entropyCardLog || !entropySession) {
+      return;
+    }
+    if (entropySession.cardOrder.length === 0) {
+      entropyCardLog.textContent = 'None yet.';
+      return;
+    }
+    entropyCardLog.textContent = entropySession.cardOrder.map(cardLabel).join(', ');
+  }
+
+  function drawCard(cardId) {
+    if (!entropyLabReady() || !entropySession) {
+      return;
+    }
+    try {
+      entropyLab.addCard(entropySession, cardId);
+    } catch (error) {
+      if (entropyMixStatus) {
+        entropyMixStatus.textContent = error.message;
+      }
+      return;
+    }
+    updateEntropyLabControls();
+  }
+
+  // Uniform integer in [0, maxExclusive) via rejection sampling on fresh
+  // CSPRNG bytes — used only by the "Generate random" conveniences below, to
+  // fill in a source's manual entropy without ever using Math.random or
+  // introducing modulo bias. maxExclusive is always small here (<=52), so a
+  // single JS number (not BigInt) is safe throughout.
+  function drawUniformInt(maxExclusive) {
+    if (!cryptoLayer || typeof cryptoLayer.randomBytes !== 'function') {
+      throw new Error('crypto.getRandomValues is unavailable; refusing to generate random entropy.');
+    }
+    if (!Number.isInteger(maxExclusive) || maxExclusive <= 0) {
+      throw new Error('Entropy Lab internal error: drawUniformInt requires a positive integer bound.');
+    }
+    if (maxExclusive === 1) {
+      return 0;
+    }
+    var bitsNeeded = Math.ceil(Math.log2(maxExclusive));
+    var bytesNeeded = Math.ceil(bitsNeeded / 8);
+    var mask = (1 << bitsNeeded) - 1;
+    for (;;) {
+      var randomBytes = cryptoLayer.randomBytes(bytesNeeded);
+      var value = 0;
+      for (var i = 0; i < randomBytes.length; i += 1) {
+        value = (value << 8) | randomBytes[i];
+      }
+      zeroBytes(randomBytes);
+      value = value & mask;
+      if (value < maxExclusive) {
+        return value;
+      }
+    }
+  }
+
+  // Parses a pasted/typed run of characters into a sequence of accepted
+  // values (each in [minValue, maxValue]) plus the characters that were
+  // rejected, so bulk entry (many dice faces or hex digits at once) can
+  // report exactly what it skipped instead of silently adding zero, which
+  // is the bug a hands-on user test found: typing a long digit string into
+  // the old single-character dice input produced no feedback at all.
+  // Whitespace and separators (commas, dashes) are ignored rather than
+  // reported as invalid, since pasted sequences often include them.
+  function parseSequence(raw, isValidChar, toValue) {
+    var accepted = [];
+    var rejected = [];
+    for (var i = 0; i < raw.length; i += 1) {
+      var ch = raw[i];
+      if (/[\s,._-]/.test(ch)) {
+        continue;
+      }
+      if (isValidChar(ch)) {
+        accepted.push(toValue(ch));
+      } else {
+        rejected.push(ch);
+      }
+    }
+    return { accepted: accepted, rejected: rejected };
   }
 
   function entropyLabReady() {
@@ -188,14 +303,141 @@ __COLDBOX_CAPABILITIES__
       + ' from dice/coins/cards/hex, plus ' + csprngBits + ' fresh CSPRNG bit' + (csprngBits === 1 ? '' : 's') + '.';
   }
 
-  function updateEntropyLabControls() {
+  // Single source of truth for the CSPRNG status line, reporting only
+  // *available* (unspent) bytes via entropyLab.availableCsprngBytes() rather
+  // than session.csprngBytes.length directly — the raw array includes bytes
+  // a mix() call has already spent, and a review round found the status
+  // text going stale (still claiming spent bytes as "drawn") because it was
+  // set ad hoc inside the draw/undo handlers instead of refreshed centrally
+  // alongside the meter every time state changes, including after mix().
+  function updateEntropyCsprngStatus() {
+    if (!entropyCsprngStatus || !entropySession || !entropyLab) {
+      return;
+    }
+    var availableBytes = entropyLab.availableCsprngBytes(entropySession).length;
+    entropyCsprngStatus.textContent = availableBytes + ' fresh CSPRNG byte' + (availableBytes === 1 ? '' : 's') + ' available.';
+  }
+
+  // options.preserveOutput: when true, does not clear a just-displayed mix
+  // result. Only the mix button's success path passes this — every other
+  // caller (adding entropy, undo, changing the target size) wants the old
+  // result cleared, since it review found a stale result surviving further
+  // input. The mix button still needs this function's other effects (the
+  // meter, CSPRNG status, and undo button must reflect newly spent CSPRNG
+  // bytes immediately, not only after some later unrelated action — a
+  // second review finding), which is why this is a flag here rather than a
+  // second copy of the control-refresh logic in the click handler.
+  function updateEntropyDiceStatus() {
+    if (!entropyDiceStatus || !entropySession) {
+      return;
+    }
+    var base6Count = entropySession.diceDigits.length;
+    var discardBits = entropySession.discardDiceBits.length;
+    if (base6Count === 0 && discardBits === 0) {
+      entropyDiceStatus.textContent = 'No dice rolls recorded yet.';
+      return;
+    }
+    entropyDiceStatus.textContent = base6Count + ' base-6 roll' + (base6Count === 1 ? '' : 's')
+      + ', ' + discardBits + ' discard-mode bit' + (discardBits === 1 ? '' : 's') + ' recorded.';
+  }
+
+  // Reconstructs the original die faces (1-6) from session.diceDigits (which
+  // stores face-1, per entropy-lab.js's base-6 accumulator comment) and from
+  // session.discardDiceBits (2 bits per kept roll, MSB-first, mapping
+  // 1->00 2->01 3->10 4->11 — see entropy-lab.js's addDiceDiscard comment).
+  // Only *kept* discard-mode rolls are recoverable this way, since a
+  // rejected 5/6 contributes no bits and was never retained anywhere — the
+  // log only ever needs to show what was actually kept.
+  function updateEntropyDiceLog() {
+    if (!entropyDiceLog || !entropySession) {
+      return;
+    }
+    var parts = [];
+    if (entropySession.diceDigits.length > 0) {
+      parts.push('base-6: ' + entropySession.diceDigits.map(function (digit) { return digit + 1; }).join(', '));
+    }
+    var discardBits = entropySession.discardDiceBits;
+    if (discardBits.length > 0) {
+      var discardFaces = [];
+      for (var i = 0; i + 2 <= discardBits.length; i += 2) {
+        discardFaces.push(((discardBits[i] << 1) | discardBits[i + 1]) + 1);
+      }
+      parts.push('discard-mode: ' + discardFaces.join(', '));
+    }
+    entropyDiceLog.textContent = parts.length === 0 ? 'None yet.' : parts.join(' · ');
+  }
+
+  function updateEntropyCoinStatus() {
+    if (!entropyCoinStatus || !entropySession) {
+      return;
+    }
+    var count = entropySession.coinBits.length;
+    entropyCoinStatus.textContent = count === 0
+      ? 'No coin flips recorded yet.'
+      : count + ' coin flip' + (count === 1 ? '' : 's') + ' recorded.';
+  }
+
+  function updateEntropyCoinLog() {
+    if (!entropyCoinLog || !entropySession) {
+      return;
+    }
+    entropyCoinLog.textContent = entropySession.coinBits.length === 0
+      ? 'None yet.'
+      : entropySession.coinBits.map(function (bit) { return bit ? 'H' : 'T'; }).join(', ');
+  }
+
+  function updateEntropyHexStatus() {
+    if (!entropyHexStatus || !entropySession) {
+      return;
+    }
+    var count = entropySession.hexBits.length / 4;
+    entropyHexStatus.textContent = count === 0
+      ? 'No hex digits recorded yet.'
+      : count + ' hex digit' + (count === 1 ? '' : 's') + ' recorded.';
+  }
+
+  // Regroups session.hexBits (4 MSB-first bits per recorded digit, per
+  // entropy-lab.js's addHexNibble comment) back into hex characters for
+  // display.
+  function updateEntropyHexLog() {
+    if (!entropyHexLog || !entropySession) {
+      return;
+    }
+    var bits = entropySession.hexBits;
+    if (bits.length === 0) {
+      entropyHexLog.textContent = 'None yet.';
+      return;
+    }
+    var digits = [];
+    for (var i = 0; i + 4 <= bits.length; i += 4) {
+      var nibble = (bits[i] << 3) | (bits[i + 1] << 2) | (bits[i + 2] << 1) | bits[i + 3];
+      digits.push(nibble.toString(16));
+    }
+    entropyHexLog.textContent = digits.join(' ');
+  }
+
+  // options.preserveOutput: when true, does not clear a just-displayed mix
+  // result. Only the mix button's success path passes this — every other
+  // caller (adding entropy, undo, changing the target size) wants the old
+  // result cleared, since it review found a stale result surviving further
+  // input. The mix button still needs this function's other effects (the
+  // meter, CSPRNG status, and undo button must reflect newly spent CSPRNG
+  // bytes immediately, not only after some later unrelated action — a
+  // second review finding), which is why this is a flag here rather than a
+  // second copy of the control-refresh logic in the click handler.
+  function updateEntropyLabControls(options) {
+    var preserveOutput = Boolean(options && options.preserveOutput);
     var ready = entropyLabReady();
     var controls = [
       entropyDiceFace, entropyDiceBase6Add, entropyDiceDiscardAdd,
+      entropyDiceRandomCount, entropyDiceRandomButton, entropyDiceResetButton,
       entropyCoinHeads, entropyCoinTails,
-      entropyCardSelect, entropyCardAdd,
+      entropyCoinRandomCount, entropyCoinRandomButton, entropyCoinResetButton,
+      entropyCardRandomCount, entropyCardRandomButton, entropyCardResetButton,
       entropyHexInput, entropyHexAdd,
-      entropyCsprngDraw, entropyUndoButton, entropyTargetSelect, entropyMixButton
+      entropyHexRandomCount, entropyHexRandomButton, entropyHexResetButton,
+      entropyCsprngCount, entropyCsprngDraw, entropyCsprngResetButton,
+      entropyUndoButton, entropyTargetSelect, entropyMixButton
     ];
     for (var index = 0; index < controls.length; index += 1) {
       if (controls[index]) {
@@ -205,23 +447,31 @@ __COLDBOX_CAPABILITIES__
     if (entropyCardShuffleButton) {
       entropyCardShuffleButton.disabled = !ready || !entropySession || entropySession.cardRemaining.length !== 0;
     }
-    // Any change to the recorded entropy invalidates a previously displayed
-    // mix result — a review finding on the first version of this feature
-    // found that adding more entropy or changing the target size after
-    // mixing left the old, no-longer-current output on screen. This
-    // function runs after every add/undo/CSPRNG-draw, so clearing here
-    // covers all of them from one place rather than each call site
-    // separately (and separately again wherever a call site might be added
-    // later).
-    setEntropyMixOutput(null);
+    if (entropyCardShuffleStatus && entropySession) {
+      var remaining = entropySession.cardRemaining.length;
+      entropyCardShuffleStatus.textContent = remaining === 0
+        ? 'Every card in this shuffle has been drawn — "Start new shuffle" is ready.'
+        : remaining + ' card' + (remaining === 1 ? '' : 's') + ' remaining in this shuffle before you can start a new one.';
+    }
+    refreshCardGrid();
+    if (!preserveOutput) {
+      setEntropyMixOutput(null);
+    }
     if (!ready) {
       return;
     }
     if (entropyUndoButton) {
       entropyUndoButton.disabled = entropySession.history.length === 0;
     }
-    refreshCardOptions();
+    updateEntropyDiceStatus();
+    updateEntropyDiceLog();
+    updateEntropyCoinStatus();
+    updateEntropyCoinLog();
+    updateEntropyHexStatus();
+    updateEntropyHexLog();
+    refreshCardLog();
     updateEntropyMeter();
+    updateEntropyCsprngStatus();
     updateEntropyMixStatus();
   }
 
@@ -232,9 +482,10 @@ __COLDBOX_CAPABILITIES__
     var targetBits = Number(entropyTargetSelect.value);
     var targetBytes = targetBits / 8;
     var manualBytes = entropyLab.manualEntropyBytes(entropySession);
+    var availableBytes = entropyLab.availableCsprngBytes(entropySession).length;
     if (manualBytes.length === 0) {
-      if (entropySession.csprngBytes.length < targetBytes) {
-        entropyMixStatus.textContent = 'No manual entropy recorded. Need ' + targetBytes + ' fresh CSPRNG bytes for a CSPRNG-only draw; have ' + entropySession.csprngBytes.length + '.';
+      if (availableBytes < targetBytes) {
+        entropyMixStatus.textContent = 'No manual entropy recorded. Need ' + targetBytes + ' fresh CSPRNG bytes for a CSPRNG-only draw; have ' + availableBytes + '.';
       } else {
         entropyMixStatus.textContent = 'Ready for a CSPRNG-only ' + targetBits + '-bit draw (no manual entropy recorded — record dice/coin/card/hex entropy first to mix instead).';
       }
@@ -245,17 +496,29 @@ __COLDBOX_CAPABILITIES__
       entropyMixStatus.textContent = 'Collected ' + available + ' of ' + targetBits + ' guaranteed manual bits needed before mixing.';
       return;
     }
-    if (entropySession.csprngBytes.length < manualBytes.length) {
-      entropyMixStatus.textContent = 'Need ' + manualBytes.length + ' CSPRNG bytes to mix against; have ' + entropySession.csprngBytes.length + '.';
+    if (availableBytes < manualBytes.length) {
+      entropyMixStatus.textContent = 'Need ' + manualBytes.length + ' CSPRNG bytes to mix against; have ' + availableBytes + '.';
       return;
     }
     entropyMixStatus.textContent = 'Ready to mix ' + targetBits + ' bits.';
   }
 
-  function handleEntropyDiceFace() {
-    var value = Number(entropyDiceFace.value);
-    if (!Number.isInteger(value) || value < 1 || value > 6) {
-      return null;
+  // Reads a "how many" input used by the various "Generate random" rows,
+  // clamped to the input's own min/max so a malformed or out-of-range value
+  // typed directly into the number field fails closed to a safe bound
+  // instead of e.g. generating zero or a huge unbounded loop.
+  function readRandomCount(input, fallback) {
+    if (!input) {
+      return fallback;
+    }
+    var value = Math.round(Number(input.value));
+    var min = Number(input.min) || 1;
+    var max = Number(input.max) || fallback;
+    if (!Number.isFinite(value) || value < min) {
+      return min;
+    }
+    if (value > max) {
+      return max;
     }
     return value;
   }
@@ -264,30 +527,94 @@ __COLDBOX_CAPABILITIES__
     if (!entropyLab || !entropySession) {
       return;
     }
-    refreshCardOptions();
+    refreshCardGrid();
 
     if (entropyDiceBase6Add) {
       entropyDiceBase6Add.addEventListener('click', function () {
-        var face = handleEntropyDiceFace();
-        if (face === null) {
+        var parsed = parseSequence(
+          (entropyDiceFace && entropyDiceFace.value) || '',
+          function (ch) { return ch >= '1' && ch <= '6'; },
+          Number
+        );
+        if (parsed.accepted.length === 0) {
+          if (entropyMixStatus) {
+            entropyMixStatus.textContent = parsed.rejected.length > 0
+              ? 'No valid die faces found (only digits 1-6 count). Rejected: ' + parsed.rejected.join('')
+              : 'Enter at least one die face (1-6) first.';
+          }
           return;
         }
-        entropyLab.addDiceBase6(entropySession, face);
+        parsed.accepted.forEach(function (face) {
+          entropyLab.addDiceBase6(entropySession, face);
+        });
+        if (entropyDiceFace) {
+          entropyDiceFace.value = '';
+        }
         updateEntropyLabControls();
+        if (entropyMixStatus) {
+          entropyMixStatus.textContent = 'Added ' + parsed.accepted.length + ' base-6 roll' + (parsed.accepted.length === 1 ? '' : 's') + '.'
+            + (parsed.rejected.length > 0 ? ' Ignored invalid character(s): ' + parsed.rejected.join('') : '');
+        }
       });
     }
 
     if (entropyDiceDiscardAdd) {
       entropyDiceDiscardAdd.addEventListener('click', function () {
-        var face = handleEntropyDiceFace();
-        if (face === null) {
+        var parsed = parseSequence(
+          (entropyDiceFace && entropyDiceFace.value) || '',
+          function (ch) { return ch >= '1' && ch <= '6'; },
+          Number
+        );
+        if (parsed.accepted.length === 0) {
+          if (entropyMixStatus) {
+            entropyMixStatus.textContent = parsed.rejected.length > 0
+              ? 'No valid die faces found (only digits 1-6 count). Rejected: ' + parsed.rejected.join('')
+              : 'Enter at least one die face (1-6) first.';
+          }
           return;
         }
-        var accepted = entropyLab.addDiceDiscard(entropySession, face);
-        updateEntropyLabControls();
-        if (!accepted && entropyMixStatus) {
-          entropyMixStatus.textContent = 'Roll of ' + face + ' discarded (only 1-4 count); reroll.';
+        var acceptedRolls = 0;
+        parsed.accepted.forEach(function (face) {
+          if (entropyLab.addDiceDiscard(entropySession, face)) {
+            acceptedRolls += 1;
+          }
+        });
+        if (entropyDiceFace) {
+          entropyDiceFace.value = '';
         }
+        updateEntropyLabControls();
+        if (entropyMixStatus) {
+          entropyMixStatus.textContent = 'Kept ' + acceptedRolls + ' of ' + parsed.accepted.length + ' roll(s) (discard mode only keeps 1-4).'
+            + (parsed.rejected.length > 0 ? ' Ignored invalid character(s): ' + parsed.rejected.join('') : '');
+        }
+      });
+    }
+
+    if (entropyDiceRandomButton) {
+      entropyDiceRandomButton.addEventListener('click', function () {
+        var count = readRandomCount(entropyDiceRandomCount, 10);
+        try {
+          for (var i = 0; i < count; i += 1) {
+            entropyLab.addDiceBase6(entropySession, drawUniformInt(6) + 1);
+          }
+        } catch (error) {
+          if (entropyMixStatus) {
+            entropyMixStatus.textContent = error.message;
+          }
+          updateEntropyLabControls();
+          return;
+        }
+        updateEntropyLabControls();
+        if (entropyMixStatus) {
+          entropyMixStatus.textContent = 'Generated ' + count + ' random base-6 dice roll(s).';
+        }
+      });
+    }
+
+    if (entropyDiceResetButton) {
+      entropyDiceResetButton.addEventListener('click', function () {
+        entropyLab.resetDice(entropySession);
+        updateEntropyLabControls();
       });
     }
 
@@ -304,20 +631,30 @@ __COLDBOX_CAPABILITIES__
       });
     }
 
-    if (entropyCardAdd) {
-      entropyCardAdd.addEventListener('click', function () {
-        if (!entropyCardSelect || entropyCardSelect.value === '') {
-          return;
-        }
-        var cardId = Number(entropyCardSelect.value);
+    if (entropyCoinRandomButton) {
+      entropyCoinRandomButton.addEventListener('click', function () {
+        var count = readRandomCount(entropyCoinRandomCount, 10);
         try {
-          entropyLab.addCard(entropySession, cardId);
+          for (var i = 0; i < count; i += 1) {
+            entropyLab.addCoin(entropySession, drawUniformInt(2) === 1);
+          }
         } catch (error) {
           if (entropyMixStatus) {
             entropyMixStatus.textContent = error.message;
           }
+          updateEntropyLabControls();
           return;
         }
+        updateEntropyLabControls();
+        if (entropyMixStatus) {
+          entropyMixStatus.textContent = 'Generated ' + count + ' random coin flip(s).';
+        }
+      });
+    }
+
+    if (entropyCoinResetButton) {
+      entropyCoinResetButton.addEventListener('click', function () {
+        entropyLab.resetCoin(entropySession);
         updateEntropyLabControls();
       });
     }
@@ -336,16 +673,93 @@ __COLDBOX_CAPABILITIES__
       });
     }
 
-    if (entropyHexAdd) {
-      entropyHexAdd.addEventListener('click', function () {
-        var raw = (entropyHexInput && entropyHexInput.value || '').trim().toLowerCase();
-        if (!/^[0-9a-f]$/.test(raw)) {
+    if (entropyCardRandomButton) {
+      entropyCardRandomButton.addEventListener('click', function () {
+        var count = readRandomCount(entropyCardRandomCount, 5);
+        var drawn = 0;
+        try {
+          for (var i = 0; i < count; i += 1) {
+            if (entropySession.cardRemaining.length === 0) {
+              entropyLab.startNewCardShuffle(entropySession);
+            }
+            var pickIndex = drawUniformInt(entropySession.cardRemaining.length);
+            entropyLab.addCard(entropySession, entropySession.cardRemaining[pickIndex]);
+            drawn += 1;
+          }
+        } catch (error) {
+          if (entropyMixStatus) {
+            entropyMixStatus.textContent = error.message;
+          }
+          updateEntropyLabControls();
           return;
         }
-        entropyLab.addHexNibble(entropySession, parseInt(raw, 16));
+        updateEntropyLabControls();
+        if (entropyMixStatus) {
+          entropyMixStatus.textContent = 'Generated ' + drawn + ' random card draw(s).';
+        }
+      });
+    }
+
+    if (entropyCardResetButton) {
+      entropyCardResetButton.addEventListener('click', function () {
+        entropyLab.resetCards(entropySession);
+        updateEntropyLabControls();
+      });
+    }
+
+    if (entropyHexAdd) {
+      entropyHexAdd.addEventListener('click', function () {
+        var parsed = parseSequence(
+          ((entropyHexInput && entropyHexInput.value) || '').toLowerCase(),
+          function (ch) { return /[0-9a-f]/.test(ch); },
+          function (ch) { return parseInt(ch, 16); }
+        );
+        if (parsed.accepted.length === 0) {
+          if (entropyMixStatus) {
+            entropyMixStatus.textContent = parsed.rejected.length > 0
+              ? 'No valid hex digits found (0-9, a-f only). Rejected: ' + parsed.rejected.join('')
+              : 'Enter at least one hex digit (0-9, a-f) first.';
+          }
+          return;
+        }
+        parsed.accepted.forEach(function (nibble) {
+          entropyLab.addHexNibble(entropySession, nibble);
+        });
         if (entropyHexInput) {
           entropyHexInput.value = '';
         }
+        updateEntropyLabControls();
+        if (entropyMixStatus) {
+          entropyMixStatus.textContent = 'Added ' + parsed.accepted.length + ' hex digit' + (parsed.accepted.length === 1 ? '' : 's') + '.'
+            + (parsed.rejected.length > 0 ? ' Ignored invalid character(s): ' + parsed.rejected.join('') : '');
+        }
+      });
+    }
+
+    if (entropyHexRandomButton) {
+      entropyHexRandomButton.addEventListener('click', function () {
+        var count = readRandomCount(entropyHexRandomCount, 10);
+        try {
+          for (var i = 0; i < count; i += 1) {
+            entropyLab.addHexNibble(entropySession, drawUniformInt(16));
+          }
+        } catch (error) {
+          if (entropyMixStatus) {
+            entropyMixStatus.textContent = error.message;
+          }
+          updateEntropyLabControls();
+          return;
+        }
+        updateEntropyLabControls();
+        if (entropyMixStatus) {
+          entropyMixStatus.textContent = 'Generated ' + count + ' random hex digit(s).';
+        }
+      });
+    }
+
+    if (entropyHexResetButton) {
+      entropyHexResetButton.addEventListener('click', function () {
+        entropyLab.resetHex(entropySession);
         updateEntropyLabControls();
       });
     }
@@ -358,9 +772,10 @@ __COLDBOX_CAPABILITIES__
           }
           return;
         }
+        var batches = readRandomCount(entropyCsprngCount, 1);
         var drawn;
         try {
-          drawn = cryptoLayer.randomBytes(32);
+          drawn = cryptoLayer.randomBytes(32 * batches);
         } catch (error) {
           if (entropyCsprngStatus) {
             entropyCsprngStatus.textContent = 'CSPRNG draw failed: ' + error.message;
@@ -369,9 +784,13 @@ __COLDBOX_CAPABILITIES__
         }
         entropyLab.addCsprngBytes(entropySession, drawn);
         zeroBytes(drawn);
-        if (entropyCsprngStatus) {
-          entropyCsprngStatus.textContent = entropySession.csprngBytes.length + ' CSPRNG bytes drawn.';
-        }
+        updateEntropyLabControls();
+      });
+    }
+
+    if (entropyCsprngResetButton) {
+      entropyCsprngResetButton.addEventListener('click', function () {
+        entropyLab.resetCsprng(entropySession);
         updateEntropyLabControls();
       });
     }
@@ -379,10 +798,6 @@ __COLDBOX_CAPABILITIES__
     if (entropyUndoButton) {
       entropyUndoButton.addEventListener('click', function () {
         entropyLab.undoLast(entropySession);
-        if (entropyCsprngStatus) {
-          entropyCsprngStatus.textContent = entropySession.csprngBytes.length + ' CSPRNG bytes drawn.';
-        }
-        setEntropyMixOutput(null);
         updateEntropyLabControls();
       });
     }
@@ -401,12 +816,22 @@ __COLDBOX_CAPABILITIES__
         try {
           mixed = entropyLab.mix(entropySession, targetBits);
         } catch (error) {
-          setEntropyMixOutput(null);
+          // mix() validates everything before it mutates anything (see its
+          // comment), so a thrown error here means no CSPRNG bytes were
+          // spent — a plain refresh (clearing any older output) is correct.
+          updateEntropyLabControls();
           if (entropyMixStatus) {
             entropyMixStatus.textContent = error.message;
           }
           return;
         }
+        // Refresh first (meter, CSPRNG status, and the undo/mix buttons'
+        // disabled state must reflect the CSPRNG bytes mix() just spent
+        // immediately, not only after some later action — a review finding
+        // on the previous round caught this going stale), with
+        // preserveOutput so this refresh's default output-clearing doesn't
+        // wipe the result being displayed on the next two lines.
+        updateEntropyLabControls({ preserveOutput: true });
         setEntropyMixOutput(mixed);
         if (entropyMixStatus) {
           entropyMixStatus.textContent = 'Mixed ' + targetBits + ' bits. Seed Forge (P1.3) is not built yet; this output is not carried anywhere.';

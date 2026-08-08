@@ -75,10 +75,10 @@ test('mix() matches an independent Node-crypto reimplementation of literal SHA-2
   assert.equal(hex(expected), 'd9767ebda5c2860ea7d035cb7146741a');
 
   for (let bit = 7; bit >= 0; bit -= 1) {
-    session.exactBits.push((manual[0] >> bit) & 1);
+    session.coinBits.push((manual[0] >> bit) & 1);
   }
-  while (session.exactBits.length < 128) {
-    session.exactBits.push(0);
+  while (session.coinBits.length < 128) {
+    session.coinBits.push(0);
   }
   lab.addCsprngBytes(session, new Uint8Array(csprngBuffer));
   const actual = lab.mix(session, 128);
@@ -99,11 +99,11 @@ test('mix() matches an independent Node-crypto reimplementation, multi-byte XOR,
 
   for (let byteIndex = 0; byteIndex < manual.length; byteIndex += 1) {
     for (let bit = 7; bit >= 0; bit -= 1) {
-      session.exactBits.push((manual[byteIndex] >> bit) & 1);
+      session.coinBits.push((manual[byteIndex] >> bit) & 1);
     }
   }
-  while (session.exactBits.length < 256) {
-    session.exactBits.push(0);
+  while (session.coinBits.length < 256) {
+    session.coinBits.push(0);
   }
   lab.addCsprngBytes(session, new Uint8Array(csprngBuffer));
   const actual = lab.mix(session, 256);
@@ -121,7 +121,7 @@ test('mix() consumes ("burns") the CSPRNG bytes it used, so a second mix() witho
   lab.addCsprngBytes(session, new Uint8Array(16)); // exactly enough for one 128-bit mix
   const first = lab.mix(session, 128);
   assert.equal(first.length, 16);
-  assert.equal(session.csprngBytes.length, 0);
+  assert.equal(lab.availableCsprngBytes(session).length, 0);
   assert.throws(() => lab.mix(session, 128), /need at least 16 csprng bytes/i);
 
   // Confirm it is not merely refusing on principle: drawing fresh bytes lets
@@ -149,8 +149,47 @@ test('mix() falls back to a direct CSPRNG-only draw when no manual entropy is re
   // definition," so hashing it would add nothing and would contradict that
   // literal description.
   assert.deepEqual([...output], [...fresh]);
-  assert.equal(session.csprngBytes.length, 0, 'the bytes used must be burned');
+  assert.equal(lab.availableCsprngBytes(session).length, 0, 'the bytes used must be burned');
   assert.throws(() => lab.mix(session, 128), /need 16 csprng bytes/i);
+});
+
+test('undoing a draw can never resurrect CSPRNG bytes a mix() already spent (round-2 review repro)', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  for (let i = 0; i < 128; i += 1) {
+    lab.addCoin(session, i % 2 === 0);
+  }
+  // Draw A (16 bytes), draw B (16 more bytes) — exactly the reviewer's
+  // repro sequence: two separate CSPRNG draws, then a mix that consumes
+  // only the first draw's worth of bytes.
+  lab.addCsprngBytes(session, new Uint8Array(16).fill(0xaa)); // draw A
+  lab.addCsprngBytes(session, new Uint8Array(16).fill(0xbb)); // draw B
+  assert.equal(lab.availableCsprngBytes(session).length, 32);
+
+  lab.mix(session, 128); // consumes exactly A's 16 bytes (manualEntropyBytes is 16 bytes for 128 exact coin bits)
+  assert.equal(lab.availableCsprngBytes(session).length, 16);
+  assert.deepEqual([...lab.availableCsprngBytes(session)], new Array(16).fill(0xbb));
+
+  // Now undo draw B (the most recent history entry). Before the fix, the
+  // undo closure for a draw restored a captured *reference* to
+  // session.csprngBytes as it was right before that draw — which, after
+  // mix() had since replaced session.csprngBytes with a shorter
+  // post-consumption array, was a stale pre-mix snapshot that still
+  // contained A's already-spent bytes. Popping it silently resurrected A.
+  // After the fix, undoing B only ever truncates the array back to "the
+  // length before B was appended" (the end of A) and clamps
+  // csprngConsumed down to at most that length — it can never move
+  // csprngConsumed backward past where it already was, so A stays spent.
+  lab.undoLast(session); // undoes draw B
+  assert.equal(lab.availableCsprngBytes(session).length, 0, 'A must still be unavailable; nothing was un-spent');
+  assert.throws(() => lab.mix(session, 128), /csprng bytes/i, 'mixing again must not succeed using resurrected bytes');
+
+  // Confirm the fix isn't merely refusing on principle: a fresh draw after
+  // the undo behaves normally.
+  lab.addCsprngBytes(session, new Uint8Array(16).fill(0xcc));
+  const secondMix = lab.mix(session, 128);
+  assert.equal(secondMix.length, 16);
 });
 
 test('guaranteedBits() (manual) is 0 for a CSPRNG-only session, but csprngGuaranteedBits() reports the CSPRNG bytes on hand', () => {
@@ -202,7 +241,7 @@ test('4-outcome discard mapping keeps rolls 1-4 as exactly 2 unbiased bits and r
     const fresh = lab.createSession();
     const accepted = lab.addDiceDiscard(fresh, face);
     assert.equal(accepted, true);
-    assert.deepEqual([...fresh.exactBits], bits);
+    assert.deepEqual([...fresh.discardDiceBits], bits);
     assert.equal(lab.guaranteedBits(fresh), 2);
   }
 
@@ -210,7 +249,7 @@ test('4-outcome discard mapping keeps rolls 1-4 as exactly 2 unbiased bits and r
   const rejected6 = lab.addDiceDiscard(session, 6);
   assert.equal(rejected5, false);
   assert.equal(rejected6, false);
-  assert.equal(session.exactBits.length, 0);
+  assert.equal(session.discardDiceBits.length, 0);
   assert.equal(lab.guaranteedBits(session), 0);
 });
 
@@ -336,9 +375,9 @@ test('hex nibbles append exactly 4 MSB-first bits per digit', () => {
   const lab = context.__coldboxEntropyLab;
   const session = lab.createSession();
   lab.addHexNibble(session, 0xa); // 1010
-  assert.deepEqual([...session.exactBits], [1, 0, 1, 0]);
+  assert.deepEqual([...session.hexBits], [1, 0, 1, 0]);
   lab.addHexNibble(session, 0x5); // 0101
-  assert.deepEqual([...session.exactBits], [1, 0, 1, 0, 0, 1, 0, 1]);
+  assert.deepEqual([...session.hexBits], [1, 0, 1, 0, 0, 1, 0, 1]);
   assert.equal(lab.guaranteedBits(session), 8);
 });
 
@@ -346,11 +385,11 @@ test('manualEntropyBytes concatenates exact-bit, dice, and card material in a fi
   const context = createContext();
   const lab = context.__coldboxEntropyLab;
   const session = lab.createSession();
-  lab.addHexNibble(session, 0xf); // exactBits: 1111 -> 1 byte 0xf0 (padded)
+  lab.addHexNibble(session, 0xf); // hexBits: 1111 -> 1 byte 0xf0 (padded)
   lab.addDiceBase6(session, 1); // digit 0, range 6, 1 byte needed
   lab.addCard(session, 51); // rank 51 of 52, 1 byte needed
   const bytes = lab.manualEntropyBytes(session);
-  // exactBits (4 bits -> 1 byte, 0xf0) + dice byte (0x00, value 0 in a
+  // hexBits (4 bits -> 1 byte, 0xf0) + dice byte (0x00, value 0 in a
   // 1-byte field since bit-length(6)=3 -> 1 byte) + card byte (rank 51,
   // bit-length(52)=6 -> 1 byte, value 51 = 0x33).
   assert.equal(bytes.length, 3);
@@ -372,4 +411,132 @@ test('rejects malformed inputs (fail closed on out-of-range dice, card, and hex 
   assert.throws(() => lab.addCard(session, 52));
   assert.throws(() => lab.addCsprngBytes(session, new Uint8Array(0)));
   assert.throws(() => lab.addCsprngBytes(session, 'not bytes'));
+});
+
+// The reset*() functions (added for the per-source Reset buttons in the UI
+// overhaul) must not only clear a source's data, but also purge any history
+// entries for that source so a stale undo can never resurrect what the
+// reset just deliberately discarded — the same class of bug the round-2
+// review found in the CSPRNG burn/undo interaction (addCsprngBytes'
+// undo closure surviving a later mutation). Each test below resets a source
+// and then confirms undo() has nothing left to reverse for it, and that
+// other sources' history and data are completely unaffected.
+
+test('resetCoin clears coin bits and purges only coin history entries', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  lab.addCoin(session, true);
+  lab.addHexNibble(session, 0xa);
+  lab.addCoin(session, false);
+  assert.equal(session.history.length, 3);
+
+  lab.resetCoin(session);
+  assert.deepEqual([...session.coinBits], []);
+  assert.equal(session.hexBits.length, 4);
+  assert.equal(session.history.length, 1);
+  assert.equal(session.history[0].kind, 'hex');
+
+  // Undoing now can only reverse the surviving hex entry, never resurrect
+  // a coin flip a stale closure might otherwise have captured.
+  assert.equal(lab.undoLast(session), true);
+  assert.equal(session.hexBits.length, 0);
+  assert.equal(lab.undoLast(session), false);
+  assert.deepEqual([...session.coinBits], []);
+});
+
+test('resetDice clears both base-6 and discard-mode dice state and purges dice history', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  lab.addDiceBase6(session, 3);
+  lab.addDiceDiscard(session, 2);
+  lab.addCoin(session, true);
+
+  lab.resetDice(session);
+  assert.deepEqual([...session.diceDigits], []);
+  assert.equal(session.diceValue, 0n);
+  assert.deepEqual([...session.discardDiceBits], []);
+  assert.equal(session.history.length, 1);
+  assert.equal(session.history[0].kind, 'coin');
+  assert.equal(lab.guaranteedBits(session), 1);
+
+  assert.equal(lab.undoLast(session), true);
+  assert.equal(session.coinBits.length, 0);
+  assert.equal(lab.undoLast(session), false);
+});
+
+test('resetHex clears hex bits and purges only hex history entries', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  lab.addHexNibble(session, 0x1);
+  lab.addCoin(session, true);
+  lab.addHexNibble(session, 0x2);
+
+  lab.resetHex(session);
+  assert.deepEqual([...session.hexBits], []);
+  assert.equal(session.coinBits.length, 1);
+  assert.equal(session.history.length, 1);
+  assert.equal(session.history[0].kind, 'coin');
+});
+
+test('resetCards clears the draw accumulator, refills the pool, and purges card history without affecting other sources', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  lab.addCard(session, 5);
+  lab.addCard(session, 10);
+  lab.addCoin(session, false);
+
+  lab.resetCards(session);
+  assert.deepEqual([...session.cardOrder], []);
+  assert.equal(session.cardValue, 0n);
+  assert.deepEqual([...session.cardDrawPoolSizes], []);
+  assert.equal(session.cardRemaining.length, 52);
+  assert.equal(session.history.length, 1);
+  assert.equal(session.history[0].kind, 'coin');
+
+  // A card id drawn before the reset must be drawable again post-reset,
+  // proving cardRemaining was genuinely refilled rather than left stale.
+  lab.addCard(session, 5);
+  assert.equal(session.cardOrder.length, 1);
+});
+
+test('resetCsprng clears both csprngBytes and the consumed offset, and purges only csprng history entries', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  lab.addCsprngBytes(session, new Uint8Array(32).fill(7));
+  lab.addCoin(session, true);
+  assert.equal(lab.availableCsprngBytes(session).length, 32);
+
+  lab.resetCsprng(session);
+  assert.equal(session.csprngBytes.length, 0);
+  assert.equal(session.csprngConsumed, 0);
+  assert.equal(lab.availableCsprngBytes(session).length, 0);
+  assert.equal(session.history.length, 1);
+  assert.equal(session.history[0].kind, 'coin');
+
+  // Round-2-style regression check: undoing the surviving coin entry must
+  // never bring back csprng bytes the reset already discarded, since only
+  // the coin history entry remains to be undone at all.
+  assert.equal(lab.undoLast(session), true);
+  assert.equal(session.csprngBytes.length, 0);
+  assert.equal(lab.undoLast(session), false);
+});
+
+test('resetting one source never disturbs a different source\'s guaranteed-bit accounting', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  lab.addCoin(session, true); // 1 bit
+  lab.addHexNibble(session, 0xf); // 4 bits
+  lab.addDiceBase6(session, 6); // guaranteedBitsForRange(6) = 2 bits
+
+  const before = lab.guaranteedBits(session);
+  lab.resetHex(session);
+  const after = lab.guaranteedBits(session);
+  assert.equal(before - after, 4);
+  assert.equal(after, lab.guaranteedBits(session));
 });
