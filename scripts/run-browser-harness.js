@@ -1451,17 +1451,23 @@ async function verifyHelpFramework(browser, engine) {
     await page.locator('#capability-panel[data-capability-state="ready"], #capability-panel[data-capability-state="ready-with-warnings"]').waitFor({ state: 'visible', timeout: 5000 });
 
     const settledButtonCount = await page.locator('button.help-context-button[data-help-topic]').count();
-    assert.equal(settledButtonCount, 5, `${engine}: all five contextual help buttons must survive app initialization, found ${settledButtonCount}`);
+    assert.equal(settledButtonCount, 6, `${engine}: all six contextual help buttons must survive app initialization, found ${settledButtonCount}`);
 
-    // Exercise every one of the five mappings, not just two of them - each
+    // Exercise every one of the six mappings, not just two of them - each
     // must land on real, rendered glossary content, proving the button
     // both still exists in the settled DOM and still resolves correctly.
+    // P0.20 added the sixth (glossary:appropriate-legal-notices) inside the
+    // same Provenance panel as glossary:provenance-panel - it needs its own
+    // entry here, not just a bumped count, or a future R2-F2-style bug that
+    // wipes the new button's <h2> content would go undetected exactly the
+    // way the reviewer's F1 finding described.
     const contextualHelpMappings = [
       { topic: 'glossary:cold-realm-warm-shell', anchorPrefix: 'help-glossary-cold-realm-warm-shell', route: 'dashboard' },
       { topic: 'glossary:airgapped', anchorPrefix: 'help-glossary-airgapped', route: 'dashboard' },
       { topic: 'glossary:capability-self-check', anchorPrefix: 'help-glossary-capability-self-check', route: 'dashboard' },
       { topic: 'glossary:vault', anchorPrefix: 'help-glossary-vault', route: 'vault' },
-      { topic: 'glossary:provenance-panel', anchorPrefix: 'help-glossary-provenance-panel', route: 'reference' }
+      { topic: 'glossary:provenance-panel', anchorPrefix: 'help-glossary-provenance-panel', route: 'reference' },
+      { topic: 'glossary:appropriate-legal-notices', anchorPrefix: 'help-glossary-appropriate-legal-notices', route: 'reference' }
     ];
     for (const mapping of contextualHelpMappings) {
       await page.locator(`#nav-rail a[data-route="${mapping.route}"]`).click();
