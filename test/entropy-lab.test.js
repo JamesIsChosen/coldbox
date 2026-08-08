@@ -857,3 +857,78 @@ test('provenance rejects unknown values instead of silently treating them as man
   assert.throws(() => lab.addCard(session, 0, 'mystery'), /provenance must be manual or device-rng/);
   assert.equal(lab.guaranteedBits(session), 0);
 });
+
+test('corrupted stored exact-bit provenance fails closed before reporting, serialization, status, or mix output', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  lab.addCoin(session, true);
+  lab.addCsprngBytes(session, new Uint8Array(16).fill(0xa5));
+
+  session.exactBitEvents[0].provenance = 'mystery';
+  const consumedBefore = session.csprngConsumed;
+
+  assert.throws(() => lab.guaranteedBits(session), /invalid stored provenance/i);
+  assert.throws(() => lab.strengthSummary(session, 128), /invalid stored provenance/i);
+  assert.throws(() => lab.deviceRngDerivedValueCount(session), /invalid stored provenance/i);
+  assert.throws(() => lab.sourceEntropyBytes(session), /invalid stored provenance/i);
+  assert.throws(() => lab.mix(session, 128), /invalid stored provenance/i);
+  assert.equal(session.csprngConsumed, consumedBefore, 'failed provenance validation must burn no CSPRNG bytes');
+});
+
+test('corrupted stored base-6 dice and card provenance fail closed before security claims', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+
+  const dice = lab.createSession();
+  lab.addDiceBase6(dice, 6);
+  dice.diceProvenance[0] = 'mystery';
+  assert.throws(() => lab.diceGuaranteedBits(dice), /invalid stored provenance/i);
+  assert.throws(() => lab.strengthSummary(dice, 128), /invalid stored provenance/i);
+
+  const cards = lab.createSession();
+  lab.addCard(cards, 0);
+  cards.cardProvenance[0] = 'mystery';
+  assert.throws(() => lab.cardGuaranteedBits(cards), /invalid stored provenance/i);
+  assert.throws(() => lab.strengthSummary(cards, 128), /invalid stored provenance/i);
+});
+
+test('valid provenance values that disagree between exact-bit mirrors fail closed as ambiguous state', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+
+  const coin = lab.createSession();
+  lab.addCoin(coin, true, lab.PROVENANCE_MANUAL);
+  coin.exactBitEvents[0].provenance = lab.PROVENANCE_DEVICE_RNG;
+  assert.throws(() => lab.guaranteedBits(coin), /stored provenance state is inconsistent/i);
+
+  const hexSession = lab.createSession();
+  lab.addHexNibble(hexSession, 0xa, lab.PROVENANCE_MANUAL);
+  hexSession.hexProvenance[0] = lab.PROVENANCE_DEVICE_RNG;
+  assert.throws(() => lab.sourceEntropyBytes(hexSession), /stored provenance state is inconsistent/i);
+});
+
+test('provenance/state length inconsistencies fail closed for exact-bit, base-6 dice, and cards', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+
+  const discard = lab.createSession();
+  lab.addDiceDiscard(discard, 2);
+  discard.discardDiceProvenance.pop();
+  assert.throws(() => lab.sourceEntropyBytes(discard), /stored provenance state is inconsistent/i);
+
+  const dice = lab.createSession();
+  lab.addDiceBase6(dice, 2);
+  dice.diceProvenance.pop();
+  assert.throws(() => lab.guaranteedBits(dice), /stored provenance state is inconsistent/i);
+
+  const cards = lab.createSession();
+  lab.addCard(cards, 0);
+  cards.cardDrawPoolSizes.pop();
+  assert.throws(() => lab.strengthSummary(cards, 128), /stored provenance state is inconsistent/i);
+
+  const coin = lab.createSession();
+  lab.addCoin(coin, false);
+  coin.exactBitEvents.pop();
+  assert.throws(() => lab.sourceEntropyBytes(coin), /stored provenance state is inconsistent/i);
+});

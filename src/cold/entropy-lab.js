@@ -500,6 +500,123 @@
     purgeHistoryKind(session, 'csprng');
   }
 
+  // Stored provenance is security state, not ordinary display metadata.
+  // Input-time validation is not enough because a corrupted in-memory session
+  // must never silently become an implicit third provenance class. Every
+  // security-reporting, serialization, and mixing boundary below validates
+  // the complete provenance-bearing session state before using it.
+  function validateStoredProvenance(provenance, label) {
+    if (provenance !== PROVENANCE_MANUAL && provenance !== PROVENANCE_DEVICE_RNG) {
+      throw new Error(`Entropy Lab: invalid stored provenance in ${label}.`);
+    }
+  }
+
+  function validateStoredArray(values, label) {
+    if (!Array.isArray(values)) {
+      throw new Error(`Entropy Lab: stored provenance state is inconsistent for ${label}.`);
+    }
+  }
+
+  function validateStoredBits(bits, label) {
+    validateStoredArray(bits, label);
+    for (var i = 0; i < bits.length; i += 1) {
+      if (bits[i] !== 0 && bits[i] !== 1) {
+        throw new Error(`Entropy Lab: stored provenance state is inconsistent for ${label}.`);
+      }
+    }
+  }
+
+  function validateProvenanceArray(values, expectedLength, label) {
+    validateStoredArray(values, label);
+    if (!Number.isInteger(expectedLength) || expectedLength < 0
+        || values.length !== expectedLength) {
+      throw new Error(`Entropy Lab: stored provenance state is inconsistent for ${label}.`);
+    }
+    for (var i = 0; i < values.length; i += 1) {
+      validateStoredProvenance(values[i], label);
+    }
+  }
+
+  function validateExactSourceMirror(session, kind, bits, provenance, bitsPerEvent, label) {
+    validateStoredBits(bits, label);
+    validateProvenanceArray(provenance, bits.length / bitsPerEvent, label);
+
+    var eventIndex = 0;
+    var bitOffset = 0;
+    for (var i = 0; i < session.exactBitEvents.length; i += 1) {
+      var event = session.exactBitEvents[i];
+      if (event.kind !== kind) {
+        continue;
+      }
+      if (eventIndex >= provenance.length || event.provenance !== provenance[eventIndex]) {
+        throw new Error(`Entropy Lab: stored provenance state is inconsistent for ${label}.`);
+      }
+      for (var j = 0; j < bitsPerEvent; j += 1) {
+        if (event.bits[j] !== bits[bitOffset + j]) {
+          throw new Error(`Entropy Lab: stored provenance state is inconsistent for ${label}.`);
+        }
+      }
+      eventIndex += 1;
+      bitOffset += bitsPerEvent;
+    }
+
+    if (eventIndex !== provenance.length || bitOffset !== bits.length) {
+      throw new Error(`Entropy Lab: stored provenance state is inconsistent for ${label}.`);
+    }
+  }
+
+  function validateSessionProvenance(session) {
+    if (!session || typeof session !== 'object') {
+      throw new Error('Entropy Lab: stored provenance state is invalid.');
+    }
+
+    validateStoredArray(session.exactBitEvents, 'exact-bit events');
+
+    for (var i = 0; i < session.exactBitEvents.length; i += 1) {
+      var event = session.exactBitEvents[i];
+      if (!event || typeof event !== 'object') {
+        throw new Error('Entropy Lab: stored provenance state is inconsistent for exact-bit events.');
+      }
+
+      var expectedBits;
+      if (event.kind === 'coin') {
+        expectedBits = 1;
+      } else if (event.kind === 'dice') {
+        expectedBits = 2;
+      } else if (event.kind === 'hex') {
+        expectedBits = 4;
+      } else {
+        throw new Error('Entropy Lab: stored provenance state is inconsistent for exact-bit events.');
+      }
+
+      validateStoredBits(event.bits, `${event.kind} exact-bit event`);
+      if (event.bits.length !== expectedBits) {
+        throw new Error(`Entropy Lab: stored provenance state is inconsistent for ${event.kind}.`);
+      }
+      validateStoredProvenance(event.provenance, `${event.kind} exact-bit event`);
+    }
+
+    validateExactSourceMirror(
+      session, 'coin', session.coinBits, session.coinProvenance, 1, 'coin flips'
+    );
+    validateExactSourceMirror(
+      session, 'dice', session.discardDiceBits, session.discardDiceProvenance, 2,
+      'discard-mapped dice'
+    );
+    validateExactSourceMirror(
+      session, 'hex', session.hexBits, session.hexProvenance, 4, 'hex digits'
+    );
+
+    validateStoredArray(session.diceDigits, 'base-6 dice');
+    validateProvenanceArray(session.diceProvenance, session.diceDigits.length, 'base-6 dice');
+
+    validateStoredArray(session.cardOrder, 'cards');
+    validateStoredArray(session.cardDrawPoolSizes, 'cards');
+    if (session.cardOrder.length !== session.cardDrawPoolSizes.length) {
+      throw new Error('Entropy Lab: stored provenance state is inconsistent for cards.');
+    }
+    validateProvenanceArray(session.cardProvenance, session.cardOrder.length, 'cards');
+  }
   // --- Reporting -------------------------------------------------------------
 
   function independentExactBitCount(session) {
@@ -513,7 +630,7 @@
     return bits;
   }
 
-  function diceGuaranteedBits(session) {
+  function diceGuaranteedBitsUnchecked(session) {
     var manualRolls = 0;
     for (var i = 0; i < session.diceProvenance.length; i += 1) {
       if (isIndependentManual(session.diceProvenance[i])) {
@@ -526,6 +643,10 @@
     return guaranteedBitsForRange(6n ** BigInt(manualRolls));
   }
 
+  function diceGuaranteedBits(session) {
+    validateSessionProvenance(session);
+    return diceGuaranteedBitsUnchecked(session);
+  }
   function cardRange(session) {
     var range = 1n;
     for (var i = 0; i < session.cardDrawPoolSizes.length; i += 1) {
@@ -534,7 +655,7 @@
     return range;
   }
 
-  function cardGuaranteedBits(session) {
+  function cardGuaranteedBitsUnchecked(session) {
     var range = 1n;
     var manualDraws = 0;
     for (var i = 0; i < session.cardDrawPoolSizes.length; i += 1) {
@@ -549,6 +670,10 @@
     return guaranteedBitsForRange(range);
   }
 
+  function cardGuaranteedBits(session) {
+    validateSessionProvenance(session);
+    return cardGuaranteedBitsUnchecked(session);
+  }
   // CSPRNG bytes are "256 bits by definition" (entropy-and-strength.md) —
   // full guaranteed entropy per byte, whether they end up used alone (no
   // source values recorded) or XORed against source material during mixing.
@@ -558,6 +683,7 @@
   }
 
   function deviceRngDerivedValueCount(session) {
+    validateSessionProvenance(session);
     var count = 0;
     for (var i = 0; i < session.exactBitEvents.length; i += 1) {
       if (session.exactBitEvents[i].provenance === PROVENANCE_DEVICE_RNG) {
@@ -583,16 +709,21 @@
   // may participate in the eventual hash, but contribute *zero* to this gate -
   // counting them here would let one compromised RNG control both sides of the
   // advertised defense-in-depth construction.
-  function guaranteedBits(session) {
-    return independentExactBitCount(session) + diceGuaranteedBits(session)
-      + cardGuaranteedBits(session);
+  function guaranteedBitsUnchecked(session) {
+    return independentExactBitCount(session) + diceGuaranteedBitsUnchecked(session)
+      + cardGuaranteedBitsUnchecked(session);
   }
 
+  function guaranteedBits(session) {
+    validateSessionProvenance(session);
+    return guaranteedBitsUnchecked(session);
+  }
   function strengthSummary(session, targetBits) {
+    validateSessionProvenance(session);
     if (!isValidTargetBits(targetBits)) {
       throw new Error(`Entropy Lab: targetBits must be one of ${VALID_TARGET_BITS.join(', ')}.`);
     }
-    var independentBits = guaranteedBits(session);
+    var independentBits = guaranteedBitsUnchecked(session);
     var fallbackBits = Math.min(independentBits, targetBits);
     var fullTwoSourceProtection = independentBits >= targetBits;
     var mode = independentBits === 0
@@ -614,7 +745,7 @@
   // The resulting source bytes may therefore contain both genuine manual and
   // device-RNG-derived simulation values; the name intentionally does not call
   // this aggregate "manual" entropy.
-  function sourceEntropyBytes(session) {
+  function sourceEntropyBytesUnchecked(session) {
     var exactBits = [];
     for (var i = 0; i < session.exactBitEvents.length; i += 1) {
       var eventBits = session.exactBitEvents[i].bits;
@@ -632,6 +763,10 @@
     return concatBytes.apply(null, pieces);
   }
 
+  function sourceEntropyBytes(session) {
+    validateSessionProvenance(session);
+    return sourceEntropyBytesUnchecked(session);
+  }
   // --- Mixing ------------------------------------------------------------
   //
   // Fails closed (throws, produces nothing) rather than silently returning
@@ -644,11 +779,12 @@
   // back into availableCsprngBytes()'s view.
 
   function mix(session, targetBits) {
+    validateSessionProvenance(session);
     if (!isValidTargetBits(targetBits)) {
       throw new Error(`Entropy Lab: targetBits must be one of ${VALID_TARGET_BITS.join(', ')}.`);
     }
     var targetBytes = targetBits / 8;
-    var sourceBytes = sourceEntropyBytes(session);
+    var sourceBytes = sourceEntropyBytesUnchecked(session);
 
     if (sourceBytes.length === 0) {
       // Pure-CSPRNG path: with no dice/coin/card/hex source material there is
