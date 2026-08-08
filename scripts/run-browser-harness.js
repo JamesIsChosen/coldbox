@@ -596,6 +596,8 @@ async function verifyBuiltFile(browser, engine) {
     await coldFrame.locator('#cold-vault-passphrase-confirm').fill('browser round-trip typo');
     await coldFrame.locator('#cold-vault-create').click();
     await coldFrame.locator('#cold-vault-status').filter({ hasText: /do not match/ }).waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-create-error:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await coldFrame.locator('#cold-vault-create-error').textContent(), /do not match/i);
     assert.notEqual(await coldFrame.locator('#cold-vault-status').getAttribute('data-state'), 'unlocked');
     assert.equal(await coldFrame.locator('#cold-vault-passphrase-confirm').inputValue(), '');
     await coldFrame.locator('#cold-vault-passphrase-confirm').fill('browser round-trip phrase');
@@ -608,6 +610,17 @@ async function verifyBuiltFile(browser, engine) {
     const activeVaultIdMatch = /^Vault ID ([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(activeVaultIdText);
     assert.ok(activeVaultIdMatch, `${engine}: created vault must expose a valid authenticated random UUID as public metadata`);
     const activeVaultId = activeVaultIdMatch[1];
+
+    // The cold frame's visible normal lock must not bypass the warm dirty
+    // warning. It sends vault.lockRequest and leaves the session unlocked
+    // until the user chooses from the warm confirmation surface.
+    await coldFrame.locator('#cold-vault-lock').click();
+    await page.locator('#vault-lock-warning:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-vault-status').getAttribute('data-state'), 'unlocked');
+    assert.match(await page.locator('#vault-lock-warning').textContent(), /never completed a durable save|unsaved/i);
+    await page.locator('#vault-lock-cancel').click();
+    await page.locator('#vault-lock-warning[hidden]').waitFor({ state: 'hidden' });
+    assert.equal(await coldFrame.locator('#cold-vault-status').getAttribute('data-state'), 'unlocked');
 
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#vault-save-download').click();
@@ -622,6 +635,8 @@ async function verifyBuiltFile(browser, engine) {
       `Browser-Round-Trip--${activeVaultId.replace(/-/g, '').slice(0, 8).toLowerCase()}--0001.cbx`,
       `${engine}: save filename must bind the public name and short authenticated Vault ID hint`
     );
+    await page.locator('#vault-status-label').filter({ hasText: /Saved · unverified/ }).waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal((await page.locator('#vault-active-id').textContent()).trim(), activeVaultIdText, `${engine}: download save must not change Vault ID`);
 
     await page.locator('#vault-save-manual').click();
     await page.waitForFunction(() => document.querySelector('#vault-manual-data').value.length > 0);
@@ -645,10 +660,16 @@ async function verifyBuiltFile(browser, engine) {
     }, manualVaultText);
     const secondManualVaultText = await page.locator('#vault-manual-data').inputValue();
     assert.notEqual(secondManualVaultText, manualVaultText, `${engine}: repeated saves must rotate the public nonce`);
+    assert.equal((await page.locator('#vault-active-id').textContent()).trim(), activeVaultIdText, `${engine}: repeated saves must preserve the authenticated Vault ID`);
+    await page.locator('#vault-status-label').filter({ hasText: /Saved · unverified/ }).waitFor({ state: 'visible', timeout: 5000 });
 
     await page.locator('#vault-lock').click();
     await page.locator('#vault-lock-warning:not([hidden])').waitFor({ state: 'visible' });
-    assert.match(await page.locator('#vault-lock-warning').textContent(), /unsaved/i);
+    assert.match(
+      await page.locator('#vault-lock-warning').textContent(),
+      /could not verify|unverified/i,
+      `${engine}: an exported-but-unverified vault must warn about verification, not claim it was never saved`
+    );
     await page.locator('#vault-lock-without-save').click();
     await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible' });
     await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible' });
@@ -681,7 +702,7 @@ async function verifyBuiltFile(browser, engine) {
     await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
     await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await coldFrame.locator('html').getAttribute('data-cold-working-bytes'), 'cleared');
-    console.log(`${engine}: active reachability, creation confirmation, named save, dirty-lock warning, round-trip unlock, and online-transition zeroization passed`);
+    console.log(`${engine}: active reachability, visible creation mismatch, immutable Vault ID, truthful save status, cold/warm lock warning, round-trip unlock, and online-transition zeroization passed`);
     await page.locator('#nav-rail .nav-link[data-route="dashboard"]').click();
     await page.waitForFunction(() => window.location.hash === '#dashboard');
 

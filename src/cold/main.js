@@ -31,6 +31,7 @@ __COLDBOX_CAPABILITIES__
   var passphraseInput = document.getElementById('cold-vault-passphrase');
   var passphraseConfirmWrap = document.getElementById('cold-vault-create-confirmation');
   var passphraseConfirmInput = document.getElementById('cold-vault-passphrase-confirm');
+  var passphraseConfirmError = document.getElementById('cold-vault-create-error');
   var createVaultButton = document.getElementById('cold-vault-create');
   var unlockVaultButton = document.getElementById('cold-vault-unlock');
   var lockVaultButton = document.getElementById('cold-vault-lock');
@@ -955,6 +956,14 @@ __COLDBOX_CAPABILITIES__
     document.documentElement.setAttribute('data-vault-state', state);
   }
 
+  function setCreateConfirmationError(text) {
+    if (!passphraseConfirmError) {
+      return;
+    }
+    passphraseConfirmError.textContent = text || '';
+    passphraseConfirmError.hidden = !text;
+  }
+
   function vaultControlsReady() {
     return vaultCryptoReady && handshakeState === 'ready' && messagePort !== null;
   }
@@ -1080,6 +1089,7 @@ __COLDBOX_CAPABILITIES__
     if (passphraseConfirmInput) {
       passphraseConfirmInput.value = '';
     }
+    setCreateConfirmationError('');
     if (passphraseConfirmWrap) {
       passphraseConfirmWrap.hidden = true;
     }
@@ -1177,11 +1187,13 @@ __COLDBOX_CAPABILITIES__
       return;
     }
     if (!confirmation) {
+      setCreateConfirmationError('Enter the confirmation phrase before creating the vault.');
       setVaultStatus('pending', 'Confirm the new unlock phrase before creating the vault.');
       if (passphraseConfirmInput) { passphraseConfirmInput.focus(); }
       return;
     }
     if (passphrase !== confirmation) {
+      setCreateConfirmationError('Unlock phrases do not match. Nothing was created.');
       setVaultStatus('pending', 'The two new unlock phrase entries do not match. Nothing was created.');
       if (passphraseConfirmInput) {
         passphraseConfirmInput.value = '';
@@ -1189,6 +1201,7 @@ __COLDBOX_CAPABILITIES__
       }
       return;
     }
+    setCreateConfirmationError('');
     vaultBusy = true;
     updateVaultControls();
     setVaultStatus('pending', 'Creating an encrypted vault inside the sealed realm...');
@@ -1345,6 +1358,7 @@ __COLDBOX_CAPABILITIES__
       pendingVaultBytes = null;
       pendingOpenId = null;
       createPrepared = true;
+      setCreateConfirmationError('');
       if (passphraseConfirmInput) {
         passphraseConfirmInput.value = '';
       }
@@ -1781,12 +1795,27 @@ __COLDBOX_CAPABILITIES__
   if (createVaultButton) {
     createVaultButton.addEventListener('click', createEmptyVault);
   }
+  if (passphraseInput) {
+    passphraseInput.addEventListener('input', function () { setCreateConfirmationError(''); });
+  }
+  if (passphraseConfirmInput) {
+    passphraseConfirmInput.addEventListener('input', function () { setCreateConfirmationError(''); });
+  }
   if (unlockVaultButton) {
     unlockVaultButton.addEventListener('click', unlockLoadedVault);
   }
   if (lockVaultButton) {
     lockVaultButton.addEventListener('click', function () {
-      lockVaultSession(nextVaultMessageId('local-lock'), 'Vault locked locally.', true);
+      if (vaultUnlocked) {
+        var requestId = nextVaultMessageId('lock-request');
+        if (postVaultMessage(requestId, 'vault.lockRequest', {})) {
+          setVaultStatus('unlocked', 'Lock requested. If this vault is unsaved or unverified, confirm the warning in the warm Vault page.');
+        } else {
+          setVaultStatus('unlocked', 'Lock request could not reach the warm shell. The vault remains unlocked.');
+        }
+        return;
+      }
+      lockVaultSession(nextVaultMessageId('local-clear'), 'Pending vault bytes cleared locally.', true);
     });
   }
   if (keyfileToggle) {

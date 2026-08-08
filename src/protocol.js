@@ -554,6 +554,7 @@
     ready: cleanReady,
     'vault.opened': cleanVaultOpened,
     'vault.bytes': cleanVaultBytes,
+    'vault.lockRequest': cleanStrictEmptyPayload,
     'derive.result': cleanDeriveResult,
     status: cleanStatus,
     error: cleanError,

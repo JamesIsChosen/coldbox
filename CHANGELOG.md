@@ -14,6 +14,7 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 
 ### Changed — P0.19 device-matrix remediation design (2026-08-08)
 
+- Windows hands-on remediation round 2: make Vault ID immutability across re-saves explicit/enforced, show an inline creation-passphrase mismatch error, update save status to `Saved · verified` / `Saved · unverified`, and route the cold visible lock button through the same warm unsaved/unverified confirmation gate.
 - Clear stale manual/QR vault exports when switching vault identity so a prior vault's encrypted bytes cannot be mistaken for the newly active vault.
 - Windows Chrome/Firefox hands-on testing exposed two user-facing blockers before the rest of the physical matrix proceeds: vault creation/save/library state was not understandable enough to complete the required create → save → reload → open flow, and the network banner stayed stale when Ethernet reachability changed because it ultimately trusted `navigator.onLine`.
 - [ADR-0024](docs/05-development/adr/0024-warm-reachability-monitor.md) replaces interface-state authority with warm-shell active reachability probes to two already-allowlisted providers, keeps checking/unknown online-safe, separates warm reachability from cold-realm isolation, and explicitly refuses to call probe failure proof of a physical airgap.

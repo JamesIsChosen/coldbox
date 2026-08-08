@@ -86,7 +86,7 @@ A vault created with a keyfile carries a method-2 record in place of a method-1 
 
 Vault metadata (`id` UUID), wallets, accounts, addresses, labels, tags, public notes, devices, transactions, cost-basis lots, price snapshots, backup record *locations and metadata*, settings, audit log.
 
-`id` is a random non-secret UUID created once with every new vault. It is the stable vault identity across devices and filenames. It is **not** a device fingerprint and is not derived from hardware/browser characteristics. The human-readable vault name intentionally lives in warm-shell filename/library metadata rather than this compartment because Cold → Warm free-form prose is excluded by the message-schema security invariant; see [ADR-0025](../05-development/adr/0025-vault-identity-library-and-save-ux.md).
+`id` is a random non-secret UUID created once with every new vault. It is the stable vault identity across devices and filenames and is **immutable for the life of that vault**: saving or re-saving creates a new generation of the same Vault ID, never a new Vault ID. A different UUID means a different vault created through the explicit new-vault flow. It is **not** a device fingerprint and is not derived from hardware/browser characteristics. The human-readable vault name intentionally lives in warm-shell filename/library metadata rather than this compartment because Cold → Warm free-form prose is excluded by the message-schema security invariant; see [ADR-0025](../05-development/adr/0025-vault-identity-library-and-save-ux.md).
 
 ### Secret — never decrypted while online
 
@@ -173,7 +173,7 @@ Every existing format-v1 `.cbx` remains openable without migration. A pre-P0.19 
 
 ### Verify-after-save — mandatory
 
-Where the save path can read its own output back (File System Access), the app re-reads the file after writing and confirms the bytes are identical before clearing the unsaved-changes flag. An unverified save is not a save. Blob download and the manual base64/QR handoff have no way to read back what actually landed on disk or in the person's clipboard, so those paths never clear the flag automatically — they say so, and the flag clears once a verified save path succeeds.
+Where the save path can read its own output back (File System Access), the app re-reads the file after writing and confirms the bytes are identical before marking the copy **Saved · verified** and clearing the dirty/lock-warning flag. Blob download and manual base64/QR handoff can produce a real saved/exported copy but cannot read back what actually landed on disk or in the person's clipboard, so the UI marks them **Saved · unverified** and keeps the normal-lock confirmation gate active until the copy is reopened or a verified save succeeds. The distinction is durability evidence, not vault identity: every save preserves the authenticated Vault ID.
 
 ### Corruption
 

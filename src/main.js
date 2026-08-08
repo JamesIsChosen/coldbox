@@ -136,6 +136,7 @@ __COLDBOX_QR_ENCODER__
   var vaultLoadManual = document.getElementById('vault-load-manual');
   var vaultLock = document.getElementById('vault-lock');
   var vaultLockWarning = document.getElementById('vault-lock-warning');
+  var vaultLockWarningCopy = document.getElementById('vault-lock-warning-copy');
   var vaultLockSave = document.getElementById('vault-lock-save');
   var vaultLockWithoutSave = document.getElementById('vault-lock-without-save');
   var vaultLockCancel = document.getElementById('vault-lock-cancel');
@@ -163,6 +164,7 @@ __COLDBOX_QR_ENCODER__
   var lastModeOnline = null;
   var lastEscapeAt = 0;
   var vaultDirty = false;
+  var vaultPersistenceState = 'none';
   var pendingVaultLoad = false;
   var pendingLoadFileMeta = null;
   var saveGeneration = { counter: 0, savedAt: null };
@@ -1824,23 +1826,38 @@ __COLDBOX_QR_ENCODER__
     }
   }
 
-  // The dirty flag only ever clears inside completeVerifiedSave(), after a
-  // save has been read back from disk and found byte-identical to what was
-  // written (P0.14). Every other caller may only set it true.
-  function setVaultDirty(value) {
-    vaultDirty = Boolean(value);
+  // Persistence and dirty state are related but not identical. A browser
+  // download/manual export can be a real saved copy even though Coldbox
+  // cannot read it back to verify it. Keep that state visibly distinct from
+  // a never-saved vault while still requiring an explicit lock decision.
+  function setVaultPersistenceState(state) {
+    var allowed = ['none', 'unsaved', 'saved-unverified', 'saved-verified', 'loaded'];
+    vaultPersistenceState = allowed.indexOf(state) !== -1 ? state : 'none';
+    vaultDirty = vaultPersistenceState === 'unsaved' || vaultPersistenceState === 'saved-unverified';
     root.setAttribute('data-vault-dirty', String(vaultDirty));
+    root.setAttribute('data-vault-persistence', vaultPersistenceState);
     app.setAttribute('data-vault-dirty', String(vaultDirty));
+    app.setAttribute('data-vault-persistence', vaultPersistenceState);
     if (vaultDirtyNotice) {
       vaultDirtyNotice.hidden = !vaultDirty;
       vaultDirtyNotice.setAttribute('data-dirty', String(vaultDirty));
-      vaultDirtyNotice.textContent = vaultDirty
-        ? 'UNLOCKED · NOT SAVED / unsaved changes: this vault has not completed a verified save yet.'
-        : '';
+      vaultDirtyNotice.textContent = vaultPersistenceState === 'saved-unverified'
+        ? 'SAVED · NOT VERIFIED / Coldbox started an encrypted save/export but cannot read that copy back. Verify/reopen it before relying on it as the only copy.'
+        : (vaultPersistenceState === 'unsaved'
+          ? 'UNLOCKED · NOT SAVED / this vault exists only in working memory until you save it.'
+          : '');
     }
     if (!vaultDirty && vaultLockWarning) {
       vaultLockWarning.hidden = true;
     }
+  }
+
+  function vaultPersistenceLabel() {
+    if (vaultPersistenceState === 'unsaved') { return 'Not saved'; }
+    if (vaultPersistenceState === 'saved-unverified') { return 'Saved · unverified'; }
+    if (vaultPersistenceState === 'saved-verified') { return 'Saved · verified'; }
+    if (vaultPersistenceState === 'loaded') { return 'Loaded'; }
+    return 'Unlocked';
   }
 
   function setVaultRollbackBanner(evaluation, fileMeta) {
@@ -1886,7 +1903,21 @@ __COLDBOX_QR_ENCODER__
         saveIntegrity.writeGeneration(safeLocalStorage(), counter, savedAt);
       }
     }
-    setVaultDirty(false);
+    setVaultPersistenceState('saved-verified');
+  }
+
+  function assertStableSaveIdentity(expectedVaultId, chosenName) {
+    if (expectedVaultId && activeVaultId !== expectedVaultId) {
+      throw new Error('Active Vault ID changed while save was in progress.');
+    }
+    if (!expectedVaultId || !saveIntegrity || typeof saveIntegrity.parseVaultFilename !== 'function'
+      || typeof saveIntegrity.id8 !== 'function' || typeof chosenName !== 'string') {
+      return;
+    }
+    var parsed = saveIntegrity.parseVaultFilename(chosenName);
+    if (parsed && parsed.id8 && parsed.id8 !== saveIntegrity.id8(expectedVaultId)) {
+      throw new Error('Selected filename belongs to a different Vault ID.');
+    }
   }
 
   function nextVaultMessageId(prefix) {
@@ -2299,6 +2330,7 @@ __COLDBOX_QR_ENCODER__
       return;
     }
     var suggestedName = nextSuggestedFilename();
+    var saveVaultId = activeVaultId;
     requestVaultBytes().then(function (bytes) {
       return window.showSaveFilePicker({
         suggestedName: suggestedName,
@@ -2307,6 +2339,7 @@ __COLDBOX_QR_ENCODER__
           accept: { 'application/octet-stream': ['.cbx'] }
         }]
       }).then(function (handle) {
+        assertStableSaveIdentity(saveVaultId, handle && handle.name);
         if (!saveIntegrity) {
           return handle.createWritable().then(function (writable) {
             return writable.write(bytes).then(function () { return writable.close(); });
@@ -2336,8 +2369,14 @@ __COLDBOX_QR_ENCODER__
         );
         return;
       }
+      assertStableSaveIdentity(saveVaultId, suggestedName);
       completeVerifiedSave();
-      setVaultNotice('Encrypted vault saved as ' + suggestedName + ' and verified by reading it back from disk.');
+      setVaultStatus(
+        'unlocked',
+        activeVaultName ? activeVaultName + ' is unlocked' : 'Vault is unlocked',
+        'Encrypted vault saved and verified by reading it back from disk. Vault ID ' + (activeVaultId || 'legacy') + ' is unchanged; later saves create new generations, never new vault identities.',
+        vaultPersistenceLabel()
+      );
     }, reportVaultSaveFailure);
   }
 
@@ -2348,7 +2387,9 @@ __COLDBOX_QR_ENCODER__
   // plainly rather than claiming a verification that did not happen.
   function saveAsDownload() {
     var suggestedName = nextSuggestedFilename();
+    var saveVaultId = activeVaultId;
     requestVaultBytes().then(function (bytes) {
+      assertStableSaveIdentity(saveVaultId, suggestedName);
       if (!window.URL || typeof window.URL.createObjectURL !== 'function') {
         throw new Error('Blob download is unavailable.');
       }
@@ -2363,17 +2404,21 @@ __COLDBOX_QR_ENCODER__
       link.remove();
       window.setTimeout(function () { window.URL.revokeObjectURL(url); }, 0);
     }).then(function () {
-      setVaultNotice(
-        'Encrypted vault download started as ' + suggestedName + '. Browsers do not let Coldbox read a '
-        + 'downloaded file back to verify it, so unsaved changes remain marked until a File System Access '
-        + 'save succeeds or you confirm the download opened correctly.'
+      setVaultPersistenceState('saved-unverified');
+      setVaultStatus(
+        'unlocked',
+        activeVaultName ? activeVaultName + ' is unlocked' : 'Vault is unlocked',
+        'Encrypted vault download started as ' + suggestedName + '. This is a saved copy, but the browser does not let Coldbox read the download back, so it remains unverified. Vault ID ' + (activeVaultId || 'legacy') + ' is unchanged.',
+        vaultPersistenceLabel()
       );
     }, reportVaultSaveFailure);
   }
 
   function saveAsManualText() {
     var suggestedName = nextSuggestedFilename();
+    var saveVaultId = activeVaultId;
     requestVaultBytes().then(function (bytes) {
+      assertStableSaveIdentity(saveVaultId, suggestedName);
       if (!vaultManualData) {
         throw new Error('Manual export is unavailable.');
       }
@@ -2381,11 +2426,12 @@ __COLDBOX_QR_ENCODER__
       vaultManualData.scrollTop = 0;
       prepareQrExport(vaultManualData.value);
       updateVaultControls();
-      setVaultNotice(
-        'Encrypted vault text and numbered QR frames are ready for copy, share, or airgapped transfer '
-        + '(suggested filename ' + suggestedName + ' if you save the pasted text as a file). This handoff '
-        + 'is not read back automatically, so unsaved changes remain marked until you confirm it was '
-        + 'captured correctly.'
+      setVaultPersistenceState('saved-unverified');
+      setVaultStatus(
+        'unlocked',
+        activeVaultName ? activeVaultName + ' is unlocked' : 'Vault is unlocked',
+        'Encrypted vault text and numbered QR frames are prepared (suggested filename ' + suggestedName + '). This is a saved/exported copy but cannot be read back automatically, so it remains unverified. Vault ID ' + (activeVaultId || 'legacy') + ' is unchanged.',
+        vaultPersistenceLabel()
       );
     }, reportVaultSaveFailure);
   }
@@ -2475,7 +2521,7 @@ __COLDBOX_QR_ENCODER__
         : { counter: 0, savedAt: null };
     }
     setActiveVaultMeta(chosenName, vaultId);
-    setVaultDirty(!wasLoadedFile);
+    setVaultPersistenceState(wasLoadedFile ? 'loaded' : 'unsaved');
 
     var rollbackNotice = '';
     var identityNotice = '';
@@ -2526,14 +2572,14 @@ __COLDBOX_QR_ENCODER__
           : String(count) + ' public record(s) are available to the warm shell; secret compartments remain sealed here.'))
       + rollbackNotice
       + identityNotice,
-      wasLoadedFile ? 'Unlocked' : 'Not saved'
+      vaultPersistenceLabel()
     );
   }
 
   function handleVaultStatus(message) {
     if (message.payload.locked) {
       var lostUnsaved = vaultDirty;
-      setVaultDirty(false);
+      setVaultPersistenceState('none');
       setVaultStatus(
         'locked',
         activeVaultName ? activeVaultName + ' is locked' : 'Vault is locked',
@@ -2547,7 +2593,7 @@ __COLDBOX_QR_ENCODER__
         'unlocked',
         activeVaultName ? activeVaultName + ' is unlocked' : 'Vault is unlocked',
         'The active vault session remains inside the sealed realm.',
-        vaultDirty ? 'Not saved' : 'Unlocked'
+        vaultPersistenceLabel()
       );
     }
     if (message.payload.warnings.indexOf('airgap-violation') !== -1) {
@@ -2594,9 +2640,10 @@ __COLDBOX_QR_ENCODER__
 
   function sendVaultLockImmediately() {
     var hadUnsaved = vaultDirty;
+    var priorPersistence = vaultPersistenceState;
     var id = sendVaultMessage('vault.lock', {});
     if (id) {
-      setVaultDirty(false);
+      setVaultPersistenceState('none');
       if (vaultLockWarning) {
         vaultLockWarning.hidden = true;
       }
@@ -2604,7 +2651,9 @@ __COLDBOX_QR_ENCODER__
         'locked',
         activeVaultName ? activeVaultName + ' is locked' : 'Vault is locked',
         hadUnsaved
-          ? 'Lock was sent immediately. Unsaved working changes were not written; the cold realm will zeroize them.'
+          ? (priorPersistence === 'saved-unverified'
+            ? 'Lock was sent immediately. The saved/exported copy remains unverified; the cold realm will zeroize its working session.'
+            : 'Lock was sent immediately. Unsaved working changes were not written; the cold realm will zeroize them.')
           : 'The lock request was sent to the sealed realm. Its active bytes will be cleared there.',
         'Locked'
       );
@@ -2613,11 +2662,18 @@ __COLDBOX_QR_ENCODER__
 
   function requestVaultLock() {
     if (vaultDirty && vaultState === 'unlocked') {
+      if (vaultLockWarningCopy) {
+        vaultLockWarningCopy.textContent = vaultPersistenceState === 'saved-unverified'
+          ? 'A save/export was started but Coldbox could not verify the resulting copy. Verify or reopen it before relying on it as the only copy.'
+          : 'This vault has never completed a durable save. Locking now will zeroize the only working copy.';
+      }
       if (vaultLockWarning) {
         vaultLockWarning.hidden = false;
         vaultLockWarning.scrollIntoView({ block: 'nearest' });
       }
-      setVaultNotice('Unsaved changes exist. Save first, lock without saving, or cancel. Emergency lock paths never wait.');
+      setVaultNotice(vaultPersistenceState === 'saved-unverified'
+        ? 'The saved copy is unverified. Save/verify first, lock anyway, or cancel. Emergency lock paths never wait.'
+        : 'Unsaved vault: save first, lock without saving, or cancel. Emergency lock paths never wait.');
       return;
     }
     sendVaultLockImmediately();
@@ -2737,6 +2793,10 @@ __COLDBOX_QR_ENCODER__
     }
     if (handshakeState === 'ready' && message.type === 'error') {
       handleVaultError(message);
+      return;
+    }
+    if (handshakeState === 'ready' && message.type === 'vault.lockRequest') {
+      requestVaultLock();
       return;
     }
     if (handshakeState === 'ready' && message.type === 'panic.hide') {
@@ -3020,7 +3080,7 @@ __COLDBOX_QR_ENCODER__
   app.setAttribute('data-capability-state', 'checking');
   app.setAttribute('data-lockdown-state', 'checking');
   app.setAttribute('data-vault-operations', 'refused');
-  setVaultDirty(false);
+  setVaultPersistenceState('none');
   setVaultRollbackBanner(null, null);
   setVaultStatus(
     'locked',

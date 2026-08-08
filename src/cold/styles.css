@@ -237,6 +237,17 @@ body {
   color: var(--cold-yellow);
 }
 
+
+.cold-vault-inline-error {
+  margin: 0.35rem 0 0;
+  padding: 0.4rem 0.5rem;
+  border: 0.14rem solid var(--cold-red);
+  background: rgba(225, 29, 72, 0.08);
+  color: var(--cold-red);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
 #cold-vault-passphrase-label {
   display: block;
   margin-top: 0.6rem;

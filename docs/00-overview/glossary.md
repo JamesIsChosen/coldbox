@@ -307,7 +307,7 @@ See [vault-format.md](../01-spec/vault-format.md) for the exact byte layout: a h
 A random code created with the vault so Coldbox can tell two vaults apart even if you rename or move their files. It identifies the vault, not your computer.
 :::
 ::: working
-A non-secret UUID generated inside the cold realm at new-vault creation and stored in the authenticated public compartment. Coldbox uses it to namespace per-vault save history and to verify that a filename/library entry still refers to the vault it claims. Legacy v1 vaults that predate this field use their existing random header salt as a compatibility bookkeeping key.
+A non-secret UUID generated inside the cold realm at new-vault creation and stored in the authenticated public compartment. It is created once and is immutable across save generations: re-saving a vault never creates a new Vault ID. Coldbox uses it to namespace per-vault save history and to verify that a filename/library entry still refers to the vault it claims. Legacy v1 vaults that predate this field use their existing random header salt as a compatibility bookkeeping key.
 :::
 ::: technical
 The canonical ID is a CSPRNG UUID carried in the already-whitelisted public-compartment `id` field; no new secret-bearing message type is needed. The short filename suffix is only a display hint and is checked against the full ID after unlock. A device/browser fingerprint was explicitly rejected because it links unrelated vaults on the same device, can change with browser/device state, and fails the portability requirement when a `.cbx` moves to another device. See [ADR-0025](../05-development/adr/0025-vault-identity-library-and-save-ux.md).

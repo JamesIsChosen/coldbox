@@ -6,8 +6,8 @@
 // decision logic itself is proven functionally in test/save-integrity.test.js.
 // These tests confirm the glue actually calls that logic in the required
 // order: only a verified File System Access save may ever clear the dirty
-// flag or advance the save generation, and the two unverifiable save paths
-// never do.
+// warning or advance the save generation. Download/manual may report
+// Saved · unverified, but must keep the lock-confirmation gate active.
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -56,37 +56,35 @@ test('the FSA save path only completes a verified save after checking result.ver
   assert.ok(guardIndex < verifiedCallIndex, 'the verified guard must run before completeVerifiedSave() is called');
 });
 
-test('completeVerifiedSave clears the dirty flag and advances the generation together', () => {
+test('completeVerifiedSave marks Saved · verified only after advancing the generation', () => {
   const body = extractFunction(mainSource, 'completeVerifiedSave');
   assert.match(body, /saveIntegrity\.nextCounter\(saveGeneration\)/);
   assert.match(body, /saveIntegrity\.writeGenerationFor\(/, 'modern vaults must persist per-vault generation state');
   assert.match(body, /saveIntegrity\.writeGeneration\(/, 'legacy/no-namespace fallback remains compatible');
-  assert.match(body, /setVaultDirty\(false\)/);
-  // The dirty flag must clear last, after the generation bookkeeping - not
-  // as an independent step that could run without it.
+  assert.match(body, /setVaultPersistenceState\('saved-verified'\)/);
   const writeIndex = body.indexOf('saveIntegrity.writeGenerationFor');
-  const dirtyIndex = body.indexOf('setVaultDirty(false)');
-  assert.ok(writeIndex < dirtyIndex, 'generation bookkeeping must precede clearing the dirty flag');
+  const savedIndex = body.indexOf("setVaultPersistenceState('saved-verified')");
+  assert.ok(writeIndex < savedIndex, 'generation bookkeeping must precede the verified saved state');
 });
 
-test('blob download never clears the dirty flag or advances the save generation', () => {
+test('blob download becomes Saved · unverified without advancing the verified generation', () => {
   const body = extractFunction(mainSource, 'saveAsDownload');
-  assert.doesNotMatch(body, /setVaultDirty/, 'a save path with no read-back must never touch the dirty flag');
+  assert.match(body, /setVaultPersistenceState\('saved-unverified'\)/);
   assert.doesNotMatch(body, /completeVerifiedSave/);
   assert.doesNotMatch(body, /writeGeneration/);
 });
 
-test('manual/QR export never clears the dirty flag or advances the save generation', () => {
+test('manual/QR export becomes Saved · unverified without advancing the verified generation', () => {
   const body = extractFunction(mainSource, 'saveAsManualText');
-  assert.doesNotMatch(body, /setVaultDirty/, 'a save path with no read-back must never touch the dirty flag');
+  assert.match(body, /setVaultPersistenceState\('saved-unverified'\)/);
   assert.doesNotMatch(body, /completeVerifiedSave/);
   assert.doesNotMatch(body, /writeGeneration/);
 });
 
-test('setVaultDirty is the only place the dirty attribute is written', () => {
+test('setVaultPersistenceState is the only place the dirty attribute is written', () => {
   const occurrences = (mainSource.match(/setAttribute\('data-vault-dirty'/g) || []).length;
-  assert.equal(occurrences, 2, 'data-vault-dirty must only be set inside setVaultDirty (root + app)');
-  const body = extractFunction(mainSource, 'setVaultDirty');
+  assert.equal(occurrences, 2, 'data-vault-dirty must only be set inside setVaultPersistenceState (root + app)');
+  const body = extractFunction(mainSource, 'setVaultPersistenceState');
   assert.match(body, /root\.setAttribute\('data-vault-dirty'/);
   assert.match(body, /app\.setAttribute\('data-vault-dirty'/);
 });
@@ -101,11 +99,11 @@ test('sendVaultOpen only marks a load pending after the message is actually queu
   assert.match(body, /catch \(error\) \{\s*pendingVaultLoad = false;/, 'a send failure must not leave a stale pending load');
 });
 
-test('handleVaultOpened derives dirty state from whether a file load was pending, before clearing it', () => {
+test('handleVaultOpened derives persistence state from whether a file load was pending, before clearing it', () => {
   const body = extractFunction(mainSource, 'handleVaultOpened');
   const capturedIndex = body.indexOf('var wasLoadedFile = pendingVaultLoad;');
   const clearedIndex = body.indexOf('pendingVaultLoad = false;');
-  const dirtyIndex = body.indexOf('setVaultDirty(!wasLoadedFile);');
+  const dirtyIndex = body.indexOf("setVaultPersistenceState(wasLoadedFile ? 'loaded' : 'unsaved');");
   assert.notEqual(capturedIndex, -1);
   assert.notEqual(clearedIndex, -1);
   assert.notEqual(dirtyIndex, -1);
@@ -162,6 +160,19 @@ test('P0.19 primary save and named modern filename are first-class warm-shell ac
   assert.match(primaryBody, /showSaveFilePicker/);
   assert.match(primaryBody, /saveWithFileSystemAccess\(\)/);
   assert.match(primaryBody, /saveAsDownload\(\)/, 'portable fallback must still save when File System Access is absent');
+});
+
+test('P0.19 save paths pin the active Vault ID and reject a conflicting canonical filename', () => {
+  const guardBody = extractFunction(mainSource, 'assertStableSaveIdentity');
+  assert.match(guardBody, /activeVaultId !== expectedVaultId/);
+  assert.match(guardBody, /parseVaultFilename\(chosenName\)/);
+  assert.match(guardBody, /parsed\.id8 !== saveIntegrity\.id8\(expectedVaultId\)/);
+  const fsaBody = extractFunction(mainSource, 'saveWithFileSystemAccess');
+  assert.match(fsaBody, /var saveVaultId = activeVaultId/);
+  assert.match(fsaBody, /assertStableSaveIdentity\(saveVaultId, handle && handle\.name\)/);
+  const downloadBody = extractFunction(mainSource, 'saveAsDownload');
+  assert.match(downloadBody, /var saveVaultId = activeVaultId/);
+  assert.match(downloadBody, /assertStableSaveIdentity\(saveVaultId, suggestedName\)/);
 });
 
 test('P0.19 normal lock warns on dirty state while emergency lock remains immediate', () => {

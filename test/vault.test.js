@@ -708,6 +708,27 @@ test('P0.15 openSession round-trips a keyfile vault and save() preserves the wra
   await expectAuthenticationFailure(() => context.__coldboxVault.open(saved, passphrase));
 });
 
+test('P0.19 repeated saves preserve the authenticated Vault ID', async () => {
+  const context = createRealContext();
+  const passphrase = 'stable vault identity phrase';
+  const vaultId = '550e8400-e29b-41d4-a716-446655440000';
+  const original = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fast',
+    publicData: { id: vaultId },
+    secretData: {}
+  });
+  const firstSession = await context.__coldboxVault.openSession(original, passphrase, 'offline');
+  const firstSaved = await firstSession.save();
+  const firstReopened = await context.__coldboxVault.open(firstSaved, passphrase);
+  assert.equal(firstReopened.publicData.id, vaultId);
+
+  const secondSession = await context.__coldboxVault.openSession(firstSaved, passphrase, 'offline');
+  const secondSaved = await secondSession.save();
+  const secondReopened = await context.__coldboxVault.open(secondSaved, passphrase);
+  assert.equal(secondReopened.publicData.id, vaultId, 're-saving must never create a new Vault ID');
+});
+
 test('P0.15 create() rejects an empty keyfile and an oversized keyfile, failing closed rather than deriving from weak material', async () => {
   const context = createFormatContext();
   await expectSerializationFailure(() => context.__coldboxVault.create({

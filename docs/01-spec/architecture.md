@@ -95,6 +95,7 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 |---|---|---|
 | `ready` | `{ capabilities }` | Handshake |
 | `vault.opened` | `{ publicCompartment }` | **Public data only.** Never the secret compartment |
+| `vault.lockRequest` | `{}` | Cold UI requests the normal warm-shell lock gate; carries no secret or free-form data |
 | `vault.bytes` | `{ bytes }` | Encrypted blob for the warm shell to save |
 | `derive.result` | `{ addresses[], xpub, fingerprint }` | Public values only |
 | `status` | `{ locked, mode, warnings[] }` | |

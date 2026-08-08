@@ -65,8 +65,10 @@ test('P0.19 network observation stays warm while validated mode.set is the sole 
 
 test('P0.19 creation confirmation and random Vault ID are cold-only', () => {
   assert.match(coldHtml, /id="cold-vault-passphrase-confirm"/);
+  assert.match(coldHtml, /id="cold-vault-create-error"[^>]*role="alert"/);
   const createBody = extractFunction(coldSource, 'createEmptyVault');
   assert.match(createBody, /passphrase !== confirmation/);
+  assert.match(createBody, /setCreateConfirmationError\('Unlock phrases do not match/);
   assert.match(createBody, /publicData: \{ id: generateVaultUuid\(\) \}/);
 
   const uuidBody = extractFunction(coldSource, 'generateVaultUuid');
@@ -97,4 +99,11 @@ test('P0.19 switching vault identity clears stale manual and QR export state', (
 
   const loadFile = extractFunction(warmSource, 'loadVaultFile');
   assert.match(loadFile, /pendingCreateVaultName = ''[\s\S]*clearManualVaultExport\(\)[\s\S]*setActiveVaultMeta/);
+});
+
+test('P0.19 cold visible normal lock routes through the warm warning gate', () => {
+  assert.match(coldHtml, /id="cold-vault-lock"[^>]*>Request lock<\/button>/);
+  assert.match(coldSource, /postVaultMessage\(requestId, 'vault\.lockRequest', \{\}\)/);
+  assert.doesNotMatch(coldSource, /lockVaultSession\(nextVaultMessageId\('local-lock'\)/);
+  assert.match(warmSource, /message\.type === 'vault\.lockRequest'[\s\S]*requestVaultLock\(\)/);
 });

@@ -57,6 +57,7 @@ test('protocol exposes only the documented message whitelist', () => {
     'ready',
     'vault.opened',
     'vault.bytes',
+    'vault.lockRequest',
     'derive.result',
     'status',
     'error',
@@ -96,6 +97,26 @@ test('vault creation preparation is strictly payload-free', () => {
     id: 'create-prepare-secret',
     type: 'vault.create.prepare',
     payload: { passphrase: 'must never cross' }
+  }), null);
+});
+
+
+test('cold normal-lock request is strictly payload-free', () => {
+  const protocol = loadProtocol();
+  const request = protocol.validateMessage('cold-to-warm', {
+    id: 'lock-request-1',
+    type: 'vault.lockRequest',
+    payload: {}
+  });
+  assert.equal(JSON.stringify(request), JSON.stringify({
+    id: 'lock-request-1',
+    type: 'vault.lockRequest',
+    payload: {}
+  }));
+  assert.equal(protocol.validateMessage('cold-to-warm', {
+    id: 'lock-request-secret',
+    type: 'vault.lockRequest',
+    payload: { reason: 'user text must not cross' }
   }), null);
 });
 
