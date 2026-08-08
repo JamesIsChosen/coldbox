@@ -41,71 +41,61 @@ function hex(bytes) {
 // spec for this bespoke construction (it isn't a BIP/SLIP/RFC), so this
 // cross-implementation check is the strongest available independent vector;
 // see docs/05-development/adr/0022-entropy-lab-mixing.md.
+//
+// This is the literal formula documented in entropy-and-strength.md and
+// first-wallet.md: SHA-256(manualBytes XOR csprngBytes), truncated to the
+// requested length. No counter, no block expansion — a review round on the
+// first version of this file caught that the production code had added a
+// 4-byte counter prefix that does not match this formula, and this
+// reference function is deliberately as literal as possible so a mismatch
+// like that cannot slip past it again.
 function referenceMix(manualBytes, csprngBytes, targetBits) {
-  function sha256(buf) {
-    return crypto.createHash('sha256').update(buf).digest();
-  }
-  function u32be(n) {
-    const b = Buffer.alloc(4);
-    b.writeUInt32BE(n >>> 0, 0);
-    return b;
-  }
   const xored = Buffer.alloc(manualBytes.length);
   for (let i = 0; i < manualBytes.length; i += 1) {
     xored[i] = manualBytes[i] ^ csprngBytes[i];
   }
-  const targetBytes = targetBits / 8;
-  let output = Buffer.alloc(0);
-  let counter = 0;
-  while (output.length < targetBytes) {
-    output = Buffer.concat([output, sha256(Buffer.concat([u32be(counter), xored]))]);
-    counter += 1;
-  }
-  return output.subarray(0, targetBytes);
+  const digest = crypto.createHash('sha256').update(xored).digest();
+  return digest.subarray(0, targetBits / 8);
 }
 
-test('mix() matches an independent Node-crypto reimplementation of XOR-then-hash, single-block output', () => {
+test('mix() matches an independent Node-crypto reimplementation of literal SHA-256(manual XOR csprng), single byte', () => {
   const context = createContext();
   const lab = context.__coldboxEntropyLab;
   const session = lab.createSession();
-  // 8 hex nibbles = 32 exact bits, well under one target, so add a CSPRNG
-  // draw and check the raw internal mix path against hand-built vectors
-  // that do not depend on the accumulator plumbing at all.
   const manual = Buffer.from([0xab]);
   const csprng = Buffer.from([0x11]);
-  const expected = referenceMix(manual, csprng, 128);
-  assert.equal(hex(expected), 'eb15abd96cd0fc35fcadaaa7d34ea6f3');
+  const paddedManual = Buffer.concat([manual, Buffer.alloc(15)]);
+  const csprngBuffer = Buffer.concat([csprng, Buffer.alloc(15)]);
+  const expected = referenceMix(paddedManual, csprngBuffer, 128);
+  // Hand-verifiable: 0xab XOR 0x11 = 0xba (the rest of both 16-byte buffers
+  // is zero, so the rest of the XOR is zero too), and this exact digest was
+  // independently computed with `node -e` using node:crypto before this
+  // test was written (see the packet's remediation section for the
+  // transcript) — not derived from entropy-lab.js or this test file.
+  assert.equal(hex(expected), 'd9767ebda5c2860ea7d035cb7146741a');
 
-  // Drive the same bytes through the real accumulator: 8 exact bits (0xab)
-  // then a CSPRNG draw of exactly the padded 16-byte CSPRNG buffer the mix
-  // step will actually slice from. mix() requires guaranteedBits >= target
-  // and csprngBytes.length >= manualBytes.length, so pad both sides with
-  // zero bytes the reference implementation is told about explicitly.
   for (let bit = 7; bit >= 0; bit -= 1) {
     session.exactBits.push((manual[0] >> bit) & 1);
   }
-  // Pad exactBits out to 128 guaranteed bits so mix() will proceed, using
-  // zero bits appended directly (bypassing addHexNibble to keep the vector
-  // exactly aligned to what referenceMix() computed above).
   while (session.exactBits.length < 128) {
     session.exactBits.push(0);
   }
-  const paddedManual = Buffer.concat([manual, Buffer.alloc(15)]);
-  const csprngBuffer = Buffer.concat([csprng, Buffer.alloc(15)]);
   lab.addCsprngBytes(session, new Uint8Array(csprngBuffer));
-  const paddedExpected = referenceMix(paddedManual, csprngBuffer, 128);
   const actual = lab.mix(session, 128);
-  assert.equal(hex(actual), hex(paddedExpected));
+  assert.equal(hex(actual), hex(expected));
 });
 
-test('mix() matches an independent Node-crypto reimplementation, multi-byte XOR, 256-bit single-block output', () => {
+test('mix() matches an independent Node-crypto reimplementation, multi-byte XOR, full 256-bit digest', () => {
   const context = createContext();
   const lab = context.__coldboxEntropyLab;
   const session = lab.createSession();
   const manual = Buffer.from([0x00, 0xff, 0x7a]);
   const csprng = Buffer.from([0xff, 0x00, 0x7a]);
-  const expected = referenceMix(manual, csprng, 256 /* only checking the xor+first-block math */);
-  assert.equal(hex(expected).slice(0, 6), 'e54d47');
+  const paddedManual = Buffer.concat([manual, Buffer.alloc(29)]);
+  const csprngBuffer = Buffer.concat([csprng, Buffer.alloc(29)]);
+  const expected = referenceMix(paddedManual, csprngBuffer, 256);
+  assert.equal(expected.length, 32);
+  assert.equal(hex(expected), '29e5e39c8605b7433b59c0b8268fcc2c6e85709319ead6b8eba0791d6057e043');
 
   for (let byteIndex = 0; byteIndex < manual.length; byteIndex += 1) {
     for (let bit = 7; bit >= 0; bit -= 1) {
@@ -115,16 +105,64 @@ test('mix() matches an independent Node-crypto reimplementation, multi-byte XOR,
   while (session.exactBits.length < 256) {
     session.exactBits.push(0);
   }
-  const paddedManual = Buffer.concat([manual, Buffer.alloc(29)]);
-  const csprngBuffer = Buffer.concat([csprng, Buffer.alloc(29)]);
   lab.addCsprngBytes(session, new Uint8Array(csprngBuffer));
-  const paddedExpected = referenceMix(paddedManual, csprngBuffer, 256);
   const actual = lab.mix(session, 256);
   assert.equal(actual.length, 32);
-  assert.equal(hex(actual), hex(paddedExpected));
+  assert.equal(hex(actual), hex(expected));
 });
 
-test('mix() fails closed when guaranteed bits are short of the target', () => {
+test('mix() consumes ("burns") the CSPRNG bytes it used, so a second mix() without a new draw fails closed rather than reusing them', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  for (let i = 0; i < 128; i += 1) {
+    lab.addCoin(session, i % 2 === 0);
+  }
+  lab.addCsprngBytes(session, new Uint8Array(16)); // exactly enough for one 128-bit mix
+  const first = lab.mix(session, 128);
+  assert.equal(first.length, 16);
+  assert.equal(session.csprngBytes.length, 0);
+  assert.throws(() => lab.mix(session, 128), /need at least 16 csprng bytes/i);
+
+  // Confirm it is not merely refusing on principle: drawing fresh bytes lets
+  // it proceed again, and the new output differs from the first (different
+  // CSPRNG input XORed against the same manual entropy).
+  lab.addCsprngBytes(session, new Uint8Array(16).fill(0xff));
+  const second = lab.mix(session, 128);
+  assert.notEqual(hex(first), hex(second));
+});
+
+test('mix() falls back to a direct CSPRNG-only draw when no manual entropy is recorded, and burns those bytes too', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  assert.equal(lab.manualEntropyBytes(session).length, 0);
+  assert.throws(() => lab.mix(session, 128), /need 16 csprng bytes/i);
+
+  const fresh = new Uint8Array(16);
+  crypto.webcrypto.getRandomValues(fresh);
+  lab.addCsprngBytes(session, fresh);
+  const output = lab.mix(session, 128);
+  assert.equal(output.length, 16);
+  // Pure-CSPRNG mode returns the bytes directly (no hash): entropy-and-
+  // strength.md describes CSPRNG output as already "256 bits by
+  // definition," so hashing it would add nothing and would contradict that
+  // literal description.
+  assert.deepEqual([...output], [...fresh]);
+  assert.equal(session.csprngBytes.length, 0, 'the bytes used must be burned');
+  assert.throws(() => lab.mix(session, 128), /need 16 csprng bytes/i);
+});
+
+test('guaranteedBits() (manual) is 0 for a CSPRNG-only session, but csprngGuaranteedBits() reports the CSPRNG bytes on hand', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+  lab.addCsprngBytes(session, new Uint8Array(32));
+  assert.equal(lab.guaranteedBits(session), 0);
+  assert.equal(lab.csprngGuaranteedBits(session), 256);
+});
+
+test('mix() fails closed when manual guaranteed bits are short of the target (mixed path)', () => {
   const context = createContext();
   const lab = context.__coldboxEntropyLab;
   const session = lab.createSession();
@@ -132,7 +170,7 @@ test('mix() fails closed when guaranteed bits are short of the target', () => {
     lab.addCoin(session, i % 2 === 0);
   }
   lab.addCsprngBytes(session, new Uint8Array(32));
-  assert.throws(() => lab.mix(session, 128), /only 100 guaranteed bits/);
+  assert.throws(() => lab.mix(session, 128), /only 100 guaranteed manual bits/);
 });
 
 test('mix() fails closed when the CSPRNG buffer is shorter than the manual entropy it must XOR against', () => {
@@ -197,12 +235,12 @@ test('base-6 dice accumulator reports conservative (floor) guaranteed bits, neve
   assert.equal(lab.diceGuaranteedBits(fresh), 25);
 });
 
-test('card draws use a factorial-number-system accumulator and reject repeats', () => {
+test('card draws use a factorial-number-system accumulator and reject repeats within a shuffle', () => {
   const context = createContext();
   const lab = context.__coldboxEntropyLab;
   const session = lab.createSession();
   lab.addCard(session, 0);
-  assert.throws(() => lab.addCard(session, 0), /already drawn/);
+  assert.throws(() => lab.addCard(session, 0), /already drawn this shuffle/);
   // First draw from 52: range is 52, bit-length of 52 (110100) is 6, so
   // guaranteed = 5 bits. floor(log2(52)) = 5, independently confirming it.
   assert.equal(lab.cardGuaranteedBits(session), 5);
@@ -211,11 +249,52 @@ test('card draws use a factorial-number-system accumulator and reject repeats', 
   for (let card = 0; card < 52; card += 1) {
     lab.addCard(fresh, card);
   }
-  assert.throws(() => lab.addCard(fresh, 0), /already drawn/);
+  assert.throws(() => lab.addCard(fresh, 0), /already drawn this shuffle/);
   // Full deck: range = 52!. log2(52!) ~= 225.58 (a standard, independently
   // checkable combinatorial fact - e.g. via Stirling's approximation or any
   // calculator's 52! bit-length), so guaranteed bits = 225.
   assert.equal(lab.cardGuaranteedBits(fresh), 225);
+});
+
+test('startNewCardShuffle() refuses while cards remain, and compounds a second shuffle onto the same accumulator (entropy-and-strength.md\'s "2 shuffles" path)', () => {
+  const context = createContext();
+  const lab = context.__coldboxEntropyLab;
+  const session = lab.createSession();
+
+  lab.addCard(session, 0);
+  assert.throws(() => lab.startNewCardShuffle(session), /card\(s\) remain in the current shuffle/);
+
+  // Draw the remaining 51 cards to exhaust the first shuffle.
+  for (let card = 1; card < 52; card += 1) {
+    lab.addCard(session, card);
+  }
+  assert.equal(session.cardRemaining.length, 0);
+  assert.equal(lab.cardGuaranteedBits(session), 225);
+
+  lab.startNewCardShuffle(session);
+  assert.equal(session.cardRemaining.length, 52);
+  // The same card id can be drawn again now that the pool has been refilled
+  // — it is a fresh shuffle, not a duplicate within the same one.
+  lab.addCard(session, 0);
+  // Range is now 52! * 52 (first shuffle's full range, times the first draw
+  // of the second shuffle), independently: bit-length(52! * 52) - 1.
+  const expectedRange = (() => {
+    let range = 1n;
+    for (let i = 0; i < 52; i += 1) { range *= 52n - BigInt(i); }
+    range *= 52n; // one draw into the second shuffle, pool size 52
+    return range;
+  })();
+  const expectedBits = expectedRange.toString(2).length - 1;
+  assert.equal(lab.cardGuaranteedBits(session), expectedBits);
+  assert.ok(expectedBits > 225, 'a second shuffle must add to the first, not replace it');
+
+  // Undo of the reshuffle itself must restore the exhausted-pool state
+  // exactly (not just "some" prior state), so a user can back out of an
+  // accidental "start new shuffle" click.
+  lab.undoLast(session); // undoes the addCard(session, 0) above
+  lab.undoLast(session); // undoes startNewCardShuffle
+  assert.equal(session.cardRemaining.length, 0);
+  assert.equal(lab.cardGuaranteedBits(session), 225);
 });
 
 test('undo reverses exactly the last operation for every source type, including a rejected discard roll', () => {

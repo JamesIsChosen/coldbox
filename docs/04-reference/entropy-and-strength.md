@@ -111,9 +111,20 @@ This is not a reason for alarm, and modern platform RNGs are well-scrutinised. I
 
 Combine dice entropy with CSPRNG output: XOR them, then hash the result.
 
+```
+ dice / coins / cards / hex          CSPRNG
+  (your physical entropy)      (crypto.getRandomValues)
+            │                            │
+            └───────────  XOR  ──────────┘
+                           │
+                       SHA-256
+                           │
+              mixed entropy (128–256 bits)
+```
+
 The property this gives you: **neither source alone determines the outcome.** A weighted die can't compromise the result if the RNG is sound. A backdoored RNG can't compromise it if your dice are fair. You'd need both to fail simultaneously.
 
-This is the default for anything holding real value.
+This is the default for anything holding real value. If you record no manual entropy at all, there is nothing to XOR against — Entropy Lab falls back to using CSPRNG output directly (the section above), instant but without the diagram's defense-in-depth property.
 
 ### Human-chosen passphrases
 

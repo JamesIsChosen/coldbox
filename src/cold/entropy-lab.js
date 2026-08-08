@@ -8,16 +8,28 @@
   // for testing (test/entropy-lab.test.js).
   //
   // Design, and why it looks the way it does, is recorded in
-  // docs/05-development/adr/0022-entropy-lab-mixing.md. Summary: manual
+  // docs/05-development/adr/0022-entropy-lab-mixing.md (revised after the
+  // P1.1 review round — see that ADR's amendment note). Summary: manual
   // sources (dice, coins, cards, hex) are accumulated exactly, with no
   // floating-point arithmetic anywhere on this path — every "how many bits do
   // we have" answer is computed from an integer bit-length so two runs on two
-  // machines can never disagree by a rounding error. The final mix step is
-  // SHA-256(counter || (manualBytes XOR csprngBytes)), expanded block by
-  // block, so neither a rigged die nor a rigged CSPRNG alone determines the
-  // output: the CSPRNG only cancels manual bias, and the hash whitens the
-  // combination and prevents feeding back a chosen CSPRNG value that would
-  // let an attacker predict the digest structure of the XOR.
+  // machines can never disagree by a rounding error.
+  //
+  // Two mix paths, both fail-closed and both consume ("burn") the CSPRNG
+  // bytes they use so a second mix() call can never silently replay them -
+  //   - No manual entropy recorded: CSPRNG is a source in its own right per
+  //     entropy-and-strength.md ("256 bits by definition"), so the requested
+  //     number of fresh CSPRNG bytes is returned directly.
+  //   - Manual entropy recorded: output is exactly SHA-256(manualBytes XOR
+  //     csprngBytes) truncated to the requested length, matching the literal
+  //     formula documented in entropy-and-strength.md and first-wallet.md. A
+  //     single SHA-256 block is 32 bytes, which already covers every valid
+  //     target size (128-256 bits = 16-32 bytes), so no block-counter
+  //     expansion is needed and none is used. The manual side must
+  //     independently reach the requested bit count before mixing is
+  //     allowed — defense in depth, so a compromised or backdoored CSPRNG
+  //     cannot reduce security below the target even though it also
+  //     contributes to the output.
 
   var noble = global.__coldboxNobleCrypto;
 
@@ -92,15 +104,6 @@
     return output;
   }
 
-  function uint32BE(value) {
-    var bytes = new Uint8Array(4);
-    bytes[0] = (value >>> 24) & 0xff;
-    bytes[1] = (value >>> 16) & 0xff;
-    bytes[2] = (value >>> 8) & 0xff;
-    bytes[3] = value & 0xff;
-    return bytes;
-  }
-
   function bitsToBytes(bits) {
     var byteLength = Math.ceil(bits.length / 8);
     var output = new Uint8Array(byteLength);
@@ -140,6 +143,15 @@
       diceValue: 0n,
       cardOrder: [],
       cardRemaining: Array.from({ length: 52 }, function (_, i) { return i; }),
+      // Pool size recorded *before* each draw, in draw order. Kept separate
+      // from cardOrder.length because a reshuffle (startNewCardShuffle)
+      // resets cardRemaining back to 52 without resetting cardOrder or
+      // cardValue, so a second (or third...) pass through the deck keeps
+      // compounding entropy into the same factorial-number-system
+      // accumulator rather than starting over. cardGuaranteedBits/
+      // manualEntropyBytes multiply this array, not a formula assuming a
+      // single unbroken 52-down-to-0 sequence.
+      cardDrawPoolSizes: [],
       cardValue: 0n,
       csprngBytes: new Uint8Array(0),
       history: []
@@ -226,28 +238,56 @@
 
   // Card draw: cardId is 0-51 (a fixed index into a standard 52-card deck;
   // the UI is responsible for the suit/rank <-> index mapping shown to the
-  // user). Cards cannot repeat. Accumulated with the factorial number system -
-  // value = value*remainingCountBeforeDraw + rankAmongRemaining, then that
-  // card is removed from the remaining pool. This is a bijection between a
-  // sequence of k draws-without-replacement and an integer in
-  // [0, 52!/(52-k)!), matching the "cards" source in SPEC.md 11.
+  // user). A card cannot repeat *within the current shuffle* (i.e. since the
+  // pool was last full) — see startNewCardShuffle below for drawing more
+  // than 52 cards' worth of entropy. Accumulated with the factorial number
+  // system - value = value*remainingCountBeforeDraw + rankAmongRemaining,
+  // then that card is removed from the remaining pool. This is a bijection
+  // between a sequence of k draws-without-replacement (within one shuffle)
+  // and an integer in [0, 52!/(52-k)!), matching the "cards" source in
+  // SPEC.md 11; chaining shuffles multiplies further ranges into the same
+  // accumulator, matching entropy-and-strength.md's "1 shuffle ~= 225 bits,
+  // 2 shuffles" row for a 256-bit target.
   function addCard(session, cardId) {
     if (!Number.isInteger(cardId) || cardId < 0 || cardId > 51) {
       throw new Error('Entropy Lab: card id must be an integer 0-51.');
     }
     var rank = session.cardRemaining.indexOf(cardId);
     if (rank === -1) {
-      throw new Error('Entropy Lab: that card was already drawn this session.');
+      throw new Error('Entropy Lab: that card was already drawn this shuffle.');
     }
     var previousValue = session.cardValue;
     var previousOrder = session.cardOrder.length;
+    var previousPoolSizes = session.cardDrawPoolSizes.length;
     var previousRemaining = session.cardRemaining.slice();
-    session.cardValue = session.cardValue * BigInt(session.cardRemaining.length) + BigInt(rank);
+    var remainingCountBeforeDraw = session.cardRemaining.length;
+    session.cardValue = session.cardValue * BigInt(remainingCountBeforeDraw) + BigInt(rank);
     session.cardRemaining.splice(rank, 1);
     session.cardOrder.push(cardId);
+    session.cardDrawPoolSizes.push(remainingCountBeforeDraw);
     pushHistory(session, function () {
       session.cardValue = previousValue;
       session.cardOrder.length = previousOrder;
+      session.cardDrawPoolSizes.length = previousPoolSizes;
+      session.cardRemaining = previousRemaining;
+    });
+  }
+
+  // Once a shuffle's pool is exhausted (all 52 drawn since the last full
+  // pool), this refills it to draw further cards, compounding entropy into
+  // the same accumulator rather than resetting it — see addCard's comment
+  // and ADR-0022's amendment. Refuses (fails closed) to reshuffle early: a
+  // partial pool means the current shuffle's information content hasn't
+  // been fully realized yet, and refilling mid-shuffle would let the same
+  // remaining cards be redrawn while double-counting the pool size in
+  // cardGuaranteedBits.
+  function startNewCardShuffle(session) {
+    if (session.cardRemaining.length !== 0) {
+      throw new Error(`Entropy Lab: ${session.cardRemaining.length} card(s) remain in the current shuffle; draw them before starting a new one.`);
+    }
+    var previousRemaining = session.cardRemaining;
+    session.cardRemaining = Array.from({ length: 52 }, function (_, i) { return i; });
+    pushHistory(session, function () {
       session.cardRemaining = previousRemaining;
     });
   }
@@ -272,23 +312,36 @@
     return guaranteedBitsForRange(6n ** BigInt(session.diceDigits.length));
   }
 
-  function cardGuaranteedBits(session) {
-    var drawn = session.cardOrder.length;
-    if (drawn === 0) {
-      return 0;
-    }
+  function cardRange(session) {
     var range = 1n;
-    for (var i = 0; i < drawn; i += 1) {
-      range *= BigInt(52 - i);
+    for (var i = 0; i < session.cardDrawPoolSizes.length; i += 1) {
+      range *= BigInt(session.cardDrawPoolSizes[i]);
     }
-    return guaranteedBitsForRange(range);
+    return range;
   }
 
-  // The conservative, hard-floor bit count the meter and the mix gate use.
-  // "Guaranteed" because it is derived from the size of the possibility
-  // space, never from the actual sampled value — the whole point of
-  // min-entropy accounting (SPEC.md 11.1a) is that it must not depend on
-  // which outcome happened to occur.
+  function cardGuaranteedBits(session) {
+    if (session.cardOrder.length === 0) {
+      return 0;
+    }
+    return guaranteedBitsForRange(cardRange(session));
+  }
+
+  // CSPRNG bytes are "256 bits by definition" (entropy-and-strength.md) —
+  // full guaranteed entropy per byte, whether they end up used alone (no
+  // manual entropy recorded) or XORed against manual entropy during mixing.
+  function csprngGuaranteedBits(session) {
+    return session.csprngBytes.length * 8;
+  }
+
+  // The conservative, hard-floor bit count the meter and the mix gate use
+  // for *manually recorded* entropy (dice, coins, cards, hex) only —
+  // "guaranteed" because it is derived from the size of the possibility
+  // space, never from the actual sampled value, per SPEC.md 11.1a's
+  // min-entropy accounting. CSPRNG bits are reported separately
+  // (csprngGuaranteedBits) rather than summed in here: see mix()'s comment
+  // for why a CSPRNG-only session and a manual+CSPRNG mix use different
+  // gates rather than one combined total.
   function guaranteedBits(session) {
     return session.exactBits.length + diceGuaranteedBits(session) + cardGuaranteedBits(session);
   }
@@ -299,11 +352,7 @@
       pieces.push(bigIntToBytes(session.diceValue, bytesNeededForRange(6n ** BigInt(session.diceDigits.length))));
     }
     if (session.cardOrder.length > 0) {
-      var range = 1n;
-      for (var i = 0; i < session.cardOrder.length; i += 1) {
-        range *= BigInt(52 - i);
-      }
-      pieces.push(bigIntToBytes(session.cardValue, bytesNeededForRange(range)));
+      pieces.push(bigIntToBytes(session.cardValue, bytesNeededForRange(cardRange(session))));
     }
     return concatBytes.apply(null, pieces);
   }
@@ -312,36 +361,57 @@
   //
   // Fails closed (throws, produces nothing) rather than silently returning
   // fewer bits than requested, a shorter mix, or reusing stale CSPRNG bytes.
+  // Every CSPRNG byte actually used by a mix() call is removed from
+  // session.csprngBytes before returning, so a second mix() call with no
+  // intervening CSPRNG draw fails the same way running out of CSPRNG bytes
+  // always fails, rather than silently reusing them.
 
   function mix(session, targetBits) {
     if (!isValidTargetBits(targetBits)) {
       throw new Error(`Entropy Lab: targetBits must be one of ${VALID_TARGET_BITS.join(', ')}.`);
     }
+    var targetBytes = targetBits / 8;
+    var manualBytes = manualEntropyBytes(session);
+
+    if (manualBytes.length === 0) {
+      // Pure-CSPRNG path (SPEC.md 11: CSPRNG is a source in its own right,
+      // not only a mixing ingredient; entropy-and-strength.md: "256 bits by
+      // definition"). No manual entropy means there is nothing to XOR
+      // against, so the requested number of fresh bytes is used directly
+      // rather than hashed — hashing CSPRNG output would not add security
+      // and would contradict that section's literal description.
+      if (session.csprngBytes.length < targetBytes) {
+        throw new Error(`Entropy Lab: need ${targetBytes} CSPRNG bytes for a ${targetBits}-bit CSPRNG-only draw; have ${session.csprngBytes.length}. Draw more CSPRNG bytes, or record some manual (dice/coin/card/hex) entropy to mix instead.`);
+      }
+      var direct = session.csprngBytes.slice(0, targetBytes);
+      session.csprngBytes = session.csprngBytes.slice(targetBytes);
+      return direct;
+    }
+
+    // Mixed path. The manual side must independently reach the target
+    // *before* CSPRNG is allowed to help — defense in depth, so a
+    // compromised/backdoored CSPRNG cannot pull security below the target
+    // even though it also contributes to the final output (ADR-0022).
+    var available = guaranteedBits(session);
+    if (available < targetBits) {
+      throw new Error(`Entropy Lab: only ${available} guaranteed manual bits collected; ${targetBits} are required before mixing. Keep collecting, or clear manual entropy to use a CSPRNG-only draw instead.`);
+    }
     if (!noble || typeof noble.sha256 !== 'function') {
       throw new Error('Entropy Lab: SHA-256 is unavailable; refusing to mix without it.');
     }
-    var available = guaranteedBits(session);
-    if (available < targetBits) {
-      throw new Error(`Entropy Lab: only ${available} guaranteed bits collected; ${targetBits} are required. Keep collecting before mixing.`);
-    }
-    var manualBytes = manualEntropyBytes(session);
     if (session.csprngBytes.length < manualBytes.length) {
       throw new Error(`Entropy Lab: need at least ${manualBytes.length} CSPRNG bytes to XOR against manual entropy; have ${session.csprngBytes.length}. Draw more CSPRNG bytes.`);
     }
     var csprngSlice = session.csprngBytes.slice(0, manualBytes.length);
     var xored = xorBytes(manualBytes, csprngSlice);
-
-    var targetBytes = targetBits / 8;
-    var output = new Uint8Array(targetBytes);
-    var filled = 0;
-    var counter = 0;
-    while (filled < targetBytes) {
-      var block = noble.sha256(concatBytes(uint32BE(counter), xored));
-      var take = Math.min(block.length, targetBytes - filled);
-      output.set(block.subarray(0, take), filled);
-      filled += take;
-      counter += 1;
-    }
+    // A single SHA-256 block is 32 bytes, which already covers the largest
+    // valid target (256 bits = 32 bytes), so the digest is truncated
+    // directly rather than expanded — matching the literal
+    // SHA-256(manual XOR csprng) formula in entropy-and-strength.md and
+    // first-wallet.md, with no block-counter construction of our own.
+    var digest = noble.sha256(xored);
+    var output = new Uint8Array(digest.slice(0, targetBytes));
+    session.csprngBytes = session.csprngBytes.slice(manualBytes.length);
     return output;
   }
 
@@ -355,10 +425,12 @@
     addDiceBase6: addDiceBase6,
     addHexNibble: addHexNibble,
     addCard: addCard,
+    startNewCardShuffle: startNewCardShuffle,
     addCsprngBytes: addCsprngBytes,
     guaranteedBits: guaranteedBits,
     diceGuaranteedBits: diceGuaranteedBits,
     cardGuaranteedBits: cardGuaranteedBits,
+    csprngGuaranteedBits: csprngGuaranteedBits,
     manualEntropyBytes: manualEntropyBytes,
     mix: mix,
     // Exposed for testing against independently-computed vectors only; not

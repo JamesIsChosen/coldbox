@@ -55,7 +55,7 @@ __COLDBOX_COLD_STYLES__
     </section>
     <section id="cold-entropy-lab" aria-label="Entropy Lab">
       <p class="eyebrow">Entropy Lab / P1.1</p>
-      <p id="cold-entropy-lab-help">Collect entropy from dice, coin flips, cards, or typed hex, then mix it with fresh CSPRNG bytes. Neither source alone can determine the result.</p>
+      <p id="cold-entropy-lab-help">Collect entropy from dice, coin flips, cards, or typed hex, then mix it with fresh CSPRNG bytes — neither source alone can determine the result. Recording no dice/coin/card/hex entropy at all is also supported: mixing then falls back to a direct CSPRNG-only draw, instant but without the manual source's defense-in-depth.</p>
       <div id="cold-entropy-lab-inputs">
         <fieldset id="cold-entropy-dice">
           <legend>Dice</legend>
@@ -75,7 +75,8 @@ __COLDBOX_COLD_STYLES__
           <label id="cold-entropy-card-label" for="cold-entropy-card-select">Card drawn</label>
           <select id="cold-entropy-card-select" disabled></select>
           <button id="cold-entropy-card-add" type="button" disabled>Add card</button>
-          <p id="cold-entropy-card-help">Drawn cards cannot repeat this session; a full 52-card deck contributes about 225 bits.</p>
+          <button id="cold-entropy-card-shuffle" type="button" disabled>Start new shuffle</button>
+          <p id="cold-entropy-card-help">A card cannot repeat within a shuffle; a full 52-card shuffle contributes about 225 bits. Once every card is drawn, start a new shuffle to keep going — for example, two shuffles for a 256-bit target — without resetting what you've already collected.</p>
         </fieldset>
         <fieldset id="cold-entropy-hex">
           <legend>Hex</legend>
@@ -90,7 +91,7 @@ __COLDBOX_COLD_STYLES__
         </fieldset>
       </div>
       <button id="cold-entropy-undo" type="button" disabled>Undo last</button>
-      <p id="cold-entropy-meter" role="status" aria-live="polite" data-guaranteed-bits="0">Collected: 0 guaranteed bits.</p>
+      <p id="cold-entropy-meter" role="status" aria-live="polite" data-guaranteed-bits="0" data-csprng-bits="0">Collected: 0 guaranteed bits from dice/coins/cards/hex, plus 0 fresh CSPRNG bits.</p>
       <div id="cold-entropy-mix">
         <label id="cold-entropy-target-label" for="cold-entropy-target">Output size</label>
         <select id="cold-entropy-target" disabled>

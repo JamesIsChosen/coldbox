@@ -43,6 +43,7 @@ __COLDBOX_CAPABILITIES__
   var entropyCoinTails = document.getElementById('cold-entropy-coin-tails');
   var entropyCardSelect = document.getElementById('cold-entropy-card-select');
   var entropyCardAdd = document.getElementById('cold-entropy-card-add');
+  var entropyCardShuffleButton = document.getElementById('cold-entropy-card-shuffle');
   var entropyHexInput = document.getElementById('cold-entropy-hex-input');
   var entropyHexAdd = document.getElementById('cold-entropy-hex-add');
   var entropyCsprngDraw = document.getElementById('cold-entropy-csprng-draw');
@@ -122,19 +123,37 @@ __COLDBOX_CAPABILITIES__
   // gates vault creation (entropyLabReady below). All accumulation and mixing
   // logic lives in src/cold/entropy-lab.js; this section only wires the DOM.
 
-  function populateCardOptions() {
-    if (!entropyCardSelect) {
+  function cardLabel(cardId) {
+    var rankIndex = cardId % CARD_RANKS.length;
+    var suitIndex = Math.floor(cardId / CARD_RANKS.length);
+    return CARD_RANKS[rankIndex] + CARD_SUITS[suitIndex];
+  }
+
+  // Rebuilds the <select> from entropySession.cardRemaining every time,
+  // rather than incrementally adding/removing individual <option> elements.
+  // A review finding on the first version of this feature found that undo
+  // restored the session's internal state correctly but left a previously
+  // drawn card's <option> permanently missing from the selector, because
+  // draws removed options directly while undo only knew how to reverse the
+  // logic-layer accumulator. Rebuilding from the authoritative session state
+  // on every change (draw, undo, reshuffle) makes the two impossible to
+  // desync — there is no incremental option-list state to drift.
+  function refreshCardOptions() {
+    if (!entropyCardSelect || !entropySession) {
       return;
     }
+    var previousValue = entropyCardSelect.value;
     entropyCardSelect.textContent = '';
-    for (var suitIndex = 0; suitIndex < CARD_SUITS.length; suitIndex += 1) {
-      for (var rankIndex = 0; rankIndex < CARD_RANKS.length; rankIndex += 1) {
-        var cardId = suitIndex * CARD_RANKS.length + rankIndex;
-        var option = document.createElement('option');
-        option.value = String(cardId);
-        option.textContent = CARD_RANKS[rankIndex] + CARD_SUITS[suitIndex];
-        entropyCardSelect.appendChild(option);
-      }
+    var remaining = entropySession.cardRemaining.slice().sort(function (a, b) { return a - b; });
+    for (var i = 0; i < remaining.length; i += 1) {
+      var cardId = remaining[i];
+      var option = document.createElement('option');
+      option.value = String(cardId);
+      option.textContent = cardLabel(cardId);
+      entropyCardSelect.appendChild(option);
+    }
+    if (remaining.indexOf(Number(previousValue)) !== -1) {
+      entropyCardSelect.value = previousValue;
     }
   }
 
@@ -162,8 +181,11 @@ __COLDBOX_CAPABILITIES__
       return;
     }
     var bits = entropyLab.guaranteedBits(entropySession);
+    var csprngBits = entropyLab.csprngGuaranteedBits(entropySession);
     entropyMeter.setAttribute('data-guaranteed-bits', String(bits));
-    entropyMeter.textContent = 'Collected: ' + bits + ' guaranteed bit' + (bits === 1 ? '' : 's') + '.';
+    entropyMeter.setAttribute('data-csprng-bits', String(csprngBits));
+    entropyMeter.textContent = 'Collected: ' + bits + ' guaranteed bit' + (bits === 1 ? '' : 's')
+      + ' from dice/coins/cards/hex, plus ' + csprngBits + ' fresh CSPRNG bit' + (csprngBits === 1 ? '' : 's') + '.';
   }
 
   function updateEntropyLabControls() {
@@ -180,12 +202,25 @@ __COLDBOX_CAPABILITIES__
         controls[index].disabled = !ready;
       }
     }
+    if (entropyCardShuffleButton) {
+      entropyCardShuffleButton.disabled = !ready || !entropySession || entropySession.cardRemaining.length !== 0;
+    }
+    // Any change to the recorded entropy invalidates a previously displayed
+    // mix result — a review finding on the first version of this feature
+    // found that adding more entropy or changing the target size after
+    // mixing left the old, no-longer-current output on screen. This
+    // function runs after every add/undo/CSPRNG-draw, so clearing here
+    // covers all of them from one place rather than each call site
+    // separately (and separately again wherever a call site might be added
+    // later).
+    setEntropyMixOutput(null);
     if (!ready) {
       return;
     }
     if (entropyUndoButton) {
       entropyUndoButton.disabled = entropySession.history.length === 0;
     }
+    refreshCardOptions();
     updateEntropyMeter();
     updateEntropyMixStatus();
   }
@@ -195,14 +230,23 @@ __COLDBOX_CAPABILITIES__
       return;
     }
     var targetBits = Number(entropyTargetSelect.value);
-    var available = entropyLab.guaranteedBits(entropySession);
-    var manualByteLength = entropyLab.manualEntropyBytes(entropySession).length;
-    if (available < targetBits) {
-      entropyMixStatus.textContent = 'Collected ' + available + ' of ' + targetBits + ' guaranteed bits needed.';
+    var targetBytes = targetBits / 8;
+    var manualBytes = entropyLab.manualEntropyBytes(entropySession);
+    if (manualBytes.length === 0) {
+      if (entropySession.csprngBytes.length < targetBytes) {
+        entropyMixStatus.textContent = 'No manual entropy recorded. Need ' + targetBytes + ' fresh CSPRNG bytes for a CSPRNG-only draw; have ' + entropySession.csprngBytes.length + '.';
+      } else {
+        entropyMixStatus.textContent = 'Ready for a CSPRNG-only ' + targetBits + '-bit draw (no manual entropy recorded — record dice/coin/card/hex entropy first to mix instead).';
+      }
       return;
     }
-    if (entropySession.csprngBytes.length < manualByteLength) {
-      entropyMixStatus.textContent = 'Need ' + manualByteLength + ' CSPRNG bytes to mix against; have ' + entropySession.csprngBytes.length + '.';
+    var available = entropyLab.guaranteedBits(entropySession);
+    if (available < targetBits) {
+      entropyMixStatus.textContent = 'Collected ' + available + ' of ' + targetBits + ' guaranteed manual bits needed before mixing.';
+      return;
+    }
+    if (entropySession.csprngBytes.length < manualBytes.length) {
+      entropyMixStatus.textContent = 'Need ' + manualBytes.length + ' CSPRNG bytes to mix against; have ' + entropySession.csprngBytes.length + '.';
       return;
     }
     entropyMixStatus.textContent = 'Ready to mix ' + targetBits + ' bits.';
@@ -220,7 +264,7 @@ __COLDBOX_CAPABILITIES__
     if (!entropyLab || !entropySession) {
       return;
     }
-    populateCardOptions();
+    refreshCardOptions();
 
     if (entropyDiceBase6Add) {
       entropyDiceBase6Add.addEventListener('click', function () {
@@ -274,9 +318,19 @@ __COLDBOX_CAPABILITIES__
           }
           return;
         }
-        var drawnOption = entropyCardSelect.querySelector('option[value="' + cardId + '"]');
-        if (drawnOption) {
-          drawnOption.remove();
+        updateEntropyLabControls();
+      });
+    }
+
+    if (entropyCardShuffleButton) {
+      entropyCardShuffleButton.addEventListener('click', function () {
+        try {
+          entropyLab.startNewCardShuffle(entropySession);
+        } catch (error) {
+          if (entropyMixStatus) {
+            entropyMixStatus.textContent = error.message;
+          }
+          return;
         }
         updateEntropyLabControls();
       });
@@ -334,7 +388,10 @@ __COLDBOX_CAPABILITIES__
     }
 
     if (entropyTargetSelect) {
-      entropyTargetSelect.addEventListener('change', updateEntropyMixStatus);
+      entropyTargetSelect.addEventListener('change', function () {
+        setEntropyMixOutput(null);
+        updateEntropyMixStatus();
+      });
     }
 
     if (entropyMixButton) {
