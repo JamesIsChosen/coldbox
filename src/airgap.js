@@ -207,13 +207,57 @@
     }
   }
 
+  // F1 remediation (P0.21 review): a provider can already be sitting at
+  // window.ethereum by the time this guard installs - an extension that
+  // injected before Coldbox's own script ran. That is itself the isolation
+  // failure ADR-0020 requires full lockdown for, not merely a thing to
+  // silently overwrite. Detection reads only the property descriptor, never
+  // the provider object itself: a data descriptor's `value` is inspected
+  // without a call, and an accessor (get/set) descriptor - which could only
+  // belong to something other than Coldbox, since this runs before Coldbox
+  // installs its own - is treated as present without invoking the getter,
+  // so no extension-controlled code ever runs during detection.
+  function inspectExistingValue(target, key) {
+    var current = target;
+    while (current) {
+      if (Object.prototype.hasOwnProperty.call(current, key)) {
+        var descriptor;
+        try {
+          descriptor = Object.getOwnPropertyDescriptor(current, key);
+        } catch (error) {
+          return { present: true };
+        }
+        if (!descriptor) {
+          return { present: true };
+        }
+        if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+          return { present: descriptor.value !== undefined };
+        }
+        return { present: true };
+      }
+      try {
+        current = Object.getPrototypeOf(current);
+      } catch (error) {
+        return { present: true };
+      }
+    }
+    return { present: false };
+  }
+
   function defineProviderBlocked(target, key, name, onAttempt) {
+    var existing = inspectExistingValue(target, key);
+    if (existing.present && typeof onAttempt === 'function') {
+      onAttempt(name);
+    }
     var owner = findPropertyOwner(target, key);
     var installedOnTarget = defineOwnProviderAccessor(target, key, name, onAttempt);
     var installedOnOwner = owner === target
       ? installedOnTarget
       : defineOwnProviderAccessor(owner, key, name, onAttempt);
-    return installedOnTarget && installedOnOwner;
+    return {
+      installed: installedOnTarget && installedOnOwner,
+      preexisting: existing.present
+    };
   }
 
   function installProviderAnnouncementGuard(target, onAttempt) {
@@ -236,10 +280,11 @@
   }
 
   function neuterProviders(onAttempt) {
+    var ethereumResult = defineProviderBlocked(global, 'ethereum', 'window.ethereum', onAttempt);
     var results = [
       {
         name: 'window.ethereum',
-        installed: defineProviderBlocked(global, 'ethereum', 'window.ethereum', onAttempt)
+        installed: ethereumResult.installed
       },
       {
         name: PROVIDER_ANNOUNCEMENT_EVENT,
@@ -251,6 +296,12 @@
         return result.name;
       }),
       installed: results.every(function (result) { return result.installed; }),
+      // F1 remediation (P0.21 review): true if window.ethereum already held
+      // a provider when this guard installed. onAttempt() has already fired
+      // for this above (via defineProviderBlocked), driving the isolation-
+      // failure lockdown; callers must also treat this as blocking readiness
+      // even though the guard itself installed successfully.
+      preexisting: ethereumResult.preexisting,
       primitives: PROVIDER_PRIMITIVES.slice()
     };
   }

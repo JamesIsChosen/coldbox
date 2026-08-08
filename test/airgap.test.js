@@ -307,6 +307,70 @@ test('neuterProviders reports an installation failure when window.ethereum canno
   assert.equal(result.failed[0], 'window.ethereum');
 });
 
+test('neuterProviders treats a provider already present at install time as an isolation violation (F1 regression)', () => {
+  // P0.21 review, F1: an extension that injected before Coldbox's own
+  // script runs leaves window.ethereum already populated by the time
+  // neuterProviders() installs. That must be reported as an isolation
+  // violation - not silently overwritten while installation reports plain
+  // success - and detection must never call into the provider object
+  // itself (no invoking provider-controlled methods).
+  const network = createProviderGlobal();
+  let requestCalls = 0;
+  const preexistingProvider = {
+    isMetaMask: true,
+    request: function () {
+      requestCalls += 1;
+      return Promise.resolve();
+    }
+  };
+  Object.defineProperty(network.window, 'ethereum', {
+    configurable: true,
+    enumerable: true,
+    value: preexistingProvider,
+    writable: true
+  });
+  const { api } = loadAirgap({ windowObject: network.window });
+  const attempts = [];
+  const result = api.neuterProviders((name) => attempts.push(name));
+
+  // Reported as a violation at install time, before any assignment.
+  assert.equal(attempts.includes('window.ethereum'), true, 'a preexisting provider was not reported');
+  assert.equal(result.preexisting, true);
+  // The guard itself still installs successfully over the top of it.
+  assert.equal(result.installed, true);
+  assert.equal(result.failed.length, 0);
+  // The provider is neutered (reads back as undefined) and, critically, was
+  // never called into during detection or replacement.
+  assert.equal(network.window.ethereum, undefined);
+  assert.equal(requestCalls, 0, 'detection must not invoke methods on the provider it is inspecting');
+});
+
+test('neuterProviders does not report a violation when window.ethereum is undefined (the default, no-extension case)', () => {
+  // Negative counterpart to the F1 regression above: createProviderGlobal()'s
+  // default fixture (ethereum defined as undefined on the prototype, the
+  // "no wallet extension installed" case every other test in this file
+  // relies on) must not trip the isolation-violation path by itself.
+  const defaultCase = createProviderGlobal();
+  const { api: defaultApi } = loadAirgap({ windowObject: defaultCase.window });
+  const defaultAttempts = [];
+  const defaultResult = defaultApi.neuterProviders((name) => defaultAttempts.push(name));
+  assert.equal(defaultResult.preexisting, false);
+  assert.equal(defaultAttempts.length, 0);
+
+  const explicitUndefined = createProviderGlobal();
+  Object.defineProperty(explicitUndefined.window, 'ethereum', {
+    configurable: true,
+    enumerable: true,
+    value: undefined,
+    writable: true
+  });
+  const { api: explicitApi } = loadAirgap({ windowObject: explicitUndefined.window });
+  const explicitAttempts = [];
+  const explicitResult = explicitApi.neuterProviders((name) => explicitAttempts.push(name));
+  assert.equal(explicitResult.preexisting, false);
+  assert.equal(explicitAttempts.length, 0);
+});
+
 test('neuterProviders reports an installation failure when addEventListener is unavailable', () => {
   const network = createProviderGlobal();
   delete network.window.addEventListener;

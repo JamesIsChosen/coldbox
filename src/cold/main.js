@@ -718,7 +718,14 @@ __COLDBOX_CAPABILITIES__
     // injected-provider surface (window.ethereum, eip6963:announceProvider)
     // that has no CSP in front of it at all (ADR-0020).
     var providerNeutering = airgap.neuterProviders(recordProviderIsolationViolation);
-    providerNeuteringInstalled = providerNeutering.installed;
+    // F1 remediation (P0.21 review): a provider present before this guard
+    // installed is an isolation failure even though the guard itself
+    // installs successfully over it - recordProviderIsolationViolation()
+    // has already fired synchronously inside neuterProviders() above and
+    // set the isolation-specific alarm text/lockdown state. Readiness must
+    // stay blocked either way, but the generic "could not be installed"
+    // message below must not fire and overwrite that more specific text.
+    providerNeuteringInstalled = providerNeutering.installed && !providerNeutering.preexisting;
     document.documentElement.setAttribute(
       'data-provider-neutering',
       providerNeuteringInstalled ? 'installed' : 'failed'
@@ -727,7 +734,7 @@ __COLDBOX_CAPABILITIES__
       'data-provider-neutering-failures',
       providerNeutering.failed.join(',')
     );
-    if (!providerNeuteringInstalled) {
+    if (!providerNeutering.installed) {
       setAirgapFailure('The cold realm injected-provider guard could not be installed. Vault operations are refused.');
     }
     if (capabilityReport.randomValues !== true) {

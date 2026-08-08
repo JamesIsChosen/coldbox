@@ -318,6 +318,40 @@ function createMissingRandomnessFixture() {
   };
 }
 
+// F1 remediation (P0.21 review): simulates a wallet extension that injected
+// window.ethereum into the cold realm before Coldbox's own bootstrap script
+// runs its guard - the exact timing the review found untested. Patches the
+// cold-realm source (not just injects via addInitScript) so the assignment
+// executes as the very first statement inside the cold IIFE, strictly
+// before neuterProviders() is ever called.
+function createPreexistingProviderFixture() {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-browser-preexisting-provider-'));
+  copyBuildInputsInto(temporaryRoot);
+  const coldMainPath = path.join(temporaryRoot, 'src', 'cold', 'main.js');
+  const original = fs.readFileSync(coldMainPath, 'utf8');
+  const injected = original.replace(
+    "(function () {\n  'use strict';\n",
+    "(function () {\n  'use strict';\n"
+      + "  // P0.21 review fixture: simulates an extension that injected a\n"
+      + "  // provider before this script's own guard installs.\n"
+      + "  window.ethereum = { isMetaMask: true, request: function () {\n"
+      + "    throw new Error('P0.21 fixture: provider.request should never be called by Coldbox');\n"
+      + "  } };\n"
+  );
+  assert.notEqual(injected, original, 'Preexisting-provider fixture did not alter the cold bootstrap script');
+  fs.writeFileSync(coldMainPath, injected, 'utf8');
+  const result = spawnSync(process.execPath, [path.join(temporaryRoot, 'scripts', 'build.js')], {
+    cwd: temporaryRoot,
+    encoding: 'utf8',
+    env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' }
+  });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  return {
+    path: path.join(temporaryRoot, 'build', 'coldbox.html'),
+    temporaryRoot
+  };
+}
+
 async function openPage(browser, file) {
   const page = await browser.newPage();
   const harness = await createHarness(page);
@@ -1042,6 +1076,32 @@ async function verifyProviderNeutering(browser, engine) {
   }
 }
 
+async function verifyPreexistingProviderLockdown(browser, engine) {
+  // F1 remediation (P0.21 review): a provider present before Coldbox's own
+  // guard installs - the timing an injected extension would actually use -
+  // must be treated as an isolation failure and block readiness entirely,
+  // not be silently neutered while bootstrap reports success.
+  const fixture = createPreexistingProviderFixture();
+  try {
+    const { page } = await openPage(browser, fixture.path);
+    try {
+      await page.locator('#app[data-handshake-state="failed"]').waitFor({ state: 'visible', timeout: 5000 });
+      assert.equal(await page.locator('#app').getAttribute('data-vault-operations'), 'refused');
+      assert.equal(await page.locator('#app').getAttribute('data-lockdown-state'), 'full');
+      assert.notEqual(
+        await page.locator('#app').getAttribute('data-cold-state'),
+        'ready',
+        `${engine}: a preexisting provider must not let the cold realm reach ready`
+      );
+      console.log(`${engine}: a provider present before cold bootstrap triggered full lockdown instead of reaching ready`);
+    } finally {
+      await closePage(page);
+    }
+  } finally {
+    fs.rmSync(fixture.temporaryRoot, { force: true, recursive: true });
+  }
+}
+
 async function verifyMissingRandomnessLockdown(browser, engine) {
   const fixture = createMissingRandomnessFixture();
   try {
@@ -1695,6 +1755,7 @@ async function run() {
       await verifyBuiltFile(browser, engine);
       await verifyUnlockedRuntimeHealthLockdown(browser, engine);
       await verifyProviderNeutering(browser, engine);
+      await verifyPreexistingProviderLockdown(browser, engine);
       await verifyPanicHide(browser, engine);
       await verifyColdRealmFailure(browser, engine);
       await verifyColdRealmTimeout(browser, engine);
