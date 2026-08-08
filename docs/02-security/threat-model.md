@@ -115,6 +115,10 @@ Monotonic save counter, generational filenames, prominent warning when opening a
 
 Balance lookups are opt-in per address, never automatic, default off, with self-hosted node support and Tor guidance. xpub scanning derives addresses locally and sends only the resulting addresses — the xpub itself never leaves the device.
 
+### A single rigged or backdoored entropy source
+
+Entropy Lab (P1.1) never lets one source alone decide the seed's entropy. Mixing mode combines manually-recorded entropy (dice, coins, cards, hex) with fresh `crypto.getRandomValues` output via XOR, then a hash — a weighted die and a compromised CSPRNG would both have to fail at once. Guaranteed-bit accounting is a conservative floor computed from the size of the possibility space, never from the sampled value, so a session cannot claim more bits than it actually delivered. See [entropy-and-strength.md](../04-reference/entropy-and-strength.md) for the full accounting and [ADR-0022](../05-development/adr/0022-entropy-lab-mixing.md) for the construction. Bias *detection* on the manual source itself is the Entropy Health Meter (P1.2), not yet built.
+
 ---
 
 ## Not defended
