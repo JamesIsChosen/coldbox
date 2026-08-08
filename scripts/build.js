@@ -26,6 +26,7 @@ const qrVendorTarball = path.join(
   'package.tgz'
 );
 const vendorManifestPath = path.join(projectRoot, 'vendor', 'vendor-manifest.json');
+const licensePath = path.join(projectRoot, 'LICENSE');
 
 // The self-hash meta tag cannot contain the hash of a document that includes
 // its own final value, so the build hashes the document with this fixed,
@@ -71,6 +72,22 @@ function readVendorManifestLibraries() {
       url: artifact.url
     }))
     .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+}
+
+// P0.20 - AGPLv3 Section 5(d) requires an interactive UI to display
+// Appropriate Legal Notices, including "how to view a copy of [the]
+// License". The embedded copy must be byte-identical to the repository's
+// own LICENSE file (test/legal-notices.test.js asserts this), so this reads
+// the file's raw bytes with no normalization of any kind - not even the
+// BOM-strip / CRLF-to-LF pass readSource() applies to every other source
+// file, since that pass could quietly turn "byte-identical" into "identical
+// after this build script's own opinion about line endings", defeating the
+// point of the test. Read as UTF-8 text (LICENSE is spec'd - see the
+// AGPLv3 text itself - to be ASCII, so this is lossless in practice) so it
+// can be embedded as a JSON string literal like every other provenance
+// value.
+function readLicenseText() {
+  return fs.readFileSync(licensePath, 'utf8');
 }
 
 // Deliberately not a wall-clock build timestamp - see build.md's "no
@@ -223,6 +240,11 @@ function assemble() {
     '__COLDBOX_HELP_CONTENT__',
     jsonScriptLiteral(readHelpContent())
   );
+  mainScript = injectOnce(
+    mainScript,
+    '__COLDBOX_LICENSE_TEXT__',
+    jsonScriptLiteral(readLicenseText())
+  );
   const warmStyles = injectOnce(
     readSource('styles.css'),
     '__COLDBOX_FONT_FACES__',
@@ -258,7 +280,8 @@ function assemble() {
     '__COLDBOX_FONT_FACES__',
     '__COLDBOX_FRAME_SCRIPT_HASHES__',
     '__COLDBOX_FRAME_STYLE_HASHES__',
-    '__COLDBOX_HELP_CONTENT__'
+    '__COLDBOX_HELP_CONTENT__',
+    '__COLDBOX_LICENSE_TEXT__'
   ]) {
     if (document.includes(placeholder)) {
       throw new Error(`Unresolved source placeholder in assembled document: ${placeholder}`);

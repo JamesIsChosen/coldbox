@@ -123,6 +123,8 @@ function copyBuildInputsInto(temporaryRoot, { includeGit = false } = {}) {
       { recursive: true }
     );
   }
+  // P0.20: build.js reads the repository LICENSE file directly.
+  fs.copyFileSync(path.join(projectRoot, 'LICENSE'), path.join(temporaryRoot, 'LICENSE'));
   if (includeGit) {
     // P0.16 F4 fallout: scripts/build.js derives the embedded build date from
     // `git log -- src scripts vendor` (see ADR-0015's 2026-08-06 amendment).
@@ -1363,6 +1365,68 @@ async function verifyProvenancePanel(browser, engine) {
   }
 }
 
+async function verifyLegalNotices(browser, engine) {
+  // P0.20: AGPLv3 §5(d) requires an interactive UI to display Appropriate
+  // Legal Notices, and the roadmap's own acceptance criterion is that they
+  // are "reachable from the app's own UI without a network connection and
+  // without leaving the file" - a browser-only property this Node-side
+  // test suite (test/legal-notices.test.js) cannot itself observe, since it
+  // only inspects the static built markup. This check drives a real page,
+  // with the network disabled, to confirm a user can actually reach and
+  // read every element §0 requires.
+  const { page } = await openPage(browser, buildPath);
+  try {
+    // Real offline emulation, not just "the CSP would have blocked it" -
+    // belt and suspenders for "reachable... without a network connection".
+    // Matches the pattern used elsewhere in this harness (e.g.
+    // verifyBuiltFile's airgap-banner checks above).
+    await page.context().setOffline(true);
+
+    await page.locator('#nav-rail a[data-route="reference"]').click();
+    await page.locator('#page-reference:not([hidden])').waitFor({ state: 'visible' });
+
+    const noticesSection = page.locator('#provenance-legal-notices');
+    await noticesSection.waitFor({ state: 'visible' });
+    const noticesText = await noticesSection.textContent();
+
+    assert.match(noticesText, /Copyright \(C\) \d{4} James Kent/, `${engine}: copyright notice must be visible`);
+    assert.match(noticesText, /ABSOLUTELY NO WARRANTY/i, `${engine}: no-warranty statement must be visible`);
+    assert.match(
+      noticesText,
+      /convey.{0,80}under the same licence|redistribute.{0,80}under the same licence/i,
+      `${engine}: statement that recipients may convey the work under the same licence must be visible`
+    );
+
+    const spdxText = (await page.locator('#provenance-license-spdx').textContent()).trim();
+    assert.equal(spdxText, 'AGPL-3.0-only', `${engine}: SPDX identifier must read exactly AGPL-3.0-only`);
+
+    // The full licence text must be reachable from here - via the disclosure
+    // widget - without a network request and without navigating away from
+    // this document. It must already be present in the DOM (not fetched on
+    // expand), so also assert its content before ever opening the <details>.
+    const licensePre = page.locator('#provenance-license-text');
+    const licenseTextBeforeExpand = await licensePre.textContent();
+    assert.match(
+      licenseTextBeforeExpand,
+      /GNU AFFERO GENERAL PUBLIC LICENSE/,
+      `${engine}: full licence text must already be present in the DOM before the disclosure is opened`
+    );
+    assert.match(licenseTextBeforeExpand, /TERMS AND CONDITIONS/);
+    assert.match(licenseTextBeforeExpand, /END OF TERMS AND CONDITIONS/);
+
+    // Now actually open it via the UI, as a real user would, and confirm it
+    // becomes visible (not just present-but-hidden in a way no user could
+    // reach).
+    await page.locator('#provenance-license-details summary').click();
+    await page.locator('#provenance-license-details[open]').waitFor({ state: 'attached' });
+    await licensePre.waitFor({ state: 'visible' });
+
+    console.log(`${engine}: Appropriate Legal Notices (copyright, no-warranty, convey-under-licence, SPDX identifier, full licence text) verified reachable offline with networking disabled`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyHelpFramework(browser, engine) {
   // P0.17: the Learn route's three-depth switcher, offline search, and
   // contextual '?' help. Per the roadmap's 🌐 marker, depth rendering and
@@ -1387,17 +1451,23 @@ async function verifyHelpFramework(browser, engine) {
     await page.locator('#capability-panel[data-capability-state="ready"], #capability-panel[data-capability-state="ready-with-warnings"]').waitFor({ state: 'visible', timeout: 5000 });
 
     const settledButtonCount = await page.locator('button.help-context-button[data-help-topic]').count();
-    assert.equal(settledButtonCount, 5, `${engine}: all five contextual help buttons must survive app initialization, found ${settledButtonCount}`);
+    assert.equal(settledButtonCount, 6, `${engine}: all six contextual help buttons must survive app initialization, found ${settledButtonCount}`);
 
-    // Exercise every one of the five mappings, not just two of them - each
+    // Exercise every one of the six mappings, not just two of them - each
     // must land on real, rendered glossary content, proving the button
     // both still exists in the settled DOM and still resolves correctly.
+    // P0.20 added the sixth (glossary:appropriate-legal-notices) inside the
+    // same Provenance panel as glossary:provenance-panel - it needs its own
+    // entry here, not just a bumped count, or a future R2-F2-style bug that
+    // wipes the new button's <h2> content would go undetected exactly the
+    // way the reviewer's F1 finding described.
     const contextualHelpMappings = [
       { topic: 'glossary:cold-realm-warm-shell', anchorPrefix: 'help-glossary-cold-realm-warm-shell', route: 'dashboard' },
       { topic: 'glossary:airgapped', anchorPrefix: 'help-glossary-airgapped', route: 'dashboard' },
       { topic: 'glossary:capability-self-check', anchorPrefix: 'help-glossary-capability-self-check', route: 'dashboard' },
       { topic: 'glossary:vault', anchorPrefix: 'help-glossary-vault', route: 'vault' },
-      { topic: 'glossary:provenance-panel', anchorPrefix: 'help-glossary-provenance-panel', route: 'reference' }
+      { topic: 'glossary:provenance-panel', anchorPrefix: 'help-glossary-provenance-panel', route: 'reference' },
+      { topic: 'glossary:appropriate-legal-notices', anchorPrefix: 'help-glossary-appropriate-legal-notices', route: 'reference' }
     ];
     for (const mapping of contextualHelpMappings) {
       await page.locator(`#nav-rail a[data-route="${mapping.route}"]`).click();
@@ -1556,6 +1626,7 @@ async function run() {
       await verifyReusableAssertions(browser, engine);
       await verifyKeyfileUiAndRegressions(browser, engine);
       await verifyProvenancePanel(browser, engine);
+      await verifyLegalNotices(browser, engine);
       await verifyHelpFramework(browser, engine);
     } finally {
       await browser.close();

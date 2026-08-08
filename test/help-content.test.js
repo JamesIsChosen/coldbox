@@ -313,6 +313,10 @@ test('a missing depth block is reported on stderr as a warning, not a build fail
     for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
       fs.cpSync(path.join(projectRoot, directory), path.join(root, directory), { recursive: true });
     }
+    // P0.20: build.js reads the repository LICENSE file directly; every
+    // isolated build root needs a copy or a build expected to succeed fails
+    // with ENOENT before reaching this test's actual assertions.
+    fs.copyFileSync(path.join(projectRoot, 'LICENSE'), path.join(root, 'LICENSE'));
     fs.writeFileSync(
       path.join(root, 'docs', '03-guides', 'zzz-fixture-no-depth-blocks.md'),
       '# Fixture guide with no depth blocks\n\nPlain prose only, deliberately, for this test.\n',
@@ -346,6 +350,10 @@ test('an unterminated ::: block in a guide fails the build closed with a non-zer
     for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
       fs.cpSync(path.join(projectRoot, directory), path.join(root, directory), { recursive: true });
     }
+    // P0.20: build.js reads the repository LICENSE file directly; every
+    // isolated build root needs a copy or a build expected to succeed fails
+    // with ENOENT before reaching this test's actual assertions.
+    fs.copyFileSync(path.join(projectRoot, 'LICENSE'), path.join(root, 'LICENSE'));
     const guidePath = path.join(root, 'docs', '03-guides', 'first-wallet.md');
     fs.appendFileSync(guidePath, '\n::: plain\nNever closed.\n', 'utf8');
     const result = spawnSync(process.execPath, [path.join(root, 'scripts', 'build.js')], {

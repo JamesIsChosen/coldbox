@@ -31,6 +31,48 @@ const hashPath = path.join(projectRoot, 'build', 'coldbox.html.sha256');
 // flagged.
 const NO_MACHINE_PATHS = /[A-Za-z]:\\(?!u003c|u003e|u0026)|\/Users\/|\/home\//;
 
+// P0.20: PROVENANCE_LICENSE_TEXT is the first embedded value that is raw
+// multi-line prose rather than single-line HTML, so it is the first value
+// whose JSON.stringify() encoding can legitimately contain the plain
+// control-character escape `\n` mid-sentence. The real repository LICENSE
+// has several sentences that end a line with a colon (e.g. "...supplement
+// the terms of this License with terms:\n"), which is "letter, colon,
+// backslash, n" - the same shape this check looks for, and unlike F2's
+// \u003c/\u003e/\u0026 case there is no way to extend the exclusion to
+// cover it without also blinding the check to real "C:\temp",
+// "C:\repo", "C:\node_modules"-shaped absolute paths (those are exactly as
+// plausible as this collision, so excluding bare "n"/"r"/"t" after a drive
+// letter would be a net loss of real detection power, not a fix).
+//
+// Resolved by excluding only the one substring the *whole-document* scan
+// cannot usefully evaluate - the JSON-encoded licence assignment, whose
+// escaped `\n` sequences are what collides with the drive-letter shape - and
+// separately scanning the licence text's actual, unescaped bytes (see
+// extractEmbeddedLicenseText() and its use below) with the same
+// NO_MACHINE_PATHS rule. Byte-identity to the repository's LICENSE
+// (test/legal-notices.test.js) proves the embedded text matches its input;
+// it does not prove that input is itself path-free, so this file must check
+// that independently rather than lean on identity as a substitute (P0.20
+// review F2). Once unescaped, real licence prose never produces the
+// "letter:\" + escape-sequence shape that motivated the strip in the first
+// place - that collision is an artefact of JSON-string escaping, not of the
+// text itself - so scanning the raw text directly does not reintroduce the
+// original false positive. Every other byte of the build - including the
+// surrounding assignment statement, every other embedded value, and the
+// rest of the document - is still checked in full via the strip below.
+function stripEmbeddedLicenseText(html) {
+  return html.replace(
+    /var PROVENANCE_LICENSE_TEXT = "(?:[^"\\]|\\.)*";/,
+    'var PROVENANCE_LICENSE_TEXT = "";'
+  );
+}
+
+function extractEmbeddedLicenseText(html) {
+  const match = html.match(/var PROVENANCE_LICENSE_TEXT = ("(?:[^"\\]|\\.)*");/);
+  assert.ok(match, 'built artifact must embed PROVENANCE_LICENSE_TEXT');
+  return JSON.parse(match[1]);
+}
+
 // Mirrors scripts/build.js's jsonScriptLiteral() exactly. Not imported
 // directly because build.js runs its build as top-level side effects on
 // require (it's a CLI script, not a library module) - requiring it here
@@ -79,6 +121,10 @@ function createBuildRoot() {
   for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
     fs.cpSync(path.join(projectRoot, directory), path.join(root, directory), { recursive: true });
   }
+  // P0.20: build.js now reads the repository LICENSE file directly (see
+  // readLicenseText()), so every isolated build root needs a copy or the
+  // build fails with ENOENT before assembling anything.
+  fs.copyFileSync(path.join(projectRoot, 'LICENSE'), path.join(root, 'LICENSE'));
   return root;
 }
 
@@ -118,7 +164,18 @@ test('build assembles one HTML file and emits its SHA-256 sidecar', () => {
   assert.match(html.toString('utf8'), /<title>Coldbox<\/title>/);
   assert.doesNotMatch(html.toString('utf8'), /__COLDBOX_/);
   assert.equal(sidecar, `${digest}  build/coldbox.html\n`);
-  assert.doesNotMatch(html.toString('utf8'), NO_MACHINE_PATHS);
+  // P0.20 review F2: the whole-document scan below excludes the JSON-encoded
+  // PROVENANCE_LICENSE_TEXT assignment (its escaping is what collides with
+  // NO_MACHINE_PATHS), so the licence text's actual bytes must be checked
+  // independently, unescaped, or a machine path introduced via LICENSE would
+  // pass unnoticed - which is exactly what the reviewer demonstrated. See the
+  // negative regression below for proof this still catches it.
+  assert.doesNotMatch(
+    extractEmbeddedLicenseText(html.toString('utf8')),
+    NO_MACHINE_PATHS,
+    'embedded licence text leaked a machine-specific path'
+  );
+  assert.doesNotMatch(stripEmbeddedLicenseText(html.toString('utf8')), NO_MACHINE_PATHS);
   assert.equal(html.includes(0x0d), false, 'generated HTML must use LF line endings');
   assert.equal(Buffer.from(sidecar, 'utf8').includes(0x0d), false, 'sidecar must use LF line endings');
 });
@@ -143,6 +200,80 @@ test('the no-machine-paths guard flags real absolute paths, including ones shape
   };
   for (const [label, text] of Object.entries(shouldNotFlag)) {
     assert.doesNotMatch(text, NO_MACHINE_PATHS, `expected not to flag: ${label}`);
+  }
+});
+
+// P0.20 review F2: the reviewer proved that appending a literal Windows path
+// to a disposable copy of LICENSE got 21/21 green under the pre-remediation
+// version of this file, because stripEmbeddedLicenseText() removed the whole
+// embedded assignment before NO_MACHINE_PATHS ever ran, and byte-identity to
+// LICENSE (test/legal-notices.test.js) says nothing about whether LICENSE
+// itself is path-free. This test reproduces that exact attack end-to-end -
+// a self-contained copy of the repository's build inputs and test suite,
+// with a machine path smuggled into LICENSE - and requires the copied
+// build.test.js to fail non-zero, not merely requires our own assertion
+// above to fire in-process. If someone reverts the extractEmbeddedLicenseText
+// check and reintroduces the blind spot, this is the test that catches it.
+test('a machine path smuggled in through LICENSE makes the build test suite fail non-zero (P0.20 review F2 negative regression)', () => {
+  const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'coldbox-license-leak-'));
+  try {
+    for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
+      fs.cpSync(path.join(projectRoot, directory), path.join(root, directory), { recursive: true });
+    }
+    const originalLicense = fs.readFileSync(path.join(projectRoot, 'LICENSE'), 'utf8');
+    const sentinelPath = String.raw`C:\Users\reviewer\coldbox\secret`;
+    fs.writeFileSync(
+      path.join(root, 'LICENSE'),
+      `${originalLicense}\nREVIEW MACHINE PATH SENTINEL: ${sentinelPath}\n`,
+      'utf8'
+    );
+
+    // A standalone check file, not a copy of this file. Copying build.test.js
+    // itself into `root/test` and running it with `node --test` would embed
+    // this very test inside the child process, which would then spawn its
+    // own child, and so on - unbounded recursive builds until the sandbox
+    // kills the process (observed: SIGKILL after ~60s during development of
+    // this test). Extracting only the two real assertions under test avoids
+    // that, while still exercising the actual build pipeline and the actual
+    // NO_MACHINE_PATHS/extractEmbeddedLicenseText logic against a real build
+    // produced from the tampered LICENSE - not a mocked or hand-simulated
+    // version of either.
+    const checkScript = [
+      "'use strict';",
+      "const assert = require('node:assert/strict');",
+      "const fs = require('node:fs');",
+      "const path = require('node:path');",
+      "const { spawnSync } = require('node:child_process');",
+      `const NO_MACHINE_PATHS = ${NO_MACHINE_PATHS.toString()};`,
+      `const projectRoot = ${JSON.stringify(root)};`,
+      "const buildScript = path.join(projectRoot, 'scripts', 'build.js');",
+      "const htmlPath = path.join(projectRoot, 'build', 'coldbox.html');",
+      "const buildResult = spawnSync(process.execPath, [buildScript], { cwd: projectRoot, encoding: 'utf8' });",
+      "assert.equal(buildResult.status, 0, `build failed: ${buildResult.stdout}\\n${buildResult.stderr}`);",
+      "const html = fs.readFileSync(htmlPath, 'utf8');",
+      "const match = html.match(/var PROVENANCE_LICENSE_TEXT = (\"(?:[^\"\\\\]|\\\\.)*\");/);",
+      "assert.ok(match, 'built artifact must embed PROVENANCE_LICENSE_TEXT');",
+      "const embeddedLicenseText = JSON.parse(match[1]);",
+      "assert.doesNotMatch(embeddedLicenseText, NO_MACHINE_PATHS, 'embedded licence text leaked a machine-specific path');"
+    ].join('\n');
+    const checkScriptPath = path.join(root, 'license-leak-check.js');
+    fs.writeFileSync(checkScriptPath, checkScript, 'utf8');
+
+    const result = spawnSync(process.execPath, [checkScriptPath], { cwd: root, encoding: 'utf8' });
+
+    assert.notEqual(
+      result.status,
+      0,
+      'expected the licence-text machine-path check to fail closed on a machine path smuggled in via ' +
+      `LICENSE, but it exited ${result.status}\n--- stdout ---\n${result.stdout}\n--- stderr ---\n${result.stderr}`
+    );
+    assert.match(
+      result.stdout + result.stderr,
+      /embedded licence text leaked a machine-specific path/,
+      'expected the failure to be the licence-text machine-path assertion, not an unrelated error'
+    );
+  } finally {
+    fs.rmSync(root, { force: true, recursive: true });
   }
 });
 

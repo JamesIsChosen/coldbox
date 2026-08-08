@@ -80,8 +80,10 @@ __COLDBOX_QR_ENCODER__
   var provenanceDropChoose = document.getElementById('provenance-drop-choose');
   var provenanceDropResult = document.getElementById('provenance-drop-result');
   var provenanceExpectedHash = document.getElementById('provenance-expected-hash');
+  var provenanceLicenseText = document.getElementById('provenance-license-text');
   var PROVENANCE_LIBRARIES = __COLDBOX_PROVENANCE_LIBRARIES__;
   var PROVENANCE_BUILD_DATE = __COLDBOX_BUILD_DATE__;
+  var PROVENANCE_LICENSE_TEXT = __COLDBOX_LICENSE_TEXT__;
   var HELP_CONTENT = __COLDBOX_HELP_CONTENT__;
   var HELP_DEPTHS = ['plain', 'working', 'technical'];
   var HELP_DEPTH_STORAGE_KEY = 'coldbox-help-depth';
@@ -951,6 +953,25 @@ __COLDBOX_QR_ENCODER__
       : 'Unknown (no source commit date was available at build time).';
   }
 
+  // P0.20: AGPLv3 §5(d) requires an interactive UI showing "how to view a
+  // copy of [the] License". The full text is embedded at build time (see
+  // scripts/build.js's readLicenseText()) rather than linked to a URL, which
+  // would be unreachable offline and would itself be an outbound network
+  // reference the CSP forbids. Rendered lazily-visible inside a native
+  // <details> disclosure so the panel isn't dominated by ~34 KB of licence
+  // text by default, but the text itself is populated on load (not on
+  // first expand) so it is present in the DOM - and therefore reachable by
+  // the browser harness and by find-in-page/screen readers - without
+  // requiring a click first.
+  function renderProvenanceLicenseText() {
+    if (!provenanceLicenseText) {
+      return;
+    }
+    provenanceLicenseText.textContent = typeof PROVENANCE_LICENSE_TEXT === 'string' && PROVENANCE_LICENSE_TEXT
+      ? PROVENANCE_LICENSE_TEXT
+      : 'Unavailable: no licence text was embedded at build time.';
+  }
+
   function setProvenanceDropResult(state, message) {
     if (!provenanceDropResult) {
       return;
@@ -1127,6 +1148,7 @@ __COLDBOX_QR_ENCODER__
     renderProvenanceCsp();
     renderProvenanceBuildDate();
     renderProvenanceExpectedHash();
+    renderProvenanceLicenseText();
   }
 
   function setCapabilityFailure(reason) {
