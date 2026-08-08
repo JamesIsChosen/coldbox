@@ -925,6 +925,34 @@ samp {
   word-break: break-word;
 }
 
+.provenance-license-details {
+  margin-top: 0.9rem;
+}
+
+.provenance-license-details summary {
+  cursor: pointer;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.provenance-license-text {
+  margin: 0.7rem 0 0;
+  padding: 0.85rem;
+  max-height: 24rem;
+  overflow-y: auto;
+  border: var(--outline-width-thin) solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .provenance-drop-zone {
   display: flex;
   align-items: center;
