@@ -18,6 +18,7 @@ function baseContext() {
     ['data-cold-state', 'ready'],
     ['data-csp-canary', 'passed'],
     ['data-runtime-neutering', 'installed'],
+    ['data-provider-neutering', 'installed'],
     ['data-capability-randomValues', 'true'],
     ['data-crypto-state', 'ready'],
     ['data-airgap-state', 'green'],
@@ -73,6 +74,7 @@ function baseContext() {
     attributes.set('data-cold-state', 'ready');
     attributes.set('data-csp-canary', 'passed');
     attributes.set('data-runtime-neutering', 'installed');
+    attributes.set('data-provider-neutering', 'installed');
     attributes.set('data-capability-randomValues', 'true');
     attributes.set('data-crypto-state', 'ready');
     attributes.set('data-airgap-state', 'green');
@@ -412,6 +414,7 @@ test('P0.11 refuses every vault entry point unless the cold health gate is prove
     ['data-cold-state', 'failed'],
     ['data-csp-canary', 'failed'],
     ['data-runtime-neutering', 'failed'],
+    ['data-provider-neutering', 'failed'],
     ['data-capability-randomValues', 'false'],
     ['data-crypto-state', 'failed'],
     ['data-airgap-state', 'red'],

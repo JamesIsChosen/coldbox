@@ -182,3 +182,138 @@ test('neuterNetwork reports an installation failure when a primitive cannot be r
   assert.equal(result.failed.length, 1);
   assert.equal(result.failed[0], 'EventSource');
 });
+
+function createProviderGlobal() {
+  const windowPrototype = {};
+  // Mirrors createNetworkGlobal above: a pre-existing property on the
+  // prototype chain (the shape an extension-injected accessor takes) forces
+  // findPropertyOwner to resolve the prototype as the owner, so the "both the
+  // exposed object and its owning prototype" installation is actually
+  // exercised rather than trivially satisfied by target === owner.
+  Object.defineProperty(windowPrototype, 'ethereum', {
+    configurable: true,
+    enumerable: true,
+    value: undefined,
+    writable: true
+  });
+  const window = Object.create(windowPrototype);
+  const listeners = [];
+  window.addEventListener = function addEventListener(type, listener, useCapture) {
+    listeners.push({ type, listener, useCapture });
+  };
+  window.dispatchEvent = function dispatchEvent(event) {
+    let stopped = false;
+    const wrapped = Object.assign({}, event, {
+      stopImmediatePropagation() {
+        stopped = true;
+      }
+    });
+    for (const entry of listeners) {
+      if (entry.type === event.type) {
+        entry.listener(wrapped);
+        if (stopped) {
+          break;
+        }
+      }
+    }
+    return !stopped;
+  };
+  return { window, windowPrototype, listeners };
+}
+
+test('neuterProviders blocks window.ethereum on the target and its prototype owner, and reports assignment attempts', () => {
+  const network = createProviderGlobal();
+  const { api } = loadAirgap({ windowObject: network.window });
+  const attempts = [];
+  const result = api.neuterProviders((name) => attempts.push(name));
+
+  assert.equal(result.installed, true);
+  assert.equal(result.failed.length, 0);
+  assert.equal(result.primitives.length, 2);
+  assert.equal(result.primitives[0], 'window.ethereum');
+  assert.equal(result.primitives[1], 'eip6963:announceProvider');
+
+  // Assignment (the shape an injected extension uses) does not throw and does
+  // not install a provider - it is silently denied, and the attempt is
+  // reported so the caller can enter lockdown.
+  network.window.ethereum = { isMetaMask: true };
+  assert.equal(network.window.ethereum, undefined);
+  assert.equal(attempts.includes('window.ethereum'), true);
+
+  for (const [target, key] of [
+    [network.window, 'ethereum'],
+    [network.windowPrototype, 'ethereum']
+  ]) {
+    const descriptor = Object.getOwnPropertyDescriptor(target, key);
+    assert.equal(descriptor.configurable, false, `${key} remained configurable`);
+    assert.equal(typeof descriptor.set, 'function', `${key} lost its blocking setter`);
+  }
+});
+
+test('neuterProviders survives an attempt to redefine or delete window.ethereum', () => {
+  const network = createProviderGlobal();
+  const { api } = loadAirgap({ windowObject: network.window });
+  const attempts = [];
+  api.neuterProviders((name) => attempts.push(name));
+
+  assert.throws(() => {
+    'use strict';
+    delete network.window.ethereum;
+  });
+  assert.throws(() => {
+    Object.defineProperty(network.window, 'ethereum', {
+      configurable: true,
+      value: { isMetaMask: true }
+    });
+  });
+  assert.equal(network.window.ethereum, undefined);
+});
+
+test('neuterProviders detects an eip6963:announceProvider dispatch and reports it', () => {
+  const network = createProviderGlobal();
+  const { api } = loadAirgap({ windowObject: network.window });
+  const attempts = [];
+  api.neuterProviders((name) => attempts.push(name));
+
+  const propagated = network.window.dispatchEvent({ type: 'eip6963:announceProvider', detail: {} });
+
+  assert.equal(attempts.includes('eip6963:announceProvider'), true);
+  assert.equal(propagated, false, 'the announcement should have its propagation stopped');
+});
+
+test('neuterProviders does not report unrelated events', () => {
+  const network = createProviderGlobal();
+  const { api } = loadAirgap({ windowObject: network.window });
+  const attempts = [];
+  api.neuterProviders((name) => attempts.push(name));
+
+  network.window.dispatchEvent({ type: 'some-other-event' });
+
+  assert.equal(attempts.length, 0);
+});
+
+test('neuterProviders reports an installation failure when window.ethereum cannot be replaced', () => {
+  const network = createProviderGlobal();
+  Object.defineProperty(network.window, 'ethereum', {
+    configurable: false,
+    value: { isNativeProvider: true },
+    writable: false
+  });
+  const { api } = loadAirgap({ windowObject: network.window });
+  const result = api.neuterProviders();
+
+  assert.equal(result.installed, false);
+  assert.equal(result.failed.length, 1);
+  assert.equal(result.failed[0], 'window.ethereum');
+});
+
+test('neuterProviders reports an installation failure when addEventListener is unavailable', () => {
+  const network = createProviderGlobal();
+  delete network.window.addEventListener;
+  const { api } = loadAirgap({ windowObject: network.window });
+  const result = api.neuterProviders();
+
+  assert.equal(result.installed, false);
+  assert.equal(result.failed.length, 1);
+  assert.equal(result.failed[0], 'eip6963:announceProvider');
+});

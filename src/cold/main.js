@@ -19,6 +19,8 @@ __COLDBOX_CAPABILITIES__
   var canaryPassed = false;
   var runtimeNeuteringInstalled = false;
   var runtimeViolationCount = 0;
+  var providerNeuteringInstalled = false;
+  var providerViolationCount = 0;
   var capabilityReport = {};
   var cryptoReport = {};
   var benchmarkButton = document.getElementById('cold-kdf-benchmark-run');
@@ -647,6 +649,40 @@ __COLDBOX_CAPABILITIES__
     }
   }
 
+  // P0.21: an injected wallet provider observed inside the cold realm is an
+  // ISOLATION failure, not a policy failure - there is no connect-src in
+  // front of it the way there is for the five network primitives, so the
+  // alarm text must not imply the CSP caught this (ADR-0020).
+  function recordProviderIsolationViolation(name) {
+    providerViolationCount += 1;
+    document.documentElement.setAttribute(
+      'data-provider-neutering-violations',
+      String(providerViolationCount)
+    );
+    setAirgapFailure(
+      'Cold realm isolation failure: an injected wallet provider (' + name + ') was observed inside the '
+      + 'sealed realm. This is not a network-policy violation - it means a browser extension can inject '
+      + 'into this sandboxed frame. Vault operations remain refused. Use a browser profile with no '
+      + 'extensions installed.'
+    );
+    console.warn('Coldbox detected an injected provider inside the cold realm: ' + name + '.');
+    if (messagePort) {
+      var status = protocol.createMessage(
+        'cold-to-warm',
+        'cold-provider-isolation-violation-' + String(providerViolationCount),
+        'status',
+        {
+          locked: true,
+          mode: 'cold',
+          warnings: ['provider-isolation-violation']
+        }
+      );
+      if (status) {
+        messagePort.postMessage(status);
+      }
+    }
+  }
+
   function completeBootstrap(result, detectedCapabilities, detectedCrypto) {
     capabilityReport = detectedCapabilities || {};
     setCryptoAttributes(detectedCrypto || {});
@@ -677,6 +713,23 @@ __COLDBOX_CAPABILITIES__
     if (!runtimeNeuteringInstalled) {
       setAirgapFailure('The cold realm network guard could not be installed. Vault operations are refused.');
     }
+
+    // P0.21: same shape as the network-primitive guard above, but for the
+    // injected-provider surface (window.ethereum, eip6963:announceProvider)
+    // that has no CSP in front of it at all (ADR-0020).
+    var providerNeutering = airgap.neuterProviders(recordProviderIsolationViolation);
+    providerNeuteringInstalled = providerNeutering.installed;
+    document.documentElement.setAttribute(
+      'data-provider-neutering',
+      providerNeuteringInstalled ? 'installed' : 'failed'
+    );
+    document.documentElement.setAttribute(
+      'data-provider-neutering-failures',
+      providerNeutering.failed.join(',')
+    );
+    if (!providerNeuteringInstalled) {
+      setAirgapFailure('The cold realm injected-provider guard could not be installed. Vault operations are refused.');
+    }
     if (capabilityReport.randomValues !== true) {
       setCapabilityFailure('Required crypto.getRandomValues is unavailable in the cold realm. Coldbox refuses all vault operations and never substitutes Math.random.');
     }
@@ -684,13 +737,16 @@ __COLDBOX_CAPABILITIES__
       setCryptoFailure('The pure-JS @noble AES-GCM known-answer test failed. Coldbox refuses all vault operations.');
     }
 
+    var coldReady = canaryPassed
+      && runtimeNeuteringInstalled
+      && providerNeuteringInstalled
+      && capabilityReport.randomValues === true
+      && cryptoReport.nobleAesGcm === true;
     document.documentElement.setAttribute(
       'data-cold-state',
-      canaryPassed && runtimeNeuteringInstalled && capabilityReport.randomValues === true && cryptoReport.nobleAesGcm === true
-        ? 'ready'
-        : 'failed'
+      coldReady ? 'ready' : 'failed'
     );
-    if (canaryPassed && runtimeNeuteringInstalled && capabilityReport.randomValues === true && cryptoReport.nobleAesGcm === true) {
+    if (coldReady) {
       vaultCryptoReady = true;
       document.documentElement.setAttribute('data-airgap-state', 'green');
       document.documentElement.setAttribute('data-lockdown-state', 'none');
@@ -753,6 +809,7 @@ __COLDBOX_CAPABILITIES__
           opaqueOrigin: true,
           cspCanary: canaryPassed,
           runtimeNeutering: runtimeNeuteringInstalled,
+          providerNeutering: providerNeuteringInstalled,
           randomValues: capabilityReport.randomValues === true,
           cryptoSubtle: capabilityReport.cryptoSubtle === true,
           wasm: capabilityReport.wasm === true,

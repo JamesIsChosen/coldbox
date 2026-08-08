@@ -2141,6 +2141,14 @@ __COLDBOX_QR_ENCODER__
     if (message.payload.warnings.indexOf('airgap-violation') !== -1) {
       setAirgapFailure('The cold realm runtime network guard blocked an unexpected request. Vault operations are refused.', true);
     }
+    if (message.payload.warnings.indexOf('provider-isolation-violation') !== -1) {
+      setAirgapFailure(
+        'Cold realm isolation failure: an injected wallet provider was observed inside the sealed realm. '
+        + 'This is different from a network-policy violation - it means a browser extension can inject into '
+        + 'the sandboxed frame. Vault operations are refused. Use a browser profile with no extensions.',
+        true
+      );
+    }
   }
 
   function handleVaultError(message) {
@@ -2246,6 +2254,10 @@ __COLDBOX_QR_ENCODER__
         setAirgapFailure('The cold realm airgap guard did not pass its CSP canary or runtime-neutering check. Vault operations are refused.');
         return;
       }
+      if (!capabilities.providerNeutering) {
+        setAirgapFailure('The cold realm injected-provider guard could not be installed. Vault operations are refused.');
+        return;
+      }
       if (capabilities.nobleAesGcm !== true) {
         setAirgapFailure('The cold realm pure-JS AES-GCM known-answer test did not pass. Vault operations are refused.');
         return;
@@ -2274,6 +2286,7 @@ __COLDBOX_QR_ENCODER__
       coldCanaryPassed = true;
       root.setAttribute('data-cold-csp-canary', 'passed');
       root.setAttribute('data-cold-runtime-neutering', 'installed');
+      root.setAttribute('data-cold-provider-neutering', 'installed');
       renderCryptoSummary();
       renderCapabilityPanel();
       setHandshakeReady();

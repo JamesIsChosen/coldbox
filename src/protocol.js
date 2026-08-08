@@ -54,6 +54,7 @@
     'online',
     'offline',
     'airgap-violation',
+    'provider-isolation-violation',
     'webcrypto-unavailable',
     'worker-unavailable'
   ]);
@@ -194,6 +195,7 @@
       'opaqueOrigin',
       'cspCanary',
       'runtimeNeutering',
+      'providerNeutering',
       'randomValues',
       'camera',
       'fileSystemAccess',

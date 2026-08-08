@@ -95,6 +95,7 @@
     return rootAttribute('data-cold-state') === 'ready'
       && rootAttribute('data-csp-canary') === 'passed'
       && rootAttribute('data-runtime-neutering') === 'installed'
+      && rootAttribute('data-provider-neutering') === 'installed'
       && rootAttribute('data-capability-randomValues') === 'true'
       && (cryptoState === 'ready' || cryptoState === 'fallback')
       && rootAttribute('data-airgap-state') === 'green'

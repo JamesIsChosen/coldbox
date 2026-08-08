@@ -10,6 +10,11 @@
     'EventSource',
     'sendBeacon'
   ]);
+  var PROVIDER_ANNOUNCEMENT_EVENT = 'eip6963:announceProvider';
+  var PROVIDER_PRIMITIVES = Object.freeze([
+    'window.ethereum',
+    PROVIDER_ANNOUNCEMENT_EVENT
+  ]);
 
   function isConnectViolation(event) {
     if (!event) {
@@ -176,6 +181,80 @@
     };
   }
 
+  // P0.21: sandboxed srcdoc frames are not reliably excluded from extension
+  // injection - that is a browser implementation detail, not a guarantee
+  // (ADR-0020). window.ethereum and eip6963:announceProvider are the two
+  // observable surfaces of an injected wallet provider, and neither is
+  // reachable through the CSP that blocks the five network primitives above,
+  // so this guard is defence in depth with nothing in front of it.
+  function defineOwnProviderAccessor(target, key, name, onAttempt) {
+    try {
+      Object.defineProperty(target, key, {
+        configurable: false,
+        enumerable: false,
+        get: function () {
+          return undefined;
+        },
+        set: function () {
+          if (typeof onAttempt === 'function') {
+            onAttempt(name);
+          }
+        }
+      });
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function defineProviderBlocked(target, key, name, onAttempt) {
+    var owner = findPropertyOwner(target, key);
+    var installedOnTarget = defineOwnProviderAccessor(target, key, name, onAttempt);
+    var installedOnOwner = owner === target
+      ? installedOnTarget
+      : defineOwnProviderAccessor(owner, key, name, onAttempt);
+    return installedOnTarget && installedOnOwner;
+  }
+
+  function installProviderAnnouncementGuard(target, onAttempt) {
+    if (!target || typeof target.addEventListener !== 'function') {
+      return false;
+    }
+    try {
+      target.addEventListener(PROVIDER_ANNOUNCEMENT_EVENT, function (event) {
+        if (typeof onAttempt === 'function') {
+          onAttempt(PROVIDER_ANNOUNCEMENT_EVENT);
+        }
+        if (event && typeof event.stopImmediatePropagation === 'function') {
+          event.stopImmediatePropagation();
+        }
+      }, true);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function neuterProviders(onAttempt) {
+    var results = [
+      {
+        name: 'window.ethereum',
+        installed: defineProviderBlocked(global, 'ethereum', 'window.ethereum', onAttempt)
+      },
+      {
+        name: PROVIDER_ANNOUNCEMENT_EVENT,
+        installed: installProviderAnnouncementGuard(global, onAttempt)
+      }
+    ];
+    return {
+      failed: results.filter(function (result) { return !result.installed; }).map(function (result) {
+        return result.name;
+      }),
+      installed: results.every(function (result) { return result.installed; }),
+      primitives: PROVIDER_PRIMITIVES.slice()
+    };
+  }
+
   function getNetworkSnapshot() {
     var navigatorObject = global.navigator || {};
     var connection = navigatorObject.connection
@@ -207,6 +286,9 @@
     isCanaryViolation: isCanaryViolation,
     networkPrimitives: NETWORK_PRIMITIVES,
     neuterNetwork: neuterNetwork,
+    neuterProviders: neuterProviders,
+    providerAnnouncementEvent: PROVIDER_ANNOUNCEMENT_EVENT,
+    providerPrimitives: PROVIDER_PRIMITIVES,
     runCanary: runCanary
   });
 
