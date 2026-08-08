@@ -959,6 +959,89 @@ async function verifyCspStrippedLockdown(browser, engine, kind) {
   }
 }
 
+async function verifyProviderNeutering(browser, engine) {
+  // P0.21: window.ethereum and eip6963:announceProvider are the two
+  // observable surfaces of an injected wallet provider inside the cold
+  // realm. Neither is reachable through connect-src, so this is the
+  // isolation-failure counterpart to the network-primitive checks above.
+  let opened = await openPage(browser, buildPath);
+  try {
+    let page = opened.page;
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    let coldFrame = await getColdFrame(page, engine);
+
+    const survivalResult = await coldFrame.evaluate(() => {
+      const result = {};
+      try {
+        Object.defineProperty(window, 'ethereum', { value: { isMetaMask: true }, configurable: true });
+        result.redefine = { threw: false };
+      } catch (error) {
+        result.redefine = { threw: true, error: String(error) };
+      }
+      try {
+        result.deleteReturned = delete window.ethereum;
+      } catch (error) {
+        result.deleteReturned = null;
+        result.deleteThrew = String(error);
+      }
+      result.ethereumAfter = window.ethereum;
+      return result;
+    });
+    assert.equal(survivalResult.redefine.threw, true, `${engine}: window.ethereum accessor was not redefine-resistant`);
+    assert.equal(survivalResult.ethereumAfter, undefined, `${engine}: window.ethereum returned a value after a redefine attempt`);
+    assert.equal(await coldFrame.locator('html').getAttribute('data-airgap-state'), 'green', `${engine}: a blocked redefine attempt should not itself count as an observed provider`);
+    console.log(`${engine}: window.ethereum accessor survived a redefine/delete attempt (negative test)`);
+
+    await coldFrame.evaluate(() => {
+      window.ethereum = { isMetaMask: true };
+    });
+    await coldFrame.locator('html[data-airgap-state="red"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(await coldFrame.locator('html').getAttribute('data-lockdown-state'), 'full');
+    assert.equal(await coldFrame.locator('html').getAttribute('data-vault-operations'), 'refused');
+    assert.equal(await coldFrame.locator('html').getAttribute('data-provider-neutering-violations'), '1');
+    const coldDetailsText = await coldFrame.locator('#cold-realm-details').textContent();
+    assert.match(coldDetailsText, /isolation failure/i, `${engine}: provider violation text did not identify itself as an isolation failure`);
+    assert.doesNotMatch(coldDetailsText, /content security policy|csp/i, `${engine}: provider isolation text should not be phrased as a CSP/policy violation`);
+    await page.locator('#app[data-vault-operations="refused"]').waitFor({ state: 'visible', timeout: 5000 });
+    const warmStatusText = await page.locator('#cold-realm-status-copy').textContent();
+    assert.match(warmStatusText, /isolation failure/i, `${engine}: warm shell did not surface the provider isolation failure`);
+    console.log(`${engine}: window.ethereum assignment attempt entered full lockdown as an isolation failure, distinct from a policy violation`);
+  } finally {
+    if (opened && opened.page) {
+      await closePage(opened.page);
+    }
+  }
+
+  opened = await openPage(browser, buildPath);
+  try {
+    const page = opened.page;
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    const coldFrame = await getColdFrame(page, engine);
+
+    await coldFrame.evaluate(() => {
+      window.dispatchEvent(new CustomEvent('some-unrelated-event', { detail: { info: 'noop' } }));
+    });
+    assert.equal(await coldFrame.locator('html').getAttribute('data-airgap-state'), 'green', `${engine}: an unrelated event should not trip the provider guard`);
+
+    await coldFrame.evaluate(() => {
+      window.dispatchEvent(new CustomEvent('eip6963:announceProvider', {
+        detail: { info: { uuid: 'test-uuid', name: 'Test Wallet' }, provider: {} }
+      }));
+    });
+    await coldFrame.locator('html[data-airgap-state="red"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(await coldFrame.locator('html').getAttribute('data-lockdown-state'), 'full');
+    assert.equal(await coldFrame.locator('html').getAttribute('data-vault-operations'), 'refused');
+    assert.equal(await coldFrame.locator('html').getAttribute('data-provider-neutering-violations'), '1');
+    const coldDetailsText = await coldFrame.locator('#cold-realm-details').textContent();
+    assert.match(coldDetailsText, /isolation failure/i, `${engine}: eip6963 announcement text did not identify itself as an isolation failure`);
+    console.log(`${engine}: a dispatched eip6963:announceProvider event inside the cold realm was detected and triggered full lockdown`);
+  } finally {
+    if (opened && opened.page) {
+      await closePage(opened.page);
+    }
+  }
+}
+
 async function verifyMissingRandomnessLockdown(browser, engine) {
   const fixture = createMissingRandomnessFixture();
   try {
@@ -1611,6 +1694,7 @@ async function run() {
     try {
       await verifyBuiltFile(browser, engine);
       await verifyUnlockedRuntimeHealthLockdown(browser, engine);
+      await verifyProviderNeutering(browser, engine);
       await verifyPanicHide(browser, engine);
       await verifyColdRealmFailure(browser, engine);
       await verifyColdRealmTimeout(browser, engine);
