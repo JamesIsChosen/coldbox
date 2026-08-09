@@ -25,6 +25,23 @@ __COLDBOX_STYLES__
         <img class="brand-wordmark" src="__COLDBOX_WORDMARK__" alt="Coldbox">
       </a>
       <p class="brand-badge">Pre-release · Not audited</p>
+      <section class="airgap-banner airgap-banner-navbar" id="airgap-banner" data-airgap-state="checking" aria-labelledby="airgap-banner-title" aria-live="polite">
+        <div class="airgap-banner-copy">
+          <p class="eyebrow">Airgap guard</p>
+          <h2 id="airgap-banner-title"><span id="airgap-banner-title-text">Checking the airgap guard</span>
+            <button type="button" class="icon-button help-context-button" data-help-topic="glossary:airgapped" aria-label="What does airgapped mean?">?</button>
+          </h2>
+          <p id="airgap-banner-copy">Checking the warm-shell reachability and cold-realm boundary.</p>
+          <div class="airgap-facts" aria-label="Network and isolation facts">
+            <p><strong>Warm reachability:</strong> <span id="warm-reachability-status">Checking external reachability.</span></p>
+            <p><strong>Cold isolation:</strong> <span id="cold-isolation-status">Checking CSP and runtime guards.</span></p>
+          </div>
+        </div>
+        <div class="airgap-banner-state" aria-label="Airgap and network status">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="airgap-banner-label">Checking</span>
+        </div>
+      </section>
       <nav class="app-bar-actions" aria-label="Quick links">
         <a class="comic-btn" href="#vault" data-route="vault">Vault tools</a>
         <a class="comic-btn" href="#seed-forge" data-route="seed-forge">Secret tools</a>
@@ -73,23 +90,6 @@ __COLDBOX_STYLES__
         </div>
 
         <div class="nav-footer">
-          <section class="airgap-banner airgap-banner-compact" id="airgap-banner" data-airgap-state="checking" aria-labelledby="airgap-banner-title" aria-live="polite">
-            <div class="airgap-banner-copy">
-              <p class="eyebrow">Airgap guard</p>
-              <h2 id="airgap-banner-title"><span id="airgap-banner-title-text">Checking the airgap guard</span>
-                <button type="button" class="icon-button help-context-button" data-help-topic="glossary:airgapped" aria-label="What does airgapped mean?">?</button>
-              </h2>
-              <p id="airgap-banner-copy">Checking the warm-shell reachability and cold-realm boundary.</p>
-              <div class="airgap-facts" aria-label="Network and isolation facts">
-                <p><strong>Warm reachability:</strong> <span id="warm-reachability-status">Checking external reachability.</span></p>
-                <p><strong>Cold isolation:</strong> <span id="cold-isolation-status">Checking CSP and runtime guards.</span></p>
-              </div>
-            </div>
-            <div class="airgap-banner-state" aria-label="Airgap and network status">
-              <span class="status-dot" aria-hidden="true"></span>
-              <span id="airgap-banner-label">Checking</span>
-            </div>
-          </section>
           <span class="build-badge"><span class="status-dot" aria-hidden="true"></span> Shell preview</span>
           <p class="nav-footer-note">The warm shell stays public. Secret handling lives inside the sealed realm.</p>
         </div>
@@ -204,6 +204,20 @@ __COLDBOX_STYLES__
             <div class="vault-actions">
               <button class="vault-button" id="vault-lock" type="button">Lock vault</button>
               <button class="vault-button vault-button-danger" id="vault-panic-hide" type="button">Panic hide</button>
+            </div>
+          </section>
+
+          <section class="cold-route-panel vault-cold-realm-panel" aria-labelledby="vault-cold-realm-title">
+            <div class="section-heading-row">
+              <div>
+                <p class="panel-kicker">Sealed realm / Vault tools</p>
+                <h2 id="vault-cold-realm-title">Vault details and session</h2>
+                <p class="cold-route-panel-copy">The protected KDF details, unlock session, keyfile option, and cold-realm status stay together here. The warm shell carries only encrypted bytes and public status.</p>
+              </div>
+              <button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-vault-session" aria-controls="popup-vault-session">Session guide</button>
+            </div>
+            <div class="cold-route-slot" id="vault-cold-realm-slot">
+              <div class="cold-frame-host" id="cold-realm-host" aria-label="Sealed vault session viewport"></div>
             </div>
           </section>
 
@@ -333,6 +347,17 @@ __COLDBOX_STYLES__
 
         <section class="page" id="page-entropy" data-page="entropy" aria-labelledby="page-title-entropy" hidden>
           <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-entropy">Entropy Lab</h1><p class="page-lede">This layout is reserved for physical entropy collection, source mixing, and health checks. No entropy is collected or displayed by the UI shell.</p></header>
+          <section class="cold-route-panel entropy-cold-realm-panel" aria-labelledby="entropy-cold-realm-title">
+            <div class="section-heading-row">
+              <div>
+                <p class="panel-kicker">Sealed realm / Entropy Lab</p>
+                <h2 id="entropy-cold-realm-title">Physical and manual entropy</h2>
+                <p class="cold-route-panel-copy">The entropy controls remain inside the sealed realm and are shown here only when this route is active. No collected material crosses into the warm shell.</p>
+              </div>
+              <button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-entropy-session" aria-controls="popup-entropy-session">Entropy guide</button>
+            </div>
+            <div class="cold-route-slot" id="entropy-cold-realm-slot"></div>
+          </section>
           <section class="mock-security-layout"><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Collection plan</p><span class="mock-status mock-status-neutral">Not available</span></div><div class="mock-stepper"><div class="mock-step mock-step-current"><span>1</span><strong>Collect</strong><small>Physical source</small></div><div class="mock-step"><span>2</span><strong>Mix</strong><small>Independent sources</small></div><div class="mock-step"><span>3</span><strong>Health</strong><small>Bias and strength</small></div></div><div class="mock-empty-state"><strong>Entropy Lab is not built yet.</strong><span>The raw source will remain inside the sealed realm when this feature exists.</span></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-entropy-collection" aria-controls="popup-entropy-collection">View layout</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-entropy-health" aria-controls="popup-entropy-health">Health layout</button></div></article><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Health meter</p><span class="mock-status mock-status-neutral">No measurement</span></div><div class="mock-empty-state"><strong>— bits measured</strong><span>Measurement appears only after a real sealed-realm sample.</span></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-entropy-rules" aria-controls="popup-entropy-rules">Read the rules</button></article></section>
         </section>
 
@@ -508,7 +533,6 @@ __COLDBOX_STYLES__
               <span class="status-dot" aria-hidden="true"></span>
               <span id="cold-realm-status-label">Starting</span>
             </div>
-            <div class="cold-frame-host" id="cold-realm-host" aria-label="Sealed realm viewport"></div>
             <p class="realm-status-failure" id="cold-realm-failure" role="alert" hidden>Coldbox is locked down because the sealed realm could not be established. Reload a verified build in a supported browser; no secret operation is available in this state.</p>
             <p class="protocol-warning" id="protocol-warning" role="alert" hidden>Unexpected protocol traffic was discarded and logged. No message was accepted.</p>
           </section>

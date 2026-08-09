@@ -565,6 +565,18 @@ async function verifyUiShellWalkthrough(browser, engine) {
       await page.locator(`#page-${routeId}:not([hidden])`).waitFor({ state: 'visible' });
       assert.equal(await page.locator(`#page-${routeId} h1`).count(), 1, `${engine}: ${routeId} must have a primary heading`);
     }
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('.vault-cold-realm-panel #cold-frame').waitFor({ state: 'visible' });
+    const vaultColdFrame = await getColdFrame(page, engine);
+    assert.equal(await vaultColdFrame.locator('html').getAttribute('data-cold-view'), 'vault', `${engine}: Vault route must show the sealed Vault view`);
+    await page.locator('#nav-rail a[data-route="entropy"]').click();
+    await page.locator('#page-entropy:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('.entropy-cold-realm-panel #cold-frame').waitFor({ state: 'visible' });
+    assert.equal(await vaultColdFrame.locator('html').getAttribute('data-cold-view'), 'entropy', `${engine}: Entropy route must show only the sealed Entropy view`);
+    await page.locator('#nav-rail a[data-route="system-health"]').click();
+    await page.locator('#page-system-health:not([hidden])').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#page-system-health #cold-frame').count(), 0, `${engine}: System Health must not render the Vault/Entropy frame`);
     await page.locator('#nav-rail a[data-route="dashboard"]').click();
     await page.locator('#page-dashboard:not([hidden])').waitFor({ state: 'visible' });
     await harness.expectNoConsoleErrors({ allowedFragments: [CANARY_ERROR_FRAGMENT, COLD_CANARY_ERROR_FRAGMENT] });
@@ -2127,11 +2139,12 @@ async function verifyHelpFramework(browser, engine) {
 async function verifyEntropyLab(browser, engine) {
   const { page } = await openPage(browser, buildPath);
   try {
-    await page.locator('#nav-rail a[data-route="system-health"]').click();
-    await page.locator('#page-system-health:not([hidden])').waitFor({ state: 'visible' });
-    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#nav-rail a[data-route="entropy"]').click();
+    await page.locator('#page-entropy:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('#app[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
     const coldFrame = await getColdFrame(page, engine);
     await coldFrame.locator('html[data-crypto-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
+    assert.equal(await coldFrame.locator('html').getAttribute('data-cold-view'), 'entropy', `${engine}: Entropy Lab did not activate the entropy view`);
 
     const meter = coldFrame.locator('#cold-entropy-meter');
     const mixStatus = coldFrame.locator('#cold-entropy-mix-status');

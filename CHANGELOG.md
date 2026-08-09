@@ -45,7 +45,7 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 - System Health is now its own route; Dashboard no longer repeats health
   content, Vault keeps its session controls and Vault details trigger together,
   and the Entropy Lab remains scoped to its own route.
-- The airgap guard is a compact live caption in the navigation footer, and
+- The airgap guard is a compact live caption in the top navigation bar, and
   boot self-check rows remain individually inspectable through the shared
   centered floating card.
 - Portfolio, Prices, Registry, and Devices now expose the approved empty-state
@@ -56,6 +56,15 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
   rendered as a long list.
 - Panic conceal retains the approved red-backed concealment treatment, while
   the popup Close control remains the shared red action.
+
+### Changed — route ownership and concealment layout correction (2026-08-09)
+
+- The single sealed-realm frame is organized under Vault tools for Vault
+  details/session work and moves to Entropy Lab only while that route is active;
+  System Health now contains only its live checks and capability rows.
+- The airgap guard is in the top app bar rather than the left navigation rail.
+- Panic conceal is hidden during normal routing, follows the active theme, and
+  centers its red backing panel beneath the concealment copy at all widths.
 
 ### Changed — P0.19 device-matrix remediation design (2026-08-08)
 

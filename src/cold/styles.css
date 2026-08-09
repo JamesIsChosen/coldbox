@@ -133,6 +133,12 @@ body {
   box-shadow: 0.2rem 0.2rem 0 var(--cold-drop);
 }
 
+#cold-kdf-details[hidden],
+#cold-vault-controls[hidden],
+#cold-entropy-lab[hidden] {
+  display: none;
+}
+
 #cold-kdf-active {
   margin: 0.3rem 0 0;
   color: var(--cold-yellow);

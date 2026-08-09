@@ -39,6 +39,8 @@ __COLDBOX_QR_ENCODER__
   var coldRealmFailure = document.getElementById('cold-realm-failure');
   var protocolWarning = document.getElementById('protocol-warning');
   var coldRealmHost = document.getElementById('cold-realm-host');
+  var vaultColdRealmSlot = document.getElementById('vault-cold-realm-slot');
+  var entropyColdRealmSlot = document.getElementById('entropy-cold-realm-slot');
   var airgapBanner = document.getElementById('airgap-banner');
   // R2-F2 remediation: see the coldRealmStatusTitle comment above - same
   // fix, same reason (this title also has a nested contextual help button).
@@ -262,6 +264,18 @@ __COLDBOX_QR_ENCODER__
       '<strong>Protection:</strong> KDF profile and save verification belong to the sealed workflow.',
       '<strong>Boundary:</strong> phrases, private keys, and vault plaintext never appear in this card.'
     ], 'The finished Vault tab keeps this detail card and the lock controls together so the user does not hunt through another route.'),
+    'popup-vault-session': popup('Vault / sealed session', 'One protected workspace', 'The Vault route keeps the warm public file controls beside the one opaque cold session. This guide explains the arrangement without copying any secret-bearing controls into the warm shell.', [
+      '<strong>Vault details:</strong> KDF status, crypto path, and the public session state stay with Vault tools.',
+      '<strong>Unlock:</strong> the phrase, confirmation, and optional keyfile controls remain inside the sealed frame.',
+      '<strong>Session actions:</strong> normal lock and emergency panic hide remain visible next to the Vault status.',
+      '<strong>Transfer:</strong> canonical .cbx storage and live CBX-VT/1 transfer remain separate from the secret session.'
+    ], 'Open Entropy Lab for entropy collection. It is not rendered in System health or mixed into the Vault session view.'),
+    'popup-entropy-session': popup('Entropy Lab / sealed session', 'Entropy belongs to Entropy Lab', 'The entropy workspace is a route-specific view of the same sealed realm. The warm shell can describe the workflow, but collected material and mixing remain inside the opaque frame.', [
+      '<strong>Collection:</strong> physical/manual sources and device-RNG simulation remain visibly distinguished.',
+      '<strong>Mixing:</strong> output size, independent contribution, and fallback strength stay inside the sealed realm.',
+      '<strong>Separation:</strong> System health reports capabilities; it does not render Entropy Lab controls.',
+      '<strong>Next step:</strong> Seed Forge is a future separate tool and is not silently inserted here.'
+    ], 'Switching routes changes which sealed-realm workspace is visible without creating a second secret session.'),
     'popup-dashboard-alerts': popup('Dashboard / next actions', 'Three things to review', 'The dashboard turns public records into a short, actionable queue. It never hides the reason an item is pending.', [
       '<strong>Backup verification:</strong> open the plan, inspect its locations, then run a reconstruction check.',
       '<strong>Stale price:</strong> review the source age and spread before treating a value as current.',
@@ -1553,6 +1567,28 @@ __COLDBOX_QR_ENCODER__
     try {
       coldMessagePort.postMessage(message);
       lastModeOnline = online;
+    } catch (error) {
+      recordChannelAnomaly();
+    }
+  }
+
+  function sendColdView(route) {
+    if (airgapFailure || handshakeState !== 'ready' || !coldMessagePort) {
+      return;
+    }
+    var section = route === 'entropy' ? 'entropy' : 'vault';
+    var message = protocol.createMessage(
+      'warm-to-cold',
+      nextVaultMessageId('view'),
+      'ui.navigate',
+      { section: section }
+    );
+    if (!message) {
+      recordChannelAnomaly();
+      return;
+    }
+    try {
+      coldMessagePort.postMessage(message);
     } catch (error) {
       recordChannelAnomaly();
     }
@@ -3514,6 +3550,7 @@ __COLDBOX_QR_ENCODER__
       coldRealmStatusLabel.textContent = 'Ready';
     }
     updateVaultControls();
+    sendColdView(routeFromLocation());
   }
 
   function handleProtocolPortMessage(event) {
@@ -3909,6 +3946,16 @@ __COLDBOX_QR_ENCODER__
     openFloatingMenu(key, target);
   }
 
+  function placeColdRealm(route) {
+    if (!coldRealmHost) {
+      return;
+    }
+    var target = route === 'entropy' ? entropyColdRealmSlot : vaultColdRealmSlot;
+    if (target && coldRealmHost.parentNode !== target) {
+      target.appendChild(coldRealmHost);
+    }
+  }
+
   function renderRoute(shouldFocus) {
     var rawHash = window.location.hash.replace(/^#/, '').trim();
     var hashSegments = rawHash.split('/');
@@ -3916,6 +3963,8 @@ __COLDBOX_QR_ENCODER__
     var route = routeFromLocation();
     var detail = routeDetails[route];
     normalizeLocation(route);
+    placeColdRealm(route);
+    sendColdView(route);
 
     pages.forEach(function (page) {
       var isCurrent = page.getAttribute('data-page') === route;

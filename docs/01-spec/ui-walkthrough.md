@@ -50,8 +50,10 @@ The yellow masthead contains:
 
 1. The transparent supplied Coldbox wordmark, linked to Dashboard.
 2. The permanent **Pre-release / Not audited** badge.
-3. Quick links to Vault tools, Secret tools, theme, and Panic conceal.
-4. The Light mode / Dark mode control.
+3. The compact **Airgap guard** live caption, including its current state and
+   contextual glossary button.
+4. Quick links to Vault tools, Secret tools, theme, and Panic conceal.
+5. The Light mode / Dark mode control.
 
 The navbar wordmark is the supplied coldbox-wordmark.png. The lower-case C
 favicon artwork is embedded at ICO plus 16, 32, 48, and 64 pixel PNG sizes.
@@ -70,15 +72,17 @@ Desktop uses grouped links:
 The active route is cyan. The rail remains a navigation surface, not a status
 claim. A green or red state must be explained in the content card or the
 floating detail menu beside it. The airgap guard is a compact live caption in
-the rail footer; it is not a full workspace repeated beneath every route.
+the top app bar; it is not a full workspace repeated beneath every route or a
+status card pinned to the left rail.
 
 ### Content bar and status panels
 
 The content bar shows "Coldbox / current route", the **Warm shell** badge, and
 the **Design shell / no sample data** badge. The primary route content appears
 first. System health is a separate route and reports the sealed-realm state and
-capability matrix. The compact rail-footer caption reports the live
-airgap/reachability state on every route without taking over the route body.
+capability matrix. The compact app-bar caption reports the live
+airgap/reachability state on every route without taking over the route body or
+being placed in a route workspace.
 These are live foundation checks, not seeded route data.
 
 The capability rows on System Health are clickable. Each opens the same
@@ -123,9 +127,9 @@ and where to go next.
 - **Open the vault workspace** navigates to the real Vault route.
 - **Plan public records** navigates to the Registry shell.
 - **Review the backup plan** opens the backup-action popup.
-- The rail-footer airgap caption remains visible as a compact live status
-  surface; open System health from the System navigation group for the full
-  readiness view.
+- The app-bar airgap caption remains visible as a compact live status surface;
+  open System health from the System navigation group for the full readiness
+  view.
 
 **Live replacement rules:** the dashboard may aggregate public records, but a
 headline total must show its source age and calculation method. A health summary
@@ -144,8 +148,10 @@ for create, unlock, save, load, transfer, lock, and panic conceal behavior.
 2. Vault identity and public metadata, with the **Vault details** floating-card
    trigger beside the session state.
 3. Lock and panic controls bundled directly into the Vault workspace.
-4. File and transfer controls.
-5. Protected controls rendered by the cold realm.
+4. One sealed-realm panel containing Vault details, the unlock session, keyfile
+   option, and cold-realm status.
+5. File, save, encrypted-text, and transfer controls grouped beneath the
+   Vault tools deck.
 
 The standalone visual reference does not invent a second vault implementation.
 New UI work
@@ -239,8 +245,9 @@ actually verified.
 **Purpose:** present the protected entropy collection flow without rendering
 entropy in the warm shell.
 
-**Visible hierarchy:** Collect -> Mix -> Health stepper, a not-started state, a
-health-meter placeholder, and the rules that distinguish independent physical
+**Visible hierarchy:** a route-local sealed-realm panel for the actual
+Collect -> Mix -> Health workspace, followed by the not-started visual summary,
+health-meter placeholder, and rules that distinguish independent physical
 entropy from the device RNG.
 
 **Popup actions:** collection flow, health meter, and entropy rules.
@@ -485,8 +492,9 @@ this path:
 
 1. Dashboard: toggle light/dark mode, inspect the empty workspace cards, and
    follow Open portfolio.
-2. Vault: inspect the session strip, open Vault details, then confirm lock and
-   panic controls sit with the vault workspace.
+2. Vault: inspect the session strip, open Vault details and Session guide, then
+   confirm the sealed Vault details/session panel and lock/panic controls sit
+   with the Vault tools.
 3. Portfolio: inspect the empty total, allocation, chart, holdings, and
    transaction shells, including each layout trigger.
 4. Prices: inspect the empty median, watchlist, chart, and five source-ledger
@@ -495,15 +503,29 @@ this path:
    balance lookup layout.
 6. Devices: inspect the no-record primary, secondary, and replacement-plan
    cards, including verification workflow triggers.
-7. Entropy Lab -> Seed Forge -> Derivation -> Backup Lab: confirm protected
-   screens are calm, empty, and use centered popups.
+7. Entropy Lab -> Seed Forge -> Derivation -> Backup Lab: confirm Entropy Lab
+   owns the sealed entropy workspace, while the other protected screens remain
+   calm, empty, and use centered popups.
 8. QR Studio -> Recovery -> Verify Bench: inspect the placeholder QR, transfer,
    recovery, and verification surfaces.
-9. System Health: open the summary and each capability card, close with the red
-   button, reopen a row with Enter, and close with Escape. Confirm focus returns
-   to the row.
+9. System Health: confirm only the warm live-check surface and boot capability
+   rows are present; open the summary and each capability card, close with the
+   red button, reopen a row with Enter, and close with Escape. Confirm focus
+   returns to the row.
 10. Reference -> Learn: search for a term, open one result, switch explanation
     depth, and confirm contextual help opens the same selected-entry card.
+
+The panic conceal screen is not part of normal route content. It is hidden
+until the top-nav Panic conceal action, the Vault panic control, or the
+documented panic shortcut activates it. Its surrounding surface follows the
+active theme, while the centered red backing panel sits completely beneath the
+concealed-state copy at desktop and mobile widths.
+
+The cold realm is one persistent opaque frame. Routing moves that frame between
+the Vault and Entropy Lab slots and sends only an allowlisted section name; it
+does not create a second secret session or carry secret material across the
+boundary. System Health contains the warm live-check surface and capability
+rows only.
 
 For the full seeded visual walkthrough, open
 `build/coldbox-ui-walkthrough.html` separately and repeat the route order. That

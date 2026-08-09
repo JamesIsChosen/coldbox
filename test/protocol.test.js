@@ -100,6 +100,25 @@ test('vault creation preparation is strictly payload-free', () => {
   }), null);
 });
 
+test('cold view navigation is an allowlisted section-only message', () => {
+  const protocol = loadProtocol();
+
+  assert.equal(JSON.stringify(protocol.validateMessage('warm-to-cold', {
+    id: 'view-entropy',
+    type: 'ui.navigate',
+    payload: { section: 'entropy', passphrase: 'must never cross' }
+  })), JSON.stringify({
+    id: 'view-entropy',
+    type: 'ui.navigate',
+    payload: { section: 'entropy' }
+  }));
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'view-secret',
+    type: 'ui.navigate',
+    payload: { section: 'cold-private-view' }
+  }), null);
+});
+
 
 test('cold normal-lock request is strictly payload-free', () => {
   const protocol = loadProtocol();

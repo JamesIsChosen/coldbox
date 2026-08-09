@@ -9,6 +9,7 @@ const test = require('node:test');
 const projectRoot = path.resolve(__dirname, '..');
 const indexSource = fs.readFileSync(path.join(projectRoot, 'src', 'index.html'), 'utf8');
 const mainSource = fs.readFileSync(path.join(projectRoot, 'src', 'main.js'), 'utf8');
+const coldMainSource = fs.readFileSync(path.join(projectRoot, 'src', 'cold', 'main.js'), 'utf8');
 const stylesSource = fs.readFileSync(path.join(projectRoot, 'src', 'styles.css'), 'utf8');
 const buildSource = fs.readFileSync(path.join(projectRoot, 'scripts', 'build.js'), 'utf8');
 const buildPath = path.join(projectRoot, 'build', 'coldbox.html');
@@ -35,7 +36,9 @@ const approvedPopupIds = Object.freeze([
   'popup-registry-reserve',
   'popup-registry-balance',
   'popup-device-verify',
-  'popup-vault-details'
+  'popup-vault-details',
+  'popup-vault-session',
+  'popup-entropy-session'
 ]);
 
 const brandAssets = Object.freeze([
@@ -70,11 +73,38 @@ test('the UI shell covers every stable route and popup trigger', () => {
   assert.match(indexSource, /class="floating-menu-close"[^>]*data-popup-close/);
   assert.match(stylesSource, /\.floating-menu-close\s*\{[\s\S]*?background:\s*var\(--fill-red\)/);
   assert.match(indexSource, /id="page-system-health" data-page="system-health"/);
-  assert.match(indexSource, /<div class="nav-footer">[\s\S]*?<section class="airgap-banner airgap-banner-compact" id="airgap-banner"/);
+  assert.match(indexSource, /<header class="app-bar">[\s\S]*?<section class="airgap-banner airgap-banner-navbar" id="airgap-banner"/);
+  assert.doesNotMatch(indexSource, /<div class="nav-footer">[\s\S]*?id="airgap-banner"/);
   assert.match(indexSource, /id="help-search-input"/);
   assert.match(indexSource, /id="help-detail-card"/);
   assert.match(indexSource, /id="help-empty-state"/);
   assert.match(stylesSource, /\.panic-screen::before\s*\{[\s\S]*?background:\s*var\(--fill-red\)/);
+  assert.match(stylesSource, /\.panic-screen\[hidden\]\s*\{[\s\S]*?display:\s*none\s*!important/);
+  assert.match(stylesSource, /\.panic-screen::before\s*\{[\s\S]*?left:\s*50%[\s\S]*?transform:\s*translate\(-50%,\s*-50%\)/);
+  assert.match(stylesSource, /\.panic-screen\s*\{[\s\S]*?background-color:\s*var\(--bg\)/);
+  const vaultSource = indexSource.slice(
+    indexSource.indexOf('<section class="page" id="page-vault"'),
+    indexSource.indexOf('<section class="page" id="page-portfolio"')
+  );
+  const entropySource = indexSource.slice(
+    indexSource.indexOf('<section class="page" id="page-entropy"'),
+    indexSource.indexOf('<section class="page" id="page-seed-forge"')
+  );
+  const systemHealthSource = indexSource.slice(
+    indexSource.indexOf('<section class="page" id="page-system-health"'),
+    indexSource.indexOf('<div class="floating-menu-layer"')
+  );
+  assert.match(vaultSource, /id="cold-realm-host"/);
+  assert.match(vaultSource, /data-popup-open="popup-vault-details"/);
+  assert.match(vaultSource, /data-popup-open="popup-vault-session"/);
+  assert.match(entropySource, /id="entropy-cold-realm-slot"/);
+  assert.match(entropySource, /data-popup-open="popup-entropy-session"/);
+  assert.doesNotMatch(systemHealthSource, /id="cold-realm-host"|id="entropy-cold-realm-slot"/);
+  assert.match(mainSource, /function placeColdRealm\(route\)/);
+  assert.match(mainSource, /'ui\.navigate'/);
+  assert.match(coldMainSource, /message\.type === 'ui\.navigate'/);
+  assert.match(coldMainSource, /kdfDetails\.hidden = !showVault/);
+  assert.match(coldMainSource, /entropyLabSection\.hidden = !showEntropy/);
   const dashboardSource = indexSource.slice(
     indexSource.indexOf('<section class="page" id="page-dashboard"'),
     indexSource.indexOf('<section class="page" id="page-vault"')

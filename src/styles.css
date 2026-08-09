@@ -209,8 +209,8 @@ samp {
  * App bar — the yellow masthead.
  *
  * Chrome, not a security surface: the wordmark tilts, the badge tilts, the
- * buttons press. Nothing here reports boundary state; the airgap banner does
- * that, one screen down, and stays still.
+ * buttons press. The compact airgap caption reports boundary state in this
+ * masthead and stays still.
  * -------------------------------------------------------------------------- */
 
 .app-bar {
@@ -449,48 +449,58 @@ samp {
   line-height: 1.5;
 }
 
-.nav-footer .airgap-banner {
-  display: grid;
+.app-bar .airgap-banner {
+  flex: 0 1 clamp(13rem, 23vw, 21rem);
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.45rem;
-  margin: 0 0 0.7rem;
-  padding: 0.55rem 0.6rem;
+  gap: 0.3rem 0.55rem;
+  min-width: 13rem;
+  margin: 0;
+  padding: 0.35rem 0.55rem;
   border-radius: var(--radius-sm);
-  box-shadow: 0.2rem 0.2rem 0 var(--drop);
+  background: var(--surface-raised);
+  box-shadow: 0.18rem 0.18rem 0 var(--drop);
 }
 
-.nav-footer .airgap-banner-copy h2 {
-  font-size: 0.82rem;
-  line-height: 1.05;
-}
-
-.nav-footer .airgap-banner-copy p:last-child {
-  max-height: 2.4rem;
-  margin-top: 0.25rem;
+.app-bar .airgap-banner-copy h2 {
   overflow: hidden;
-  font-size: 0.62rem;
-  line-height: 1.35;
+  font-size: 0.72rem;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.nav-footer .airgap-banner .eyebrow {
-  margin-bottom: 0.15rem;
+.app-bar .airgap-banner-copy p#airgap-banner-copy {
+  max-width: 15rem;
+  margin-top: 0.2rem;
+  overflow: hidden;
+  font-size: 0.56rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-bar .airgap-banner .eyebrow {
+  margin-bottom: 0.1rem;
+  padding: 0.08rem 0.3rem;
+  border-width: var(--outline-width-thin);
+  box-shadow: 0.1rem 0.1rem 0 var(--drop);
+  font-size: 0.5rem;
+}
+
+.app-bar .airgap-banner .icon-button {
+  min-height: 1.15rem;
+  min-width: 1.15rem;
+  margin-left: 0.15rem;
+  font-size: 0.65rem;
+}
+
+.app-bar .airgap-banner-state {
+  align-self: start;
+  padding: 0.2rem 0.35rem;
   font-size: 0.58rem;
 }
 
-.nav-footer .airgap-banner .icon-button {
-  min-height: 1.35rem;
-  min-width: 1.35rem;
-  margin-left: 0.2rem;
-  font-size: 0.72rem;
-}
-
-.nav-footer .airgap-banner-state {
-  align-self: start;
-  padding: 0.25rem 0.4rem;
-  font-size: 0.6rem;
-}
-
-.nav-footer .airgap-facts {
+.app-bar .airgap-facts {
   display: none;
 }
 
@@ -716,12 +726,48 @@ samp {
 }
 
 .cold-frame-host {
-  grid-column: 1 / -1;
   min-width: 0;
   overflow: hidden;
   border: var(--outline-width-thin) solid var(--drop);
   border-radius: var(--radius-sm);
   background: #1a1a24;
+}
+
+.cold-route-panel {
+  margin-top: 1rem;
+  padding: 1.15rem 1.25rem;
+  border: var(--outline-width) solid var(--outline);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-hard-lg);
+}
+
+.cold-route-panel h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(1.15rem, 2vw, 1.55rem);
+  letter-spacing: -0.025em;
+}
+
+.cold-route-panel-copy {
+  max-width: 48rem;
+  margin: 0.45rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.cold-route-slot {
+  min-width: 0;
+  margin-top: 0.9rem;
+}
+
+.vault-cold-realm-panel .cold-frame {
+  min-height: 34rem;
+}
+
+.entropy-cold-realm-panel .cold-frame {
+  min-height: 48rem;
 }
 
 .cold-frame {
@@ -1439,6 +1485,10 @@ html[data-theme="light"] .page h1 {
   line-height: 1.45;
 }
 
+.panic-screen[hidden] {
+  display: none !important;
+}
+
 .panic-screen {
   position: relative;
   overflow: hidden;
@@ -1447,7 +1497,12 @@ html[data-theme="light"] .page h1 {
   align-content: center;
   min-height: 100vh;
   padding: 2rem;
-  background: var(--paper);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(var(--bg-dot) 14%, transparent 15%),
+    radial-gradient(var(--bg-dot) 14%, transparent 15%);
+  background-position: 0 0, 0.625rem 0.625rem;
+  background-size: 1.25rem 1.25rem;
   color: #ffffff;
   text-align: center;
 }
@@ -1455,14 +1510,14 @@ html[data-theme="light"] .page h1 {
 .panic-screen::before {
   position: absolute;
   top: 50%;
-  left: max(1.5rem, calc(50% - 24rem));
-  width: min(24rem, calc(100% - 3rem));
+  left: 50%;
+  width: min(36rem, calc(100% - 3rem));
   height: min(31rem, 68vh);
   border: var(--outline-width) solid var(--drop);
   background: var(--fill-red);
   box-shadow: var(--shadow-hard-lg);
   content: "";
-  transform: translateY(-50%);
+  transform: translate(-50%, -50%);
 }
 
 .panic-screen > * {
@@ -2018,6 +2073,13 @@ html[data-theme="light"] .page h1 {
     display: none;
   }
 
+  .app-bar .airgap-banner {
+    order: 3;
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
   .content {
     padding: 1rem 1rem calc(6.8rem + env(safe-area-inset-bottom));
   }
@@ -2123,7 +2185,7 @@ html[data-theme="light"] .page h1 {
   }
 
   .panic-screen::before {
-    left: 1rem;
+    left: 50%;
     width: calc(100% - 2rem);
     height: min(31rem, 72vh);
   }

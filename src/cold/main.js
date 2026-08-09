@@ -26,7 +26,9 @@ __COLDBOX_CAPABILITIES__
   var cryptoReport = {};
   var benchmarkButton = document.getElementById('cold-kdf-benchmark-run');
   var benchmarkResult = document.getElementById('cold-kdf-benchmark-result');
+  var kdfDetails = document.getElementById('cold-kdf-details');
   var vaultControls = document.getElementById('cold-vault-controls');
+  var entropyLabSection = document.getElementById('cold-entropy-lab');
   var vaultStatus = document.getElementById('cold-vault-status');
   var passphraseInput = document.getElementById('cold-vault-passphrase');
   var passphraseConfirmWrap = document.getElementById('cold-vault-create-confirmation');
@@ -113,6 +115,24 @@ __COLDBOX_CAPABILITIES__
   var lastEscapeAt = 0;
   var onlineMode = true;
   var IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+
+  function setColdView(section) {
+    var showVault = section === 'vault';
+    var showEntropy = section === 'entropy';
+    if (kdfDetails) {
+      kdfDetails.hidden = !showVault;
+    }
+    if (vaultControls) {
+      vaultControls.hidden = !showVault;
+    }
+    if (entropyLabSection) {
+      entropyLabSection.hidden = !showEntropy;
+    }
+    document.documentElement.setAttribute(
+      'data-cold-view',
+      showEntropy ? 'entropy' : (showVault ? 'vault' : 'status')
+    );
+  }
 
   function recordGlobalMessageAnomaly() {
     globalAnomalyCount += 1;
@@ -1349,6 +1369,10 @@ __COLDBOX_CAPABILITIES__
   }
 
   function handleVaultMessage(message) {
+    if (message.type === 'ui.navigate') {
+      setColdView(message.payload.section);
+      return;
+    }
     if (message.type === 'vault.create.prepare') {
       if (vaultUnlocked || vaultBusy) {
         sendVaultError(message.id, 'operation-failed');
@@ -1788,6 +1812,8 @@ __COLDBOX_CAPABILITIES__
   if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer || !vaultLayer) {
     return;
   }
+
+  setColdView('vault');
 
   if (benchmarkButton) {
     benchmarkButton.addEventListener('click', runBenchmark);
