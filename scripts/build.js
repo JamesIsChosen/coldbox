@@ -216,11 +216,13 @@ function assemble() {
     assembleColdRealm(protocolSource, airgapSource, capabilitiesSource)
   );
   const saveIntegritySource = readSource('save-integrity.js');
+  const vaultTransferSource = readSource('vault-transfer.js');
   let mainScript = injectOnce(readSource('main.js'), '__COLDBOX_QR_ENCODER__', readQrEncoderSource());
   mainScript = injectOnce(mainScript, '__COLDBOX_PROTOCOL__', protocolSource);
   mainScript = injectOnce(mainScript, '__COLDBOX_AIRGAP__', airgapSource);
   mainScript = injectOnce(mainScript, '__COLDBOX_CAPABILITIES__', capabilitiesSource);
   mainScript = injectOnce(mainScript, '__COLDBOX_SAVE_INTEGRITY__', saveIntegritySource);
+  mainScript = injectOnce(mainScript, '__COLDBOX_VAULT_TRANSFER__', vaultTransferSource);
   mainScript = injectOnce(
     mainScript,
     '__COLDBOX_COLD_REALM_DOCUMENT__',

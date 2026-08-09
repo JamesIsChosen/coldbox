@@ -20,7 +20,7 @@ Both requirements are legitimate. The resolution is two documents.
 
 CSP permits `connect-src` to a pinned allowlist of price and blockchain hosts.
 
-Owns: UI chrome and routing, **active external-reachability monitoring**, live prices, balance lookups, portfolio engine, public registry views, Vault Library/file handles and public filenames, help content, file hashing of non-secret files.
+Owns: UI chrome and routing, **active external-reachability monitoring**, live prices, balance lookups, portfolio engine, public registry views, Vault Library/file handles and public filenames, canonical save/update orchestration, live encrypted vault-transfer QR rendering/camera collection, help content, file hashing of non-secret files. The live-transfer scanner handles only encrypted `.cbx` bytes and public transfer metadata.
 
 **Never receives a secret.** No seed, no private key, no decrypted secret compartment, no vault passphrase.
 

@@ -1,6 +1,6 @@
 # ADR-0025: Vault identity is portable and random; names/library/save UX stay in the warm shell
 
-**Status:** Accepted
+**Status:** Accepted · save/QR portions amended by [ADR-0026](0026-canonical-vault-save-and-live-transfer.md)
 **Date:** 2026-08-08
 
 ## Context
@@ -16,11 +16,11 @@ The redesign must preserve the existing security boundary: passphrases stay cold
    - Warm uses the strict payload-free `vault.create.prepare {}` message only to gate the cold creation UI. The protocol rejects any fields on this message, so neither the name nor any secret/free-form value can hitch a ride across the realm boundary.
 3. Every new vault gets a CSPRNG **UUID Vault ID** generated inside the cold realm and stored as the authenticated public-compartment `id`. The current public projection already permits UUID `id`; no free-form field or new secret-carrying message type is required.
 4. **A device/browser fingerprint is not a Vault ID.** One device may hold several vaults, a vault must retain identity when copied to another device, fingerprints are unstable/spoofable, and deriving identity from device characteristics would create unnecessary cross-vault/device linkability.
-5. Filenames become `<public-name>--<id8>--<generation>.cbx`; generation/high-water bookkeeping remains advisory in the warm shell but is namespaced per full Vault ID. **Save/re-save never creates or changes a Vault ID**: only the explicit new-vault creation path may generate a UUID. A canonical save filename that claims a different `id8` is refused before write. The short suffix is otherwise a hint only and must be checked against the authenticated full ID after unlock.
+5. **Amended by ADR-0026:** the Vault ID remains immutable, but current filenames are one canonical `<public-name>--<id8>.cbx` rather than visible generations. Historical generation names remain readable. A different Vault ID cannot claim an already-known public name in the app-visible scope.
 6. Existing v1 vaults remain valid. If no public `id` exists, warm-shell bookkeeping uses the already-public random header KDF salt as a legacy namespace; old `coldbox-vault-0047.cbx` names remain loadable. No byte-layout version bump occurs.
 7. **Vault Library access is user-granted.** Chromium may use `showDirectoryPicker()` to enumerate `.cbx` files within an explicitly selected folder; the portable fallback is a multi-file picker. Coldbox never claims it can silently scan the device. The user selects a vault before entering its one unlock phrase.
-8. **Save is first-class.** After creation the UI says `UNLOCKED · NOT SAVED` and presents a prominent `Save vault` action. Saving requests only encrypted bytes from cold. File System Access retains verify-after-save and becomes `Saved · verified`; download/manual become `Saved · unverified` rather than continuing to claim `Not saved`, while still keeping the normal-lock confirmation active until reopened/verified.
-9. Every visible **normal** lock action uses one gate. Warm-shell Lock warns on unsaved or saved-but-unverified state and offers Save first / Lock without saving / Cancel. The visible cold-realm control sends strict payload-free `vault.lockRequest {}` to warm and therefore cannot bypass that warning. Emergency paths (panic, timeout, network-mode transition, health/isolation failure) remain separate and lock immediately. All lock paths preserve zeroization.
+8. **Save is first-class.** After creation the UI says `UNLOCKED · NOT SAVED` and presents a prominent `Save vault` action. Saving requests only encrypted bytes from cold. **ADR-0026 amendment:** File System Access writes/updates the one canonical file and can become `Saved · verified`; a canonical download is `Saved · unverified`; advanced Base64 and live QR transfer are transports and do not count as saves.
+9. Every visible **normal** lock action uses one gate. Warm-shell Lock warns on unsaved or saved-but-unverified state. A truly unsaved vault offers Save first / Lock without saving / Cancel; under ADR-0026, a Saved · unverified unchanged vault cannot create a duplicate save, so that state offers Lock anyway / Cancel and directs the user to reopen the downloaded `.cbx` for verification. The visible cold-realm control sends strict payload-free `vault.lockRequest {}` to warm and therefore cannot bypass that warning. Emergency paths (panic, timeout, network-mode transition, health/isolation failure) remain separate and lock immediately. All lock paths preserve zeroization.
 
 ## Rationale
 
@@ -33,7 +33,7 @@ The save redesign does not trade away zeroization: warm receives the same authen
 - Users can manage several named vaults and see which file is active before entering a passphrase.
 - Vault names and generated filenames are public metadata; cloud/filesystem observers can see them.
 - Filename grouping and rollback checks remain advisory until the vault opens and its authenticated ID is known.
-- ADR-0013 remains authoritative about warm-shell save-integrity location, amended only from one global generation record to per-vault namespaces.
+- ADR-0013 remains authoritative about warm-shell save-integrity location. ADR-0026 supersedes user-visible generations while retaining per-Vault-ID advisory history and legacy-generation compatibility.
 - Historical v1 vaults/files need no migration to open.
 
 ## Alternatives considered

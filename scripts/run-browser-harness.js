@@ -625,69 +625,106 @@ async function verifyBuiltFile(browser, engine) {
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#vault-save-download').click();
     const download = await downloadPromise;
-    // P0.14: saves are named with a zero-padded generational counter so they
-    // accumulate history instead of clobbering (vault-format.md's
-    // "Generational filenames"). This is a fresh page/context with no prior
-    // localStorage save-generation record, so the first save in it is
-    // always generation 1.
+    const canonicalFilename = `Browser-Round-Trip--${activeVaultId.replace(/-/g, '').slice(0, 8).toLowerCase()}.cbx`;
     assert.equal(
       download.suggestedFilename(),
-      `Browser-Round-Trip--${activeVaultId.replace(/-/g, '').slice(0, 8).toLowerCase()}--0001.cbx`,
-      `${engine}: save filename must bind the public name and short authenticated Vault ID hint`
+      canonicalFilename,
+      `${engine}: canonical save filename must bind public name + short authenticated Vault ID without a visible generation suffix`
     );
     await page.locator('#vault-status-label').filter({ hasText: /Saved · unverified/ }).waitFor({ state: 'visible', timeout: 5000 });
+    const downloadedVaultPath = await download.path();
+    assert.ok(downloadedVaultPath, `${engine}: browser harness needs the downloaded canonical .cbx to exercise durable-source live transfer`);
     assert.equal((await page.locator('#vault-active-id').textContent()).trim(), activeVaultIdText, `${engine}: download save must not change Vault ID`);
+    assert.equal(await page.locator('#vault-save-primary').isDisabled(), true, `${engine}: unchanged saved vault must not be saved again as another look-alike copy`);
+    assert.equal(await page.locator('#vault-save-download').isDisabled(), true, `${engine}: unchanged canonical download action must disable after save`);
 
+    // Advanced Base64 is a handoff surface, not another save and not a QR
+    // backup/export route. It remains usable without changing save status.
     await page.locator('#vault-save-manual').click();
     await page.waitForFunction(() => document.querySelector('#vault-manual-data').value.length > 0);
     const manualVaultText = await page.locator('#vault-manual-data').inputValue();
-    assert.ok(manualVaultText.length > 100, `${engine}: manual export should contain encrypted vault bytes`);
+    assert.ok(manualVaultText.length > 100, `${engine}: encrypted-text handoff should contain encrypted vault bytes`);
     assert.equal(await page.locator('#vault-manual-copy').isDisabled(), false);
     assert.equal(await page.locator('#vault-manual-share').isDisabled(), true);
-    await page.locator('#vault-manual-qr-data').waitFor({ state: 'visible' });
-    assert.match(await page.locator('#vault-manual-qr-data').inputValue(), /^CBX-QR\/1\/1\/\d+\//);
-    const qrCountText = await page.locator('#vault-manual-qr-count').textContent();
-    const qrCountMatch = /^QR frame 1 of (\d+)\./.exec(qrCountText);
-    assert.ok(qrCountMatch, `${engine}: QR frame count should be rendered`);
-    const qrFrameCount = Number(qrCountMatch[1]);
-    assert.ok(qrFrameCount > 1, `${engine}: offline vault should exercise multipart QR output`);
-    await page.locator('#vault-manual-qr-image').waitFor({ state: 'visible' });
-
-    await page.locator('#vault-save-manual').click();
-    await page.waitForFunction((previous) => {
-      const value = document.querySelector('#vault-manual-data').value;
-      return value.length > 0 && value !== previous;
-    }, manualVaultText);
-    const secondManualVaultText = await page.locator('#vault-manual-data').inputValue();
-    assert.notEqual(secondManualVaultText, manualVaultText, `${engine}: repeated saves must rotate the public nonce`);
-    assert.equal((await page.locator('#vault-active-id').textContent()).trim(), activeVaultIdText, `${engine}: repeated saves must preserve the authenticated Vault ID`);
+    assert.equal(await page.locator('[id^="vault-manual-qr-"]').count(), 0, `${engine}: old downloadable/numbered vault QR export controls must not exist`);
     await page.locator('#vault-status-label').filter({ hasText: /Saved · unverified/ }).waitFor({ state: 'visible', timeout: 5000 });
+
+    // A download-only save is unverified and therefore is NOT eligible to
+    // become the sender for live QR. This keeps QR from becoming the sender's
+    // first/only persistence path and also proves unchanged re-save remains
+    // disabled rather than creating another look-alike file.
+    assert.equal(await page.locator('#vault-transfer-start').isDisabled(), true, `${engine}: Saved · unverified vault must not start live transfer before its .cbx is reopened`);
+    assert.equal(await page.locator('[id^="vault-transfer-download"]').count(), 0, `${engine}: live transfer must not expose a QR download action`);
 
     await page.locator('#vault-lock').click();
     await page.locator('#vault-lock-warning:not([hidden])').waitFor({ state: 'visible' });
     assert.match(
       await page.locator('#vault-lock-warning').textContent(),
       /could not verify|unverified/i,
-      `${engine}: an exported-but-unverified vault must warn about verification, not claim it was never saved`
+      `${engine}: an exported-but-unverified canonical vault must warn about verification`
     );
+    assert.equal(await page.locator('#vault-lock-save').isVisible(), false, `${engine}: unchanged Saved · unverified vault must not offer another Save-first copy`);
+    assert.equal((await page.locator('#vault-lock-without-save').textContent()).trim(), 'Lock anyway');
     await page.locator('#vault-lock-without-save').click();
     await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible' });
     await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible' });
-    const qrFrames = await page.evaluate((value) => {
-      const payloadLength = 650;
-      const total = Math.ceil(value.length / payloadLength);
-      return Array.from({ length: total }, (_, index) => (
-        'CBX-QR/1/' + String(index + 1) + '/' + String(total) + '/'
-          + value.slice(index * payloadLength, (index + 1) * payloadLength)
-      ));
-    }, manualVaultText);
-    assert.equal(qrFrames.length, qrFrameCount, `${engine}: QR frame count should match reassembly input`);
-    const incompleteQrFrames = qrFrames.slice();
-    incompleteQrFrames.splice(1, 1);
-    await page.locator('#vault-manual-data').fill(incompleteQrFrames.join('\n'));
-    await page.locator('#vault-load-manual').click();
-    await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible' });
-    await page.locator('#vault-manual-data').fill(qrFrames.join('\n'));
+
+    // Reopen the downloaded canonical .cbx. Once its authenticated Vault ID
+    // is loaded from durable storage, the live-transfer sender becomes
+    // eligible. The animation remains ephemeral and has no downloadable QR
+    // artifact.
+    // Playwright stores downloads under an opaque temporary basename, so
+    // passing download.path() directly would present a non-.cbx filename to
+    // the product and the Vault Library would correctly refuse it. Re-inject
+    // the exact downloaded bytes under the browser-suggested canonical name
+    // to model what the user actually has on disk.
+    await page.locator('#vault-file-input').setInputFiles({
+      name: canonicalFilename,
+      mimeType: 'application/octet-stream',
+      buffer: fs.readFileSync(downloadedVaultPath)
+    });
+    await page.locator('#vault-library-list [data-vault-library-index="0"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#vault-library-list [data-vault-library-index="0"]').click();
+    await page.locator('#vault-status[data-state="pending"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-passphrase').fill('browser round-trip phrase');
+    await coldFrame.locator('#cold-vault-unlock').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#vault-status-label').filter({ hasText: /Loaded/ }).waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal((await page.locator('#vault-active-id').textContent()).trim(), activeVaultIdText, `${engine}: reopening canonical .cbx must preserve Vault ID`);
+    assert.equal(await page.locator('#vault-transfer-start').isDisabled(), false, `${engine}: durable loaded vault should enable live device transfer`);
+
+    await page.locator('#vault-transfer-start').click();
+    await page.locator('#vault-transfer-sender:not([hidden])').waitFor({ state: 'visible', timeout: 10000 });
+    await page.waitForFunction(() => {
+      const image = document.querySelector('#vault-transfer-image');
+      return image && /^CBX-VT\/1\/(?:M|D)\//.test(image.getAttribute('data-transfer-frame') || '');
+    });
+    const transferFrameOne = await page.locator('#vault-transfer-image').getAttribute('data-transfer-frame');
+    assert.match(transferFrameOne, /^CBX-VT\/1\/(?:M|D)\//);
+    await page.waitForFunction((first) => {
+      const image = document.querySelector('#vault-transfer-image');
+      const value = image && image.getAttribute('data-transfer-frame');
+      return value && value !== first;
+    }, transferFrameOne, { timeout: 5000 });
+    await page.locator('#vault-transfer-pause').click();
+    assert.equal((await page.locator('#vault-transfer-pause').textContent()).trim(), 'Resume');
+    const pausedFrame = await page.locator('#vault-transfer-image').getAttribute('data-transfer-frame');
+    await page.waitForTimeout(650);
+    assert.equal(await page.locator('#vault-transfer-image').getAttribute('data-transfer-frame'), pausedFrame, `${engine}: paused animated QR frame must remain stable`);
+    await page.locator('#vault-transfer-stop').click();
+    await page.locator('#vault-transfer-sender[hidden]').waitFor({ state: 'hidden', timeout: 5000 });
+    assert.equal(await page.locator('#vault-transfer-image').getAttribute('data-transfer-frame'), null, `${engine}: stopping live transfer must clear the ephemeral frame`);
+
+    // Loaded durable vault has no dirty warning; lock normally before testing
+    // the advanced Base64 handoff as an intentionally-unsaved local receipt.
+    await page.locator('#vault-lock').click();
+    await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+
+    // Manual encrypted text can still be imported as an advanced fallback,
+    // but doing so creates an unsaved local working copy and requires the
+    // ordinary passphrase. It is not a QR reassembly path.
+    await page.locator('#vault-manual-data').fill(manualVaultText);
     await page.locator('#vault-load-manual').click();
     await page.locator('#vault-status[data-state="pending"]').waitFor({ state: 'visible' });
     await coldFrame.locator('#cold-vault-status[data-state="pending"]').waitFor({ state: 'visible' });
@@ -695,6 +732,7 @@ async function verifyBuiltFile(browser, engine) {
     await coldFrame.locator('#cold-vault-unlock').click();
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#vault-status-label').filter({ hasText: /Not saved/ }).waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await coldFrame.locator('#cold-vault-passphrase-confirm').isVisible(), false, `${engine}: normal unlock must not show creation confirmation`);
 
     reachability.setMode('reachable');
@@ -907,7 +945,7 @@ async function verifyVaultLibrary(browser, engine) {
     assert.notEqual(alpha.id, beta.id, `${engine}: two vaults created on one device must never share identity`);
 
     function fileName(record) {
-      return `${record.name.replace(/\s+/g, '-')}--${record.id.replace(/-/g, '').slice(0, 8).toLowerCase()}--0001.cbx`;
+      return `${record.name.replace(/\s+/g, '-')}--${record.id.replace(/-/g, '').slice(0, 8).toLowerCase()}.cbx`;
     }
 
     await page.locator('#vault-file-input').setInputFiles([
@@ -919,6 +957,17 @@ async function verifyVaultLibrary(browser, engine) {
     assert.equal(await libraryItems.count(), 2, `${engine}: two user-granted vaults must render as two selectable library entries`);
     assert.match(await page.locator('#vault-library-list').textContent(), /Alpha Savings/);
     assert.match(await page.locator('#vault-library-list').textContent(), /Beta Travel/);
+
+    // Only durable/granted vault identities reserve public names. Alpha and
+    // Beta were intentionally discarded while unsaved above, so their names
+    // were reusable until these canonical .cbx files entered the library.
+    // Now a different Vault ID may not claim Alpha's known public name.
+    await page.locator('#vault-create-name').fill('Alpha Savings');
+    await page.locator('#vault-create-prepare').click();
+    const duplicateNameNotice = page.locator('#vault-status-copy');
+    await duplicateNameNotice.filter({ hasText: /different vault already uses that public name/i }).waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await duplicateNameNotice.textContent(), /different vault already uses that public name/i);
+    assert.equal(await coldFrame.locator('#cold-vault-status').getAttribute('data-state'), 'locked', `${engine}: granted duplicate public name must not prepare a new cold vault`);
 
     async function selectUnlock(record) {
       const item = page.locator('#vault-library-list [data-vault-library-index]', { hasText: record.name });

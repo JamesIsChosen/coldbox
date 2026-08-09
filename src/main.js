@@ -3,6 +3,7 @@ __COLDBOX_PROTOCOL__
 __COLDBOX_AIRGAP__
 __COLDBOX_CAPABILITIES__
 __COLDBOX_SAVE_INTEGRITY__
+__COLDBOX_VAULT_TRANSFER__
 (function () {
   'use strict';
 
@@ -13,6 +14,7 @@ __COLDBOX_QR_ENCODER__
   var airgap = window.__coldboxAirgap;
   var capabilities = window.__coldboxCapabilities;
   var saveIntegrity = window.__coldboxSaveIntegrity;
+  var vaultTransfer = window.__coldboxLiveTransfer;
   var root = document.documentElement;
   var app = document.getElementById('app');
   var main = document.getElementById('main-content');
@@ -124,15 +126,21 @@ __COLDBOX_QR_ENCODER__
   var vaultManualData = document.getElementById('vault-manual-data');
   var vaultManualCopy = document.getElementById('vault-manual-copy');
   var vaultManualShare = document.getElementById('vault-manual-share');
-  var vaultManualQrPrepare = document.getElementById('vault-manual-qr-prepare');
-  var vaultManualQrCopy = document.getElementById('vault-manual-qr-copy');
-  var vaultManualQrCopyAll = document.getElementById('vault-manual-qr-copy-all');
-  var vaultManualQrPrevious = document.getElementById('vault-manual-qr-previous');
-  var vaultManualQrNext = document.getElementById('vault-manual-qr-next');
-  var vaultManualQrIndex = document.getElementById('vault-manual-qr-index');
-  var vaultManualQrData = document.getElementById('vault-manual-qr-data');
-  var vaultManualQrImage = document.getElementById('vault-manual-qr-image');
-  var vaultManualQrCount = document.getElementById('vault-manual-qr-count');
+  var vaultTransferStart = document.getElementById('vault-transfer-start');
+  var vaultTransferPause = document.getElementById('vault-transfer-pause');
+  var vaultTransferStop = document.getElementById('vault-transfer-stop');
+  var vaultTransferSender = document.getElementById('vault-transfer-sender');
+  var vaultTransferImage = document.getElementById('vault-transfer-image');
+  var vaultTransferSendStatus = document.getElementById('vault-transfer-send-status');
+  var vaultTransferReceive = document.getElementById('vault-transfer-receive');
+  var vaultTransferReceiveStop = document.getElementById('vault-transfer-receive-stop');
+  var vaultTransferVideo = document.getElementById('vault-transfer-video');
+  var vaultTransferReceiveStatus = document.getElementById('vault-transfer-receive-status');
+  var vaultTransferReceipt = document.getElementById('vault-transfer-receipt');
+  var vaultTransferReceiptSummary = document.getElementById('vault-transfer-receipt-summary');
+  var vaultTransferReceiveName = document.getElementById('vault-transfer-receive-name');
+  var vaultTransferLoad = document.getElementById('vault-transfer-load');
+  var vaultTransferDiscard = document.getElementById('vault-transfer-discard');
   var vaultLoadManual = document.getElementById('vault-load-manual');
   var vaultLock = document.getElementById('vault-lock');
   var vaultLockWarning = document.getElementById('vault-lock-warning');
@@ -171,8 +179,11 @@ __COLDBOX_QR_ENCODER__
   var activeVaultName = '';
   var activeVaultId = null;
   var activeVaultNamespace = null;
+  var activeVaultFileHandle = null;
+  var activeVaultCanonicalFilename = null;
   var pendingCreateVaultName = '';
   var vaultLibraryEntries = [];
+  var vaultSessionNameOwners = {};
   var reachabilityState = 'checking';
   var reachabilityFailureRounds = 0;
   var reachabilityInFlight = false;
@@ -187,9 +198,17 @@ __COLDBOX_QR_ENCODER__
   var vaultDirtyNotice = document.getElementById('vault-dirty-notice');
   var vaultRollbackBanner = document.getElementById('vault-rollback-banner');
   var vaultRollbackBannerCopy = document.getElementById('vault-rollback-banner-copy');
-  var manualQrChunks = [];
-  var manualQrIndex = 0;
-  var QR_FRAME_PAYLOAD_LENGTH = 650;
+  var liveTransferFrames = [];
+  var liveTransferIndex = 0;
+  var liveTransferTimer = null;
+  var liveTransferPaused = false;
+  var liveTransferCameraStream = null;
+  var liveTransferDetector = null;
+  var liveTransferScanTimer = null;
+  var liveTransferCollector = null;
+  var pendingReceivedTransfer = null;
+  var pendingReceivedTransferMeta = null;
+  var LIVE_TRANSFER_INTERVAL_MS = 250;
   var pages = Array.prototype.slice.call(document.querySelectorAll('[data-page]'));
   var routeLinks = Array.prototype.slice.call(document.querySelectorAll('[data-route]'));
 
@@ -1590,30 +1609,31 @@ __COLDBOX_QR_ENCODER__
     var unlocked = vaultState === 'unlocked';
     var locked = vaultState === 'locked';
     var hasManualText = Boolean(vaultManualData && vaultManualData.value.trim());
-    var hasQrChunks = manualQrChunks.length > 0;
+    var needsCanonicalSave = vaultPersistenceState === 'unsaved';
     if (vaultLoadFile) {
-      vaultLoadFile.disabled = !channelReady || unlocked;
+      vaultLoadFile.disabled = !channelReady || unlocked || Boolean(liveTransferCameraStream) || Boolean(pendingReceivedTransfer);
     }
     if (vaultChooseFolder) {
       vaultChooseFolder.hidden = typeof window.showDirectoryPicker !== 'function';
-      vaultChooseFolder.disabled = !channelReady || unlocked || typeof window.showDirectoryPicker !== 'function';
+      vaultChooseFolder.disabled = !channelReady || unlocked || Boolean(liveTransferCameraStream) || Boolean(pendingReceivedTransfer) || typeof window.showDirectoryPicker !== 'function';
     }
     if (vaultCreateName) {
-      vaultCreateName.disabled = !channelReady || !locked;
+      vaultCreateName.disabled = !channelReady || !locked || Boolean(liveTransferCameraStream) || Boolean(pendingReceivedTransfer);
     }
     if (vaultCreatePrepare) {
-      vaultCreatePrepare.disabled = !channelReady || !locked;
+      vaultCreatePrepare.disabled = !channelReady || !locked || Boolean(liveTransferCameraStream) || Boolean(pendingReceivedTransfer);
     }
     if (vaultSavePrimary) {
-      vaultSavePrimary.disabled = !channelReady || !unlocked;
+      vaultSavePrimary.disabled = !channelReady || !unlocked || !needsCanonicalSave;
     }
     if (vaultSaveFileSystem) {
       vaultSaveFileSystem.disabled = !channelReady
         || !unlocked
+        || !needsCanonicalSave
         || typeof window.showSaveFilePicker !== 'function';
     }
     if (vaultSaveDownload) {
-      vaultSaveDownload.disabled = !channelReady || !unlocked;
+      vaultSaveDownload.disabled = !channelReady || !unlocked || !needsCanonicalSave;
     }
     if (vaultSaveManual) {
       vaultSaveManual.disabled = !channelReady || !unlocked;
@@ -1626,26 +1646,17 @@ __COLDBOX_QR_ENCODER__
         || !window.navigator
         || typeof window.navigator.share !== 'function';
     }
-    if (vaultManualQrPrepare) {
-      vaultManualQrPrepare.disabled = !hasManualText;
-    }
-    if (vaultManualQrCopy) {
-      vaultManualQrCopy.disabled = !hasQrChunks;
-    }
-    if (vaultManualQrCopyAll) {
-      vaultManualQrCopyAll.disabled = !hasQrChunks;
-    }
-    if (vaultManualQrPrevious) {
-      vaultManualQrPrevious.disabled = !hasQrChunks || manualQrIndex === 0;
-    }
-    if (vaultManualQrNext) {
-      vaultManualQrNext.disabled = !hasQrChunks || manualQrIndex >= manualQrChunks.length - 1;
-    }
-    if (vaultManualQrIndex) {
-      vaultManualQrIndex.disabled = !hasQrChunks;
-    }
     if (vaultLoadManual) {
       vaultLoadManual.disabled = !channelReady || !hasManualText || unlocked;
+    }
+    if (vaultTransferStart) {
+      vaultTransferStart.disabled = !channelReady || !unlocked || !activeVaultId || !vaultHasDurableTransferSource() || liveTransferFrames.length > 0;
+    }
+    if (vaultTransferReceive) {
+      vaultTransferReceive.disabled = !channelReady || !locked || Boolean(liveTransferCameraStream) || Boolean(pendingReceivedTransfer);
+    }
+    if (vaultTransferLoad) {
+      vaultTransferLoad.disabled = !channelReady || !locked || !pendingReceivedTransfer;
     }
     if (vaultLock) {
       vaultLock.disabled = !channelReady || vaultState === 'locked';
@@ -1708,16 +1719,70 @@ __COLDBOX_QR_ENCODER__
     return typeof name === 'string' ? name.replace(/\.cbx$/i, '') : 'Vault';
   }
 
-  function libraryEntryForFile(file) {
+  function libraryEntryForFile(file, handle) {
     var parsed = saveIntegrity && typeof saveIntegrity.parseVaultFilename === 'function'
       ? saveIntegrity.parseVaultFilename(file && file.name)
       : null;
     return {
       file: file,
+      handle: handle || null,
       displayName: displayNameFromFilename(file && file.name),
       parsed: parsed,
       key: String(file && file.name || '') + ':' + String(file && file.size || 0) + ':' + String(file && file.lastModified || 0)
     };
+  }
+
+  function vaultNameConflict(name, vaultId) {
+    if (!saveIntegrity || typeof saveIntegrity.normalizedVaultNameKey !== 'function') {
+      return false;
+    }
+    var key = saveIntegrity.normalizedVaultNameKey(name);
+    if (!key) {
+      return true;
+    }
+    var normalizedId = typeof vaultId === 'string' ? vaultId.toLowerCase() : null;
+    if (vaultSessionNameOwners[key] && (!normalizedId || vaultSessionNameOwners[key] !== normalizedId)) {
+      return true;
+    }
+    if (typeof saveIntegrity.vaultNameOwner === 'function') {
+      var owner = saveIntegrity.vaultNameOwner(safeLocalStorage(), name);
+      if (owner && (!normalizedId || owner !== normalizedId)) {
+        return true;
+      }
+    }
+    for (var index = 0; index < vaultLibraryEntries.length; index += 1) {
+      var entry = vaultLibraryEntries[index];
+      if (saveIntegrity.normalizedVaultNameKey(entry.displayName) !== key) {
+        continue;
+      }
+      if (!normalizedId) {
+        return true;
+      }
+      var shortId = typeof saveIntegrity.id8 === 'function' ? saveIntegrity.id8(normalizedId) : null;
+      if (!entry.parsed || !entry.parsed.id8 || !shortId || entry.parsed.id8 !== shortId) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function claimVaultName(name, vaultId) {
+    if (!saveIntegrity || typeof saveIntegrity.normalizedVaultNameKey !== 'function') {
+      return false;
+    }
+    var key = saveIntegrity.normalizedVaultNameKey(name);
+    var normalizedId = typeof vaultId === 'string' ? vaultId.toLowerCase() : null;
+    if (!key || !normalizedId) {
+      return false;
+    }
+    if (vaultSessionNameOwners[key] && vaultSessionNameOwners[key] !== normalizedId) {
+      return false;
+    }
+    vaultSessionNameOwners[key] = normalizedId;
+    if (typeof saveIntegrity.claimVaultName === 'function') {
+      saveIntegrity.claimVaultName(safeLocalStorage(), name, normalizedId);
+    }
+    return true;
   }
 
   function renderVaultLibrary() {
@@ -1739,24 +1804,36 @@ __COLDBOX_QR_ENCODER__
       var title = document.createElement('strong');
       title.textContent = entry.displayName;
       var detail = document.createElement('span');
-      var generation = entry.parsed && entry.parsed.counter !== null
-        ? 'generation ' + String(entry.parsed.counter)
-        : 'generation unknown';
-      detail.textContent = generation + ' · ' + String(entry.file.name || 'vault.cbx');
+      var historyHint = entry.parsed && entry.parsed.counter !== null
+        ? 'legacy generation ' + String(entry.parsed.counter) + ' · '
+        : '';
+      var nameConflict = false;
+      if (saveIntegrity && typeof saveIntegrity.normalizedVaultNameKey === 'function') {
+        var entryKey = saveIntegrity.normalizedVaultNameKey(entry.displayName);
+        var entryId8 = entry.parsed && entry.parsed.id8 ? entry.parsed.id8 : null;
+        nameConflict = vaultLibraryEntries.some(function (other) {
+          return other !== entry
+            && saveIntegrity.normalizedVaultNameKey(other.displayName) === entryKey
+            && (!entryId8 || !other.parsed || !other.parsed.id8 || other.parsed.id8 !== entryId8);
+        });
+      }
+      detail.textContent = (nameConflict ? 'NAME CONFLICT · rename one vault file · ' : '')
+        + historyHint + String(entry.file.name || 'vault.cbx');
+      button.disabled = nameConflict;
       button.appendChild(title);
       button.appendChild(detail);
       vaultLibraryList.appendChild(button);
     });
   }
 
-  function addVaultFiles(files) {
-    var incoming = Array.prototype.slice.call(files || []).filter(function (file) {
-      return file && typeof file.name === 'string' && /\.cbx$/i.test(file.name);
+  function addVaultEntries(entries) {
+    var incoming = Array.prototype.slice.call(entries || []).filter(function (entry) {
+      return entry && entry.file && typeof entry.file.name === 'string' && /\.cbx$/i.test(entry.file.name);
     });
     var known = {};
     vaultLibraryEntries.forEach(function (entry) { known[entry.key] = true; });
-    incoming.forEach(function (file) {
-      var entry = libraryEntryForFile(file);
+    incoming.forEach(function (item) {
+      var entry = libraryEntryForFile(item.file, item.handle);
       if (!known[entry.key]) {
         known[entry.key] = true;
         vaultLibraryEntries.push(entry);
@@ -1765,9 +1842,7 @@ __COLDBOX_QR_ENCODER__
     vaultLibraryEntries.sort(function (left, right) {
       var nameOrder = left.displayName.localeCompare(right.displayName);
       if (nameOrder !== 0) { return nameOrder; }
-      var leftGeneration = left.parsed && Number.isInteger(left.parsed.counter) ? left.parsed.counter : -1;
-      var rightGeneration = right.parsed && Number.isInteger(right.parsed.counter) ? right.parsed.counter : -1;
-      return rightGeneration - leftGeneration;
+      return String(left.file.name || '').localeCompare(String(right.file.name || ''));
     });
     renderVaultLibrary();
     if (incoming.length === 0) {
@@ -1775,6 +1850,12 @@ __COLDBOX_QR_ENCODER__
     } else {
       setVaultNotice(String(incoming.length) + ' vault file(s) added to the user-granted library. Select one to unlock.');
     }
+  }
+
+  function addVaultFiles(files) {
+    addVaultEntries(Array.prototype.slice.call(files || []).map(function (file) {
+      return { file: file, handle: null };
+    }));
   }
 
   function prepareNewVaultCreation() {
@@ -1786,6 +1867,11 @@ __COLDBOX_QR_ENCODER__
     var safeFilenameName = saveIntegrity.sanitizeVaultName(name);
     if (!name || !safeFilenameName) {
       setVaultNotice('Enter a public vault name before creation.');
+      vaultCreateName.focus();
+      return;
+    }
+    if (vaultNameConflict(name, null)) {
+      setVaultNotice('A different vault already uses that public name on this device or in the granted Vault Library. Choose another name before creating a new vault.');
       vaultCreateName.focus();
       return;
     }
@@ -1812,13 +1898,13 @@ __COLDBOX_QR_ENCODER__
     }
     try {
       var directory = await window.showDirectoryPicker({ mode: 'read' });
-      var files = [];
+      var entries = [];
       for await (var handle of directory.values()) {
         if (handle && handle.kind === 'file' && /\.cbx$/i.test(handle.name || '')) {
-          files.push(await handle.getFile());
+          entries.push({ file: await handle.getFile(), handle: handle });
         }
       }
-      addVaultFiles(files);
+      addVaultEntries(entries);
     } catch (error) {
       if (!error || error.name !== 'AbortError') {
         setVaultNotice('The selected folder could not be read. Choose vault files instead.');
@@ -1827,9 +1913,10 @@ __COLDBOX_QR_ENCODER__
   }
 
   // Persistence and dirty state are related but not identical. A browser
-  // download/manual export can be a real saved copy even though Coldbox
-  // cannot read it back to verify it. Keep that state visibly distinct from
-  // a never-saved vault while still requiring an explicit lock decision.
+  // canonical download can be a real saved copy even though Coldbox cannot
+  // read it back to verify it. Advanced Base64 handoff is not a save. Keep
+  // the unverified-download state distinct from a never-saved vault while
+  // still requiring an explicit lock decision.
   function setVaultPersistenceState(state) {
     var allowed = ['none', 'unsaved', 'saved-unverified', 'saved-verified', 'loaded'];
     vaultPersistenceState = allowed.indexOf(state) !== -1 ? state : 'none';
@@ -1842,7 +1929,7 @@ __COLDBOX_QR_ENCODER__
       vaultDirtyNotice.hidden = !vaultDirty;
       vaultDirtyNotice.setAttribute('data-dirty', String(vaultDirty));
       vaultDirtyNotice.textContent = vaultPersistenceState === 'saved-unverified'
-        ? 'SAVED · NOT VERIFIED / Coldbox started an encrypted save/export but cannot read that copy back. Verify/reopen it before relying on it as the only copy.'
+        ? 'SAVED · NOT VERIFIED / Coldbox started a canonical .cbx download but cannot read that copy back. Reopen it before relying on it as the only copy.'
         : (vaultPersistenceState === 'unsaved'
           ? 'UNLOCKED · NOT SAVED / this vault exists only in working memory until you save it.'
           : '');
@@ -1875,11 +1962,15 @@ __COLDBOX_QR_ENCODER__
       ? new Date(fileMeta.lastModified).toISOString()
       : 'unknown date';
     var seenDate = evaluation.seenSavedAt || 'unknown date';
-    vaultRollbackBannerCopy.textContent = 'This file is save generation '
-      + String(evaluation.fileCounter) + ' (' + fileDate + '), but this browser has already recorded'
-      + ' generation ' + String(evaluation.seenCounter) + ' (' + seenDate + '). '
-      + 'You may be opening an older backup. This check is advisory: it degrades silently when the'
-      + ' filename or local record is unavailable.';
+    if (evaluation.reason === 'legacy-generation') {
+      vaultRollbackBannerCopy.textContent = 'This legacy file is save generation '
+        + String(evaluation.fileCounter) + ' (' + fileDate + '), but this browser previously recorded legacy generation '
+        + String(evaluation.seenCounter) + ' (' + seenDate + '). You may be opening an older backup.';
+      return;
+    }
+    vaultRollbackBannerCopy.textContent = 'This canonical file is older by filesystem timestamp (' + fileDate
+      + ') than the latest copy this browser profile recorded for this Vault ID (' + seenDate + '). You may be opening an older backup. '
+      + 'This advisory check degrades silently when browser-local history or trustworthy file timestamps are unavailable.';
   }
 
   function saveVerificationError() {
@@ -1889,8 +1980,8 @@ __COLDBOX_QR_ENCODER__
   }
 
   // Only called after a save's written bytes have been read back and
-  // confirmed identical (P0.14 verify-after-save). Advances the local save
-  // generation and clears the dirty flag; a failed write or a failed
+  // confirmed identical (P0.14 verify-after-save). Advances browser-local
+  // advisory history and clears the dirty flag; a failed write or failed
   // verification must never reach this function.
   function completeVerifiedSave() {
     if (saveIntegrity) {
@@ -1910,14 +2001,26 @@ __COLDBOX_QR_ENCODER__
     if (expectedVaultId && activeVaultId !== expectedVaultId) {
       throw new Error('Active Vault ID changed while save was in progress.');
     }
-    if (!expectedVaultId || !saveIntegrity || typeof saveIntegrity.parseVaultFilename !== 'function'
-      || typeof saveIntegrity.id8 !== 'function' || typeof chosenName !== 'string') {
+    if (!expectedVaultId || !activeVaultName || !saveIntegrity
+      || typeof saveIntegrity.filenameForVault !== 'function') {
       return;
     }
-    var parsed = saveIntegrity.parseVaultFilename(chosenName);
-    if (parsed && parsed.id8 && parsed.id8 !== saveIntegrity.id8(expectedVaultId)) {
-      throw new Error('Selected filename belongs to a different Vault ID.');
+    var expectedName = saveIntegrity.filenameForVault(activeVaultName, expectedVaultId);
+    if (typeof chosenName === 'string' && chosenName !== expectedName) {
+      throw new Error('Canonical vault saves must keep the unique name/Vault-ID filename.');
     }
+  }
+
+  function canonicalSaveReady() {
+    if (vaultState !== 'unlocked' || vaultPersistenceState !== 'unsaved') {
+      setVaultNotice('This vault has no unsaved state to persist. Coldbox will not create another look-alike copy of an unchanged vault.');
+      return false;
+    }
+    if (!activeVaultName || !activeVaultId || vaultNameConflict(activeVaultName, activeVaultId)) {
+      setVaultNotice('This public vault name is already owned by a different Vault ID. Choose a unique name before saving.');
+      return false;
+    }
+    return true;
   }
 
   function nextVaultMessageId(prefix) {
@@ -2057,141 +2160,401 @@ __COLDBOX_QR_ENCODER__
     return bytes;
   }
 
-  function clearQrExport() {
-    manualQrChunks = [];
-    manualQrIndex = 0;
-    if (vaultManualQrData) {
-      vaultManualQrData.value = '';
-    }
-    if (vaultManualQrImage) {
-      vaultManualQrImage.hidden = true;
-      vaultManualQrImage.removeAttribute('src');
-    }
-    if (vaultManualQrCount) {
-      vaultManualQrCount.textContent = 'No QR frames prepared.';
-    }
-    updateVaultControls();
-  }
-
   function clearManualVaultExport() {
     if (vaultManualData) {
       vaultManualData.value = '';
       vaultManualData.scrollTop = 0;
     }
-    clearQrExport();
+    updateVaultControls();
   }
 
-  function renderQrFrame() {
-    if (manualQrChunks.length === 0) {
-      clearQrExport();
-      return;
+  function transferId() {
+    if (!window.crypto || typeof window.crypto.getRandomValues !== 'function') {
+      throw new Error('Secure randomness is unavailable for the live transfer ID.');
     }
-    var frame = manualQrChunks[manualQrIndex];
-    if (vaultManualQrData) {
-      vaultManualQrData.value = frame;
+    var bytes = new Uint8Array(16);
+    window.crypto.getRandomValues(bytes);
+    var result = '';
+    for (var index = 0; index < bytes.length; index += 1) {
+      result += bytes[index].toString(16).padStart(2, '0');
+      bytes[index] = 0;
     }
-    if (vaultManualQrIndex) {
-      vaultManualQrIndex.value = String(manualQrIndex + 1);
+    return result;
+  }
+
+  function sha256Hex(bytes) {
+    if (!window.crypto || !window.crypto.subtle || typeof window.crypto.subtle.digest !== 'function') {
+      return Promise.reject(new Error('SHA-256 is unavailable for live transfer integrity.'));
     }
-    if (vaultManualQrCount) {
-      vaultManualQrCount.textContent = 'QR frame '
-        + String(manualQrIndex + 1)
-        + ' of '
-        + String(manualQrChunks.length)
-        + '. Copy all frames in order, or scan each frame in order and paste the resulting lines into the encrypted vault base64 field.';
-    }
-    if (vaultManualQrImage && typeof qrcode === 'function') {
-      try {
-        var code = qrcode(0, 'M');
-        code.addData(frame, 'Byte');
-        code.make();
-        vaultManualQrImage.src = code.createDataURL(4, 4);
-        vaultManualQrImage.alt = 'Encrypted vault QR frame '
-          + String(manualQrIndex + 1)
-          + ' of '
-          + String(manualQrChunks.length);
-        vaultManualQrImage.hidden = false;
-      } catch (error) {
-        vaultManualQrImage.hidden = true;
-        vaultManualQrImage.removeAttribute('src');
-        if (vaultManualQrCount) {
-          vaultManualQrCount.textContent = 'This QR frame could not be rendered. Copy the numbered text frame instead.';
-        }
+    return window.crypto.subtle.digest('SHA-256', bytes).then(function (buffer) {
+      var digest = new Uint8Array(buffer);
+      var result = '';
+      for (var index = 0; index < digest.length; index += 1) {
+        result += digest[index].toString(16).padStart(2, '0');
+        digest[index] = 0;
       }
+      return result;
+    });
+  }
+
+  function vaultHasDurableTransferSource() {
+    return vaultPersistenceState === 'saved-verified' || vaultPersistenceState === 'loaded';
+  }
+
+  function grantedLibraryAlreadyHasVault(vaultId) {
+    if (!vaultId || !saveIntegrity || typeof saveIntegrity.id8 !== 'function') {
+      return false;
+    }
+    if (activeVaultId === vaultId && activeVaultCanonicalFilename) {
+      return true;
+    }
+    var shortId = saveIntegrity.id8(vaultId);
+    return vaultLibraryEntries.some(function (entry) {
+      return Boolean(entry.parsed && entry.parsed.id8 && entry.parsed.id8 === shortId);
+    });
+  }
+
+  function clearLiveTransferSender(message) {
+    if (liveTransferTimer !== null) {
+      window.clearInterval(liveTransferTimer);
+      liveTransferTimer = null;
+    }
+    liveTransferFrames = [];
+    liveTransferIndex = 0;
+    liveTransferPaused = false;
+    if (vaultTransferSender) {
+      vaultTransferSender.hidden = true;
+    }
+    if (vaultTransferImage) {
+      vaultTransferImage.removeAttribute('src');
+      vaultTransferImage.removeAttribute('data-transfer-frame');
+    }
+    if (vaultTransferPause) {
+      vaultTransferPause.hidden = true;
+      vaultTransferPause.textContent = 'Pause';
+    }
+    if (vaultTransferStop) {
+      vaultTransferStop.hidden = true;
+    }
+    if (vaultTransferSendStatus) {
+      vaultTransferSendStatus.textContent = message || 'No transfer active.';
     }
     updateVaultControls();
   }
 
-  function prepareQrExport(value) {
-    var normalized = String(value || '').replace(/\s+/g, '');
-    if (!normalized) {
-      clearQrExport();
+  function renderLiveTransferFrame() {
+    if (liveTransferFrames.length === 0 || !vaultTransferImage || typeof qrcode !== 'function') {
       return;
     }
-    var total = Math.ceil(normalized.length / QR_FRAME_PAYLOAD_LENGTH);
-    manualQrChunks = [];
-    for (var index = 0; index < total; index += 1) {
-      manualQrChunks.push(
-        'CBX-QR/1/'
-        + String(index + 1)
-        + '/'
-        + String(total)
-        + '/'
-        + normalized.slice(index * QR_FRAME_PAYLOAD_LENGTH, (index + 1) * QR_FRAME_PAYLOAD_LENGTH)
-      );
+    var frame = liveTransferFrames[liveTransferIndex];
+    try {
+      var code = qrcode(0, 'M');
+      code.addData(frame, 'Byte');
+      code.make();
+      vaultTransferImage.src = code.createDataURL(4, 4);
+      vaultTransferImage.setAttribute('data-transfer-frame', frame);
+      vaultTransferImage.alt = 'Encrypted live vault transfer frame '
+        + String(liveTransferIndex + 1) + ' of ' + String(liveTransferFrames.length);
+      if (vaultTransferSendStatus) {
+        vaultTransferSendStatus.textContent = 'Live encrypted transfer · frame '
+          + String(liveTransferIndex + 1) + ' of ' + String(liveTransferFrames.length)
+          + ' · repeats automatically. No QR file can be downloaded.';
+      }
+    } catch (error) {
+      clearLiveTransferSender('The live QR frame could not be rendered. Use the canonical .cbx file instead.');
     }
-    manualQrIndex = 0;
-    renderQrFrame();
   }
 
-  function assembleQrExport(value) {
-    var lines = String(value || '').trim().split(/\s+/).filter(function (line) {
-      return line.length > 0;
+  function startLiveTransferAnimation() {
+    renderLiveTransferFrame();
+    liveTransferTimer = window.setInterval(function () {
+      if (liveTransferPaused || liveTransferFrames.length === 0) {
+        return;
+      }
+      liveTransferIndex = (liveTransferIndex + 1) % liveTransferFrames.length;
+      renderLiveTransferFrame();
+    }, LIVE_TRANSFER_INTERVAL_MS);
+  }
+
+  function startLiveVaultTransfer() {
+    if (vaultState !== 'unlocked' || !activeVaultId || !activeVaultName || !vaultTransfer || !vaultHasDurableTransferSource()) {
+      setVaultNotice('Live transfer is only for an unlocked vault that already has a durable local .cbx copy. Save/verify or load the canonical vault first.');
+      return;
+    }
+    clearLiveTransferSender('Preparing an encrypted live transfer…');
+    var expectedVaultId = activeVaultId;
+    var expectedName = activeVaultName;
+    requestVaultBytes().then(function (bytes) {
+      return sha256Hex(bytes).then(function (hash) {
+        if (vaultState !== 'unlocked' || activeVaultId !== expectedVaultId || activeVaultName !== expectedName) {
+          throw new Error('Vault identity changed while transfer was being prepared.');
+        }
+        var frames = vaultTransfer.createFrames(bytesToBase64(bytes), {
+          transferId: transferId(),
+          vaultId: expectedVaultId,
+          name: expectedName,
+          hash: hash
+        });
+        liveTransferFrames = Array.prototype.slice.call(frames);
+        liveTransferIndex = 0;
+        liveTransferPaused = false;
+        if (vaultTransferSender) {
+          vaultTransferSender.hidden = false;
+        }
+        if (vaultTransferPause) {
+          vaultTransferPause.hidden = false;
+        }
+        if (vaultTransferStop) {
+          vaultTransferStop.hidden = false;
+        }
+        startLiveTransferAnimation();
+        updateVaultControls();
+      });
+    }).catch(function () {
+      clearLiveTransferSender('Live transfer could not be prepared. Use the canonical .cbx file instead.');
     });
-    if (lines.length === 0 || lines[0].indexOf('CBX-QR/1/') !== 0) {
+  }
+
+  function pauseLiveVaultTransfer() {
+    if (liveTransferFrames.length === 0 || !vaultTransferPause) {
+      return;
+    }
+    liveTransferPaused = !liveTransferPaused;
+    vaultTransferPause.textContent = liveTransferPaused ? 'Resume' : 'Pause';
+    if (vaultTransferSendStatus) {
+      vaultTransferSendStatus.textContent = liveTransferPaused
+        ? 'Live encrypted transfer paused on frame ' + String(liveTransferIndex + 1) + '.'
+        : 'Live encrypted transfer resumed.';
+    }
+  }
+
+  function stopLiveTransferReceiver(message, preserveReceipt) {
+    if (liveTransferScanTimer !== null) {
+      window.clearTimeout(liveTransferScanTimer);
+      liveTransferScanTimer = null;
+    }
+    if (liveTransferCameraStream && typeof liveTransferCameraStream.getTracks === 'function') {
+      liveTransferCameraStream.getTracks().forEach(function (track) { track.stop(); });
+    }
+    liveTransferCameraStream = null;
+    liveTransferDetector = null;
+    liveTransferCollector = null;
+    if (vaultTransferVideo) {
+      vaultTransferVideo.pause();
+      vaultTransferVideo.srcObject = null;
+      vaultTransferVideo.hidden = true;
+    }
+    if (vaultTransferReceiveStop) {
+      vaultTransferReceiveStop.hidden = true;
+    }
+    if (!preserveReceipt) {
+      pendingReceivedTransfer = null;
+      pendingReceivedTransferMeta = null;
+      if (vaultTransferReceipt) {
+        vaultTransferReceipt.hidden = true;
+      }
+    }
+    if (vaultTransferReceiveStatus && message) {
+      vaultTransferReceiveStatus.textContent = message;
+    }
+    updateVaultControls();
+  }
+
+  function finishLiveTransferReceipt(assembled) {
+    var bytes;
+    try {
+      bytes = base64ToBytes(assembled.base64);
+    } catch (error) {
+      stopLiveTransferReceiver('The received encrypted payload was invalid.', false);
+      return;
+    }
+    sha256Hex(bytes).then(function (actualHash) {
+      if (actualHash !== assembled.hash) {
+        stopLiveTransferReceiver('Transfer integrity failed. The received frames were discarded.', false);
+        return;
+      }
+      if (grantedLibraryAlreadyHasVault(assembled.vaultId)) {
+        stopLiveTransferReceiver(
+          'This vault is already present in the currently granted Vault Library or active canonical file. Live QR is only for a device that does not already have this vault; load the local .cbx instead.',
+          false
+        );
+        return;
+      }
+      pendingReceivedTransfer = bytes;
+      pendingReceivedTransferMeta = assembled;
+      stopLiveTransferReceiver('Encrypted transfer complete and SHA-256 verified. Choose the local public name, then load it.', true);
+      if (vaultTransferReceipt) {
+        vaultTransferReceipt.hidden = false;
+      }
+      if (vaultTransferReceiptSummary) {
+        vaultTransferReceiptSummary.textContent = 'Received encrypted vault · Vault ID '
+          + assembled.vaultId + ' · transfer ' + assembled.transferId.slice(0, 8) + '…';
+      }
+      if (vaultTransferReceiveName) {
+        vaultTransferReceiveName.value = assembled.name;
+      }
+      if (vaultNameConflict(assembled.name, assembled.vaultId) && vaultTransferReceiveStatus) {
+        vaultTransferReceiveStatus.textContent = 'Transfer verified, but that public name already belongs to a different Vault ID on this device. Choose a different local public name before loading.';
+      }
+      updateVaultControls();
+    }, function () {
+      stopLiveTransferReceiver('Transfer integrity could not be verified. The received frames were discarded.', false);
+    });
+  }
+
+  function scanLiveTransferFrame() {
+    if (!liveTransferCameraStream || !liveTransferDetector || !vaultTransferVideo || !liveTransferCollector) {
+      return;
+    }
+    Promise.resolve(liveTransferDetector.detect(vaultTransferVideo)).then(function (codes) {
+      (codes || []).forEach(function (code) {
+        var raw = code && typeof code.rawValue === 'string' ? code.rawValue : '';
+        if (raw.indexOf(vaultTransfer.prefix) !== 0) {
+          return;
+        }
+        var accepted = vaultTransfer.acceptFrame(liveTransferCollector, raw);
+        var progress = accepted.progress;
+        if (vaultTransferReceiveStatus && progress) {
+          vaultTransferReceiveStatus.textContent = progress.total
+            ? 'Receiving encrypted vault… ' + String(progress.received) + ' / ' + String(progress.total)
+              + ' data frames collected' + (progress.hasManifest ? '.' : ' · waiting for transfer manifest.')
+            : 'Receiving encrypted vault… waiting for transfer manifest.';
+        }
+        if (progress && progress.complete) {
+          var assembled;
+          try {
+            assembled = vaultTransfer.assemble(liveTransferCollector);
+          } catch (error) {
+            stopLiveTransferReceiver('The transfer could not be reassembled. Frames were discarded.', false);
+            return;
+          }
+          finishLiveTransferReceipt(assembled);
+        }
+      });
+    }).catch(function () {
+      // A single detector miss/error is not a transfer failure; keep scanning.
+    }).then(function () {
+      if (liveTransferCameraStream) {
+        liveTransferScanTimer = window.setTimeout(scanLiveTransferFrame, 100);
+      }
+    });
+  }
+
+  function startLiveTransferReceiver() {
+    if (vaultState !== 'locked' || !vaultTransfer) {
+      setVaultNotice('Lock the current vault before receiving another vault.');
+      return;
+    }
+    if (!window.navigator || !window.navigator.mediaDevices
+      || typeof window.navigator.mediaDevices.getUserMedia !== 'function'
+      || typeof window.BarcodeDetector !== 'function') {
+      if (vaultTransferReceiveStatus) {
+        vaultTransferReceiveStatus.textContent = 'Live QR receive is unavailable in this browser. Use the canonical .cbx file instead.';
+      }
+      return;
+    }
+    var supportedPromise = typeof window.BarcodeDetector.getSupportedFormats === 'function'
+      ? window.BarcodeDetector.getSupportedFormats()
+      : Promise.resolve(['qr_code']);
+    Promise.resolve(supportedPromise).then(function (formats) {
+      if (formats.indexOf('qr_code') === -1) {
+        throw new Error('QR detection unavailable.');
+      }
+      return window.navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+    }).then(function (stream) {
+      liveTransferCameraStream = stream;
+      liveTransferDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
+      liveTransferCollector = vaultTransfer.createCollector();
+      pendingReceivedTransfer = null;
+      pendingReceivedTransferMeta = null;
+      if (vaultTransferReceipt) {
+        vaultTransferReceipt.hidden = true;
+      }
+      if (vaultTransferVideo) {
+        vaultTransferVideo.srcObject = stream;
+        vaultTransferVideo.hidden = false;
+        return Promise.resolve(vaultTransferVideo.play()).catch(function () {});
+      }
       return null;
-    }
-    var chunks = [];
-    var total = null;
-    lines.forEach(function (line) {
-      var match = /^CBX-QR\/1\/(\d+)\/(\d+)\/([A-Za-z0-9+/=]+)$/.exec(line);
-      if (!match) {
-        throw new Error('Invalid QR frame.');
+    }).then(function () {
+      if (!liveTransferCameraStream) {
+        return;
       }
-      var index = Number(match[1]);
-      var declaredTotal = Number(match[2]);
-      if (!Number.isSafeInteger(index)
-        || !Number.isSafeInteger(declaredTotal)
-        || index < 1
-        || declaredTotal < 1
-        || declaredTotal > Math.ceil((Math.ceil((64 * 1024 * 1024) * 4 / 3) + 8) / QR_FRAME_PAYLOAD_LENGTH)
-        || index > declaredTotal
-        || match[3].length > QR_FRAME_PAYLOAD_LENGTH
-        || (total !== null && total !== declaredTotal)) {
-        throw new Error('Invalid QR frame sequence.');
+      if (vaultTransferReceiveStop) {
+        vaultTransferReceiveStop.hidden = false;
       }
-      total = declaredTotal;
-      if (chunks[index - 1]) {
-        throw new Error('Duplicate QR frame.');
+      if (vaultTransferReceiveStatus) {
+        vaultTransferReceiveStatus.textContent = 'Camera active. Point it at the animated QR shown by the sending Coldbox device.';
       }
-      chunks[index - 1] = match[3];
+      updateVaultControls();
+      scanLiveTransferFrame();
+    }).catch(function (error) {
+      stopLiveTransferReceiver(
+        error && error.name === 'NotAllowedError'
+          ? 'Camera permission was not granted. Use the canonical .cbx file instead.'
+          : 'Live QR receive is unavailable here. Use the canonical .cbx file instead.',
+        false
+      );
     });
-    if (total === null || chunks.length !== total) {
-      throw new Error('Incomplete QR frame set.');
+  }
+
+  function loadReceivedTransfer() {
+    if (!pendingReceivedTransfer || !pendingReceivedTransferMeta || !vaultTransferReceiveName || !saveIntegrity) {
+      setVaultNotice('No verified live transfer is waiting to be loaded.');
+      return;
     }
-    for (var chunkIndex = 0; chunkIndex < total; chunkIndex += 1) {
-      if (!chunks[chunkIndex]) {
-        throw new Error('Incomplete QR frame set.');
-      }
+    var name = vaultTransferReceiveName.value.trim();
+    if (!name || !saveIntegrity.sanitizeVaultName(name)) {
+      setVaultNotice('Choose a valid public vault name before loading the received transfer.');
+      vaultTransferReceiveName.focus();
+      return;
     }
-    return chunks.join('');
+    if (vaultNameConflict(name, pendingReceivedTransferMeta.vaultId)) {
+      setVaultNotice('A different Vault ID already uses that public name on this device. Choose another local name.');
+      vaultTransferReceiveName.focus();
+      return;
+    }
+    var bytes = new Uint8Array(pendingReceivedTransfer);
+    var meta = {
+      name: null,
+      displayName: name,
+      lastModified: null,
+      parsedName: null,
+      handle: null,
+      source: 'qr-transfer',
+      transferVaultId: pendingReceivedTransferMeta.vaultId,
+      transferId: pendingReceivedTransferMeta.transferId
+    };
+    clearManualVaultExport();
+    setActiveVaultMeta(name, null);
+    pendingReceivedTransfer = null;
+    pendingReceivedTransferMeta = null;
+    if (vaultTransferReceipt) {
+      vaultTransferReceipt.hidden = true;
+    }
+    sendVaultOpen(bytes, meta);
+  }
+
+  function discardReceivedTransfer() {
+    pendingReceivedTransfer = null;
+    pendingReceivedTransferMeta = null;
+    if (vaultTransferReceipt) {
+      vaultTransferReceipt.hidden = true;
+    }
+    if (vaultTransferReceiveName) {
+      vaultTransferReceiveName.value = '';
+    }
+    if (vaultTransferReceiveStatus) {
+      vaultTransferReceiveStatus.textContent = 'Received transfer discarded. Camera is off.';
+    }
+    updateVaultControls();
   }
 
   function shareManualText() {
     if (!vaultManualData || !vaultManualData.value.trim()
       || !window.navigator
       || typeof window.navigator.share !== 'function') {
-      setVaultNotice('This browser does not expose secure text sharing. Copy the encrypted text or QR frames instead.');
+      setVaultNotice('This browser does not expose secure text sharing. Copy the encrypted Base64 text instead.');
       return;
     }
     window.navigator.share({
@@ -2201,7 +2564,7 @@ __COLDBOX_QR_ENCODER__
       setVaultNotice('Encrypted vault text shared.');
     }, function (error) {
       if (!error || error.name !== 'AbortError') {
-        setVaultNotice('The encrypted vault was not shared. Copy the text or QR frames instead.');
+        setVaultNotice('The encrypted vault was not shared. Copy the encrypted Base64 text instead.');
       }
     });
   }
@@ -2241,7 +2604,7 @@ __COLDBOX_QR_ENCODER__
     });
   }
 
-  function loadVaultFile(file) {
+  function loadVaultFile(file, handle) {
     // Captured before the async read so a slow FileReader path can't race a
     // second load; used only for the advisory rollback check (P0.14) and
     // never sent anywhere - it stays in the warm shell.
@@ -2251,7 +2614,9 @@ __COLDBOX_QR_ENCODER__
     var fileMeta = {
       name: file && typeof file.name === 'string' ? file.name : null,
       lastModified: file && typeof file.lastModified === 'number' ? file.lastModified : null,
-      parsedName: parsedName
+      parsedName: parsedName,
+      handle: handle || null,
+      source: 'file'
     };
     pendingCreateVaultName = '';
     clearManualVaultExport();
@@ -2272,9 +2637,11 @@ __COLDBOX_QR_ENCODER__
           accept: { 'application/octet-stream': ['.cbx'] }
         }]
       }).then(function (handles) {
-        return Promise.all((handles || []).map(function (handle) { return handle.getFile(); }));
-      }).then(function (files) {
-        addVaultFiles(files);
+        return Promise.all((handles || []).map(function (handle) {
+          return handle.getFile().then(function (file) { return { file: file, handle: handle }; });
+        }));
+      }).then(function (entries) {
+        addVaultEntries(entries);
       }).catch(function (error) {
         if (!error || error.name !== 'AbortError') {
           setVaultNotice('The device file picker could not read the selected vault files.');
@@ -2300,17 +2667,19 @@ __COLDBOX_QR_ENCODER__
       return 'coldbox-vault.cbx';
     }
     try {
-      var counter = saveIntegrity.nextCounter(saveGeneration);
       if (activeVaultName && activeVaultId && typeof saveIntegrity.filenameForVault === 'function') {
-        return saveIntegrity.filenameForVault(activeVaultName, activeVaultId, counter);
+        return saveIntegrity.filenameForVault(activeVaultName, activeVaultId);
       }
-      return saveIntegrity.filenameForCounter(counter);
+      return 'coldbox-vault.cbx';
     } catch (error) {
       return 'coldbox-vault.cbx';
     }
   }
 
   function savePrimaryVault() {
+    if (!canonicalSaveReady()) {
+      return;
+    }
     if (typeof window.showSaveFilePicker === 'function') {
       saveWithFileSystemAccess();
       return;
@@ -2325,20 +2694,28 @@ __COLDBOX_QR_ENCODER__
   // back different from what was written - the shape a truncated or
   // interrupted write takes - leaves the vault marked dirty and says so.
   function saveWithFileSystemAccess() {
-    if (typeof window.showSaveFilePicker !== 'function') {
+    if (!canonicalSaveReady()) {
+      return;
+    }
+    if (typeof window.showSaveFilePicker !== 'function' && !activeVaultFileHandle) {
       reportVaultSaveFailure(new Error('File System Access is unavailable.'));
       return;
     }
     var suggestedName = nextSuggestedFilename();
     var saveVaultId = activeVaultId;
+    var chosenHandle = null;
     requestVaultBytes().then(function (bytes) {
-      return window.showSaveFilePicker({
-        suggestedName: suggestedName,
-        types: [{
-          description: 'Coldbox vault',
-          accept: { 'application/octet-stream': ['.cbx'] }
-        }]
-      }).then(function (handle) {
+      var handlePromise = activeVaultFileHandle
+        ? Promise.resolve(activeVaultFileHandle)
+        : window.showSaveFilePicker({
+          suggestedName: suggestedName,
+          types: [{
+            description: 'Coldbox vault',
+            accept: { 'application/octet-stream': ['.cbx'] }
+          }]
+        });
+      return handlePromise.then(function (handle) {
+        chosenHandle = handle;
         assertStableSaveIdentity(saveVaultId, handle && handle.name);
         if (!saveIntegrity) {
           return handle.createWritable().then(function (writable) {
@@ -2369,23 +2746,29 @@ __COLDBOX_QR_ENCODER__
         );
         return;
       }
-      assertStableSaveIdentity(saveVaultId, suggestedName);
+      assertStableSaveIdentity(saveVaultId, chosenHandle && chosenHandle.name);
+      activeVaultFileHandle = chosenHandle;
+      activeVaultCanonicalFilename = suggestedName;
+      claimVaultName(activeVaultName, activeVaultId);
       completeVerifiedSave();
       setVaultStatus(
         'unlocked',
         activeVaultName ? activeVaultName + ' is unlocked' : 'Vault is unlocked',
-        'Encrypted vault saved and verified by reading it back from disk. Vault ID ' + (activeVaultId || 'legacy') + ' is unchanged; later saves create new generations, never new vault identities.',
+        'The canonical encrypted vault file was written and verified byte-for-byte. Its Vault ID and filename remain stable; unchanged vaults cannot be saved again as another copy.',
         vaultPersistenceLabel()
       );
     }, reportVaultSaveFailure);
   }
 
-  // Blob download and the manual/QR export below cannot be read back from
+  // Blob download cannot be read back from
   // disk through any web API - the browser (or the person copying the text)
   // owns that step, invisibly to this page. So neither path ever clears the
-  // dirty flag automatically or advances the save generation; both say so
-  // plainly rather than claiming a verification that did not happen.
+  // verified automatically. It is the canonical fallback for browsers that
+  // cannot hold a writable file handle, and the UI keeps that limitation explicit.
   function saveAsDownload() {
+    if (!canonicalSaveReady()) {
+      return;
+    }
     var suggestedName = nextSuggestedFilename();
     var saveVaultId = activeVaultId;
     requestVaultBytes().then(function (bytes) {
@@ -2404,33 +2787,34 @@ __COLDBOX_QR_ENCODER__
       link.remove();
       window.setTimeout(function () { window.URL.revokeObjectURL(url); }, 0);
     }).then(function () {
+      activeVaultCanonicalFilename = suggestedName;
+      claimVaultName(activeVaultName, activeVaultId);
       setVaultPersistenceState('saved-unverified');
       setVaultStatus(
         'unlocked',
         activeVaultName ? activeVaultName + ' is unlocked' : 'Vault is unlocked',
-        'Encrypted vault download started as ' + suggestedName + '. This is a saved copy, but the browser does not let Coldbox read the download back, so it remains unverified. Vault ID ' + (activeVaultId || 'legacy') + ' is unchanged.',
+        'The canonical encrypted vault download started as ' + suggestedName + '. Coldbox cannot verify what the browser wrote, so reopen that file before relying on it as the only copy. Unchanged vaults cannot start another save.',
         vaultPersistenceLabel()
       );
     }, reportVaultSaveFailure);
   }
 
   function saveAsManualText() {
-    var suggestedName = nextSuggestedFilename();
     var saveVaultId = activeVaultId;
     requestVaultBytes().then(function (bytes) {
-      assertStableSaveIdentity(saveVaultId, suggestedName);
+      if (saveVaultId && activeVaultId !== saveVaultId) {
+        throw new Error('Active Vault ID changed while encrypted text was being prepared.');
+      }
       if (!vaultManualData) {
-        throw new Error('Manual export is unavailable.');
+        throw new Error('Manual encrypted-text handoff is unavailable.');
       }
       vaultManualData.value = bytesToBase64(bytes);
       vaultManualData.scrollTop = 0;
-      prepareQrExport(vaultManualData.value);
       updateVaultControls();
-      setVaultPersistenceState('saved-unverified');
       setVaultStatus(
         'unlocked',
         activeVaultName ? activeVaultName + ' is unlocked' : 'Vault is unlocked',
-        'Encrypted vault text and numbered QR frames are prepared (suggested filename ' + suggestedName + '). This is a saved/exported copy but cannot be read back automatically, so it remains unverified. Vault ID ' + (activeVaultId || 'legacy') + ' is unchanged.',
+        'Encrypted Base64 text is prepared for an advanced manual handoff. This does not count as a canonical save and QR is not generated from this surface.',
         vaultPersistenceLabel()
       );
     }, reportVaultSaveFailure);
@@ -2438,40 +2822,11 @@ __COLDBOX_QR_ENCODER__
 
   function copyManualText() {
     if (!vaultManualData || !vaultManualData.value.trim()) {
-      setVaultNotice('Prepare a manual export before copying it.');
+      setVaultNotice('Prepare an encrypted-text handoff before copying it.');
       return;
     }
     var text = vaultManualData.value;
     copyText(text, 'Encrypted vault text copied.', vaultManualData);
-  }
-
-  function prepareManualQr() {
-    if (!vaultManualData || !vaultManualData.value.trim()) {
-      setVaultNotice('Prepare an encrypted vault export before making QR frames.');
-      return;
-    }
-    prepareQrExport(vaultManualData.value);
-    setVaultNotice('Numbered QR frames are ready. Scan or copy every frame in order.');
-  }
-
-  function copyManualQr() {
-    if (manualQrChunks.length === 0 || !vaultManualQrData) {
-      setVaultNotice('Prepare QR frames before copying one.');
-      return;
-    }
-    copyText(vaultManualQrData.value, 'Current QR frame copied.', vaultManualQrData);
-  }
-
-  function copyAllManualQr() {
-    if (manualQrChunks.length === 0 || !vaultManualQrData) {
-      setVaultNotice('Prepare QR frames before copying them.');
-      return;
-    }
-    copyText(
-      manualQrChunks.join('\n'),
-      'All QR frames copied in numbered order.',
-      vaultManualQrData
-    );
   }
 
   function loadManualText() {
@@ -2479,10 +2834,9 @@ __COLDBOX_QR_ENCODER__
       return;
     }
     try {
-      var qrText = assembleQrExport(vaultManualData.value);
-      sendVaultOpen(base64ToBytes(qrText || vaultManualData.value));
+      sendVaultOpen(base64ToBytes(vaultManualData.value), { source: 'manual-text', displayName: 'Manual imported vault' });
     } catch (error) {
-      setVaultNotice('Manual load needs complete base64 text or every numbered QR frame in order.');
+      setVaultNotice('Manual load needs complete encrypted Base64 text.');
     }
   }
 
@@ -2499,16 +2853,53 @@ __COLDBOX_QR_ENCODER__
     var publicCompartment = message.payload.publicCompartment || {};
     var count = publicRecordCount(publicCompartment);
     var vaultId = typeof publicCompartment.id === 'string' ? publicCompartment.id : null;
-    var wasLoadedFile = pendingVaultLoad;
-    var loadMeta = pendingLoadFileMeta;
-    var chosenName = wasLoadedFile
-      ? (activeVaultName || displayNameFromFilename(loadMeta && loadMeta.name))
+    var wasLoaded = pendingVaultLoad;
+    var loadMeta = pendingLoadFileMeta || {};
+    var source = wasLoaded ? (loadMeta.source || 'file') : 'created';
+    var durableFileLoad = source === 'file';
+    var transferredLoad = source === 'qr-transfer';
+    var manualLoad = source === 'manual-text';
+    var chosenName = wasLoaded
+      ? (loadMeta.displayName || activeVaultName || displayNameFromFilename(loadMeta.name))
       : (pendingCreateVaultName || activeVaultName || 'New vault');
     pendingVaultLoad = false;
     pendingLoadFileMeta = null;
     pendingCreateVaultName = '';
 
+    if (transferredLoad && loadMeta.transferVaultId && vaultId !== loadMeta.transferVaultId) {
+      sendVaultMessage('vault.lock', {});
+      setActiveVaultMeta('', null);
+      setVaultPersistenceState('none');
+      setVaultStatus(
+        'locked',
+        'Transferred vault rejected',
+        'The authenticated Vault ID did not match the public Vault ID announced by the live QR transfer. Coldbox locked and discarded the session.',
+        'Rejected'
+      );
+      return;
+    }
+
+    if (vaultId && chosenName && vaultNameConflict(chosenName, vaultId)) {
+      sendVaultMessage('vault.lock', {});
+      setActiveVaultMeta('', null);
+      setVaultPersistenceState('none');
+      setVaultStatus(
+        'locked',
+        'Vault name conflict',
+        'A different Vault ID already owns the public name “' + chosenName + '” on this device or in the granted Vault Library. Rename the local file/name before loading it.',
+        'Name conflict'
+      );
+      return;
+    }
+
     activeVaultNamespace = null;
+    activeVaultFileHandle = durableFileLoad && loadMeta.parsedName && loadMeta.parsedName.canonical
+      ? (loadMeta.handle || null)
+      : null;
+    activeVaultCanonicalFilename = durableFileLoad && loadMeta.parsedName && loadMeta.parsedName.canonical
+      && typeof loadMeta.name === 'string'
+      ? loadMeta.name
+      : null;
     if (saveIntegrity) {
       if (vaultId && typeof saveIntegrity.vaultNamespace === 'function') {
         activeVaultNamespace = saveIntegrity.vaultNamespace(vaultId);
@@ -2521,14 +2912,20 @@ __COLDBOX_QR_ENCODER__
         : { counter: 0, savedAt: null };
     }
     setActiveVaultMeta(chosenName, vaultId);
-    setVaultPersistenceState(wasLoadedFile ? 'loaded' : 'unsaved');
+    // Persist public-name ownership only when a durable .cbx already exists.
+    // A freshly-created or live-transferred vault that is later discarded
+    // without saving must not leave a ghost name reservation behind.
+    if (durableFileLoad && vaultId && chosenName) {
+      claimVaultName(chosenName, vaultId);
+    }
+    setVaultPersistenceState(durableFileLoad ? 'loaded' : 'unsaved');
 
     var rollbackNotice = '';
     var identityNotice = '';
-    if (wasLoadedFile && saveIntegrity) {
-      var parsed = loadMeta && loadMeta.parsedName
+    if (durableFileLoad && saveIntegrity) {
+      var parsed = loadMeta.parsedName
         ? loadMeta.parsedName
-        : (loadMeta && loadMeta.name && typeof saveIntegrity.parseVaultFilename === 'function'
+        : (loadMeta.name && typeof saveIntegrity.parseVaultFilename === 'function'
           ? saveIntegrity.parseVaultFilename(loadMeta.name)
           : null);
       var filenameIdMismatch = Boolean(
@@ -2539,14 +2936,14 @@ __COLDBOX_QR_ENCODER__
         && saveIntegrity.id8(vaultId) !== parsed.id8
       );
       if (filenameIdMismatch) {
-        identityNotice = ' Filename warning: the short Vault ID in the filename did not match the authenticated Vault ID, so the filename identity/generation hint was ignored.';
+        identityNotice = ' Filename warning: the short Vault ID in the filename did not match the authenticated Vault ID, so filename identity/history hints were ignored.';
       }
       var fileCounter = !filenameIdMismatch && parsed ? parsed.counter : null;
-      var fileInfo = { counter: fileCounter, lastModified: loadMeta ? loadMeta.lastModified : null };
+      var fileInfo = { counter: fileCounter, lastModified: loadMeta.lastModified };
       var evaluation = saveIntegrity.evaluateRollback(saveGeneration, fileInfo);
       setVaultRollbackBanner(evaluation, loadMeta);
       if (evaluation.rollback) {
-        rollbackNotice = ' Rollback warning: see the banner above - this file is an older save generation than one this browser has already recorded for this vault.';
+        rollbackNotice = ' Rollback warning: see the advisory banner above; this file appears older than a copy this browser profile previously recorded for this Vault ID.';
       }
       saveGeneration = saveIntegrity.advanceGenerationOnOpen(saveGeneration, fileInfo);
       if (activeVaultNamespace && typeof saveIntegrity.writeGenerationFor === 'function' && saveGeneration.savedAt) {
@@ -2562,16 +2959,23 @@ __COLDBOX_QR_ENCODER__
       renderVaultLibrary();
     }
 
+    var statusCopy;
+    if (source === 'created') {
+      statusCopy = 'New encrypted vault created in memory. SAVE VAULT now before locking, closing, timeout, or panic hide; until a durable save exists this is the only copy.';
+    } else if (transferredLoad) {
+      statusCopy = 'Live encrypted QR transfer authenticated successfully. The receiving device still required the normal vault unlock phrase. SAVE VAULT now to create this device’s canonical .cbx copy.';
+    } else if (manualLoad) {
+      statusCopy = 'Encrypted Base64 handoff opened inside the sealed realm. SAVE VAULT now if this device needs a canonical .cbx copy.';
+    } else {
+      statusCopy = count === 0
+        ? 'The selected canonical encrypted vault opened inside the sealed realm. No public records were returned to this shell.'
+        : String(count) + ' public record(s) are available to the warm shell; secret compartments remain sealed here.';
+    }
+
     setVaultStatus(
       'unlocked',
       activeVaultName ? activeVaultName + ' is unlocked' : 'Vault is unlocked',
-      (!wasLoadedFile
-        ? 'New encrypted vault created in memory. SAVE VAULT now before locking, closing, timeout, or panic hide; until a durable save exists this is the only copy.'
-        : (count === 0
-          ? 'The selected encrypted vault opened inside the sealed realm. No public records were returned to this shell.'
-          : String(count) + ' public record(s) are available to the warm shell; secret compartments remain sealed here.'))
-      + rollbackNotice
-      + identityNotice,
+      statusCopy + rollbackNotice + identityNotice,
       vaultPersistenceLabel()
     );
   }
@@ -2579,6 +2983,7 @@ __COLDBOX_QR_ENCODER__
   function handleVaultStatus(message) {
     if (message.payload.locked) {
       var lostUnsaved = vaultDirty;
+      clearLiveTransferSender('Live transfer stopped because the vault locked.');
       setVaultPersistenceState('none');
       setVaultStatus(
         'locked',
@@ -2640,6 +3045,7 @@ __COLDBOX_QR_ENCODER__
 
   function sendVaultLockImmediately() {
     var hadUnsaved = vaultDirty;
+    clearLiveTransferSender('Live transfer stopped because the vault is locking.');
     var priorPersistence = vaultPersistenceState;
     var id = sendVaultMessage('vault.lock', {});
     if (id) {
@@ -2664,15 +3070,23 @@ __COLDBOX_QR_ENCODER__
     if (vaultDirty && vaultState === 'unlocked') {
       if (vaultLockWarningCopy) {
         vaultLockWarningCopy.textContent = vaultPersistenceState === 'saved-unverified'
-          ? 'A save/export was started but Coldbox could not verify the resulting copy. Verify or reopen it before relying on it as the only copy.'
+          ? 'A canonical .cbx download was started but Coldbox could not verify the resulting copy. Reopen it before relying on it as the only copy.'
           : 'This vault has never completed a durable save. Locking now will zeroize the only working copy.';
+      }
+      if (vaultLockSave) {
+        vaultLockSave.hidden = vaultPersistenceState === 'saved-unverified';
+      }
+      if (vaultLockWithoutSave) {
+        vaultLockWithoutSave.textContent = vaultPersistenceState === 'saved-unverified'
+          ? 'Lock anyway'
+          : 'Lock without saving';
       }
       if (vaultLockWarning) {
         vaultLockWarning.hidden = false;
         vaultLockWarning.scrollIntoView({ block: 'nearest' });
       }
       setVaultNotice(vaultPersistenceState === 'saved-unverified'
-        ? 'The saved copy is unverified. Save/verify first, lock anyway, or cancel. Emergency lock paths never wait.'
+        ? 'The canonical download is unverified. Lock anyway and reopen that .cbx to verify it, or cancel and keep this session open. Unchanged vaults cannot create another download copy.'
         : 'Unsaved vault: save first, lock without saving, or cancel. Emergency lock paths never wait.');
       return;
     }
@@ -2681,6 +3095,8 @@ __COLDBOX_QR_ENCODER__
 
   function panicHide() {
     // Panic is an emergency path: never wait for save confirmation.
+    clearLiveTransferSender('Live transfer stopped by panic hide.');
+    stopLiveTransferReceiver('Camera stopped by panic hide.', false);
     sendVaultLockImmediately();
     if (app) {
       app.hidden = true;
@@ -3137,7 +3553,7 @@ __COLDBOX_QR_ENCODER__
       if (!Number.isInteger(index) || !vaultLibraryEntries[index]) {
         return;
       }
-      loadVaultFile(vaultLibraryEntries[index].file);
+      loadVaultFile(vaultLibraryEntries[index].file, vaultLibraryEntries[index].handle);
     });
   }
   if (vaultCreatePrepare) {
@@ -3161,46 +3577,36 @@ __COLDBOX_QR_ENCODER__
   if (vaultManualShare) {
     vaultManualShare.addEventListener('click', shareManualText);
   }
-  if (vaultManualQrPrepare) {
-    vaultManualQrPrepare.addEventListener('click', prepareManualQr);
+  if (vaultTransferStart) {
+    vaultTransferStart.addEventListener('click', startLiveVaultTransfer);
   }
-  if (vaultManualQrCopy) {
-    vaultManualQrCopy.addEventListener('click', copyManualQr);
+  if (vaultTransferPause) {
+    vaultTransferPause.addEventListener('click', pauseLiveVaultTransfer);
   }
-  if (vaultManualQrCopyAll) {
-    vaultManualQrCopyAll.addEventListener('click', copyAllManualQr);
-  }
-  if (vaultManualQrPrevious) {
-    vaultManualQrPrevious.addEventListener('click', function () {
-      if (manualQrIndex > 0) {
-        manualQrIndex -= 1;
-        renderQrFrame();
-      }
+  if (vaultTransferStop) {
+    vaultTransferStop.addEventListener('click', function () {
+      clearLiveTransferSender('Live transfer stopped. No QR payload was saved.');
     });
   }
-  if (vaultManualQrNext) {
-    vaultManualQrNext.addEventListener('click', function () {
-      if (manualQrIndex < manualQrChunks.length - 1) {
-        manualQrIndex += 1;
-        renderQrFrame();
-      }
+  if (vaultTransferReceive) {
+    vaultTransferReceive.addEventListener('click', startLiveTransferReceiver);
+  }
+  if (vaultTransferReceiveStop) {
+    vaultTransferReceiveStop.addEventListener('click', function () {
+      stopLiveTransferReceiver('Camera stopped. No received vault was kept.', false);
     });
   }
-  if (vaultManualQrIndex) {
-    vaultManualQrIndex.addEventListener('change', function () {
-      var requested = Number(vaultManualQrIndex.value) - 1;
-      if (manualQrChunks.length > 0 && Number.isSafeInteger(requested)) {
-        manualQrIndex = Math.max(0, Math.min(requested, manualQrChunks.length - 1));
-        renderQrFrame();
-      }
-    });
+  if (vaultTransferLoad) {
+    vaultTransferLoad.addEventListener('click', loadReceivedTransfer);
+  }
+  if (vaultTransferDiscard) {
+    vaultTransferDiscard.addEventListener('click', discardReceivedTransfer);
   }
   if (vaultLoadManual) {
     vaultLoadManual.addEventListener('click', loadManualText);
   }
   if (vaultManualData) {
     vaultManualData.addEventListener('input', function () {
-      clearQrExport();
       updateVaultControls();
     });
   }

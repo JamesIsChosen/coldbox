@@ -50,10 +50,10 @@ Windows, macOS, Linux, and Android in supported local-file/browser contexts. Dir
 That's the design. Only prices and balance lookups need a connection, and they degrade to last-known values with visible timestamps.
 
 **Can I use it on my phone?**
-On supported phone/browser contexts, yes. Saving may use a base64/QR export rather than a file download, and that path is built as a proper feature, not a fallback. iOS local execution from Files is not currently claimed; see [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md).
+On supported phone/browser contexts, yes. Durable vault storage is always the encrypted `.cbx`; a browser may save it through a file handle or a download depending on available APIs. Live animated QR is only for connecting an already-unlocked, durably backed vault to another running Coldbox device that does not already have that vault in its granted library; it is never backup/download and cannot replace saving the sender. Camera QR receive is progressive enhancement, so a browser that lacks it must use `.cbx` transfer instead. iOS local execution from Files is not currently claimed; see [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md).
 
 **How do I move my vault between devices?**
-Copy the `.cbx` file. It's encrypted and self-contained. Sync services work but reveal file size and modification times; the file is size-padded to blunt that.
+Copy the canonical `.cbx` file. It's encrypted and self-contained. If both devices are running Coldbox at the same time and the source vault is already unlocked, you may instead use the live animated-QR device-transfer flow; the receiver still enters the normal vault passphrase and then saves its own `.cbx`. QR is not a backup/download format. Sync services work but reveal file size and modification times; the file is size-padded to blunt that.
 
 **Can I use it with my existing wallet?**
 Yes — that's most of the point. Enter your xpub for watch-only address derivation and balance checking, or your seed (offline) to verify a backup or recover from a damaged one.

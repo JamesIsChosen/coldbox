@@ -6,12 +6,12 @@
   // Nothing here ever touches vault plaintext or a key of any kind - it
   // only reasons about already-encrypted vault bytes (which are safe to hold
   // in the warm shell, same as the existing vault.bytes/vault.open messages)
-  // plus local bookkeeping (a save counter and a timestamp) that never
+  // plus local advisory bookkeeping (a legacy counter and timestamp) that never
   // crosses the realm boundary and is not part of the vault format. See
   // ADR-0013 for why this lives here instead of in the vault header or the
   // public compartment.
   //
-  // Rollback and generational-filename tracking are therefore advisory, not
+  // Rollback history is therefore advisory, not
   // a cryptographic guarantee - exactly as docs/01-spec/vault-format.md and
   // docs/02-security/threat-model.md already describe them. A renamed file
   // or a fresh browser profile silently loses the check; it never produces a
@@ -19,8 +19,10 @@
 
   var GENERATION_STORAGE_KEY = 'coldbox-vault-generation';
   var GENERATION_STORAGE_PREFIX = 'coldbox-vault-generation:';
+  var NAME_REGISTRY_STORAGE_KEY = 'coldbox-vault-name-registry:v1';
   var FILENAME_PATTERN = /^coldbox-vault-(\d{4,9})\.cbx$/;
-  var VAULT_FILENAME_PATTERN = /^(.+?)--([0-9a-f]{8})--(\d{4,9})\.cbx$/i;
+  var CANONICAL_VAULT_FILENAME_PATTERN = /^(.+?)--([0-9a-f]{8})\.cbx$/i;
+  var LEGACY_GENERATIONAL_VAULT_FILENAME_PATTERN = /^(.+?)--([0-9a-f]{8})--(\d{4,9})\.cbx$/i;
   var VAULT_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   var LEGACY_SALT_OFFSET = 21;
   var LEGACY_SALT_LENGTH = 32;
@@ -98,7 +100,71 @@
       .slice(0, 48);
   }
 
-  // Reads the highest save generation this browser profile has recorded.
+  function normalizedVaultNameKey(value) {
+    var safe = sanitizeVaultName(value);
+    return safe ? safe.toLowerCase() : null;
+  }
+
+  function readVaultNameRegistry(storage) {
+    var result = {};
+    try {
+      if (!storage || typeof storage.getItem !== 'function') {
+        return result;
+      }
+      var raw = storage.getItem(NAME_REGISTRY_STORAGE_KEY);
+      if (!raw) {
+        return result;
+      }
+      var parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return result;
+      }
+      Object.keys(parsed).forEach(function (key) {
+        if (normalizedVaultNameKey(key) === key
+          && typeof parsed[key] === 'string'
+          && VAULT_UUID_PATTERN.test(parsed[key])) {
+          result[key] = parsed[key].toLowerCase();
+        }
+      });
+      return result;
+    } catch (error) {
+      return result;
+    }
+  }
+
+  function vaultNameOwner(storage, name) {
+    var key = normalizedVaultNameKey(name);
+    if (!key) {
+      return null;
+    }
+    var registry = readVaultNameRegistry(storage);
+    return registry[key] || null;
+  }
+
+  function claimVaultName(storage, name, vaultId) {
+    var key = normalizedVaultNameKey(name);
+    var namespace = vaultNamespace(vaultId);
+    var normalizedId = namespace ? vaultId.toLowerCase() : null;
+    if (!key || !normalizedId) {
+      return false;
+    }
+    try {
+      if (!storage || typeof storage.setItem !== 'function') {
+        return false;
+      }
+      var registry = readVaultNameRegistry(storage);
+      if (registry[key] && registry[key] !== normalizedId) {
+        return false;
+      }
+      registry[key] = normalizedId;
+      storage.setItem(NAME_REGISTRY_STORAGE_KEY, JSON.stringify(registry));
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // Reads advisory per-vault history recorded by this browser profile (legacy counter and/or current timestamp).
   // Missing storage, a throwing storage implementation, corrupt JSON, or a
   // value outside the expected shape all degrade silently to the default -
   // never throws, never blocks a vault operation.
@@ -224,13 +290,13 @@
     return isSafeCounter(counter) ? counter : null;
   }
 
-  function filenameForVault(name, vaultId, counter) {
+  function filenameForVault(name, vaultId) {
     var safeName = sanitizeVaultName(name);
     var shortId = id8(vaultId);
-    if (!safeName || !shortId || !isSafeCounter(counter)) {
+    if (!safeName || !shortId) {
       throw new Error('Invalid vault filename metadata.');
     }
-    return safeName + '--' + shortId + '--' + pad4(counter) + '.cbx';
+    return safeName + '--' + shortId + '.cbx';
   }
 
   function parseVaultFilename(name) {
@@ -238,22 +304,33 @@
       return null;
     }
     var trimmed = name.trim();
-    var modern = VAULT_FILENAME_PATTERN.exec(trimmed);
-    if (modern) {
-      var counter = Number(modern[3]);
+    var canonical = CANONICAL_VAULT_FILENAME_PATTERN.exec(trimmed);
+    if (canonical) {
+      return Object.freeze({
+        legacy: false,
+        canonical: true,
+        name: canonical[1],
+        id8: canonical[2].toLowerCase(),
+        counter: null
+      });
+    }
+    var generational = LEGACY_GENERATIONAL_VAULT_FILENAME_PATTERN.exec(trimmed);
+    if (generational) {
+      var counter = Number(generational[3]);
       if (!isSafeCounter(counter)) {
         return null;
       }
       return Object.freeze({
-        legacy: false,
-        name: modern[1],
-        id8: modern[2].toLowerCase(),
+        legacy: true,
+        canonical: false,
+        name: generational[1],
+        id8: generational[2].toLowerCase(),
         counter: counter
       });
     }
     var legacyCounter = parseFilename(trimmed);
     if (legacyCounter !== null) {
-      return Object.freeze({ legacy: true, name: 'Coldbox vault', id8: null, counter: legacyCounter });
+      return Object.freeze({ legacy: true, canonical: false, name: 'Coldbox vault', id8: null, counter: legacyCounter });
     }
     return null;
   }
@@ -276,11 +353,10 @@
     return mismatch === 0;
   }
 
-  // Compares a loaded file's embedded generation (from its filename and, for
-  // context only, its filesystem last-modified time) against the highest
-  // generation this browser has ever recorded. Only fires when the filename
-  // parses AND is strictly older than what has been seen - an unparseable
-  // filename never produces a false positive.
+  // Compares a loaded file against the highest local history this browser has
+  // recorded for its authenticated Vault ID. Historical generational filenames
+  // retain the P0.14 counter check; canonical filenames have no visible counter,
+  // so their best-effort advisory signal is only the filesystem timestamp.
   function evaluateRollback(generation, file) {
     var seenCounter = generation && isSafeCounter(generation.counter) ? generation.counter : 0;
     var seenSavedAt = generation && (generation.savedAt === null || isIsoDate(generation.savedAt))
@@ -290,8 +366,15 @@
     var fileLastModified = file && typeof file.lastModified === 'number' && Number.isFinite(file.lastModified)
       ? file.lastModified
       : null;
+    var timestampRollback = Boolean(
+      fileCounter === null
+      && seenSavedAt
+      && fileLastModified !== null
+      && fileLastModified < Date.parse(seenSavedAt)
+    );
     return Object.freeze({
-      rollback: fileCounter !== null && fileCounter < seenCounter,
+      rollback: (fileCounter !== null && fileCounter < seenCounter) || timestampRollback,
+      reason: fileCounter !== null && fileCounter < seenCounter ? 'legacy-generation' : (timestampRollback ? 'timestamp' : null),
       seenCounter: seenCounter,
       seenSavedAt: seenSavedAt,
       fileCounter: fileCounter,
@@ -299,39 +382,36 @@
     });
   }
 
-  // The remembered generation must be the highest this browser profile has
-  // ever *seen*, not merely the highest it has *saved* - otherwise opening a
-  // newer file, then later opening an older one after a reload, evades
-  // rollback detection entirely, because the stale saved-only record never
-  // learned about the newer file in between. Call this on every successful
-  // file-backed open, always with the OLD generation (evaluateRollback must
-  // compare against the pre-advance record, not this function's result).
-  // Never lowers the recorded generation, and never fires on an unparseable
-  // filename - same degrade-silently contract as evaluateRollback.
+  // The remembered history must be the newest this browser profile has seen,
+  // not merely the latest save it initiated. Legacy files can advance the old
+  // numeric high-water counter; canonical files can only advance the timestamp.
+  // Call this after evaluateRollback() so the comparison uses the OLD history.
   function advanceGenerationOnOpen(generation, file) {
     var seenCounter = generation && isSafeCounter(generation.counter) ? generation.counter : 0;
     var seenSavedAt = generation && (generation.savedAt === null || isIsoDate(generation.savedAt))
       ? generation.savedAt
       : null;
     var fileCounter = file && isSafeCounter(file.counter) ? file.counter : null;
-    if (fileCounter === null || fileCounter <= seenCounter) {
-      return Object.freeze({ counter: seenCounter, savedAt: seenSavedAt });
+    if (fileCounter !== null && fileCounter > seenCounter) {
+      var openedLegacyAt = file && typeof file.lastModified === 'number' && Number.isFinite(file.lastModified)
+        ? new Date(file.lastModified).toISOString()
+        : new Date().toISOString();
+      return Object.freeze({ counter: fileCounter, savedAt: openedLegacyAt });
     }
-    // Prefer the file's own last-modified time as the recorded date for this
-    // generation; fall back to now only when the platform didn't expose one,
-    // so the advance can still be persisted (a null savedAt is not a valid
-    // writeGeneration() argument).
-    var openedAt = file && typeof file.lastModified === 'number' && Number.isFinite(file.lastModified)
-      ? new Date(file.lastModified).toISOString()
-      : new Date().toISOString();
-    return Object.freeze({ counter: fileCounter, savedAt: openedAt });
+    if (fileCounter === null && file && typeof file.lastModified === 'number' && Number.isFinite(file.lastModified)) {
+      var openedAt = new Date(file.lastModified).toISOString();
+      if (!seenSavedAt || Date.parse(openedAt) > Date.parse(seenSavedAt)) {
+        return Object.freeze({ counter: seenCounter, savedAt: openedAt });
+      }
+    }
+    return Object.freeze({ counter: seenCounter, savedAt: seenSavedAt });
   }
 
   // The verify-after-save orchestration itself, decoupled from any specific
   // save path so it can be exercised with fake write/readBack callbacks. A
   // deliberately truncated or corrupted readBack fails verification; only a
   // caller that receives { verified: true } may clear the dirty flag or
-  // advance the save generation.
+  // advance the browser-local advisory history.
   function verifyAfterSave(options) {
     if (!options || typeof options.write !== 'function' || typeof options.readBack !== 'function') {
       return Promise.reject(new Error('verifyAfterSave requires write and readBack callbacks.'));
@@ -352,6 +432,7 @@
   var api = Object.freeze({
     generationStorageKey: GENERATION_STORAGE_KEY,
     generationStoragePrefix: GENERATION_STORAGE_PREFIX,
+    nameRegistryStorageKey: NAME_REGISTRY_STORAGE_KEY,
     maxCounter: MAX_COUNTER,
     readGeneration: readGeneration,
     writeGeneration: writeGeneration,
@@ -362,6 +443,10 @@
     legacyNamespaceFromBytes: legacyNamespaceFromBytes,
     id8: id8,
     sanitizeVaultName: sanitizeVaultName,
+    normalizedVaultNameKey: normalizedVaultNameKey,
+    readVaultNameRegistry: readVaultNameRegistry,
+    vaultNameOwner: vaultNameOwner,
+    claimVaultName: claimVaultName,
     nextCounter: nextCounter,
     filenameForCounter: filenameForCounter,
     filenameForVault: filenameForVault,

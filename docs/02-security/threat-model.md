@@ -109,7 +109,7 @@ Countered by a mandatory verify-your-shares step before a backup can be marked c
 
 ### Vault rollback
 
-Per-vault monotonic save counter, generational filenames, prominent warning when opening an older generation than the highest seen for that Vault ID. Advisory, not cryptographic — see [vault-format.md](../01-spec/vault-format.md#rollback-detection) for exactly what it does and does not catch.
+Current vaults use one canonical `<name>--<id8>.cbx` rather than user-visible generations. Rollback detection is still only advisory: historical generational files retain their numeric high-water check, while current canonical files can only use browser-local per-Vault-ID history plus a trustworthy filesystem timestamp to warn that a copy appears older. Missing history/timestamps degrade silently. See [vault-format.md](../01-spec/vault-format.md#rollback-detection) and [ADR-0026](../05-development/adr/0026-canonical-vault-save-and-live-transfer.md).
 
 ### Network-status deception / stale interface state
 

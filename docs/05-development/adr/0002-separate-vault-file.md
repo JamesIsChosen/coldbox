@@ -28,7 +28,7 @@ A self-modifying HTML file has a hash that changes on every save, so it can neve
 - The app is verifiable on every use, indefinitely.
 - Data and code have independent lifecycles — update the app without touching data, back up data without re-verifying the app.
 - The vault can be backed up, versioned, and synced independently.
-- Generational filenames give free version history.
+- A separate `.cbx` remains easy to copy and verify without rebuilding the app. Current saves use one canonical file per Vault ID; historical generational files remain readable (ADR-0026).
 - A corrupted vault doesn't take the app with it, and vice versa.
 - Data survives the app being replaced by something better.
 
@@ -52,7 +52,7 @@ Rejected. Record-keeping is a core requirement, and the backup/inheritance featu
 
 ## Notes
 
-Vault saving needs three paths because no single save API works across supported `file://` execution contexts: File System Access API, blob download, and manual base64/QR export. The manual path is built as a first-class flow, not a fallback — for a phone-primary user in a supported running context it may be the normal one. Direct iOS local execution from Files is not implied; see [ADR-0010](0010-ios-local-html-execution.md).
+**Amended by ADR-0026:** durable vault storage has one format (`.cbx`) with two browser-dependent write mechanisms: verified File System Access where available and an explicitly unverified canonical download replacement elsewhere. Encrypted Base64 is an advanced transport handoff, not a save. Vault animated QR is live device-to-device transfer only and is never downloadable backup output. Direct iOS local execution from Files is not implied; see [ADR-0010](0010-ios-local-html-execution.md) and [ADR-0026](0026-canonical-vault-save-and-live-transfer.md).
 
 ## References
 

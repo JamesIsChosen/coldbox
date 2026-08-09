@@ -145,35 +145,40 @@ Chosen at creation, stored in the header, changeable later (rewraps the DEK; com
 
 ### Save paths
 
+`.cbx` is the only durable vault format.
+
 | Path | Where | Mechanism |
 |---|---|---|
-| File System Access | Chrome/Edge desktop | `showSaveFilePicker()` — overwrite in place |
-| Blob download | Desktop, most Android | `<a download>` + `createObjectURL` |
-| Manual export | Any supported running Coldbox browser context | Base64 textarea, `navigator.share`, multi-part QR; iOS Safari-from-Files is not currently claimed (see [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md)) |
+| Canonical File System Access save | Chrome/Edge desktop where available | First save chooses `<vault-name>--<id8>.cbx`; later dirty saves reuse the same retained file handle and verify read-back |
+| Canonical blob-download replacement | Desktop, most Android, other running contexts with downloads | Starts the same canonical filename, but browser-controlled storage cannot be read back/overwritten reliably, so status is **Saved · unverified** |
+| Encrypted text handoff (advanced) | Supported running Coldbox contexts | Base64 / optional `navigator.share`; transport convenience only, not a canonical save |
 
-Detected at boot. Manual export is a first-class flow with chunk counts and reassembly instructions, not a fallback, whenever Coldbox reaches a supported execution context. Quick Look is not an execution context.
+Animated QR is **not** a save path. It is an ephemeral live device-to-device transfer of already-encrypted `.cbx` bytes; no QR backup/download artifact is emitted. See [ADR-0026](../05-development/adr/0026-canonical-vault-save-and-live-transfer.md).
 
-### Vault names, IDs, and generational filenames
+### Vault names, IDs, and canonical filenames
 
-New Coldbox filenames are `<vault-name>--<id8>--<generation>.cbx`, for example `Bitcoin-Savings--7f3a91c2--0047.cbx`.
+New Coldbox filenames are `<vault-name>--<id8>.cbx`, for example `Bitcoin-Savings--7f3a91c2.cbx`.
 
-- `vault-name` is a user-chosen **public** display name sanitized by the warm shell for portable filenames. It is not authenticated and may change if the file is renamed. Never put secrets in it.
-- `id8` is the first eight hexadecimal characters of the canonical Vault UUID (hyphens removed), used only as a compact library hint. The full UUID in the authenticated public compartment is authoritative after unlock.
-- `generation` is that vault's advisory save counter, zero-padded to at least four digits. Generations accumulate; keep multiple verified copies.
-
-The counter/timestamp stay warm-shell bookkeeping (`localStorage` plus filename) as [ADR-0013](../05-development/adr/0013-save-integrity-in-warm-shell.md) requires, but [ADR-0025](../05-development/adr/0025-vault-identity-library-and-save-ux.md) namespaces them **per vault** instead of one browser-global counter. This changes no byte-layout field.
+- `vault-name` is a user-chosen **public** display name sanitized by the warm shell. Never put secrets in it.
+- `id8` is the first eight hexadecimal characters of the canonical Vault UUID and is only a compact hint; the full authenticated UUID is authoritative after unlock.
+- No current filename contains a user-visible generation. One Vault ID has one canonical name/file destination within the app-known scope.
+- A different Vault ID cannot claim a name already known in the current session, best-effort browser-profile registry, or currently granted Vault Library. Coldbox cannot guarantee disk-wide uniqueness because it cannot silently enumerate the filesystem.
 
 ### Rollback detection
 
-The highest save counter seen is remembered **per full Vault ID** in `localStorage` (non-secret, degrade-silently). A loaded Coldbox filename with an older parsed generation than that vault's highest seen produces the existing prominent rollback warning. Filename parsing remains advisory: a renamed/foreign filename may be uncheckable, and an `id8` suffix is not trusted until the cold realm opens the file and returns the matching full authenticated UUID.
+Rollback detection remains advisory warm-shell bookkeeping. Historical generational filenames (`<name>--<id8>--0047.cbx` and `coldbox-vault-0047.cbx`) retain their numeric high-water comparison. Current canonical filenames contain no counter; for them, a browser profile that has previously recorded a newer trustworthy filesystem timestamp for the same authenticated Vault ID can show an **older-copy advisory**. Missing local history, a renamed/foreign file, or an unavailable/untrustworthy timestamp degrades silently. This is not cryptographic rollback protection.
 
 ### Legacy v1 vaults and filenames
 
-Every existing format-v1 `.cbx` remains openable without migration. A pre-P0.19 vault may have no public-compartment `id` and may be named `coldbox-vault-0047.cbx`. For warm-shell bookkeeping only, such a vault uses the already-public random 32-byte KDF salt in header bytes 21–52 as a legacy identity namespace; saves preserve that header, so the namespace remains stable across current v1 re-saves. Legacy filenames continue to parse under the old pattern. The compatibility key is not presented as a canonical Vault ID and is replaced only by an explicit future migration that writes an authenticated UUID.
+Every existing format-v1 `.cbx` remains openable without byte-format migration. A pre-P0.19 vault may have no public-compartment `id` and may be named `coldbox-vault-0047.cbx`; P0.19-era files may also have `<name>--<id8>--0047.cbx`. Historical counters remain readable only for compatibility/advisory rollback checks. A future save uses the current canonical `<name>--<id8>.cbx` naming. For warm-shell bookkeeping only, a vault without authenticated `id` uses the already-public random 32-byte KDF salt in header bytes 21–52 as a stable legacy namespace.
 
 ### Verify-after-save — mandatory
 
-Where the save path can read its own output back (File System Access), the app re-reads the file after writing and confirms the bytes are identical before marking the copy **Saved · verified** and clearing the dirty/lock-warning flag. Blob download and manual base64/QR handoff can produce a real saved/exported copy but cannot read back what actually landed on disk or in the person's clipboard, so the UI marks them **Saved · unverified** and keeps the normal-lock confirmation gate active until the copy is reopened or a verified save succeeds. The distinction is durability evidence, not vault identity: every save preserves the authenticated Vault ID.
+Where File System Access can read its own output back, Coldbox requires the bytes read from disk to be identical before marking **Saved · verified** and clearing the dirty/lock-warning flag. A canonical browser download can be real durable output but cannot be read back by the page, so it becomes **Saved · unverified** and keeps the normal-lock confirmation active. Advanced Base64 handoff and live animated QR transfer do **not** count as saves at all. Every path preserves the authenticated Vault ID.
+
+### Live device-to-device vault transfer
+
+`CBX-VT/1` is a transport envelope around encrypted `.cbx` bytes, not a vault format. The sending vault must already be unlocked from durable `.cbx` storage or have a verified canonical save; live QR cannot substitute for saving the sender. Warm obtains a fresh encrypted representation and cycles it as QR frames under a random per-session Transfer ID. The receiver rejects mixed transfer IDs, tolerates duplicates/out-of-order observations, reconstructs the encrypted payload, verifies the manifest SHA-256, and only then feeds the bytes to the ordinary locked `vault.open` flow. The normal passphrase is still required. The announced Vault ID is rechecked against the authenticated public Vault ID after unlock. No live-transfer QR artifact is downloadable or persisted by Coldbox.
 
 ### Corruption
 
@@ -190,7 +195,7 @@ A failed AEAD tag means **"wrong passphrase *or* damaged file."** These are cryp
 | KDF can't be downgraded | Parameters in AAD |
 | Compartments can't be confused | Lengths in AAD; separate HKDF subkeys |
 | Tampering detected | AEAD tags on both compartments |
-| Rollback detected | Save counter, advisory |
+| Rollback detected | Historical counter / current timestamp history, advisory only |
 | Passphrase change is cheap | Rewrap 32 bytes |
 | Secrets sealed online | Secret subkey never derived |
 

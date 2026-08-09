@@ -89,10 +89,10 @@ test('P0.19 Vault Library and first-class Save controls exist in the warm UI', (
   assert.match(warmHtml, /id="vault-lock-cancel"/);
 });
 
-test('P0.19 switching vault identity clears stale manual and QR export state', () => {
+test('P0.19 switching vault identity clears stale encrypted-text handoff and has no downloadable QR export surface', () => {
   const clearExport = extractFunction(warmSource, 'clearManualVaultExport');
   assert.match(clearExport, /vaultManualData\.value = ''/);
-  assert.match(clearExport, /clearQrExport\(\)/);
+  assert.doesNotMatch(warmHtml, /vault-manual-qr-|Download QR|Save QR frames|animated PNG/i);
 
   const prepareCreate = extractFunction(warmSource, 'prepareNewVaultCreation');
   assert.match(prepareCreate, /clearManualVaultExport\(\)[\s\S]*pendingCreateVaultName/);
@@ -106,4 +106,63 @@ test('P0.19 cold visible normal lock routes through the warm warning gate', () =
   assert.match(coldSource, /postVaultMessage\(requestId, 'vault\.lockRequest', \{\}\)/);
   assert.doesNotMatch(coldSource, /lockVaultSession\(nextVaultMessageId\('local-lock'\)/);
   assert.match(warmSource, /message\.type === 'vault\.lockRequest'[\s\S]*requestVaultLock\(\)/);
+});
+
+
+test('P0.19 live animated QR is device-to-device transfer only and sender requires an unlocked vault', () => {
+  assert.match(warmHtml, /id="vault-transfer-start"[^>]*>Show animated QR<\/button>/);
+  assert.match(warmHtml, /Animated QR is a live transfer only/);
+  assert.match(warmHtml, /nothing can be downloaded from this QR surface/i);
+  assert.doesNotMatch(warmHtml, /id="vault-transfer-(?:download|save|export)[^"]*"/i, 'live QR surface must expose no downloadable/saved QR artifact control');
+
+  const controls = extractFunction(warmSource, 'updateVaultControls');
+  assert.match(controls, /vaultTransferStart\.disabled = !channelReady \|\| !unlocked \|\| !activeVaultId \|\| !vaultHasDurableTransferSource\(\) \|\| liveTransferFrames\.length > 0/);
+  const start = extractFunction(warmSource, 'startLiveVaultTransfer');
+  assert.match(start, /vaultState !== 'unlocked'/);
+  assert.match(start, /vaultHasDurableTransferSource\(\)/, 'sender must already have a durable local vault before live transfer is allowed');
+  assert.match(start, /requestVaultBytes\(\)/, 'sender must transfer fresh encrypted .cbx bytes, not cold plaintext');
+  assert.match(start, /vaultTransfer\.createFrames/);
+  assert.match(start, /transferId\(\)/);
+  assert.match(start, /sha256Hex\(bytes\)/);
+  assert.doesNotMatch(start, /passphrase|mnemonic|privateKey|seed/i);
+});
+
+test('P0.19 live receiver is user-initiated, optional, integrity-checked, and still uses normal vault.open', () => {
+  assert.match(warmHtml, /id="vault-transfer-receive"[^>]*>Start camera scanner<\/button>/);
+  assert.match(warmHtml, /Camera permission is requested only after you choose Start camera scanner/);
+  const receiver = extractFunction(warmSource, 'startLiveTransferReceiver');
+  assert.match(receiver, /mediaDevices\.getUserMedia/);
+  assert.match(receiver, /BarcodeDetector/);
+  assert.match(receiver, /Use the canonical \.cbx file instead/);
+  const finish = extractFunction(warmSource, 'finishLiveTransferReceipt');
+  assert.match(finish, /sha256Hex\(bytes\)/);
+  assert.match(finish, /actualHash !== assembled\.hash/);
+  assert.match(finish, /grantedLibraryAlreadyHasVault\(assembled\.vaultId\)/, 'receiver must refuse a transfer when the same vault is already locally granted');
+  const load = extractFunction(warmSource, 'loadReceivedTransfer');
+  assert.match(load, /source: 'qr-transfer'/);
+  assert.match(load, /sendVaultOpen\(/, 'receiver must feed encrypted bytes through the ordinary locked-vault open path');
+  assert.doesNotMatch(load, /unlock|passphrase|credential/i, 'transfer must never carry unlock authority');
+});
+
+test('P0.19 live transfer clears when the vault locks or panic hide runs', () => {
+  const status = extractFunction(warmSource, 'handleVaultStatus');
+  assert.match(status, /clearLiveTransferSender\('Live transfer stopped because the vault locked\.'\)/);
+  const panic = extractFunction(warmSource, 'panicHide');
+  assert.match(panic, /clearLiveTransferSender/);
+  assert.match(panic, /stopLiveTransferReceiver/);
+});
+
+test('P0.19 browser harness reloads downloaded canonical bytes under the real .cbx filename', () => {
+  const harness = fs.readFileSync(path.join(projectRoot, 'scripts', 'run-browser-harness.js'), 'utf8');
+  assert.match(harness, /name:\s*canonicalFilename[\s\S]*buffer:\s*fs\.readFileSync\(downloadedVaultPath\)/);
+  assert.doesNotMatch(harness, /setInputFiles\(downloadedVaultPath\)/);
+});
+
+
+test('P0.19 browser harness observes duplicate-name refusal on the vault status surface', () => {
+  const harness = fs.readFileSync(path.join(projectRoot, 'scripts', 'run-browser-harness.js'), 'utf8');
+  const libraryFlow = extractFunction(harness, 'verifyVaultLibrary');
+  assert.match(libraryFlow, /duplicateNameNotice\s*=\s*page\.locator\('#vault-status-copy'\)/);
+  assert.match(libraryFlow, /duplicateNameNotice\.filter\(\{ hasText: \/different vault already uses that public name\/i \}\)/);
+  assert.doesNotMatch(libraryFlow, /#vault-dirty-notice.*different vault already uses that public name/i);
 });

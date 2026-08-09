@@ -307,7 +307,7 @@ See [vault-format.md](../01-spec/vault-format.md) for the exact byte layout: a h
 A random code created with the vault so Coldbox can tell two vaults apart even if you rename or move their files. It identifies the vault, not your computer.
 :::
 ::: working
-A non-secret UUID generated inside the cold realm at new-vault creation and stored in the authenticated public compartment. It is created once and is immutable across save generations: re-saving a vault never creates a new Vault ID. Coldbox uses it to namespace per-vault save history and to verify that a filename/library entry still refers to the vault it claims. Legacy v1 vaults that predate this field use their existing random header salt as a compatibility bookkeeping key.
+A non-secret UUID generated inside the cold realm at new-vault creation and stored in the authenticated public compartment. It is created once and never changes when the vault is saved, copied, or transferred. Coldbox uses it to namespace browser-local advisory history and to verify that a filename/library entry still refers to the vault it claims. Legacy v1 vaults that predate this field use their existing random header salt as a compatibility bookkeeping key.
 :::
 ::: technical
 The canonical ID is a CSPRNG UUID carried in the already-whitelisted public-compartment `id` field; no new secret-bearing message type is needed. The short filename suffix is only a display hint and is checked against the full ID after unlock. A device/browser fingerprint was explicitly rejected because it links unrelated vaults on the same device, can change with browser/device state, and fails the portability requirement when a `.cbx` moves to another device. See [ADR-0025](../05-development/adr/0025-vault-identity-library-and-save-ux.md).
@@ -321,7 +321,18 @@ The human-readable name shown in the Vault Library and used in the `.cbx` filena
 A warm-shell filename/library label chosen before creation. Because arbitrary free-form text is not allowed to cross from the cold realm to the network-capable warm shell, the name is intentionally outside the encrypted secret boundary and is visible to the filesystem.
 :::
 ::: technical
-Names are sanitized into portable filename slugs and paired with a short Vault-ID suffix and a per-vault generation counter. The authenticated vault identity is the UUID, not the mutable filename. External renames are therefore allowed but may change the displayed name; the ID check after unlock prevents a renamed file from being silently associated with the wrong vault.
+Names are sanitized into portable filename slugs and paired with a short Vault-ID suffix, producing one canonical name such as `Bitcoin-Savings--7f3a91c2.cbx`. A different Vault ID cannot reuse an already-known name within the current session, browser-profile registry, or user-granted library, but Coldbox cannot claim disk-wide uniqueness because it cannot silently enumerate the filesystem. The authenticated UUID, not the filename, remains authoritative after unlock.
+:::
+
+**Live vault transfer**
+::: plain
+A temporary animated QR that moves one encrypted vault from an unlocked Coldbox device to another running Coldbox device. It is not a backup and cannot be downloaded.
+:::
+::: working
+The sender repeatedly displays encrypted `.cbx` fragments. The receiver collects them by camera, verifies the complete encrypted payload, then opens it through the normal vault-unlock path; the usual passphrase is still required. The received copy starts **Not saved** until stored as that device's canonical `.cbx`.
+:::
+::: technical
+`CBX-VT/1` uses a random non-secret Transfer ID to keep sessions separate and a SHA-256 of the reconstructed encrypted bytes for transport integrity. Frames may repeat or arrive out of order; foreign-transfer frames are rejected. Sender state clears on lock/panic. Camera QR decoding is progressive enhancement and `.cbx` remains the fallback and only durable vault format. See [ADR-0026](../05-development/adr/0026-canonical-vault-save-and-live-transfer.md).
 :::
 
 **Cold realm / warm shell** (in Coldbox)
@@ -552,10 +563,10 @@ See [crypto-choices.md](../02-security/crypto-choices.md) for the exact memory/i
 A safety check that happens right after Coldbox writes your vault to disk: it immediately reopens the file it just wrote and confirms it's actually intact, *before* it tells you the save succeeded. If the write got cut off or corrupted, you find out immediately, not the next time you try to open the vault.
 :::
 ::: working
-Verify-after-save behavior: after writing through File System Access, Coldbox reads the just-written ciphertext back and requires it to be byte-identical to what it wrote before clearing the in-app "unsaved changes" indicator. Filenames also carry a per-vault generation counter, so opening an older generation than the highest one that browser profile has seen for that Vault ID triggers a rollback warning with both dates and counters shown.
+Verify-after-save behavior: after writing through File System Access, Coldbox reads the just-written ciphertext back and requires it to be byte-identical to what it wrote before clearing the in-app "unsaved changes" indicator. Current canonical filenames do not expose save generations. Browser-local per-Vault-ID history can give an advisory timestamp warning when a canonical file appears older; historical generational filenames still retain their numeric rollback check.
 :::
 ::: technical
-See [ADR-0013](../05-development/adr/0013-save-integrity-in-warm-shell.md) and [ADR-0025](../05-development/adr/0025-vault-identity-library-and-save-ux.md): this bookkeeping lives in the warm shell (filenames, per-vault generation counters, the dirty flag) rather than inside the vault format itself. The authenticated Vault ID only namespaces the warm bookkeeping; it does not move the counter into the CBX byte layout.
+See [ADR-0013](../05-development/adr/0013-save-integrity-in-warm-shell.md), [ADR-0025](../05-development/adr/0025-vault-identity-library-and-save-ux.md), and [ADR-0026](../05-development/adr/0026-canonical-vault-save-and-live-transfer.md): this bookkeeping lives in the warm shell rather than inside the vault byte format. Numeric generations now exist only for historical filenames/bookkeeping compatibility; current saves use one canonical file per Vault ID.
 :::
 
 **Keyfile unlock**
