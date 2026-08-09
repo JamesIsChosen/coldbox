@@ -32,7 +32,7 @@ __COLDBOX_STYLES__
           <span class="theme-toggle-icon" aria-hidden="true">☼</span>
           <span id="theme-toggle-label">Light mode</span>
         </button>
-        <button class="comic-btn comic-btn-danger" id="panic-hide-top" type="button">Panic conceal</button>
+        <button class="comic-btn comic-btn-danger panic-top-button" id="panic-hide-top" type="button">Panic conceal</button>
       </nav>
     </header>
 
@@ -68,11 +68,28 @@ __COLDBOX_STYLES__
 
           <nav class="nav-group" aria-label="System">
             <p class="nav-group-title">System</p>
-            <button class="nav-link nav-link-button" type="button" data-popup-open="popup-system-health" aria-controls="popup-system-health"><span class="nav-icon" aria-hidden="true">+</span><span>System health</span></button>
+            <a class="nav-link" href="#system-health" data-route="system-health"><span class="nav-icon" aria-hidden="true">+</span><span>System health</span></a>
           </nav>
         </div>
 
         <div class="nav-footer">
+          <section class="airgap-banner airgap-banner-compact" id="airgap-banner" data-airgap-state="checking" aria-labelledby="airgap-banner-title" aria-live="polite">
+            <div class="airgap-banner-copy">
+              <p class="eyebrow">Airgap guard</p>
+              <h2 id="airgap-banner-title"><span id="airgap-banner-title-text">Checking the airgap guard</span>
+                <button type="button" class="icon-button help-context-button" data-help-topic="glossary:airgapped" aria-label="What does airgapped mean?">?</button>
+              </h2>
+              <p id="airgap-banner-copy">Checking the warm-shell reachability and cold-realm boundary.</p>
+              <div class="airgap-facts" aria-label="Network and isolation facts">
+                <p><strong>Warm reachability:</strong> <span id="warm-reachability-status">Checking external reachability.</span></p>
+                <p><strong>Cold isolation:</strong> <span id="cold-isolation-status">Checking CSP and runtime guards.</span></p>
+              </div>
+            </div>
+            <div class="airgap-banner-state" aria-label="Airgap and network status">
+              <span class="status-dot" aria-hidden="true"></span>
+              <span id="airgap-banner-label">Checking</span>
+            </div>
+          </section>
           <span class="build-badge"><span class="status-dot" aria-hidden="true"></span> Shell preview</span>
           <p class="nav-footer-note">The warm shell stays public. Secret handling lives inside the sealed realm.</p>
         </div>
@@ -121,14 +138,14 @@ __COLDBOX_STYLES__
                 <ul class="mock-action-list">
                   <li><span class="mock-list-icon mock-list-icon-yellow">01</span><span><strong>Open the vault workspace</strong><small>Use a local .cbx file or create a new vault.</small></span><a class="text-button" href="#vault" data-route="vault">Open</a></li>
                   <li><span class="mock-list-icon mock-list-icon-cyan">02</span><span><strong>Plan public records</strong><small>Portfolio, prices, and registry are ready for future features.</small></span><a class="text-button" href="#registry" data-route="registry">View</a></li>
-                  <li><span class="mock-list-icon mock-list-icon-green">03</span><span><strong>Check system health</strong><small>Inspect the live platform checks.</small></span><button class="text-button" type="button" data-popup-open="popup-system-health" aria-controls="popup-system-health">Open</button></li>
+                  <li><span class="mock-list-icon mock-list-icon-green">03</span><span><strong>Review the backup plan</strong><small>See how verification and recovery will be recorded.</small></span><button class="text-button" type="button" data-popup-open="popup-dashboard-backup" aria-controls="popup-dashboard-backup">Open</button></li>
                 </ul>
               </article>
               <article class="mock-card mock-card-paper">
                 <div class="mock-card-header"><p class="mock-card-label">At a glance</p><span class="mock-status mock-status-neutral">Ready to begin</span></div>
                 <h3>Today in Coldbox</h3>
-                <dl class="mock-stat-list"><div><dt>Active vaults</dt><dd>—</dd></div><div><dt>Pending actions</dt><dd>—</dd></div><div><dt>Last verified save</dt><dd>—</dd></div><div><dt>System health</dt><dd class="mock-value-neutral">See checks</dd></div></dl>
-                <button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-system-health" aria-controls="popup-system-health">Open system health</button>
+                <dl class="mock-stat-list"><div><dt>Active vaults</dt><dd>—</dd></div><div><dt>Pending actions</dt><dd>—</dd></div><div><dt>Last verified save</dt><dd>—</dd></div><div><dt>Public records</dt><dd class="mock-value-neutral">None yet</dd></div></dl>
+                <a class="comic-btn comic-btn-secondary" href="#registry" data-route="registry">Open registry</a>
               </article>
             </div>
           </section>
@@ -168,11 +185,26 @@ __COLDBOX_STYLES__
                 <button class="vault-button vault-button-primary" id="vault-save-primary" type="button" disabled>Save vault</button>
               </div>
             </div>
-            <div class="vault-status-label"><span class="status-dot" aria-hidden="true"></span><span id="vault-status-label">Locked</span></div>
+            <div class="vault-status-side">
+              <div class="vault-status-label"><span class="status-dot" aria-hidden="true"></span><span id="vault-status-label">Locked</span></div>
+              <button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-vault-details" aria-controls="popup-vault-details">Vault details</button>
+            </div>
           </section>
 
           <section class="protocol-warning vault-rollback-banner" id="vault-rollback-banner" data-state="none" aria-live="polite" hidden>
             <p><strong>Possible rollback detected.</strong> <span id="vault-rollback-banner-copy"></span></p>
+          </section>
+
+          <section class="vault-session-actions" aria-labelledby="vault-session-actions-title">
+            <div>
+              <p class="panel-kicker">Session controls</p>
+              <h2 id="vault-session-actions-title">Lock before you step away</h2>
+              <p>The cold realm also locks itself after five minutes without activity. Press Escape twice quickly to lock and hide the entire app.</p>
+            </div>
+            <div class="vault-actions">
+              <button class="vault-button" id="vault-lock" type="button">Lock vault</button>
+              <button class="vault-button vault-button-danger" id="vault-panic-hide" type="button">Panic hide</button>
+            </div>
           </section>
 
           <div class="card-grid vault-card-grid">
@@ -266,17 +298,6 @@ __COLDBOX_STYLES__
             </div>
           </section>
 
-          <section class="vault-session-actions" aria-labelledby="vault-session-actions-title">
-            <div>
-              <p class="panel-kicker">Session controls</p>
-              <h2 id="vault-session-actions-title">Lock before you step away</h2>
-              <p>The cold realm also locks itself after five minutes without activity. Press Escape twice quickly to lock and hide the entire app.</p>
-            </div>
-            <div class="vault-actions">
-              <button class="vault-button" id="vault-lock" type="button">Lock vault</button>
-              <button class="vault-button vault-button-danger" id="vault-panic-hide" type="button">Panic hide</button>
-            </div>
-          </section>
         </section>
 
         <section class="page" id="page-portfolio" data-page="portfolio" aria-labelledby="page-title-portfolio" hidden>
@@ -287,8 +308,8 @@ __COLDBOX_STYLES__
           </section>
           <section class="mock-card mock-card-wide" aria-labelledby="portfolio-chart-title"><div class="section-heading-row"><div><p class="mock-card-label">Performance / history</p><h2 id="portfolio-chart-title">Value over time</h2></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-portfolio-chart" aria-controls="popup-portfolio-chart">Chart details</button></div><div class="mock-empty-chart" role="img" aria-label="Portfolio chart is unavailable until records exist"><span>No series yet</span></div></section>
           <div class="mock-route-grid mock-route-grid-two">
-            <article class="mock-card mock-card-table"><div class="section-heading-row"><div><p class="mock-card-label">Holdings</p><h2>What is recorded</h2></div><button class="text-button" type="button" data-popup-open="popup-portfolio-holdings" aria-controls="popup-portfolio-holdings">View rules</button></div><div class="mock-empty-state"><strong>No holdings recorded.</strong><span>Asset, wallet, amount, value, and change columns will populate here.</span></div></article>
-            <article class="mock-card mock-card-table"><div class="section-heading-row"><div><p class="mock-card-label">Lot activity</p><h2>Recent transactions</h2></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-portfolio-transaction" aria-controls="popup-portfolio-transaction">Transaction plan</button></div><div class="mock-empty-state"><strong>No transactions recorded.</strong><span>Transaction and transfer history will appear after the portfolio feature is built.</span></div></article>
+            <article class="mock-card mock-card-table"><div class="section-heading-row"><div><p class="mock-card-label">Holdings</p><h2>What is recorded</h2></div><button class="text-button" type="button" data-popup-open="popup-portfolio-holdings" aria-controls="popup-portfolio-holdings">View rules</button></div><div class="mock-empty-state"><strong>No holdings recorded.</strong><span>Asset, wallet, amount, value, and change columns will populate here.</span></div><div class="mock-actions"><button class="text-button" type="button" data-popup-open="popup-portfolio-asset" aria-controls="popup-portfolio-asset">Asset detail layout</button><button class="text-button" type="button" data-popup-open="popup-portfolio-export" aria-controls="popup-portfolio-export">Export layout</button></div></article>
+            <article class="mock-card mock-card-table"><div class="section-heading-row"><div><p class="mock-card-label">Lot activity</p><h2>Recent transactions</h2></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-portfolio-transaction" aria-controls="popup-portfolio-transaction">Transaction plan</button></div><div class="mock-empty-state"><strong>No transactions recorded.</strong><span>Transaction and transfer history will appear after the portfolio feature is built.</span></div><div class="mock-actions"><button class="text-button" type="button" data-popup-open="popup-portfolio-transaction-detail" aria-controls="popup-portfolio-transaction-detail">Detail layout</button><button class="text-button" type="button" data-popup-open="popup-portfolio-transfer" aria-controls="popup-portfolio-transfer">Transfer layout</button></div></article>
           </div>
         </section>
 
@@ -296,18 +317,18 @@ __COLDBOX_STYLES__
           <header class="page-header"><p class="eyebrow">Workspace / Online views</p><h1 id="page-title-prices">Prices</h1><p class="page-lede">The finished market view will keep source readings, spread, age, and privacy cost visible together. No network reading is shown until the price feature is built.</p></header>
           <section class="mock-hero-grid" aria-label="Price summary"><article class="mock-card mock-card-featured"><div class="mock-card-header"><p class="mock-card-label">Market median</p><span class="mock-status mock-status-neutral">No readings</span></div><p class="mock-metric mock-metric-large mock-empty-metric">—</p><p class="mock-card-note">A median will appear only after the configured public sources return readings.</p><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-prices-refresh" aria-controls="popup-prices-refresh">Refresh plan</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-prices-privacy" aria-controls="popup-prices-privacy">Privacy note</button></div></article><article class="mock-card"><div class="mock-card-header"><p class="mock-card-label">Watchlist</p><span class="mock-status mock-status-neutral">Empty</span></div><div class="mock-empty-state"><strong>No assets watched.</strong><span>Watchlist rows will appear after assets and source preferences are configured.</span></div></article></section>
           <section class="mock-card mock-card-wide" aria-labelledby="prices-chart-title"><div class="section-heading-row"><div><p class="mock-card-label">Historical series</p><h2 id="prices-chart-title">Price over time</h2></div><span class="mock-status mock-status-neutral">No series</span></div><div class="mock-empty-chart" role="img" aria-label="Price chart is unavailable until readings exist"><span>No series yet</span></div></section>
-          <section class="mock-card mock-card-wide" aria-labelledby="price-sources-title"><div class="section-heading-row"><div><p class="mock-card-label">Source ledger</p><h2 id="price-sources-title">Every reading is inspectable</h2></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-prices-sources" aria-controls="popup-prices-sources">Source rules</button></div><div class="mock-empty-state"><strong>No source readings yet.</strong><span>The source ledger will list age, spread, response status, and privacy scope when the live view exists.</span></div></section>
+          <section class="mock-card mock-card-wide" aria-labelledby="price-sources-title"><div class="section-heading-row"><div><p class="mock-card-label">Source ledger</p><h2 id="price-sources-title">Every reading is inspectable</h2></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-prices-sources" aria-controls="popup-prices-sources">Source rules</button></div><div class="mock-empty-state"><strong>No source readings yet.</strong><span>The source ledger will list age, spread, response status, and privacy scope when the live view exists.</span></div><div class="mock-source-grid" aria-label="Price source layouts"><button class="mock-source-card" type="button" data-popup-open="popup-price-source-coingecko" aria-controls="popup-price-source-coingecko"><strong>CoinGecko</strong><span class="mock-source-value">No reading</span><small>Open source layout</small></button><button class="mock-source-card" type="button" data-popup-open="popup-price-source-coinbase" aria-controls="popup-price-source-coinbase"><strong>Coinbase</strong><span class="mock-source-value">No reading</span><small>Open source layout</small></button><button class="mock-source-card" type="button" data-popup-open="popup-price-source-kraken" aria-controls="popup-price-source-kraken"><strong>Kraken</strong><span class="mock-source-value">No reading</span><small>Open source layout</small></button><button class="mock-source-card" type="button" data-popup-open="popup-price-source-paprika" aria-controls="popup-price-source-paprika"><strong>CoinPaprika</strong><span class="mock-source-value">No reading</span><small>Open source layout</small></button><button class="mock-source-card" type="button" data-popup-open="popup-price-source-dia" aria-controls="popup-price-source-dia"><strong>Dia</strong><span class="mock-source-value">No reading</span><small>Open source layout</small></button></div></section>
         </section>
 
         <section class="page" id="page-registry" data-page="registry" aria-labelledby="page-title-registry" hidden>
           <header class="page-header"><p class="eyebrow">Workspace / Public records</p><h1 id="page-title-registry">Registry</h1><p class="page-lede">The registry will become the searchable public index of wallet records, accounts, addresses, labels, devices, and notes. It is intentionally empty until that feature is built.</p></header>
-          <section class="mock-card mock-card-wide"><div class="section-heading-row"><div><p class="mock-card-label">Wallet records</p><h2>One clear identity trail</h2></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-registry-new" aria-controls="popup-registry-new">Add record plan</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-registry-filter" aria-controls="popup-registry-filter">Filter plan</button></div></div><div class="mock-empty-state"><strong>No wallet records yet.</strong><span>Device, chain, account, address, and verification rows will appear here without exposing secret material.</span></div></section>
-          <section class="mock-card mock-card-wide mock-card-table"><div class="section-heading-row"><div><p class="mock-card-label">Address book</p><h2>Public addresses</h2></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-registry-address" aria-controls="popup-registry-address">Address rules</button></div><div class="mock-empty-state"><strong>No addresses recorded.</strong><span>The table layout is reserved for public labels, verification state, and optional balance lookups.</span></div></section>
+          <section class="mock-card mock-card-wide"><div class="section-heading-row"><div><p class="mock-card-label">Wallet records</p><h2>One clear identity trail</h2></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-registry-new" aria-controls="popup-registry-new">Add record plan</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-registry-filter" aria-controls="popup-registry-filter">Filter plan</button></div></div><div class="mock-empty-state"><strong>No wallet records yet.</strong><span>Device, chain, account, address, and verification rows will appear here without exposing secret material.</span></div><div class="mock-registry-grid" aria-label="Wallet record layouts"><button class="mock-record-card" type="button" data-popup-open="popup-registry-coldcard" aria-controls="popup-registry-coldcard"><span class="record-icon record-icon-cyan">C</span><strong>Primary wallet record</strong><small>No record</small><span class="record-arrow" aria-hidden="true">&gt;</span></button><button class="mock-record-card" type="button" data-popup-open="popup-registry-trezor" aria-controls="popup-registry-trezor"><span class="record-icon record-icon-pink">T</span><strong>Multi-chain record</strong><small>No record</small><span class="record-arrow" aria-hidden="true">&gt;</span></button><button class="mock-record-card" type="button" data-popup-open="popup-registry-reserve" aria-controls="popup-registry-reserve"><span class="record-icon record-icon-yellow">R</span><strong>Public reserve record</strong><small>No record</small><span class="record-arrow" aria-hidden="true">&gt;</span></button></div></section>
+          <section class="mock-card mock-card-wide mock-card-table"><div class="section-heading-row"><div><p class="mock-card-label">Address book</p><h2>Public addresses</h2></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-registry-address" aria-controls="popup-registry-address">Address rules</button></div><div class="mock-empty-state"><strong>No addresses recorded.</strong><span>The table layout is reserved for public labels, verification state, and optional balance lookups.</span></div><div class="mock-actions"><button class="text-button" type="button" data-popup-open="popup-registry-balance" aria-controls="popup-registry-balance">Balance lookup layout</button></div></section>
         </section>
 
         <section class="page" id="page-devices" data-page="devices" aria-labelledby="page-title-devices" hidden>
           <header class="page-header"><p class="eyebrow">Workspace / Companion records</p><h1 id="page-title-devices">Devices</h1><p class="page-lede">Hardware-wallet records will keep model, firmware, verification, backup, and lifecycle notes together. No physical device is inferred or displayed here.</p></header>
-          <section class="mock-device-grid"><article class="mock-card mock-device-card"><div class="mock-card-header"><span class="record-icon record-icon-cyan">C</span><span class="mock-status mock-status-neutral">No record</span></div><h2>Primary device</h2><p class="mock-card-subtitle">A placeholder for a future public companion record.</p><div class="mock-empty-state"><strong>No device recorded.</strong><span>Model, firmware, verification, and backup fields will appear after the device feature is built.</span></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-device-coldcard" aria-controls="popup-device-coldcard">Device layout</button></div></article><article class="mock-card mock-device-card"><div class="mock-card-header"><span class="record-icon record-icon-pink">T</span><span class="mock-status mock-status-neutral">No record</span></div><h2>Secondary device</h2><p class="mock-card-subtitle">A placeholder for another public companion record.</p><div class="mock-empty-state"><strong>No device recorded.</strong><span>Verification and lifecycle history will appear here when supported.</span></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-device-trezor" aria-controls="popup-device-trezor">Device layout</button></div></article><article class="mock-card mock-device-card"><div class="mock-card-header"><span class="record-icon record-icon-yellow">+</span><span class="mock-status mock-status-neutral">Planning</span></div><h2>Replacement plan</h2><p class="mock-card-subtitle">A record for the next device, not a key.</p><div class="mock-empty-state"><strong>No plan recorded.</strong><span>Arrival checks and quorum notes will be added with the device workflow.</span></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-device-plan" aria-controls="popup-device-plan">Plan layout</button></div></article></section>
+          <section class="mock-device-grid"><article class="mock-card mock-device-card"><div class="mock-card-header"><span class="record-icon record-icon-cyan">C</span><span class="mock-status mock-status-neutral">No record</span></div><h2>Primary device</h2><p class="mock-card-subtitle">A placeholder for a future public companion record.</p><div class="mock-empty-state"><strong>No device recorded.</strong><span>Model, firmware, verification, and backup fields will appear after the device feature is built.</span></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-device-coldcard" aria-controls="popup-device-coldcard">Device layout</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-device-verify" aria-controls="popup-device-verify">Verify workflow</button></div></article><article class="mock-card mock-device-card"><div class="mock-card-header"><span class="record-icon record-icon-pink">T</span><span class="mock-status mock-status-neutral">No record</span></div><h2>Secondary device</h2><p class="mock-card-subtitle">A placeholder for another public companion record.</p><div class="mock-empty-state"><strong>No device recorded.</strong><span>Verification and lifecycle history will appear here when supported.</span></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-device-trezor" aria-controls="popup-device-trezor">Device layout</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-device-verify" aria-controls="popup-device-verify">Verify workflow</button></div></article><article class="mock-card mock-device-card"><div class="mock-card-header"><span class="record-icon record-icon-yellow">+</span><span class="mock-status mock-status-neutral">Planning</span></div><h2>Replacement plan</h2><p class="mock-card-subtitle">A record for the next device, not a key.</p><div class="mock-empty-state"><strong>No plan recorded.</strong><span>Arrival checks and quorum notes will be added with the device workflow.</span></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-device-plan" aria-controls="popup-device-plan">Plan layout</button></div></article></section>
         </section>
 
         <section class="page" id="page-entropy" data-page="entropy" aria-labelledby="page-title-entropy" hidden>
@@ -437,25 +458,40 @@ __COLDBOX_STYLES__
 
             <p class="help-fallback-notice" id="help-fallback-notice" role="status" aria-live="polite" hidden>No dedicated help content exists for that panel yet — see the P0.17 backfill obligation in the roadmap.</p>
 
-            <article class="help-section">
-              <h2>Guides</h2>
-              <div id="help-guides-list"></div>
+            <article class="help-empty-state" id="help-empty-state">
+              <strong>Search the embedded glossary to open one entry at a time.</strong>
+              <span>Choose a result to read its plain, working, or technical explanation here. The full glossary and guides stay embedded offline without crowding the page.</span>
             </article>
 
-            <article class="help-section">
-              <h2>Glossary</h2>
-              <p class="provenance-section-note">Jargon inside a guide above is underlined and tappable for a definition without leaving the page.</p>
-              <div id="help-glossary-list"></div>
+            <article class="help-detail-card" id="help-detail-card" aria-live="polite" hidden>
+              <div class="help-detail-header">
+                <div>
+                  <p class="panel-kicker" id="help-detail-kicker">Glossary entry</p>
+                  <h2 id="help-detail-title">Choose a topic</h2>
+                </div>
+                <span class="mock-status mock-status-neutral">Embedded offline</span>
+              </div>
+              <div class="help-detail-body" id="help-detail-body"></div>
             </article>
+
+            <div id="help-guides-list" class="help-legacy-list" hidden aria-hidden="true"></div>
+            <div id="help-glossary-list" class="help-legacy-list" hidden aria-hidden="true"></div>
           </section>
         </section>
 
-        <section class="system-health-workspace" id="system-health-workspace" aria-labelledby="system-health-workspace-title">
+        <section class="page" id="page-system-health" data-page="system-health" aria-labelledby="page-title-system-health" hidden>
+          <header class="page-header">
+            <p class="eyebrow">System / Live checks</p>
+            <h1 id="page-title-system-health">System health</h1>
+            <p class="page-lede">Open one platform check at a time from the boot self-check. This route keeps security readiness separate from portfolio, vault, and other workspace records.</p>
+          </header>
+
+          <div class="system-health-workspace" id="system-health-workspace" aria-labelledby="system-health-workspace-title">
           <div class="system-health-heading">
             <div>
               <span class="panel-kicker">System / live checks</span>
               <h2 id="system-health-workspace-title">System health</h2>
-              <p>Technical readiness stays available below the workspace so it never gets confused with portfolio or vault records.</p>
+              <p>Technical readiness stays together on this route so it never gets confused with portfolio or vault records.</p>
             </div>
             <button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-system-health" aria-controls="popup-system-health">Open health summary</button>
           </div>
@@ -475,24 +511,6 @@ __COLDBOX_STYLES__
             <div class="cold-frame-host" id="cold-realm-host" aria-label="Sealed realm viewport"></div>
             <p class="realm-status-failure" id="cold-realm-failure" role="alert" hidden>Coldbox is locked down because the sealed realm could not be established. Reload a verified build in a supported browser; no secret operation is available in this state.</p>
             <p class="protocol-warning" id="protocol-warning" role="alert" hidden>Unexpected protocol traffic was discarded and logged. No message was accepted.</p>
-          </section>
-
-          <section class="airgap-banner" id="airgap-banner" data-airgap-state="checking" aria-labelledby="airgap-banner-title" aria-live="polite">
-            <div class="airgap-banner-copy">
-              <p class="eyebrow">Airgap guard / P0.8</p>
-              <h2 id="airgap-banner-title"><span id="airgap-banner-title-text">Checking the airgap guard</span>
-                <button type="button" class="icon-button help-context-button" data-help-topic="glossary:airgapped" aria-label="What does airgapped mean?">?</button>
-              </h2>
-              <p id="airgap-banner-copy">Coldbox is confirming both CSP policies and the private cold-realm channel before vault operations can be considered.</p>
-              <div class="airgap-facts" aria-label="Network and isolation facts">
-                <p><strong>Warm reachability:</strong> <span id="warm-reachability-status">Checking external reachability.</span></p>
-                <p><strong>Cold isolation:</strong> <span id="cold-isolation-status">Checking CSP and runtime guards.</span></p>
-              </div>
-            </div>
-            <div class="airgap-banner-state" aria-label="Airgap and network status">
-              <span class="status-dot" aria-hidden="true"></span>
-              <span id="airgap-banner-label">Checking</span>
-            </div>
           </section>
 
           <section class="capability-panel" id="capability-panel" data-capability-state="checking" aria-labelledby="capability-panel-title" aria-live="polite">
@@ -561,6 +579,7 @@ __COLDBOX_STYLES__
             </div>
             <p class="capability-crypto-summary" id="capability-crypto-summary" data-kdf-active="checking" aria-live="polite">Vault crypto: waiting for the sealed realm to report its active KDF.</p>
           </section>
+          </div>
         </section>
       </main>
     </div>
@@ -601,6 +620,7 @@ __COLDBOX_STYLES__
         <a class="mobile-more-link" href="#verify" data-route="verify">Verify Bench</a>
         <a class="mobile-more-link" href="#reference" data-route="reference">Reference</a>
         <a class="mobile-more-link" href="#learn" data-route="learn">Learn</a>
+        <a class="mobile-more-link" href="#system-health" data-route="system-health">System health</a>
       </div>
     </div>
 

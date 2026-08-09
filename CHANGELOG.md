@@ -38,7 +38,24 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
   `build/coldbox-ui-walkthrough.html` visual reference; its balances, dates,
   devices, and chart values are not application state and are not shipped.
 - Live realm, reachability, and capability checks remain functional in the
-  dedicated System Health section below the route content.
+  dedicated System Health route.
+
+### Changed — route-specific mock shell and searchable Learn correction (2026-08-09)
+
+- System Health is now its own route; Dashboard no longer repeats health
+  content, Vault keeps its session controls and Vault details trigger together,
+  and the Entropy Lab remains scoped to its own route.
+- The airgap guard is a compact live caption in the navigation footer, and
+  boot self-check rows remain individually inspectable through the shared
+  centered floating card.
+- Portfolio, Prices, Registry, and Devices now expose the approved empty-state
+  card triggers for asset details, exports, source readings, wallet records,
+  balance lookup, and verification workflow without inventing records.
+- Learn now opens one selected embedded glossary or guide entry at a time from
+  an offline search field; the full compiled corpus remains embedded but is not
+  rendered as a long list.
+- Panic conceal retains the approved red-backed concealment treatment, while
+  the popup Close control remains the shared red action.
 
 ### Changed — P0.19 device-matrix remediation design (2026-08-08)
 

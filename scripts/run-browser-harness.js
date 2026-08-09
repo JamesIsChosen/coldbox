@@ -527,10 +527,12 @@ async function verifyUiShellWalkthrough(browser, engine) {
   const routeIds = [
     'dashboard', 'vault', 'portfolio', 'prices', 'registry', 'devices', 'entropy',
     'seed-forge', 'derivation', 'backup', 'qr', 'recovery', 'verify', 'reference',
-    'learn'
+    'learn', 'system-health'
   ];
   try {
     await harness.expectElementVisible('#app');
+    await page.locator('#nav-rail a[data-route="system-health"]').click();
+    await page.locator('#page-system-health:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
     await page.locator('img.brand-wordmark[alt="Coldbox"]').waitFor({ state: 'visible' });
     assert.equal(await page.locator('.preview-badge').isVisible(), true, `${engine}: design-shell badge must be visible`);
@@ -576,6 +578,8 @@ async function verifyBuiltFile(browser, engine) {
   try {
     await harness.expectElementVisible('#app');
     await harness.expectElementVisible('#app[data-build-state="warm-shell"]');
+    await page.locator('#nav-rail a[data-route="system-health"]').click();
+    await page.locator('#page-system-health:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible' });
     await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible' });
     await page.locator('#airgap-banner[data-airgap-state="amber"]').waitFor({ state: 'visible', timeout: 5000 });
@@ -1159,6 +1163,8 @@ async function verifyColdRealmFailure(browser, engine) {
   const harness = await createHarness(page);
   try {
     await page.goto(fileUrl(buildPath), { waitUntil: 'load' });
+    await page.locator('#nav-rail a[data-route="system-health"]').click();
+    await page.locator('#page-system-health:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#cold-realm-status[data-cold-state="failed"]').waitFor({ state: 'visible' });
     await harness.expectElementVisible('#cold-realm-failure');
     assert.equal(await page.locator('#cold-frame').count(), 0, `${engine}: failed bootstrap left a frame active`);
@@ -1297,6 +1303,8 @@ async function verifyColdRealmTimeout(browser, engine) {
   const harness = await createHarness(page);
   try {
     await page.goto(fileUrl(fixture.path), { waitUntil: 'load' });
+    await page.locator('#nav-rail a[data-route="system-health"]').click();
+    await page.locator('#page-system-health:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#cold-realm-status[data-cold-state="failed"]').waitFor({ state: 'visible' });
     await harness.expectElementVisible('#cold-realm-failure');
     assert.equal(
@@ -1328,6 +1336,8 @@ async function verifyHandshakeTimeout(browser, engine) {
   const harness = await createHarness(page);
   try {
     await page.goto(fileUrl(fixture.path), { waitUntil: 'load' });
+    await page.locator('#nav-rail a[data-route="system-health"]').click();
+    await page.locator('#page-system-health:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#cold-realm-status[data-cold-state="failed"]').waitFor({ state: 'visible' });
     assert.match(
       await page.locator('#cold-realm-status-copy').textContent(),
@@ -1357,6 +1367,8 @@ async function verifyCspStrippedLockdown(browser, engine, kind) {
   try {
     const { harness, page } = await openPage(browser, stripped.path);
     try {
+      await page.locator('#nav-rail a[data-route="system-health"]').click();
+      await page.locator('#page-system-health:not([hidden])').waitFor({ state: 'visible' });
       await page.locator('#app[data-lockdown-state="full"]').waitFor({ state: 'visible', timeout: 5000 });
       await page.locator('#airgap-banner[data-airgap-state="red"]').waitFor({ state: 'visible' });
       assert.equal(
@@ -1519,6 +1531,8 @@ async function verifyMissingRandomnessLockdown(browser, engine) {
   try {
     const { harness, page } = await openPage(browser, fixture.path);
     try {
+      await page.locator('#nav-rail a[data-route="system-health"]').click();
+      await page.locator('#page-system-health:not([hidden])').waitFor({ state: 'visible' });
       await page.locator('#app[data-capability-state="failed"]').waitFor({ state: 'visible', timeout: 5000 });
       await page.locator('#capability-panel[data-capability-state="failed"]').waitFor({ state: 'visible' });
       assert.equal(
@@ -2002,6 +2016,8 @@ async function verifyHelpFramework(browser, engine) {
     // defect entirely - three of the five were gone by the time a real user
     // could ever click one. Waiting for the app to fully settle first, then
     // counting, is the only way this check can catch a regression here.
+    await page.locator('#nav-rail a[data-route="system-health"]').click();
+    await page.locator('#page-system-health:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
     await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
     await page.locator('#airgap-banner[data-airgap-state="amber"], #airgap-banner[data-airgap-state="green"]').waitFor({ state: 'visible', timeout: 5000 });
@@ -2019,12 +2035,12 @@ async function verifyHelpFramework(browser, engine) {
     // wipes the new button's <h2> content would go undetected exactly the
     // way the reviewer's F1 finding described.
     const contextualHelpMappings = [
-      { topic: 'glossary:cold-realm-warm-shell', anchorPrefix: 'help-glossary-cold-realm-warm-shell', route: 'dashboard' },
-      { topic: 'glossary:airgapped', anchorPrefix: 'help-glossary-airgapped', route: 'dashboard' },
-      { topic: 'glossary:capability-self-check', anchorPrefix: 'help-glossary-capability-self-check', route: 'dashboard' },
-      { topic: 'glossary:vault', anchorPrefix: 'help-glossary-vault', route: 'vault' },
-      { topic: 'glossary:provenance-panel', anchorPrefix: 'help-glossary-provenance-panel', route: 'reference' },
-      { topic: 'glossary:appropriate-legal-notices', anchorPrefix: 'help-glossary-appropriate-legal-notices', route: 'reference' }
+      { topic: 'glossary:cold-realm-warm-shell', route: 'system-health' },
+      { topic: 'glossary:airgapped', route: 'system-health' },
+      { topic: 'glossary:capability-self-check', route: 'system-health' },
+      { topic: 'glossary:vault', route: 'vault' },
+      { topic: 'glossary:provenance-panel', route: 'reference' },
+      { topic: 'glossary:appropriate-legal-notices', route: 'reference' }
     ];
     for (const mapping of contextualHelpMappings) {
       await page.locator(`#nav-rail a[data-route="${mapping.route}"]`).click();
@@ -2032,27 +2048,17 @@ async function verifyHelpFramework(browser, engine) {
       await button.waitFor({ state: 'visible', timeout: 3000 });
       await button.click();
       await page.locator('#page-learn:not([hidden])').waitFor({ state: 'visible' });
-      await page.locator(`#${mapping.anchorPrefix}`).waitFor({ state: 'visible', timeout: 3000 });
+      await page.locator(`#help-detail-card:not([hidden])[data-help-active-id="${mapping.topic}"]`).waitFor({ state: 'visible', timeout: 3000 });
     }
 
     await page.locator('#nav-rail a[data-route="learn"]').click();
     await page.locator('#page-learn:not([hidden])').waitFor({ state: 'visible' });
 
-    const glossaryTerms = page.locator('#help-glossary-list .help-glossary-term');
-    const initialCount = await glossaryTerms.count();
-    assert.ok(initialCount > 0, `${engine}: Learn page must render at least one glossary term`);
-
-    // Selecting by hasText: 'Seed phrase' used to be ambiguous: Playwright's
-    // hasText matches substring-anywhere-in-text-content, and "Seed phrase"
-    // as a cross-referenced concept legitimately appears in the compiled
-    // prose of several other glossary entries too (entropy, passphrase,
-    // private key, BIP-39, BIP-85, SLIP-39, SeedQR, and the "my seed phrase
-    // is my password" myth entry all mention it) - a real run against real
-    // Chromium hit a strict-mode violation with 9 matching elements. The
-    // compiler's own deterministic id (glossary:seed-phrase -> helpDomId ->
-    // #help-glossary-seed-phrase) is exact and unambiguous; use that instead.
-    const seedPhraseBody = page.locator('#help-glossary-seed-phrase .help-term-body');
-    await seedPhraseBody.waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#help-empty-state').isVisible(), true, `${engine}: Learn should start with the compact glossary prompt`);
+    await page.locator('#help-search-input').fill('seed phrase');
+    await page.locator('.help-search-result').first().click();
+    await page.locator('#help-detail-card:not([hidden])').waitFor({ state: 'visible' });
+    const seedPhraseBody = page.locator('#help-detail-body');
     const plainText = (await seedPhraseBody.textContent()).trim();
     assert.match(plainText, /12 or 24 ordinary words/i, `${engine}: plain depth should be showing by default`);
 
@@ -2085,7 +2091,7 @@ async function verifyHelpFramework(browser, engine) {
     assert.equal(networkRequestSeen, false, `${engine}: offline search must not trigger any network request`);
 
     await page.locator('.help-search-result', { hasText: 'xpub' }).first().click();
-    await page.locator('#help-glossary-xpub').waitFor({ state: 'visible', timeout: 3000 });
+    await page.locator('#help-detail-card:not([hidden])').waitFor({ state: 'visible', timeout: 3000 });
 
     // Contextual '?' help for all five panels, including that each button
     // survives real app initialization, was already exercised in full at
@@ -2105,7 +2111,9 @@ async function verifyHelpFramework(browser, engine) {
     // Inline glossary: a term inside the rendered guide body must be
     // tappable for a definition without leaving the page.
     await page.locator('#nav-rail a[data-route="learn"]').click();
-    const inlineTerm = page.locator('#help-guides-list .glossary-term').first();
+    await page.locator('#help-search-input').fill('vault');
+    await page.locator('.help-search-result').first().click();
+    const inlineTerm = page.locator('#help-detail-body .glossary-term').first();
     await inlineTerm.waitFor({ state: 'visible' });
     await inlineTerm.click();
     await page.locator('.glossary-tooltip').first().waitFor({ state: 'visible', timeout: 3000 });
@@ -2119,6 +2127,8 @@ async function verifyHelpFramework(browser, engine) {
 async function verifyEntropyLab(browser, engine) {
   const { page } = await openPage(browser, buildPath);
   try {
+    await page.locator('#nav-rail a[data-route="system-health"]').click();
+    await page.locator('#page-system-health:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
     const coldFrame = await getColdFrame(page, engine);
     await coldFrame.locator('html[data-crypto-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });

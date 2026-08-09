@@ -96,12 +96,18 @@ __COLDBOX_QR_ENCODER__
   var helpSearchResults = document.getElementById('help-search-results');
   var helpGlossaryList = document.getElementById('help-glossary-list');
   var helpGuidesList = document.getElementById('help-guides-list');
+  var helpEmptyState = document.getElementById('help-empty-state');
+  var helpDetailCard = document.getElementById('help-detail-card');
+  var helpDetailKicker = document.getElementById('help-detail-kicker');
+  var helpDetailTitle = document.getElementById('help-detail-title');
+  var helpDetailBody = document.getElementById('help-detail-body');
   var helpFallbackNotice = document.getElementById('help-fallback-notice');
   var helpContextButtons = Array.prototype.slice.call(document.querySelectorAll('[data-help-topic]'));
   var currentHelpDepth = 'plain';
   var helpGlossaryTermIndex = null;
   var helpGlossaryPattern;
   var helpSearchCorpus = null;
+  var activeHelpTopicId = null;
   var PROVENANCE_MAX_DROP_BYTES = 16 * 1024 * 1024;
   var vaultStatus = document.getElementById('vault-status');
   // R2-F2 remediation: see the coldRealmStatusTitle comment above - same
@@ -249,7 +255,13 @@ __COLDBOX_QR_ENCODER__
       '<strong>Required randomness:</strong> both realms expose crypto.getRandomValues.',
       '<strong>Save paths:</strong> portable fallback remains available when a writable handle is not.',
       '<strong>Camera receiver:</strong> capability is detected before permission is requested.'
-    ], 'Click any capability row on the dashboard to inspect its exact current result and fallback behavior.'),
+    ], 'Open System health from the navigation, then click any capability row to inspect its exact current result and fallback behavior.'),
+    'popup-vault-details': popup('Vault / identity', 'Vault details stay with the session', 'This floating card is the public companion to the active vault session. It can describe identity and protection state without displaying an unlock phrase or decrypted material.', [
+      '<strong>Public identity:</strong> name and authenticated Vault ID belong to the warm workspace.',
+      '<strong>Session:</strong> locked, pending, or unlocked state is shown beside the vault controls.',
+      '<strong>Protection:</strong> KDF profile and save verification belong to the sealed workflow.',
+      '<strong>Boundary:</strong> phrases, private keys, and vault plaintext never appear in this card.'
+    ], 'The finished Vault tab keeps this detail card and the lock controls together so the user does not hunt through another route.'),
     'popup-dashboard-alerts': popup('Dashboard / next actions', 'Three things to review', 'The dashboard turns public records into a short, actionable queue. It never hides the reason an item is pending.', [
       '<strong>Backup verification:</strong> open the plan, inspect its locations, then run a reconstruction check.',
       '<strong>Stale price:</strong> review the source age and spread before treating a value as current.',
@@ -440,7 +452,8 @@ __COLDBOX_QR_ENCODER__
     recovery: Object.freeze({ label: 'Recovery', title: 'Recovery', group: 'Tool decks' }),
     verify: Object.freeze({ label: 'Verify Bench', title: 'Verify Bench', group: 'Reference' }),
     reference: Object.freeze({ label: 'Reference', title: 'Reference', group: 'Reference' }),
-    learn: Object.freeze({ label: 'Learn', title: 'Learn', group: 'Reference' })
+    learn: Object.freeze({ label: 'Learn', title: 'Learn', group: 'Reference' }),
+    'system-health': Object.freeze({ label: 'System health', title: 'System health', group: 'System' })
   });
 
   function readStoredTheme() {
@@ -748,6 +761,50 @@ __COLDBOX_QR_ENCODER__
     });
   }
 
+  function renderHelpDetail(id) {
+    if (!helpDetailCard || !helpDetailBody) {
+      return false;
+    }
+    var term = findGlossaryTermById(id);
+    var guide = term ? null : findGuideById(id);
+    if (!term && !guide) {
+      return false;
+    }
+
+    activeHelpTopicId = id;
+    helpDetailCard.setAttribute('data-help-active-id', id);
+    closeGlossaryTooltips();
+    while (helpDetailBody.firstChild) {
+      helpDetailBody.removeChild(helpDetailBody.firstChild);
+    }
+
+    if (term) {
+      var categoryTitle = 'Glossary entry';
+      HELP_CONTENT.glossary.some(function (category) {
+        if (category.terms.indexOf(term) !== -1) {
+          categoryTitle = 'Glossary / ' + category.title;
+          return true;
+        }
+        return false;
+      });
+      helpDetailKicker.textContent = categoryTitle;
+      helpDetailTitle.textContent = term.aliases.length
+        ? term.term + ' (also ' + term.aliases.join(', ') + ')'
+        : term.term;
+      helpDetailBody.innerHTML = term.byDepth[currentHelpDepth] || term.byDepth.plain || '';
+    } else {
+      helpDetailKicker.textContent = 'Guide / embedded offline';
+      helpDetailTitle.textContent = guide.title;
+      helpDetailBody.innerHTML = guide.byDepth[currentHelpDepth] || guide.byDepth.plain || '';
+    }
+    linkifyGlossaryTerms(helpDetailBody);
+    if (helpEmptyState) {
+      helpEmptyState.hidden = true;
+    }
+    helpDetailCard.hidden = false;
+    return true;
+  }
+
   function setHelpDepth(depth, persist) {
     currentHelpDepth = HELP_DEPTHS.indexOf(depth) !== -1 ? depth : 'plain';
     helpDepthButtons.forEach(function (button) {
@@ -755,8 +812,16 @@ __COLDBOX_QR_ENCODER__
       button.setAttribute('aria-pressed', String(isCurrent));
     });
     closeGlossaryTooltips();
-    renderHelpGlossary();
-    renderHelpGuides();
+    if (activeHelpTopicId) {
+      renderHelpDetail(activeHelpTopicId);
+    } else {
+      if (helpEmptyState) {
+        helpEmptyState.hidden = false;
+      }
+      if (helpDetailCard) {
+        helpDetailCard.hidden = true;
+      }
+    }
     if (persist) {
       try {
         window.localStorage.setItem(HELP_DEPTH_STORAGE_KEY, currentHelpDepth);
@@ -777,11 +842,11 @@ __COLDBOX_QR_ENCODER__
   }
 
   function focusHelpTopic(id) {
-    var target = document.getElementById(helpDomId(id));
-    if (!target) {
+    if (!renderHelpDetail(id)) {
       showHelpFallbackNotice();
       return;
     }
+    var target = helpDetailCard;
     try {
       target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
@@ -791,6 +856,7 @@ __COLDBOX_QR_ENCODER__
     window.setTimeout(function () {
       target.classList.remove('help-topic-highlight');
     }, 2000);
+    target.setAttribute('tabindex', '-1');
     target.focus({ preventScroll: true });
   }
 
@@ -819,6 +885,14 @@ __COLDBOX_QR_ENCODER__
     }
     if (!query) {
       helpSearchResults.hidden = true;
+      if (!activeHelpTopicId) {
+        if (helpEmptyState) {
+          helpEmptyState.hidden = false;
+        }
+        if (helpDetailCard) {
+          helpDetailCard.hidden = true;
+        }
+      }
       return;
     }
     var corpus = buildHelpSearchCorpus();
@@ -841,6 +915,7 @@ __COLDBOX_QR_ENCODER__
       item.textContent = entry.title + ' — ' + entry.category;
       item.addEventListener('click', function () {
         navigateToHelpTopic(entry.id);
+        helpSearchResults.hidden = true;
       });
       helpSearchResults.appendChild(item);
     });
@@ -861,6 +936,9 @@ __COLDBOX_QR_ENCODER__
     }
     if (helpGuidesList) {
       helpGuidesList.addEventListener('click', handleGlossaryTermClick);
+    }
+    if (helpDetailBody) {
+      helpDetailBody.addEventListener('click', handleGlossaryTermClick);
     }
     helpContextButtons.forEach(function (button) {
       button.addEventListener('click', function () {

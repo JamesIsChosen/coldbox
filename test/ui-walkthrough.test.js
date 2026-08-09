@@ -16,7 +16,26 @@ const buildPath = path.join(projectRoot, 'build', 'coldbox.html');
 const routeIds = Object.freeze([
   'dashboard', 'vault', 'portfolio', 'prices', 'registry', 'devices', 'entropy',
   'seed-forge', 'derivation', 'backup', 'qr', 'recovery', 'verify', 'reference',
-  'learn'
+  'learn', 'system-health'
+]);
+
+const approvedPopupIds = Object.freeze([
+  'popup-dashboard-backup',
+  'popup-portfolio-asset',
+  'popup-portfolio-export',
+  'popup-portfolio-transaction-detail',
+  'popup-portfolio-transfer',
+  'popup-price-source-coingecko',
+  'popup-price-source-coinbase',
+  'popup-price-source-kraken',
+  'popup-price-source-paprika',
+  'popup-price-source-dia',
+  'popup-registry-coldcard',
+  'popup-registry-trezor',
+  'popup-registry-reserve',
+  'popup-registry-balance',
+  'popup-device-verify',
+  'popup-vault-details'
 ]);
 
 const brandAssets = Object.freeze([
@@ -39,7 +58,10 @@ test('the UI shell covers every stable route and popup trigger', () => {
   }
 
   const popupIds = popupTriggerIds();
-  assert.ok(popupIds.length >= 40, `expected the full UI popup map, found ${popupIds.length}`);
+  assert.ok(popupIds.length >= 60, 'expected the full UI popup map, found ' + popupIds.length);
+  for (const popupId of approvedPopupIds) {
+    assert.ok(popupIds.includes(popupId), 'missing approved floating-card trigger ' + popupId);
+  }
   for (const popupId of popupIds) {
     assert.match(mainSource, new RegExp(`['"]${popupId}['"]\\s*:\\s*popup\\(`), `missing popup content for ${popupId}`);
   }
@@ -47,6 +69,17 @@ test('the UI shell covers every stable route and popup trigger', () => {
   assert.match(indexSource, /id="floating-menu-dialog"[^>]*role="dialog"/);
   assert.match(indexSource, /class="floating-menu-close"[^>]*data-popup-close/);
   assert.match(stylesSource, /\.floating-menu-close\s*\{[\s\S]*?background:\s*var\(--fill-red\)/);
+  assert.match(indexSource, /id="page-system-health" data-page="system-health"/);
+  assert.match(indexSource, /<div class="nav-footer">[\s\S]*?<section class="airgap-banner airgap-banner-compact" id="airgap-banner"/);
+  assert.match(indexSource, /id="help-search-input"/);
+  assert.match(indexSource, /id="help-detail-card"/);
+  assert.match(indexSource, /id="help-empty-state"/);
+  assert.match(stylesSource, /\.panic-screen::before\s*\{[\s\S]*?background:\s*var\(--fill-red\)/);
+  const dashboardSource = indexSource.slice(
+    indexSource.indexOf('<section class="page" id="page-dashboard"'),
+    indexSource.indexOf('<section class="page" id="page-vault"')
+  );
+  assert.doesNotMatch(dashboardSource, /popup-system-health|Check system health|<dt>System health<\/dt>/);
   assert.doesNotMatch(indexSource, /style\s*=/i, 'UI shell must not use inline style attributes');
 });
 

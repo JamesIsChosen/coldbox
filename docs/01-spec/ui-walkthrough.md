@@ -65,23 +65,25 @@ Desktop uses grouped links:
 - **Tool decks:** Secret tools, Entropy Lab, Derivation, Backup & recovery,
   QR & transfer, Recovery.
 - **Reference:** Verify Bench, Reference, Learn.
-- **System:** System health opens the shared health popup.
+- **System:** System health opens the dedicated live-check route.
 
 The active route is cyan. The rail remains a navigation surface, not a status
 claim. A green or red state must be explained in the content card or the
-floating detail menu beside it.
+floating detail menu beside it. The airgap guard is a compact live caption in
+the rail footer; it is not a full workspace repeated beneath every route.
 
 ### Content bar and status panels
 
 The content bar shows "Coldbox / current route", the **Warm shell** badge, and
 the **Design shell / no sample data** badge. The primary route content appears
-first. The technical health workspace follows the route content and reports the
-sealed-realm state, airgap/reachability state, and capability matrix. These are
-live foundation checks, not seeded route data.
+first. System health is a separate route and reports the sealed-realm state and
+capability matrix. The compact rail-footer caption reports the live
+airgap/reachability state on every route without taking over the route body.
+These are live foundation checks, not seeded route data.
 
-The capability rows are clickable. Each opens the same centered floating detail
-card described in section 4 and reports the current status, the evidence that
-produced it, and what the status does not prove.
+The capability rows on System Health are clickable. Each opens the same
+centered floating detail card described in section 4 and reports the current
+status, the evidence that produced it, and what the status does not prove.
 
 ### Mobile shell
 
@@ -112,7 +114,6 @@ and where to go next.
 2. A **Working day at a glance** card grid with portfolio, next-action, and
    at-a-glance surfaces.
 3. Empty-state workspace cards for Vault and public records.
-4. The live System health workspace below the route content.
 
 **Walkthrough actions:**
 
@@ -121,8 +122,10 @@ and where to go next.
 - **Dashboard guide** opens the dashboard guidance popup.
 - **Open the vault workspace** navigates to the real Vault route.
 - **Plan public records** navigates to the Registry shell.
-- **Check system health** and **Open system health** open the system-health
-  popup.
+- **Review the backup plan** opens the backup-action popup.
+- The rail-footer airgap caption remains visible as a compact live status
+  surface; open System health from the System navigation group for the full
+  readiness view.
 
 **Live replacement rules:** the dashboard may aggregate public records, but a
 headline total must show its source age and calculation method. A health summary
@@ -138,9 +141,11 @@ for create, unlock, save, load, transfer, lock, and panic conceal behavior.
 **Visible hierarchy:**
 
 1. Session/status strip.
-2. Vault identity and public metadata.
-3. File and transfer controls.
-4. Protected controls rendered by the cold realm.
+2. Vault identity and public metadata, with the **Vault details** floating-card
+   trigger beside the session state.
+3. Lock and panic controls bundled directly into the Vault workspace.
+4. File and transfer controls.
+5. Protected controls rendered by the cold realm.
 
 The standalone visual reference does not invent a second vault implementation.
 New UI work
@@ -347,13 +352,38 @@ The existing provenance panel is live and remains the canonical source for
 build metadata and legal notices. New UI help should link to the appropriate
 specification or guide instead of duplicating those facts in a popup.
 
+### System Health (#system-health)
+
+**Purpose:** isolate live platform readiness from the route-specific workspace.
+
+**Visible hierarchy:**
+
+1. Sealed-realm status and failure boundary.
+2. Boot self-check summary.
+3. Six individually clickable capability rows: required randomness, WebCrypto,
+   WebAssembly, Web Workers, camera access, and save paths.
+
+**Popup actions:** the route summary opens popup-system-health; every
+capability row opens its own centered floating card. The same red Close button,
+focus return, Escape handling, and keyboard activation rules apply to all of
+them.
+
+**Live replacement rules:** status is live evidence only. Camera capability
+does not imply permission or successful QR decode, and a platform/API hint does
+not imply physical hardware availability. Never infer an OS or device from a
+capability row.
+
 ### Learn (#learn)
 
 **Purpose:** compiled plain/working/technical help content.
 
-Learn is the bridge between the loud visual shell and the careful explanations
-behind it. Feature work must update its canonical docs and the relevant help
-blocks in the same change; do not use a mock popup as a substitute for a guide.
+Learn is an embedded searchable glossary, not a long page of every guide and
+term. The initial state is a compact prompt and search field. A search result
+opens exactly one selected glossary term or guide in the detail card; changing
+the explanation depth rerenders only that selected entry. Contextual ? buttons
+use the same route/deep-link mechanism. Feature work must update its canonical
+docs and the relevant help blocks in the same change; do not use a mock popup
+as a substitute for a guide.
 
 ## 4. Shared floating-menu contract
 
@@ -453,23 +483,27 @@ Before merging a new route feature, use this checklist:
 For a quick review of the shipped shell, open `build/coldbox.html` and follow
 this path:
 
-1. Dashboard: toggle light/dark mode, inspect the empty workspace cards, open
-   the system-health popup, and follow Open portfolio.
-2. Portfolio: inspect the empty total, allocation, chart, holdings, and
-   transaction shells.
-3. Prices: inspect the empty median, watchlist, chart, and source-ledger shell.
-4. Registry: inspect the empty wallet-record and public-address shells.
-5. Devices: inspect the no-record primary, secondary, and replacement-plan
+1. Dashboard: toggle light/dark mode, inspect the empty workspace cards, and
+   follow Open portfolio.
+2. Vault: inspect the session strip, open Vault details, then confirm lock and
+   panic controls sit with the vault workspace.
+3. Portfolio: inspect the empty total, allocation, chart, holdings, and
+   transaction shells, including each layout trigger.
+4. Prices: inspect the empty median, watchlist, chart, and five source-ledger
    cards.
-6. Entropy Lab -> Seed Forge -> Derivation -> Backup Lab: confirm protected
+5. Registry: inspect the empty wallet-record cards, public-address shell, and
+   balance lookup layout.
+6. Devices: inspect the no-record primary, secondary, and replacement-plan
+   cards, including verification workflow triggers.
+7. Entropy Lab -> Seed Forge -> Derivation -> Backup Lab: confirm protected
    screens are calm, empty, and use centered popups.
-7. QR Studio -> Recovery -> Verify Bench: inspect the placeholder QR, transfer,
+8. QR Studio -> Recovery -> Verify Bench: inspect the placeholder QR, transfer,
    recovery, and verification surfaces.
-8. Reference -> Learn: confirm provenance/legal notices and compiled help remain
-   reachable.
-9. Open a capability row from the System Health section, close it with the red
-   button, reopen it with Enter, and close it with Escape. Confirm focus returns
+9. System Health: open the summary and each capability card, close with the red
+   button, reopen a row with Enter, and close with Escape. Confirm focus returns
    to the row.
+10. Reference -> Learn: search for a term, open one result, switch explanation
+    depth, and confirm contextual help opens the same selected-entry card.
 
 For the full seeded visual walkthrough, open
 `build/coldbox-ui-walkthrough.html` separately and repeat the route order. That
@@ -489,7 +523,8 @@ the shipped application and its values must never become default product data.
 | QR Studio | Placeholder QR and live-transfer explanation | Calm visual reference; public QR, cold-only SeedQR, live transfer, truthful fallback |
 | Recovery | Empty decision/limit placeholders | Calm visual reference; bounded cold-realm search with checkpoint/cancel |
 | Verify Bench | Empty input/result states | Populated visual reference; independent public verification tools and evidence |
-| Reference/Learn | Existing provenance and compiled docs | Keep docs and help in sync with every feature |
+| System Health | Dedicated live-check route, individually clickable capability rows | Keep live evidence scoped to the system route; never infer physical platforms |
+| Reference/Learn | Existing provenance plus one-entry-at-a-time searchable embedded help | Keep docs and help in sync with every feature |
 
 This table is the handoff boundary: implementing a live responsibility does
 not authorize changing the shell's visual language, popup contract, or realm
