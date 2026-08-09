@@ -1,7 +1,7 @@
 # ADR-0013: Save-integrity bookkeeping lives in the warm shell, not the vault format
 
-**Status:** Accepted
-**Date:** 2026-08-06
+**Status:** Accepted · amended by [ADR-0025](0025-vault-identity-library-and-save-ux.md) and [ADR-0026](0026-canonical-vault-save-and-live-transfer.md)
+**Date:** 2026-08-05
 
 ---
 
@@ -19,7 +19,7 @@ Two constraints shape the answer.
 
 **The save counter, its timestamp, and the rollback comparison are warm-shell-only state.** They live in:
 
-- The suggested/generated filename (`coldbox-vault-0047.cbx`), read back via the `File` object's `.name` when a vault is loaded from a file.
+- The filename read back via the `File` object's `.name` when a vault is loaded from a file. Before P0.19 this used the browser-global `coldbox-vault-0047.cbx` convention. ADR-0025 briefly replaced new saves with per-vault name + Vault-ID suffix + visible generation filenames; ADR-0026 supersedes that intermediate UX with one canonical `<name>--<id8>.cbx` while retaining both historical forms for legacy parsing/advisory rollback checks.
 - `localStorage`, under a single key, holding the highest counter this browser profile has seen plus its timestamp — non-secret, and already covered by the project's existing "`localStorage` non-essential… degrades silently" rule (SPEC.md).
 
 None of this crosses the realm boundary, changes the vault byte format, or adds a `postMessage` type. `src/save-integrity.js` is pure warm-shell logic with no DOM dependency, assembled into `src/main.js` exactly like `airgap.js`/`capabilities.js`/`protocol.js` already are.
@@ -51,7 +51,7 @@ review-protocol.md holds three items to a stricter merge bar because they are th
 ### Negative
 
 - Rollback detection is defeated by a simple rename. This is disclosed in-app (the banner explains the check is advisory) and in docs, not hidden.
-- The save counter is per-browser-profile, not per-person or per-device. Opening the same vault from a second browser (or after clearing `localStorage`) resets what "highest seen" means there. This matches how the existing theme preference and other UI-only `localStorage` state already behaves.
+- The advisory save history remains per-browser-profile, not per-person or per-device. Under the ADR-0025 amendment each vault has its own high-water record within that browser profile. Opening the same vault from a second browser (or after clearing `localStorage`) resets what "highest seen" means there. This matches how other UI-only `localStorage` state behaves.
 - `File.lastModified` (used only as a human-readable date alongside the counter, never as the rollback trigger itself) reflects filesystem mtime, which some sync tools and manual copies do not preserve faithfully. It is disclosed as context, not treated as authoritative.
 
 ### Risks
@@ -60,7 +60,7 @@ review-protocol.md holds three items to a stricter merge bar because they are th
 
 ## Alternatives considered
 
-**Embed the counter and timestamp in the public compartment's JSON.** Authenticated by the existing AEAD tag, survives a rename, and available even for the manual base64/QR path (no filename involved for that path either way). Rejected for now: it still requires the cold realm to originate the value (the public compartment is written cold-side), which means either a new field the warm shell has to request via a schema-reviewed round trip, or the cold realm inventing save-counter logic that belongs to warm-shell bookkeeping. It is the natural next step if the "negative" consequences above turn out to matter in practice — see below.
+**Embed the counter and timestamp in the public compartment's JSON.** Authenticated by the existing AEAD tag, survives a rename, and was available even for the then-current manual base64/QR path (no filename involved for that historical path either way). Rejected for now: it still requires the cold realm to originate the value (the public compartment is written cold-side), which means either a new field the warm shell has to request via a schema-reviewed round trip, or the cold realm inventing save-counter logic that belongs to warm-shell bookkeeping. It is the natural next step if the "negative" consequences above turn out to matter in practice — see below.
 
 **A vault-format v2 header field.** Rejected as disproportionate: a byte-format change, for a property explicitly documented as advisory, that would also require a v1-still-opens regression test and puts the item in the realm-boundary review tier for no corresponding increase in the guarantee delivered.
 
@@ -70,9 +70,16 @@ review-protocol.md holds three items to a stricter merge bar because they are th
 
 If a later item needs cross-device or cross-browser-profile save provenance (the multi-device conflict case above), or needs the rollback check to survive a rename, the counter and timestamp would need to move into the public compartment — an authenticated, cold-realm-originated value instead of a warm-shell heuristic. That is a schema change to the public compartment's message payload (though still not a vault-format byte-layout change) and would need its own review at the appropriate tier.
 
+**P0.19 intermediate amendment (2026-08-08, superseded in part by ADR-0026):** multi-vault library UX made one browser-global counter ambiguous. ADR-0025 kept this ADR's core decision — save-integrity bookkeeping remains warm-shell/advisory and does not enter the byte header — and keyed the high-water record by stable Vault ID (or the documented legacy header-salt namespace). That intermediate candidate used name + Vault-ID suffix + per-vault visible generation filenames. ADR-0026 later superseded only that visible filename UX; current saves use one canonical `<name>--<id8>.cbx`.
+
 ## References
 
 - [vault-format.md § Save and load](../../01-spec/vault-format.md)
 - [threat-model.md § Vault rollback](../../02-security/threat-model.md)
 - [ADR-0001](0001-two-realm-architecture.md), [ADR-0012](0012-recovery-checkpoint.md) — related realm-boundary and persistence reasoning
 - [review-protocol.md](../review-protocol.md) — the human-merge tier this decision avoids entering
+
+
+## P0.19 canonical-file amendment (ADR-0026)
+
+The original P0.14 decision and tests used visible generational filenames because that was the roadmap requirement at the time. P0.19 human testing found that presenting one logical vault as many generation files creates dangerous selection ambiguity. ADR-0026 therefore keeps this ADR's security boundary — bookkeeping remains warm-side, advisory, and outside the authenticated byte layout — while superseding the **current filename UX**. New files are `<name>--<id8>.cbx`; historical generation filenames remain parseable for compatibility/numeric rollback warnings. Current canonical files use the per-Vault-ID stored timestamp only as a best-effort older-copy advisory. Encrypted Base64 and live QR transfer do not count as saves.

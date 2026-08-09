@@ -98,7 +98,7 @@ The failure everyone dreads: you need your backup, and it's wrong. Usually a tra
 
 **You do not need to wipe a device to test this.**
 
-1. Go **offline**. Airgap banner green.
+1. Go **offline**. Confirm **No external reachability detected** plus **cold realm sealed**, and independently verify the physical network is disconnected.
 2. Seed Forge → enter the seed from your metal plate, exactly as engraved.
 3. Check the validation. An invalid checksum means a transcription error, and the Recovery Assistant can often identify which word.
 4. Compare the fingerprint to your device's.

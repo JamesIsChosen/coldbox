@@ -184,7 +184,7 @@ test('bytesEqual catches truncation, single-byte corruption, and type mismatches
   assert.equal(api.bytesEqual('12345678', original), false, 'strings are not accepted as byte-like');
 });
 
-test('evaluateRollback only fires on a strictly older, successfully parsed generation', () => {
+test('evaluateRollback preserves legacy counters and uses timestamp-only advisory checks for canonical files', () => {
   const api = load();
   const generation = { counter: 5, savedAt: '2026-08-01T00:00:00.000Z' };
 
@@ -201,8 +201,15 @@ test('evaluateRollback only fires on a strictly older, successfully parsed gener
   const newer = api.evaluateRollback(generation, { counter: 9, lastModified: null });
   assert.equal(newer.rollback, false);
 
-  const unparsed = api.evaluateRollback(generation, { counter: null, lastModified: 1700000000000 });
-  assert.equal(unparsed.rollback, false, 'an unparseable filename must never produce a false rollback warning');
+  const canonicalOlder = api.evaluateRollback(generation, { counter: null, lastModified: Date.parse('2026-07-31T00:00:00.000Z') });
+  assert.equal(canonicalOlder.rollback, true, 'canonical files have no visible counter, so an older trustworthy timestamp is advisory rollback evidence');
+  assert.equal(canonicalOlder.reason, 'timestamp');
+
+  const canonicalNewer = api.evaluateRollback(generation, { counter: null, lastModified: Date.parse('2026-08-02T00:00:00.000Z') });
+  assert.equal(canonicalNewer.rollback, false);
+
+  const noTimestamp = api.evaluateRollback(generation, { counter: null, lastModified: null });
+  assert.equal(noTimestamp.rollback, false, 'canonical history degrades silently when no trustworthy timestamp exists');
 
   const freshBrowser = api.evaluateRollback(undefined, { counter: 1, lastModified: null });
   assert.equal(freshBrowser.rollback, false, 'a browser with no recorded generation has nothing to compare against');
@@ -236,13 +243,18 @@ test('advanceGenerationOnOpen never lowers the recorded generation', () => {
   assert.equal(sameOpen.savedAt, generation.savedAt);
 });
 
-test('advanceGenerationOnOpen never fires on an unparseable filename', () => {
+test('advanceGenerationOnOpen records a newer timestamp for canonical files without changing the legacy counter', () => {
   const api = load();
-  const generation = { counter: 47, savedAt: null };
+  const generation = { counter: 47, savedAt: '2026-08-01T00:00:00.000Z' };
+  const openedAt = Date.parse('2026-08-05T12:00:00.000Z');
 
-  const unparsed = api.advanceGenerationOnOpen(generation, { counter: null, lastModified: 1754400000000 });
-  assert.equal(unparsed.counter, 47);
-  assert.equal(unparsed.savedAt, null);
+  const canonical = api.advanceGenerationOnOpen(generation, { counter: null, lastModified: openedAt });
+  assert.equal(canonical.counter, 47);
+  assert.equal(canonical.savedAt, new Date(openedAt).toISOString());
+
+  const withoutTimestamp = api.advanceGenerationOnOpen(canonical, { counter: null, lastModified: null });
+  assert.equal(withoutTimestamp.counter, 47);
+  assert.equal(withoutTimestamp.savedAt, canonical.savedAt);
 });
 
 test('advanceGenerationOnOpen still advances, using now, when the file exposes no last-modified time', () => {
@@ -398,4 +410,80 @@ test('the whole record is frozen and cannot be mutated by a caller after the fac
   const api = load();
   const evaluation = api.evaluateRollback({ counter: 1, savedAt: null }, { counter: 1, lastModified: null });
   assert.throws(() => { evaluation.rollback = true; }, TypeError);
+});
+
+test('P0.19 vault IDs create portable per-vault advisory-history namespaces', () => {
+  const api = load();
+  const firstId = '550e8400-e29b-41d4-a716-446655440000';
+  const secondId = '123e4567-e89b-42d3-a456-426614174000';
+  const firstNamespace = api.vaultNamespace(firstId);
+  const secondNamespace = api.vaultNamespace(secondId);
+
+  assert.equal(firstNamespace, `vault:${firstId}`);
+  assert.equal(secondNamespace, `vault:${secondId}`);
+  assert.notEqual(firstNamespace, secondNamespace);
+  assert.equal(api.id8(firstId), '550e8400');
+  assert.equal(api.vaultNamespace('same-device-fingerprint'), null, 'device identity must never become vault identity');
+
+  const storage = fakeStorage({});
+  assert.equal(api.writeGenerationFor(storage, firstNamespace, 7, '2026-08-08T12:00:00.000Z'), true);
+  assert.equal(api.writeGenerationFor(storage, secondNamespace, 2, '2026-08-08T13:00:00.000Z'), true);
+  assertGeneration(api.readGenerationFor(storage, firstNamespace), { counter: 7, savedAt: '2026-08-08T12:00:00.000Z' });
+  assertGeneration(api.readGenerationFor(storage, secondNamespace), { counter: 2, savedAt: '2026-08-08T13:00:00.000Z' });
+});
+
+test('P0.19 canonical filenames carry public name and id8 without a user-visible generation', () => {
+  const api = load();
+  const vaultId = '550e8400-e29b-41d4-a716-446655440000';
+
+  assert.equal(api.sanitizeVaultName('  Bitcoin Savings / 2026  '), 'Bitcoin-Savings-2026');
+  assert.equal(api.filenameForVault('Bitcoin Savings / 2026', vaultId), 'Bitcoin-Savings-2026--550e8400.cbx');
+
+  const parsed = api.parseVaultFilename('Bitcoin-Savings-2026--550e8400.cbx');
+  assert.equal(parsed.legacy, false);
+  assert.equal(parsed.canonical, true);
+  assert.equal(parsed.name, 'Bitcoin-Savings-2026');
+  assert.equal(parsed.id8, '550e8400');
+  assert.equal(parsed.counter, null);
+
+  const historicalGeneration = api.parseVaultFilename('Bitcoin-Savings-2026--550e8400--0007.cbx');
+  assert.equal(historicalGeneration.legacy, true);
+  assert.equal(historicalGeneration.canonical, false);
+  assert.equal(historicalGeneration.counter, 7);
+
+  const legacy = api.parseVaultFilename('coldbox-vault-0047.cbx');
+  assert.equal(legacy.legacy, true);
+  assert.equal(legacy.counter, 47);
+  assert.equal(legacy.id8, null);
+});
+
+test('P0.19 public vault-name registry refuses one name being claimed by two Vault IDs', () => {
+  const api = load();
+  const storage = fakeStorage({});
+  const firstId = '550e8400-e29b-41d4-a716-446655440000';
+  const secondId = '123e4567-e89b-42d3-a456-426614174000';
+
+  assert.equal(api.claimVaultName(storage, 'Test', firstId), true);
+  assert.equal(api.vaultNameOwner(storage, ' test '), firstId);
+  assert.equal(api.claimVaultName(storage, 'Test', firstId), true, 'same identity may reaffirm its own public name');
+  assert.equal(api.claimVaultName(storage, 'TEST', secondId), false, 'different identity must not take the same normalized public name');
+  assert.equal(api.vaultNameOwner(storage, 'Test'), firstId);
+  assert.equal(api.claimVaultName(throwingStorage(), 'Other', secondId), false, 'registry is best effort and never throws');
+});
+
+test('P0.19 legacy vault namespace is stable from the public v1 header salt', () => {
+  const api = load();
+  const bytes = new Uint8Array(80);
+  for (let index = 0; index < 32; index += 1) {
+    bytes[21 + index] = index + 1;
+  }
+  const first = api.legacyNamespaceFromBytes(bytes);
+  const copy = new Uint8Array(bytes);
+  const second = api.legacyNamespaceFromBytes(copy);
+
+  assert.match(first, /^legacy-salt:[0-9a-f]{64}$/);
+  assert.equal(second, first);
+  copy[21] ^= 0xff;
+  assert.notEqual(api.legacyNamespaceFromBytes(copy), first);
+  assert.equal(api.legacyNamespaceFromBytes(new Uint8Array(52)), null, 'truncated headers do not invent a namespace');
 });

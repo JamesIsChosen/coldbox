@@ -60,7 +60,7 @@ Naturally, you should still generate keys for serious money on a machine that's 
 
 Everything you record lives in an encrypted file separate from the app. Protected by a passphrase, scrambled with Argon2id and AES-256 — the same class of protection a good password manager uses.
 
-It has two compartments. The **public** one holds addresses, labels, notes, and portfolio data, and can be opened while you're online. The **secret** one holds seed phrases and private keys, and is never decrypted while a network connection exists. That split is what lets you check your portfolio on a connected laptop without exposing anything that matters.
+It has two compartments. The **public** one holds addresses, labels, notes, and portfolio data, and can be opened while external reachability is confirmed. The **secret** one holds seed phrases and private keys, and remains sealed whenever the warm shell confirms reachability or cannot establish a trustworthy offline result. That split is what lets you check your portfolio on a connected laptop without exposing anything that matters. The network-status display is advisory and cannot prove that a physical cable, radio, VPN, or virtual adapter is absent; the cold realm's own no-network boundary is independent of that display.
 
 Storing seed phrases is optional and off by default. The vault is fully useful without a single secret in it.
 

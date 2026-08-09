@@ -31,7 +31,7 @@ Off by default, deliberately. An encrypted file on a general-purpose computer is
 Currently, the data is gone. There is no reset, no recovery email, nobody to call. From Phase 2, recovery shares provide a second route in. Until then: write it down and store it physically.
 
 **Can the app phone home?**
-The secret half has no network capability at all — CSP `connect-src 'none'` removes the mechanisms. The other half can only reach a fixed list of hosts written in the source, which you can read. There is no analytics code to find.
+The secret half has no network capability at all — CSP `connect-src 'none'` removes the mechanisms. The warm shell can only reach the fixed hosts written in the source. It makes small, content-free reachability probes to two of those existing public endpoints while Coldbox is open so the status display can detect a cable/Wi-Fi loss more reliably than `navigator.onLine` alone. Those requests expose ordinary connection metadata such as your IP address and time to the endpoint operators, but carry no vault, address, asset, or user-entered data. There is no Coldbox analytics or telemetry collector. See [ADR-0024](../05-development/adr/0024-warm-reachability-monitor.md).
 
 **What if my computer has malware?**
 Then you have a serious problem no browser tool can fix. It could read what's on screen or log your keystrokes. What Coldbox *can* do is catch a specific, common attack: malware that swaps a displayed receive address. Independent derivation exposes that. See [verify a hardware wallet](../03-guides/verify-a-hardware-wallet.md).
@@ -50,10 +50,10 @@ Windows, macOS, Linux, and Android in supported local-file/browser contexts. Dir
 That's the design. Only prices and balance lookups need a connection, and they degrade to last-known values with visible timestamps.
 
 **Can I use it on my phone?**
-On supported phone/browser contexts, yes. Saving may use a base64/QR export rather than a file download, and that path is built as a proper feature, not a fallback. iOS local execution from Files is not currently claimed; see [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md).
+On supported phone/browser contexts, yes. Durable vault storage is always the encrypted `.cbx`; a browser may save it through a file handle or a download depending on available APIs. Live animated QR is only for connecting an already-unlocked, durably backed vault to another running Coldbox device that does not already have that vault in its granted library; it is never backup/download and cannot replace saving the sender. Camera QR receive is progressive enhancement, so a browser that lacks it must use `.cbx` transfer instead. iOS local execution from Files is not currently claimed; see [ADR-0010](../05-development/adr/0010-ios-local-html-execution.md).
 
 **How do I move my vault between devices?**
-Copy the `.cbx` file. It's encrypted and self-contained. Sync services work but reveal file size and modification times; the file is size-padded to blunt that.
+Copy the canonical `.cbx` file. It's encrypted and self-contained. If both devices are running Coldbox at the same time and the source vault is already unlocked, you may instead use the live animated-QR device-transfer flow; the receiver still enters the normal vault passphrase and then saves its own `.cbx`. QR is not a backup/download format. Sync services work but reveal file size and modification times; the file is size-padded to blunt that.
 
 **Can I use it with my existing wallet?**
 Yes — that's most of the point. Enter your xpub for watch-only address derivation and balance checking, or your seed (offline) to verify a backup or recover from a damaged one.

@@ -6,7 +6,7 @@ Every external endpoint the app can contact. This list *is* the `connect-src` al
 
 Free tiers, key requirements, and CORS policies change without notice. Verify before depending on any row.
 
-*Last reviewed: 2026-08-02 · Max age: 12 months · See [doc-hygiene.md](../05-development/doc-hygiene.md)*
+*Last reviewed: 2026-08-08 · Max age: 12 months · See [doc-hygiene.md](../05-development/doc-hygiene.md)*
 
 ---
 
@@ -21,6 +21,10 @@ Free tiers, key requirements, and CORS policies change without notice. Verify be
 | DIA | None | `api.diadata.org` | 3,000+ tokens, no registration |
 
 Aggregated by **median**, with every source shown individually plus spread and staleness. See [ADR-0004](../05-development/adr/0004-median-not-mean-prices.md).
+
+### Automatic reachability probes
+
+The warm shell uses two hosts already present above/below in this allowlist as a live reachability cross-check: `https://api.coinbase.com/v2/time` and `https://mempool.space/api/blocks/tip/height`. These requests are small, carry no vault/address/asset/user-entered data, omit credentials/referrer, and exist only to classify network reachability. They are automatic while Coldbox is open; see [ADR-0024](../05-development/adr/0024-warm-reachability-monitor.md). The cold realm cannot make either request.
 
 ### CoinMarketCap — cannot be included
 
@@ -72,6 +76,7 @@ This deserves a plain statement rather than a footnote.
 | Balance of address X | **Your IP address is interested in address X.** Permanently, in their logs |
 | Balance of an xpub's addresses | The full address set — effectively your whole wallet |
 | Historical price on date D | You transacted in that asset around that date |
+| Reachability probe | Your IP/browser reached the provider at that time. **No vault, address, asset, balance, Vault ID/name, or user-entered data is sent** |
 
 The second and third are real deanonymization vectors for Bitcoin. Someone correlating IP addresses to on-chain addresses can build a map of who owns what.
 
@@ -85,8 +90,8 @@ The second and third are real deanonymization vectors for Bitcoin. Someone corre
 **Design decisions that follow:**
 
 - Balance lookup is **opt-in per address**, never automatic.
-- There is **no background sync**.
-- The default is **off**.
+- There is **no background balance/history sync**. The only automatic network traffic is the content-free reachability probe described above.
+- Balance/history lookup default is **off**.
 - Before the first lookup, the app shows exactly what it will send and to whom.
 - **xpub scanning derives addresses locally** in the cold realm and sends only the resulting addresses. The xpub itself never leaves the device — handing an xpub to an API hands over your entire transaction history forever, and most wallet software gets this wrong.
 - Historical price backfill defaults to **manual entry**, so importing 500 transactions doesn't fire 500 dated queries.

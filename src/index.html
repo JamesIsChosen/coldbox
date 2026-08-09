@@ -105,6 +105,10 @@ __COLDBOX_STYLES__
               <button type="button" class="icon-button help-context-button" data-help-topic="glossary:airgapped" aria-label="What does airgapped mean?">?</button>
             </h2>
             <p id="airgap-banner-copy">Coldbox is confirming both CSP policies and the private cold-realm channel before vault operations can be considered.</p>
+            <div class="airgap-facts" aria-label="Network and isolation facts">
+              <p><strong>Warm reachability:</strong> <span id="warm-reachability-status">Checking external reachability.</span></p>
+              <p><strong>Cold isolation:</strong> <span id="cold-isolation-status">Checking CSP and runtime guards.</span></p>
+            </div>
           </div>
           <div class="airgap-banner-state" aria-label="Airgap and network status">
             <span class="status-dot" aria-hidden="true"></span>
@@ -301,8 +305,12 @@ __COLDBOX_STYLES__
               <h2 id="vault-status-title"><span id="vault-status-title-text">Vault is locked</span>
                 <button type="button" class="icon-button help-context-button" data-help-topic="glossary:vault" aria-label="What is the vault?">?</button>
               </h2>
-              <p id="vault-status-copy">Load an encrypted vault, then enter its unlock phrase in the sealed realm. The warm shell never receives it.</p>
+              <p id="vault-status-copy">Choose a vault from the library, then enter its unlock phrase in the sealed realm. The warm shell never receives it.</p>
+              <p id="vault-active-meta" class="vault-help" hidden>Active vault: <strong id="vault-active-name"></strong> · <span id="vault-active-id"></span></p>
               <p class="vault-dirty-notice" id="vault-dirty-notice" data-dirty="false" hidden></p>
+              <div class="vault-actions vault-primary-actions">
+                <button class="vault-button vault-button-primary" id="vault-save-primary" type="button" disabled>Save vault</button>
+              </div>
             </div>
             <div class="vault-status-label"><span class="status-dot" aria-hidden="true"></span><span id="vault-status-label">Locked</span></div>
           </section>
@@ -312,57 +320,95 @@ __COLDBOX_STYLES__
           </section>
 
           <div class="card-grid vault-card-grid">
-            <article class="info-card vault-card">
+            <article class="info-card vault-card vault-library-card">
               <span class="card-icon" aria-hidden="true">01</span>
-              <h2>Load an encrypted vault</h2>
-              <p>Open a vault from the device. File System Access is used when available; the file input is the fallback.</p>
-              <input class="sr-only" id="vault-file-input" type="file" accept=".cbx,application/octet-stream">
+              <h2>Vault Library</h2>
+              <p>Coldbox can list only vault files or folders you explicitly grant. Select a named vault first; its unlock phrase is entered separately inside the sealed realm. Public names must be unique among vault identities this browser profile or granted library already knows.</p>
+              <input class="sr-only" id="vault-file-input" type="file" accept=".cbx,application/octet-stream" multiple>
               <div class="vault-actions">
-                <button class="vault-button" id="vault-load-file" type="button">Load from device</button>
+                <button class="vault-button" id="vault-load-file" type="button">Choose vault files</button>
+                <button class="vault-button" id="vault-choose-folder" type="button">Choose vault folder</button>
+              </div>
+              <p class="vault-help" id="vault-library-empty">No vault files granted yet.</p>
+              <div id="vault-library-list" class="vault-library-list" role="list" aria-live="polite"></div>
+              <hr>
+              <h3>Create a new vault</h3>
+              <label class="vault-label" for="vault-create-name">Public vault name</label>
+              <input id="vault-create-name" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="e.g. Bitcoin Savings">
+              <p class="vault-help">This name is public and appears in filenames/library. Do not put a passphrase, seed phrase, private key, or other secret here.</p>
+              <div class="vault-actions">
+                <button class="vault-button" id="vault-create-prepare" type="button">Continue creation in sealed realm</button>
               </div>
             </article>
 
             <article class="info-card vault-card">
               <span class="card-icon" aria-hidden="true">02</span>
-              <h2>Save encrypted bytes</h2>
-              <p>Choose a platform-native file, a portable download, or the manual text handoff below. All three preserve the encrypted vault.</p>
+              <h2>Save encrypted vault</h2>
+              <p>The prominent Save vault button above writes one canonical <code>.cbx</code> for this Vault ID. File System Access updates that same selected file and verifies it by reading it back. Browsers without writable file handles can download one canonical replacement copy, which remains unverified until reopened.</p>
               <div class="vault-actions vault-actions-stack">
-                <button class="vault-button" id="vault-save-file-system" type="button">Save with File System Access</button>
-                <button class="vault-button" id="vault-save-download" type="button">Download encrypted vault</button>
+                <button class="vault-button" id="vault-save-file-system" type="button">Save / update canonical .cbx (verified)</button>
+                <button class="vault-button" id="vault-save-download" type="button">Download canonical .cbx (unverified)</button>
               </div>
             </article>
 
             <article class="info-card vault-card vault-card-manual">
               <span class="card-icon" aria-hidden="true">03</span>
-              <h2>Manual base64 / QR handoff</h2>
-              <p>Export the encrypted bytes as text for an airgapped handoff or transfer between supported Coldbox execution contexts. Direct iOS Files-to-Safari execution is not currently supported. Share the text, or use numbered QR frames with count and reassembly instructions. Paste the text or frames here to load it again.</p>
-              <label class="vault-label" for="vault-manual-data">Encrypted vault base64</label>
-              <textarea id="vault-manual-data" rows="7" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Exported encrypted bytes appear here."></textarea>
+              <h2>Encrypted text handoff (advanced)</h2>
+              <p>For unusual airgapped workflows, Coldbox can expose the encrypted <code>.cbx</code> bytes as Base64 text. This is not a canonical save and does not count as a verified backup. QR is deliberately not available here.</p>
+              <label class="vault-label" for="vault-manual-data">Encrypted vault Base64</label>
+              <textarea id="vault-manual-data" rows="7" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Encrypted bytes appear here or can be pasted here."></textarea>
               <div class="vault-actions">
-                <button class="vault-button" id="vault-save-manual" type="button">Prepare export</button>
+                <button class="vault-button" id="vault-save-manual" type="button">Prepare encrypted text</button>
                 <button class="vault-button" id="vault-manual-copy" type="button" disabled>Copy text</button>
                 <button class="vault-button" id="vault-manual-share" type="button" disabled>Share text</button>
                 <button class="vault-button" id="vault-load-manual" type="button">Load pasted text</button>
               </div>
-              <p class="vault-help" id="vault-manual-help">If clipboard or share access is unavailable, focus the text and use the browser's Copy command. QR frames are numbered and must be reassembled in order before loading.</p>
-              <div class="vault-manual-qr" aria-live="polite">
-                <label class="vault-label" for="vault-manual-qr-data">Numbered QR frame</label>
-                <textarea id="vault-manual-qr-data" rows="4" spellcheck="false" autocapitalize="off" autocomplete="off" readonly placeholder="Prepare QR frames to render a numbered frame."></textarea>
+              <p class="vault-help" id="vault-manual-help">If clipboard or share access is unavailable, focus the text and use the browser's Copy command. Use a <code>.cbx</code> file for durable storage; use the live animated QR flow below only for device-to-device transfer.</p>
+            </article>
+
+            <article class="info-card vault-card vault-transfer-card" id="vault-transfer-card">
+              <span class="card-icon" aria-hidden="true">04</span>
+              <h2>Device-to-device vault transfer</h2>
+              <p>Animated QR is a live transfer only. The sending vault must already be unlocked from a durable local <code>.cbx</code> (or have a verified canonical save), nothing can be downloaded from this QR surface, and the receiving device must not already have this vault in its granted library. The receiving device still enters the vault's normal unlock phrase before it can open the transferred copy.</p>
+              <div class="vault-actions">
+                <button class="vault-button vault-button-primary" id="vault-transfer-start" type="button" disabled>Show animated QR</button>
+                <button class="vault-button" id="vault-transfer-pause" type="button" hidden>Pause</button>
+                <button class="vault-button vault-button-danger" id="vault-transfer-stop" type="button" hidden>Stop transfer</button>
+              </div>
+              <div class="vault-transfer-sender" id="vault-transfer-sender" hidden>
+                <img id="vault-transfer-image" class="vault-transfer-image" alt="Live encrypted vault transfer QR">
+                <p class="vault-help" id="vault-transfer-send-status" role="status" aria-live="polite">No transfer active.</p>
+              </div>
+              <hr>
+              <h3>Receive from another Coldbox device</h3>
+              <p class="vault-help">Camera permission is requested only after you choose Start camera scanner. If this browser cannot decode QR from the camera, use the canonical <code>.cbx</code> file instead.</p>
+              <div class="vault-actions">
+                <button class="vault-button" id="vault-transfer-receive" type="button">Start camera scanner</button>
+                <button class="vault-button vault-button-danger" id="vault-transfer-receive-stop" type="button" hidden>Stop camera</button>
+              </div>
+              <video id="vault-transfer-video" class="vault-transfer-video" autoplay playsinline muted hidden></video>
+              <p class="vault-help" id="vault-transfer-receive-status" role="status" aria-live="polite">Camera is off.</p>
+              <div id="vault-transfer-receipt" class="vault-transfer-receipt" hidden>
+                <p id="vault-transfer-receipt-summary"></p>
+                <label class="vault-label" for="vault-transfer-receive-name">Local public vault name</label>
+                <input id="vault-transfer-receive-name" type="text" maxlength="80" autocomplete="off" spellcheck="false">
+                <p class="vault-help">The sender's public name is suggested. Change it if that name already belongs to a different Vault ID on this device.</p>
                 <div class="vault-actions">
-                  <button class="vault-button" id="vault-manual-qr-prepare" type="button" disabled>Prepare QR frames</button>
-                  <button class="vault-button" id="vault-manual-qr-copy" type="button" disabled>Copy frame</button>
-                  <button class="vault-button" id="vault-manual-qr-copy-all" type="button" disabled>Copy all frames</button>
-                  <button class="vault-button" id="vault-manual-qr-previous" type="button" disabled>Previous</button>
-                  <label class="vault-qr-index-label" for="vault-manual-qr-index">Frame
-                    <input id="vault-manual-qr-index" type="number" min="1" value="1" inputmode="numeric" disabled>
-                  </label>
-                  <button class="vault-button" id="vault-manual-qr-next" type="button" disabled>Next</button>
+                  <button class="vault-button vault-button-primary" id="vault-transfer-load" type="button">Load received vault</button>
+                  <button class="vault-button" id="vault-transfer-discard" type="button">Discard received transfer</button>
                 </div>
-                <p class="vault-help" id="vault-manual-qr-count">No QR frames prepared.</p>
-                <img id="vault-manual-qr-image" class="vault-manual-qr-image" alt="" hidden>
               </div>
             </article>
           </div>
+
+          <section class="protocol-warning vault-lock-warning" id="vault-lock-warning" aria-live="polite" hidden>
+            <p><strong>Confirm before locking.</strong> <span id="vault-lock-warning-copy">This vault has not completed a durable save. Save first if you need a durable copy.</span></p>
+            <div class="vault-actions">
+              <button class="vault-button vault-button-primary" id="vault-lock-save" type="button">Save first</button>
+              <button class="vault-button vault-button-danger" id="vault-lock-without-save" type="button">Lock without saving</button>
+              <button class="vault-button" id="vault-lock-cancel" type="button">Cancel</button>
+            </div>
+          </section>
 
           <section class="vault-session-actions" aria-labelledby="vault-session-actions-title">
             <div>

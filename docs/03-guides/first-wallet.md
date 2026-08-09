@@ -8,7 +8,7 @@ Generating a seed phrase whose randomness you can verify.
 
 ## Before you start
 
-**Go offline.** Physically disconnect. The airgap banner must read green.
+**Go offline.** Physically disconnect. The warm-shell status should settle on **No external reachability detected** and the cold-realm status must remain **sealed**. That display is a useful cross-check, not proof that every physical/virtual network path is absent; verify the radios/cable yourself.
 
 The tools work online — the cold realm can't reach a network regardless — but for a seed that will hold real value, an offline machine removes an entire category of risk for zero cost.
 

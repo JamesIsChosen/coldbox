@@ -20,7 +20,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0010](0010-ios-local-html-execution.md) | iOS local-HTML execution is a portability gate, not a preview-equivalence claim | Accepted |
 | [0011](0011-wasm-secp256k1-for-recovery.md) | WASM secp256k1 for the recovery search, with `@noble` as the authority | Accepted |
 | [0012](0012-recovery-checkpoint.md) | Recovery checkpoints are a separate encrypted file, not vault records | Accepted |
-| [0013](0013-save-integrity-in-warm-shell.md) | Save-integrity bookkeeping lives in the warm shell, not the vault format | Accepted |
+| [0013](0013-save-integrity-in-warm-shell.md) | Save-integrity bookkeeping lives in the warm shell, not the vault format | Accepted · amended by 0025/0026 |
 | [0014](0014-keyfile-unlock-implementation-limits.md) | Keyfile unlock (method 2) implementation limits and record shape | Accepted |
 | [0015](0015-provenance-build-date-and-self-hash.md) | Provenance panel build date is the source commit date, and the self-hash is a blank-then-hash self-consistency check | Accepted |
 | [0016](0016-help-content-compiler-and-search.md) | Help content is compiled from block-scoped markdown, and search text is derived at runtime, not precomputed | Accepted |
@@ -31,6 +31,9 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0021](0021-clipboard-address-verification.md) | Clipboard address verification — warm clipboard, cold authority, two separate claims | Accepted |
 | [0022](0022-entropy-lab-mixing.md) | Entropy Lab accumulation and mixing — integer accounting, XOR-then-hash | Accepted |
 | [0023](0023-entropy-lab-seed-forge-boundary.md) | Entropy Lab's deliverable is raw entropy bytes, not a hand-off to Seed Forge | Accepted |
+| [0024](0024-warm-reachability-monitor.md) | Warm-shell active reachability monitoring does not change the cold airgap boundary | Accepted |
+| [0025](0025-vault-identity-library-and-save-ux.md) | Vault identity is portable and random; names/library/save UX stay in the warm shell | Accepted · amended by 0026 |
+| [0026](0026-canonical-vault-save-and-live-transfer.md) | One canonical vault file; animated QR is live device-to-device transfer only | Accepted |
 
 ## When to write one
 

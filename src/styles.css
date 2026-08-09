@@ -1267,52 +1267,35 @@ samp {
   outline: 0.15rem solid color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
-#vault-manual-qr-data {
-  display: block;
-  width: 100%;
-  min-height: 5rem;
-  margin-top: 0.4rem;
-  padding: 0.65rem;
-  resize: vertical;
-  border: 1px solid var(--border);
-  border-radius: 0.55rem;
-  background: var(--surface-soft);
-  color: var(--text);
-  font: 0.68rem/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
-}
-
-.vault-manual-qr {
+.vault-transfer-sender,
+.vault-transfer-receipt {
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid var(--border);
 }
 
-.vault-qr-index-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-#vault-manual-qr-index {
-  width: 4.25rem;
-  padding: 0.45rem;
-  border: 1px solid var(--border);
-  border-radius: 0.45rem;
-  background: var(--surface-soft);
-  color: var(--text);
-  font: inherit;
-}
-
-.vault-manual-qr-image {
+.vault-transfer-image {
   display: block;
-  width: min(100%, 18rem);
+  width: min(100%, 20rem);
   margin: 1rem auto 0;
   padding: 0.75rem;
   border-radius: 0.55rem;
   background: #fff;
+  image-rendering: pixelated;
+}
+
+.vault-transfer-video {
+  display: block;
+  width: min(100%, 28rem);
+  margin: 1rem auto 0;
+  border: var(--outline-width-thin) solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: #000;
+}
+
+#vault-transfer-receive-name {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .vault-help {
@@ -2279,3 +2262,16 @@ samp {
   font-size: 0.82rem;
   font-weight: 700;
 }
+
+
+/* P0.19 vault-library / reachability reconciliation */
+.airgap-facts { display: grid; gap: 0.25rem; margin-top: 0.65rem; }
+.airgap-facts p { margin: 0; }
+.vault-primary-actions { margin-top: 0.75rem; }
+.vault-button-primary { font-weight: 800; transform: translateY(-1px); }
+.vault-library-list { display: grid; gap: 0.5rem; margin-top: 0.75rem; }
+.vault-library-item { width: 100%; text-align: left; }
+.vault-library-item strong, .vault-library-item span { display: block; }
+.vault-library-item span { font-size: 0.8rem; opacity: 0.78; margin-top: 0.15rem; }
+.vault-lock-warning { margin-top: 1rem; }
+#vault-create-name { width: 100%; box-sizing: border-box; }

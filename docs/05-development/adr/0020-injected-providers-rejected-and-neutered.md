@@ -13,7 +13,7 @@ Investigating it surfaced a fact that turned out to matter far more than the fea
 
 > **`provider.request(...)` is not subject to this page's Content Security Policy.** The page messages the extension; the *extension* makes the network request, from its own context, under its own policy. Nothing appears in `connect-src`. The [CSP canary](../../02-security/csp-policy.md) does not fire. `connect-src 'none'` would not prevent it.
 
-[threat-model.md](../../02-security/threat-model.md) design commitment 4 reads: *"No telemetry. The CSP allowlist in source is the complete set of reachable hosts."* An injected provider makes that sentence false as written.
+At the time ADR-0020 was accepted, [threat-model.md](../../02-security/threat-model.md) design commitment 4 read: *"No telemetry. The CSP allowlist in source is the complete set of reachable hosts."* ADR-0024 later clarified that fixed content-free warm-shell reachability probes to hosts already in that allowlist are not analytics/telemetry and send no Coldbox state. An injected provider would still make the allowlist claim false because extension-mediated calls are outside page CSP.
 
 And a second fact, which is independent of whether the feature is ever built:
 

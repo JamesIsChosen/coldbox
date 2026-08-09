@@ -19,10 +19,10 @@ Setting up a machine that has never been and will never be online.
 The tools work fine online — Coldbox's own sealed realm can't reach the network regardless of what's around it. A physical airgap defends against a different, bigger threat: your whole computer already being compromised. If something is logging your keystrokes, it reads your seed as you type it no matter how good the app is.
 :::
 ::: working
-Coldbox's cold realm already can't reach a network, but that's a browser-level guarantee — it says nothing about the operating system underneath it. A genuinely airgapped machine defends against OS-level compromise (keyloggers, screen scrapers) that no in-page protection can address.
+Coldbox's cold realm already can't reach a network, but that's a browser-level guarantee — it says nothing about the operating system underneath it. The warm shell's active reachability monitor is only an operator aid and cannot certify that every cable, radio, VPN, virtual adapter, or alternate route is absent. A genuinely airgapped machine defends against OS-level compromise (keyloggers, screen scrapers) that no in-page protection can address.
 :::
 ::: technical
-See "Airgapped" and "Cold realm / warm shell" in the [glossary](../00-overview/glossary.md): the cold realm's `connect-src 'none'` CSP and runtime network-primitive neutering are a software boundary inside one process; they cannot detect or prevent OS-level input capture, which happens below the browser entirely.
+See "Airgapped" and "Cold realm / warm shell" in the [glossary](../00-overview/glossary.md): the cold realm's `connect-src 'none'` CSP and runtime network-primitive neutering are a software boundary inside one process; they cannot detect or prevent OS-level input capture, which happens below the browser entirely. The network-status monitor runs **only in the warm shell**: success proves reachability to a probe host, while repeated failure means only **No external reachability detected**. Unknown or stale status remains online-safe. See [ADR-0024](../05-development/adr/0024-warm-reachability-monitor.md).
 :::
 
 ---
@@ -87,9 +87,9 @@ Adequate for reading a backup or checking a fingerprint. Not adequate for genera
 | Typing manually | Small values. Slow but auditable |
 | microSD | Same as USB |
 
-**QR is the cleanest.** No filesystem, no autorun, no firmware. Coldbox generates and reads QR for addresses, xpubs, and SeedQR, plus BC-UR animated QR for larger payloads.
+**QR is useful only when the specific tool supports it.** The current P0.19 vault flow can display an already-unlocked vault as a **live animated encrypted QR** for another running Coldbox device to scan. That vault QR is not downloadable and is not a backup format; the receiver still needs the normal vault passphrase and then saves its own `.cbx`. Address/SeedQR/BC-UR tools listed later in the roadmap are separate future features and must not be treated as already implemented.
 
-**Rule:** public data may cross outward freely. Secrets should never cross toward a networked machine — that's what makes it a gap rather than a delay.
+**Rule:** public data may cross outward freely. Secrets should never cross toward a networked machine. A live vault transfer carries encrypted `.cbx` bytes, not plaintext secrets or unlock authority.
 
 ---
 
@@ -118,7 +118,7 @@ The seed never exists on a networked machine. The xpub does, which is fine — i
 
 Once running, confirm:
 
-1. Airgap banner is **green**.
+1. Warm-shell status reads **No external reachability detected** and the independent cold-realm status is **sealed**. Verify the physical disconnection yourself; the status does not certify it.
 2. The capability panel shows the cold realm instantiated.
 3. Vault details show **Argon2id**, not PBKDF2 — a PBKDF2 fallback means the WASM module didn't load.
 4. You verified the file hash **on the offline machine**, not just before transferring.

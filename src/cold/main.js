@@ -29,6 +29,9 @@ __COLDBOX_CAPABILITIES__
   var vaultControls = document.getElementById('cold-vault-controls');
   var vaultStatus = document.getElementById('cold-vault-status');
   var passphraseInput = document.getElementById('cold-vault-passphrase');
+  var passphraseConfirmWrap = document.getElementById('cold-vault-create-confirmation');
+  var passphraseConfirmInput = document.getElementById('cold-vault-passphrase-confirm');
+  var passphraseConfirmError = document.getElementById('cold-vault-create-error');
   var createVaultButton = document.getElementById('cold-vault-create');
   var unlockVaultButton = document.getElementById('cold-vault-unlock');
   var lockVaultButton = document.getElementById('cold-vault-lock');
@@ -87,6 +90,7 @@ __COLDBOX_CAPABILITIES__
   var vaultCryptoReady = false;
   var vaultBusy = false;
   var vaultUnlocked = false;
+  var createPrepared = false;
   var currentVaultBytes = null;
   var currentVaultSession = null;
   var pendingVaultBytes = null;
@@ -952,6 +956,14 @@ __COLDBOX_CAPABILITIES__
     document.documentElement.setAttribute('data-vault-state', state);
   }
 
+  function setCreateConfirmationError(text) {
+    if (!passphraseConfirmError) {
+      return;
+    }
+    passphraseConfirmError.textContent = text || '';
+    passphraseConfirmError.hidden = !text;
+  }
+
   function vaultControlsReady() {
     return vaultCryptoReady && handshakeState === 'ready' && messagePort !== null;
   }
@@ -961,8 +973,14 @@ __COLDBOX_CAPABILITIES__
     if (passphraseInput) {
       passphraseInput.disabled = !ready;
     }
+    if (passphraseConfirmWrap) {
+      passphraseConfirmWrap.hidden = !createPrepared;
+    }
+    if (passphraseConfirmInput) {
+      passphraseConfirmInput.disabled = !ready || vaultBusy || vaultUnlocked || !createPrepared;
+    }
     if (createVaultButton) {
-      createVaultButton.disabled = !ready || vaultBusy || vaultUnlocked;
+      createVaultButton.disabled = !ready || vaultBusy || vaultUnlocked || !createPrepared;
     }
     if (unlockVaultButton) {
       unlockVaultButton.disabled = !ready || vaultBusy || vaultUnlocked || !pendingVaultBytes;
@@ -1066,6 +1084,35 @@ __COLDBOX_CAPABILITIES__
     });
   }
 
+  function clearCreatePreparation() {
+    createPrepared = false;
+    if (passphraseConfirmInput) {
+      passphraseConfirmInput.value = '';
+    }
+    setCreateConfirmationError('');
+    if (passphraseConfirmWrap) {
+      passphraseConfirmWrap.hidden = true;
+    }
+  }
+
+  function generateVaultUuid() {
+    if (!cryptoLayer || typeof cryptoLayer.randomBytes !== 'function') {
+      throw new Error('Secure randomness is unavailable.');
+    }
+    var bytes = cryptoLayer.randomBytes(16);
+    try {
+      bytes[6] = (bytes[6] & 0x0f) | 0x40;
+      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      var hex = Array.prototype.map.call(bytes, function (value) {
+        return value.toString(16).padStart(2, '0');
+      }).join('');
+      return hex.slice(0, 8) + '-' + hex.slice(8, 12) + '-' + hex.slice(12, 16) + '-'
+        + hex.slice(16, 20) + '-' + hex.slice(20);
+    } finally {
+      zeroBytes(bytes);
+    }
+  }
+
   function clearVaultSession(clearPending) {
     if (currentVaultSession && typeof currentVaultSession.close === 'function') {
       currentVaultSession.close();
@@ -1086,6 +1133,7 @@ __COLDBOX_CAPABILITIES__
     if (passphraseInput) {
       passphraseInput.value = '';
     }
+    clearCreatePreparation();
     // F2 remediation: route through the same coherent reset path the user-
     // facing "clear" action uses, so lock/session teardown never leaves the
     // file input value or visible "loaded" status stale relative to the
@@ -1127,12 +1175,33 @@ __COLDBOX_CAPABILITIES__
       setVaultStatus('locked', 'Vault creation is unavailable in this build.');
       return;
     }
+    if (!createPrepared) {
+      setVaultStatus('locked', 'Choose a public vault name in the warm Vault page before creating a new vault.');
+      return;
+    }
     var passphrase = passphraseInput.value;
+    var confirmation = passphraseConfirmInput ? passphraseConfirmInput.value : '';
     if (!passphrase) {
-      setVaultStatus('locked', 'Enter an unlock phrase in the sealed realm first.');
+      setVaultStatus('locked', 'Enter a new unlock phrase in the sealed realm first.');
       passphraseInput.focus();
       return;
     }
+    if (!confirmation) {
+      setCreateConfirmationError('Enter the confirmation phrase before creating the vault.');
+      setVaultStatus('pending', 'Confirm the new unlock phrase before creating the vault.');
+      if (passphraseConfirmInput) { passphraseConfirmInput.focus(); }
+      return;
+    }
+    if (passphrase !== confirmation) {
+      setCreateConfirmationError('Unlock phrases do not match. Nothing was created.');
+      setVaultStatus('pending', 'The two new unlock phrase entries do not match. Nothing was created.');
+      if (passphraseConfirmInput) {
+        passphraseConfirmInput.value = '';
+        passphraseConfirmInput.focus();
+      }
+      return;
+    }
+    setCreateConfirmationError('');
     vaultBusy = true;
     updateVaultControls();
     setVaultStatus('pending', 'Creating an encrypted vault inside the sealed realm...');
@@ -1143,11 +1212,20 @@ __COLDBOX_CAPABILITIES__
       setVaultStatus('locked', 'Keyfile unlock is on but no keyfile is selected yet.');
       return;
     }
-    var createOptions = {
-      passphrase: passphrase,
-      profile: 'fast',
-      publicData: {}
-    };
+    var createOptions;
+    try {
+      createOptions = {
+        passphrase: passphrase,
+        profile: 'fast',
+        publicData: { id: generateVaultUuid() }
+      };
+    } catch (error) {
+      passphrase = '';
+      vaultBusy = false;
+      updateVaultControls();
+      setVaultStatus('locked', 'Vault creation failed because secure Vault ID generation was unavailable.');
+      return;
+    }
     if (!onlineMode) {
       createOptions.secretData = {};
     }
@@ -1167,6 +1245,7 @@ __COLDBOX_CAPABILITIES__
         if (passphraseInput) {
           passphraseInput.value = '';
         }
+        clearCreatePreparation();
         setSessionEvidence('unlocked');
         setVaultStatus(
           'unlocked',
@@ -1270,7 +1349,25 @@ __COLDBOX_CAPABILITIES__
   }
 
   function handleVaultMessage(message) {
+    if (message.type === 'vault.create.prepare') {
+      if (vaultUnlocked || vaultBusy) {
+        sendVaultError(message.id, 'operation-failed');
+        return;
+      }
+      zeroBytes(pendingVaultBytes);
+      pendingVaultBytes = null;
+      pendingOpenId = null;
+      createPrepared = true;
+      setCreateConfirmationError('');
+      if (passphraseConfirmInput) {
+        passphraseConfirmInput.value = '';
+      }
+      setVaultStatus('pending', 'New vault prepared. Enter the new unlock phrase twice, then create it.');
+      updateVaultControls();
+      return;
+    }
     if (message.type === 'vault.open') {
+      clearCreatePreparation();
       clearVaultSession(true);
       pendingVaultBytes = new Uint8Array(message.payload.bytes);
       pendingOpenId = message.id;
@@ -1698,12 +1795,27 @@ __COLDBOX_CAPABILITIES__
   if (createVaultButton) {
     createVaultButton.addEventListener('click', createEmptyVault);
   }
+  if (passphraseInput) {
+    passphraseInput.addEventListener('input', function () { setCreateConfirmationError(''); });
+  }
+  if (passphraseConfirmInput) {
+    passphraseConfirmInput.addEventListener('input', function () { setCreateConfirmationError(''); });
+  }
   if (unlockVaultButton) {
     unlockVaultButton.addEventListener('click', unlockLoadedVault);
   }
   if (lockVaultButton) {
     lockVaultButton.addEventListener('click', function () {
-      lockVaultSession(nextVaultMessageId('local-lock'), 'Vault locked locally.', true);
+      if (vaultUnlocked) {
+        var requestId = nextVaultMessageId('lock-request');
+        if (postVaultMessage(requestId, 'vault.lockRequest', {})) {
+          setVaultStatus('unlocked', 'Lock requested. If this vault is unsaved or unverified, confirm the warning in the warm Vault page.');
+        } else {
+          setVaultStatus('unlocked', 'Lock request could not reach the warm shell. The vault remains unlocked.');
+        }
+        return;
+      }
+      lockVaultSession(nextVaultMessageId('local-clear'), 'Pending vault bytes cleared locally.', true);
     });
   }
   if (keyfileToggle) {

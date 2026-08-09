@@ -34,7 +34,7 @@ The obvious home is the vault: it already exists, it is already Argon2id-encrypt
 
 ### Continuous rewriting fights the vault's own safety machinery
 
-The vault has verify-after-save, generational filenames, rollback detection via a save counter, and a dirty flag. A multi-day search checkpointing every few minutes would push a vault from `my-vault-0047.cbx` toward five thousand generations and render the rollback counter meaningless.
+At the time this ADR was accepted, the vault had verify-after-save, user-visible generational filenames, rollback detection via a save counter, and a dirty flag. That historical argument remains valid for why checkpoints are separate files. ADR-0026 later replaced current vault generation filenames with one canonical file, but did not move recovery checkpoints into the vault.
 
 Worse, it puts the vault at risk during the one operation where it matters most. A user running a recovery has already lost a backup; the vault is what records where the others are. Rewriting it continuously, in that moment, to store something temporary is the wrong trade.
 
