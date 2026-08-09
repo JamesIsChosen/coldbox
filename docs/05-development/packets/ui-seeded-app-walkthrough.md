@@ -22,7 +22,7 @@ P0.19 completion. P0.19 remains [~] with physical acceptance deferred.
 
 Branch: ui-seeded-app-walkthrough
 
-Implementation commit: 821257566599
+Implementation commit: 5d6fb99d60b565d067cbe2acac5b5b24b2d13fec
 
 Base: 25ba569873b5343c6c88efda952bdfe592e08a83 (merged P0.19 implementation;
 physical matrix deferred)
@@ -76,21 +76,21 @@ line endings are valid.
 
 npm.cmd run check-docs
 
-Result: Documentation hygiene check passed: 136 markdown file(s) checked,
+Result: Documentation hygiene check passed: 137 markdown file(s) checked,
 0 warning(s).
 
 npm.cmd run build
 
-First committed-tip result:
+Current-tip (5d6fb99) first result:
 Built build/coldbox.html
-(9ff497b54b8b918d475f88bf1c0d7720752ff81431d68f1ac9484b3bca7731aa)
+(2fad0b39f4d5f20b8aef4ae05cd2cde35414275a7350d7af59ea235f47b562c3)
 
-Second committed-tip result:
+Current-tip (5d6fb99) second result:
 Built build/coldbox.html
-(9ff497b54b8b918d475f88bf1c0d7720752ff81431d68f1ac9484b3bca7731aa)
+(2fad0b39f4d5f20b8aef4ae05cd2cde35414275a7350d7af59ea235f47b562c3)
 
 The sidecar contains the same SHA-256:
-9ff497b54b8b918d475f88bf1c0d7720752ff81431d68f1ac9484b3bca7731aa
+2fad0b39f4d5f20b8aef4ae05cd2cde35414275a7350d7af59ea235f47b562c3
 build/coldbox.html
 
 npm.cmd test
@@ -245,11 +245,13 @@ The wordmark PNG was checked as transparent RGBA artwork before copying.
 
 Reviewed base 25ba569 build: 1,269,833 bytes.
 
-Committed UI tip build: 1,939,484 bytes.
+Committed UI tip build: 1,929,560 bytes.
 
-Delta: +669,651 bytes (+653.96 KiB). The increase is primarily the embedded
+Delta: +659,727 bytes (+644.26 KiB). The increase is primarily the embedded
 419,715-byte transparent wordmark expanded into a base64 data URI, plus the
-sample-free route cards and popup/CSS walkthrough. The artifact remains below the
+sample-free route cards and popup/CSS walkthrough. Removing the populated route
+records reduced the final artifact relative to the earlier seeded tip. The
+artifact remains below the
 SPEC target of 3 MB.
 
 ## 12. Docs updated
@@ -257,9 +259,42 @@ SPEC target of 3 MB.
 - docs/01-spec/ui-walkthrough.md: canonical route and popup walkthrough.
 - docs/01-spec/design-system.md: link to the canonical walkthrough.
 - docs/README.md: documentation index entry.
-- CHANGELOG.md: seeded UI, popup, and brand-artwork entry.
+- CHANGELOG.md: seeded visual-reference, sample-free shell, popup, and
+  brand-artwork entries.
 - This packet: implementation and verification evidence.
 
 No ADR was added because this uses the existing design-system and two-realm
 decisions; the shared popup is an implementation of the approved UI contract,
 not a new security or storage decision.
+
+## 13. Current-tip correction evidence
+
+The owner correction is included in commit
+`5d6fb99d60b565d067cbe2acac5b5b24b2d13fec`. The shipped artifact now presents
+the approved mock hierarchy first and uses empty, unavailable, planning, or
+live-status states wherever the feature is not built. The live realm,
+reachability, and capability surfaces remain present in the dedicated System
+Health workspace and were not removed or replaced with display-only copies.
+
+The following static scan was run against `build/coldbox.html` after the
+current-tip build:
+
+```text
+rg -n -i 'Seeded UI preview|Sample source card|sample data in this|sample data in the|248,670|78,382|1.8421|Coldcard savings|Trezor daily|Tax reserve|Primary Bitcoin|Daily device|Emergency reserve|2026-08|2026-07' build/coldbox.html
+No seeded route values found in shipped artifact.
+```
+
+The current full suite result is 255 tests passed, 0 failed. The focused
+UI-plus-vault run is 25 tests passed, 0 failed. `npm.cmd run lint` and
+`npm.cmd run check-docs` pass; the latter reports 137 markdown files and zero
+warnings. Two post-commit builds produced the identical SHA-256 recorded in
+section 3.
+
+`npm.cmd run test:browser` remains blocked only by the environment: the
+Playwright Chromium and Firefox binaries are not installed. The harness exits
+with the explicit prerequisite `npx playwright install chromium firefox` and
+was not weakened or treated as a browser PASS.
+
+The separate `build/coldbox-ui-walkthrough.html` file is a local ignored visual
+reference copied before the correction. It is intentionally not the shipped
+artifact, not application state, and not part of the single-file build output.
