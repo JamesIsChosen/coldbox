@@ -206,6 +206,7 @@ __COLDBOX_QR_ENCODER__
   var liveTransferDetector = null;
   var liveTransferScanTimer = null;
   var liveTransferCollector = null;
+  var liveQrReceiverState = 'checking';
   var pendingReceivedTransfer = null;
   var pendingReceivedTransferMeta = null;
   var LIVE_TRANSFER_INTERVAL_MS = 250;
@@ -887,8 +888,14 @@ __COLDBOX_QR_ENCODER__
     ) ? 1 : 0;
 
     var camera = capabilityBoolean(warmCapabilityReport, 'camera');
-    if (camera === true) {
-      setCapabilityRow('camera', 'available', 'API available', 'Permission is requested only when a camera workflow starts.');
+    if (camera === true && liveQrReceiverState === 'available') {
+      setCapabilityRow('camera', 'available', 'Live QR available', 'Camera API and QR decoder are available. Permission is requested only when a receive workflow starts.');
+    } else if (camera === true && liveQrReceiverState === 'checking') {
+      setCapabilityRow('camera', 'partial', 'Checking QR decoder', 'Camera API is available; checking whether this browser can decode QR from the camera.');
+      optionalWarnings += 1;
+    } else if (camera === true) {
+      setCapabilityRow('camera', 'partial', 'Camera API only', 'Camera access exists, but live QR decoding is unavailable here. Use the canonical .cbx file instead.');
+      optionalWarnings += 1;
     } else {
       setCapabilityRow('camera', 'unavailable', 'Unavailable', 'No camera API is exposed; QR generation and manual entry remain separate paths.');
       optionalWarnings += 1;
@@ -1349,6 +1356,15 @@ __COLDBOX_QR_ENCODER__
     var sequence = reachabilitySequence;
     root.setAttribute('data-reachability-checking', 'true');
 
+    // A previously established offline classification is stale as soon as a
+    // fresh probe starts. Move the authority to online-safe before waiting on
+    // either endpoint. This immediately sends mode.set { online: true } and
+    // closes any offline secret-capable session instead of leaving the old
+    // offline decision active during the checking interval.
+    if (reachabilityState === 'unreachable') {
+      setReachabilityState('unknown');
+    }
+
     probeReachabilityUrl(REACHABILITY_ENDPOINTS[0]).then(function (primaryReachable) {
       if (primaryReachable) {
         return true;
@@ -1604,6 +1620,69 @@ __COLDBOX_QR_ENCODER__
       && root.getAttribute('data-vault-operations') === 'guarded';
   }
 
+  function updateLiveTransferReceiverStatus() {
+    if (!vaultTransferReceiveStatus || liveTransferCameraStream || pendingReceivedTransfer) {
+      return;
+    }
+    if (liveQrReceiverState === 'checking') {
+      vaultTransferReceiveStatus.textContent = 'Checking whether this browser can decode live QR from a camera.';
+      return;
+    }
+    if (liveQrReceiverState !== 'available') {
+      vaultTransferReceiveStatus.textContent = 'Live QR receive is unavailable in this browser. Use the canonical .cbx file instead.';
+      return;
+    }
+    vaultTransferReceiveStatus.textContent = 'Camera is off.';
+  }
+
+  function setLiveQrReceiverState(state) {
+    liveQrReceiverState = state === 'available' || state === 'unavailable' ? state : 'checking';
+    if (warmCapabilityReport) {
+      renderCapabilityPanel();
+    }
+    updateLiveTransferReceiverStatus();
+    updateVaultControls();
+  }
+
+  function probeLiveTransferReceiverCapability() {
+    var navigatorObject = window.navigator || {};
+    var mediaDevices = navigatorObject.mediaDevices;
+    if (capabilityBoolean(warmCapabilityReport, 'camera') !== true
+      || !mediaDevices
+      || typeof mediaDevices.getUserMedia !== 'function'
+      || typeof window.BarcodeDetector !== 'function') {
+      setLiveQrReceiverState('unavailable');
+      return;
+    }
+    if (typeof window.BarcodeDetector.getSupportedFormats !== 'function') {
+      try {
+        // Older implementations may omit getSupportedFormats(), but a
+        // constructor probe still tells us whether the exact QR format used
+        // by the receiver is accepted. Do not enable the button on the mere
+        // presence of a BarcodeDetector constructor.
+        new window.BarcodeDetector({ formats: ['qr_code'] });
+        setLiveQrReceiverState('available');
+      } catch (error) {
+        setLiveQrReceiverState('unavailable');
+      }
+      return;
+    }
+    var formatsPromise;
+    try {
+      formatsPromise = window.BarcodeDetector.getSupportedFormats();
+    } catch (error) {
+      setLiveQrReceiverState('unavailable');
+      return;
+    }
+    Promise.resolve(formatsPromise).then(function (formats) {
+      setLiveQrReceiverState(Array.isArray(formats) && formats.indexOf('qr_code') !== -1
+        ? 'available'
+        : 'unavailable');
+    }, function () {
+      setLiveQrReceiverState('unavailable');
+    });
+  }
+
   function updateVaultControls() {
     var channelReady = vaultChannelReady();
     var unlocked = vaultState === 'unlocked';
@@ -1653,7 +1732,11 @@ __COLDBOX_QR_ENCODER__
       vaultTransferStart.disabled = !channelReady || !unlocked || !activeVaultId || !vaultHasDurableTransferSource() || liveTransferFrames.length > 0;
     }
     if (vaultTransferReceive) {
-      vaultTransferReceive.disabled = !channelReady || !locked || Boolean(liveTransferCameraStream) || Boolean(pendingReceivedTransfer);
+      vaultTransferReceive.disabled = !channelReady
+        || !locked
+        || liveQrReceiverState !== 'available'
+        || Boolean(liveTransferCameraStream)
+        || Boolean(pendingReceivedTransfer);
     }
     if (vaultTransferLoad) {
       vaultTransferLoad.disabled = !channelReady || !locked || !pendingReceivedTransfer;
@@ -2443,6 +2526,10 @@ __COLDBOX_QR_ENCODER__
   function startLiveTransferReceiver() {
     if (vaultState !== 'locked' || !vaultTransfer) {
       setVaultNotice('Lock the current vault before receiving another vault.');
+      return;
+    }
+    if (liveQrReceiverState !== 'available') {
+      updateLiveTransferReceiverStatus();
       return;
     }
     if (!window.navigator || !window.navigator.mediaDevices
@@ -3245,6 +3332,7 @@ __COLDBOX_QR_ENCODER__
     warmCapabilityReport = result || {};
     setCapabilityRootAttributes(warmCapabilityReport, 'warm');
     renderCapabilityPanel();
+    probeLiveTransferReceiverCapability();
     if (capabilityBoolean(warmCapabilityReport, 'randomValues') !== true) {
       setCapabilityFailure('Required crypto.getRandomValues is unavailable in the warm shell. Coldbox refuses all vault operations and never substitutes Math.random.');
       return;

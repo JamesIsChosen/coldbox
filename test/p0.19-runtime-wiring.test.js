@@ -48,6 +48,13 @@ test('P0.19 warm reachability probes are content-free, allowlisted, and online-s
     /data-vault-operations', 'guarded'[\s\S]*updateVaultControls\(\)/,
     'vault controls must refresh after the guarded gate opens'
   );
+
+  const check = extractFunction(warmSource, 'runReachabilityCheck');
+  assert.match(
+    check,
+    /data-reachability-checking', 'true'[\s\S]*if \(reachabilityState === 'unreachable'\)[\s\S]*setReachabilityState\('unknown'\)/,
+    'a fresh probe must invalidate a stale offline classification before awaiting network I/O'
+  );
 });
 
 test('P0.19 network observation stays warm while validated mode.set is the sole cold vault authority', () => {
@@ -142,6 +149,16 @@ test('P0.19 live receiver is user-initiated, optional, integrity-checked, and st
   assert.match(load, /source: 'qr-transfer'/);
   assert.match(load, /sendVaultOpen\(/, 'receiver must feed encrypted bytes through the ordinary locked-vault open path');
   assert.doesNotMatch(load, /unlock|passphrase|credential/i, 'transfer must never carry unlock authority');
+
+  const capabilityProbe = extractFunction(warmSource, 'probeLiveTransferReceiverCapability');
+  assert.match(capabilityProbe, /mediaDevices[\s\S]*getUserMedia/);
+  assert.match(capabilityProbe, /BarcodeDetector/);
+  assert.match(capabilityProbe, /getSupportedFormats/);
+  assert.match(capabilityProbe, /new window\.BarcodeDetector/);
+  assert.match(capabilityProbe, /setLiveQrReceiverState\('unavailable'\)/);
+  const controls = extractFunction(warmSource, 'updateVaultControls');
+  assert.match(controls, /liveQrReceiverState !== 'available'/, 'receive must stay disabled unless camera QR decoding is actually available');
+  assert.match(warmSource, /Use the canonical \.cbx file instead/);
 });
 
 test('P0.19 live transfer clears when the vault locks or panic hide runs', () => {

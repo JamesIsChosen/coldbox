@@ -22,6 +22,22 @@ const COLD_CANARY_URL = 'http://localhost:9/cold-csp-canary';
 const REACHABILITY_PRIMARY_URL = 'https://api.coinbase.com/v2/time';
 const REACHABILITY_BACKUP_URL = 'https://mempool.space/api/blocks/tip/height';
 
+// P0.19 F3: tests that deliberately hold an offline-classified secret
+// session open must not race the product's ten-second periodic tick while a
+// real Argon2 operation is running. The explicit offline/focus events and the
+// held-probe regression below still exercise the production transition. This
+// init script only suspends the periodic timer in those deterministic test
+// pages; it does not alter the shipped application.
+const SUSPEND_REACHABILITY_INTERVAL_SCRIPT = `(${function () {
+  var originalSetInterval = window.setInterval;
+  window.setInterval = function (callback, delay) {
+    if (delay === 10000 && callback && /runReachabilityCheck/.test(String(callback))) {
+      return originalSetInterval.call(window, function () {}, 2147483647);
+    }
+    return originalSetInterval.apply(window, arguments);
+  };
+}.toString()})();`;
+
 // F1 regression support: patches window.FileReader.prototype.readAsArrayBuffer
 // inside every document/frame this init script runs in (including the cold
 // realm's srcdoc iframe) so a per-filename artificial completion delay can be
@@ -357,9 +373,15 @@ function createPreexistingProviderFixture() {
 async function installReachabilityRoutes(page, initialMode = 'reachable') {
   let mode = initialMode;
   const requests = [];
+  const heldProbeResolvers = [];
   const handler = async (route) => {
     requests.push(route.request().url());
     if (mode === 'reachable') {
+      await route.fulfill({ status: 204, body: '' });
+      return;
+    }
+    if (mode === 'holding') {
+      await new Promise((resolve) => heldProbeResolvers.push(resolve));
       await route.fulfill({ status: 204, body: '' });
       return;
     }
@@ -369,8 +391,15 @@ async function installReachabilityRoutes(page, initialMode = 'reachable') {
   await page.route(REACHABILITY_BACKUP_URL, handler);
   return Object.freeze({
     setMode(nextMode) {
-      assert.ok(['reachable', 'unreachable'].includes(nextMode), 'invalid reachability fixture mode');
+      assert.ok(['reachable', 'unreachable', 'holding'].includes(nextMode), 'invalid reachability fixture mode');
       mode = nextMode;
+    },
+    heldRequestCount() {
+      return heldProbeResolvers.length;
+    },
+    releaseHeldProbe() {
+      assert.ok(heldProbeResolvers.length > 0, 'no reachability probe is currently held');
+      heldProbeResolvers.shift()();
     },
     requests() {
       return requests.slice();
@@ -382,6 +411,19 @@ async function triggerReachabilityRound(page) {
   await page.evaluate(() => window.dispatchEvent(new Event('offline')));
   await page.waitForTimeout(75);
   await page.waitForFunction(() => document.documentElement.getAttribute('data-reachability-checking') === 'false');
+}
+
+async function beginHeldReachabilityRound(page, reachability) {
+  reachability.setMode('holding');
+  await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+  await page.waitForFunction(() => (
+    document.documentElement.getAttribute('data-reachability-state') === 'unknown'
+      && document.documentElement.getAttribute('data-reachability-checking') === 'true'
+  ));
+  for (let attempt = 0; attempt < 40 && reachability.heldRequestCount() === 0; attempt += 1) {
+    await page.waitForTimeout(25);
+  }
+  assert.ok(reachability.heldRequestCount() > 0, 'reachability fixture did not hold an active probe');
 }
 
 async function prepareVaultCreation(page, coldFrame, name) {
@@ -405,10 +447,13 @@ async function lockVaultDiscardingUnsaved(page) {
   }
 }
 
-async function openPage(browser, file, reachabilityMode = 'reachable') {
+async function openPage(browser, file, reachabilityMode = 'reachable', options = {}) {
   const page = await browser.newPage();
   const reachability = await installReachabilityRoutes(page, reachabilityMode);
   const harness = await createHarness(page);
+  if (options.suspendReachabilityInterval) {
+    await page.addInitScript(SUSPEND_REACHABILITY_INTERVAL_SCRIPT);
+  }
   await page.goto(fileUrl(file), { waitUntil: 'load' });
   return { harness, page, reachability };
 }
@@ -589,6 +634,16 @@ async function verifyBuiltFile(browser, engine) {
     await page.locator('#airgap-banner[data-airgap-state="green"]').waitFor({ state: 'visible', timeout: 5000 });
     await coldFrame.locator('html[data-warm-network-online="false"]').waitFor({ state: 'attached', timeout: 5000 });
 
+    // A new probe makes an offline classification online-safe immediately,
+    // including when a normal parent-shell action causes a focus-triggered
+    // check. Re-establish reachable mode before exercising the durable save
+    // flow so this test does not ask an intentionally sealed session to save
+    // after the security transition has already locked it.
+    reachability.setMode('reachable');
+    await triggerReachabilityRound(page);
+    await page.locator('#airgap-banner[data-airgap-state="amber"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('html[data-warm-network-online="true"]').waitFor({ state: 'attached', timeout: 5000 });
+
     // Creation confirmation is creation-only: a mismatch must create nothing,
     // then the same prepared vault can succeed when confirmation matches.
     await prepareVaultCreation(page, coldFrame, 'Browser Round Trip');
@@ -720,6 +775,16 @@ async function verifyBuiltFile(browser, engine) {
     await page.locator('#vault-lock').click();
     await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
     await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+
+    // Re-enter a genuinely offline-classified state while no secret session
+    // is open. The manual-text receipt below can then be unlocked offline and
+    // the restoration round proves that the new stale/checking transition
+    // immediately seals it again.
+    reachability.setMode('unreachable');
+    await triggerReachabilityRound(page);
+    await triggerReachabilityRound(page);
+    await page.locator('html[data-reachability-state="unreachable"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('html[data-warm-network-online="false"]').waitFor({ state: 'attached', timeout: 5000 });
 
     // Manual encrypted text can still be imported as an advanced fallback,
     // but doing so creates an unsaved local working copy and requires the
@@ -907,18 +972,56 @@ async function verifyBuiltFile(browser, engine) {
   }
 }
 
-async function verifyVaultLibrary(browser, engine) {
-  const { page, reachability } = await openPage(browser, buildPath);
+async function verifyStaleReachabilityOnlineSafety(browser, engine) {
+  const opened = await openPage(browser, buildPath, 'reachable', { suspendReachabilityInterval: true });
   try {
+    const { page, reachability } = opened;
     await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
     await page.locator('#nav-rail a[data-route="vault"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     const coldFrame = await getColdFrame(page, engine);
 
+    // Establish a real offline-classified session first. The next round is
+    // then held before either endpoint resolves, reproducing the stale-state
+    // interval found by independent review.
     reachability.setMode('unreachable');
     await triggerReachabilityRound(page);
     await triggerReachabilityRound(page);
+    await page.locator('html[data-reachability-state="unreachable"]').waitFor({ state: 'attached', timeout: 5000 });
     await coldFrame.locator('html[data-warm-network-online="false"]').waitFor({ state: 'attached', timeout: 5000 });
+
+    await createPreparedVault(page, coldFrame, 'held reachability regression phrase', 'Held Reachability Vault');
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+
+    await beginHeldReachabilityRound(page, reachability);
+    await coldFrame.locator('html[data-warm-network-online="true"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await page.locator('html').getAttribute('data-reachability-state'), 'unknown');
+    assert.equal(await page.locator('html').getAttribute('data-reachability-checking'), 'true');
+    assert.equal(await coldFrame.locator('html').getAttribute('data-cold-working-bytes'), 'cleared');
+
+    // Release the held primary probe. It resolves as reachable and completes
+    // the same round; this also proves the fixture did not leave a request or
+    // a timer behind after the in-flight safety assertion.
+    reachability.releaseHeldProbe();
+    await page.waitForFunction(() => document.documentElement.getAttribute('data-reachability-checking') === 'false');
+    await page.locator('html[data-reachability-state="reachable"]').waitFor({ state: 'attached', timeout: 5000 });
+    console.log(`${engine}: stale offline reachability became online-safe immediately and locked the in-flight secret session`);
+  } finally {
+    await closePage(opened.page);
+  }
+}
+
+async function verifyVaultLibrary(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    const coldFrame = await getColdFrame(page, engine);
 
     async function createExport(name, phrase) {
       await createPreparedVault(page, coldFrame, phrase, name);
@@ -1062,11 +1165,6 @@ async function verifyUnlockedRuntimeHealthLockdown(browser, engine) {
     await page.locator('#nav-rail a[data-route="vault"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     coldFrame = await getColdFrame(page, engine);
-    opened.reachability.setMode('unreachable');
-    await triggerReachabilityRound(page);
-    await triggerReachabilityRound(page);
-    await page.locator('#airgap-banner[data-airgap-state="green"]').waitFor({ state: 'visible', timeout: 5000 });
-    await coldFrame.locator('html[data-warm-network-online="false"]').waitFor({ state: 'attached', timeout: 5000 });
     await createPreparedVault(page, coldFrame, 'save health drift phrase', 'Save Health Vault');
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
@@ -2191,6 +2289,7 @@ async function run() {
     const browser = await browserType.launch({ headless: true });
     try {
       await verifyBuiltFile(browser, engine);
+      await verifyStaleReachabilityOnlineSafety(browser, engine);
       await verifyVaultLibrary(browser, engine);
       await verifyEntropyLab(browser, engine);
       await verifyUnlockedRuntimeHealthLockdown(browser, engine);
