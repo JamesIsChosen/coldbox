@@ -22,7 +22,7 @@ P0.19 completion. P0.19 remains [~] with physical acceptance deferred.
 
 Branch: ui-seeded-app-walkthrough
 
-Implementation commit: 8b5d191cf1c0a72a8219d8df2199f1dfd25e576a
+Implementation commit: cb56cc47e5d289cf895ca1f1659560dfa42fb3cb
 
 Base: 25ba569873b5343c6c88efda952bdfe592e08a83 (merged P0.19 implementation;
 physical matrix deferred)
@@ -31,13 +31,15 @@ Included:
 
 - Sample-free Dashboard, Portfolio, Prices, Registry, and Devices cards that
   preserve the approved hierarchy while showing explicit no-record states.
-- Protected-layout shells for Entropy Lab, Seed Forge, Derivation, Backup Lab,
-  QR Studio, Recovery, and Verify Bench; no unbuilt feature is presented as
-  complete or populated.
+- Protected-layout shells for Seed Forge, Derivation, Backup Lab, QR Studio,
+  Recovery, and Verify Bench; no unbuilt feature is presented as complete or
+  populated.
 - The Entropy Lab keeps its complete route-local toolset visible: dice, coin,
   cards, hex digits, CSPRNG, entropy-strength measurement, undo/reset, target,
-  and mix controls. Its warm panel no longer repeats the Vault tools label,
-  generic sealed-realm boot strip, or a stale not-built placeholder.
+  and mix controls. Its protected surface retains the original
+  `Entropy Lab / P1.1` shell label from the pre-mock implementation. Its warm panel no longer
+  repeats the Vault tools label, generic sealed-realm boot strip, or a stale
+  not-built placeholder.
 - Vault Tools now uses a compact tool deck: Vault Library and canonical
   encrypted-vault save remain visible together, while encrypted-text handoff
   is an advanced collapsed card with all prior controls retained. The live
@@ -90,16 +92,16 @@ Result: Documentation hygiene check passed: 137 markdown file(s) checked,
 
 npm.cmd run build
 
-Current-tip (8b5d191) first result:
+Current-tip (cb56cc4) first result:
 Built build/coldbox.html
-(7555fdd107ba566b90b51fd0bc3102f998cfcae1e199fccbc539967af3a1fc61)
+(5ed19806ee958edc7eb1d524ee934c122dec26b5e3ef95849e097e590a880245)
 
-Current-tip (8b5d191) second result:
+Current-tip (cb56cc4) second result:
 Built build/coldbox.html
-(7555fdd107ba566b90b51fd0bc3102f998cfcae1e199fccbc539967af3a1fc61)
+(5ed19806ee958edc7eb1d524ee934c122dec26b5e3ef95849e097e590a880245)
 
 The sidecar contains the same SHA-256:
-7555fdd107ba566b90b51fd0bc3102f998cfcae1e199fccbc539967af3a1fc61
+5ed19806ee958edc7eb1d524ee934c122dec26b5e3ef95849e097e590a880245
 build/coldbox.html
 
 The final artifact size is 1,954,982 bytes.
@@ -185,7 +187,8 @@ available:
   Escape, and restores focus.
 - Each of the 16 routes becomes visible and has a primary heading.
 - Entropy Lab exposes the dice, coin, cards, hex, CSPRNG, strength, reset,
-  target, and mix controls inside the active cold frame.
+  target, and mix controls inside the active cold frame, retains the exact
+  `Entropy Lab / P1.1` shell label, and hides Vault details/session controls.
 - Vault Tools keeps Library/save/handoff controls on one compact route-local
   deck, and QR Studio exposes the live device-to-device transfer card.
 - No unexpected console errors appear in the walkthrough.
@@ -441,3 +444,6 @@ returning and checks the neutral-start route guard.
 
 Browser execution remains dependent on the environment's missing Playwright
 Chromium and Firefox binaries; no visual browser result is inferred here.
+
+The current-tip reproducible artifact was built twice with matching SHA-256
+`5ed19806ee958edc7eb1d524ee934c122dec26b5e3ef95849e097e590a880245`.
