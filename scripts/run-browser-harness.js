@@ -522,7 +522,7 @@ async function createCspProbeFrame(page, engine) {
   return { frame, frameId };
 }
 
-async function verifySeededUiWalkthrough(browser, engine) {
+async function verifyUiShellWalkthrough(browser, engine) {
   const { harness, page } = await openPage(browser, buildPath);
   const routeIds = [
     'dashboard', 'vault', 'portfolio', 'prices', 'registry', 'devices', 'entropy',
@@ -533,7 +533,7 @@ async function verifySeededUiWalkthrough(browser, engine) {
     await harness.expectElementVisible('#app');
     await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
     await page.locator('img.brand-wordmark[alt="Coldbox"]').waitFor({ state: 'visible' });
-    assert.equal(await page.locator('.preview-badge').isVisible(), true, `${engine}: seeded preview badge must be visible`);
+    assert.equal(await page.locator('.preview-badge').isVisible(), true, `${engine}: design-shell badge must be visible`);
 
     await page.locator('#theme-toggle').click();
     await page.locator('html[data-theme="light"]').waitFor({ state: 'attached' });
@@ -2337,7 +2337,7 @@ async function run() {
   for (const [engine, browserType] of [['Chromium', chromium], ['Firefox', firefox]]) {
     const browser = await browserType.launch({ headless: true });
     try {
-      await verifySeededUiWalkthrough(browser, engine);
+      await verifyUiShellWalkthrough(browser, engine);
       await verifyBuiltFile(browser, engine);
       await verifyStaleReachabilityOnlineSafety(browser, engine);
       await verifyVaultLibrary(browser, engine);

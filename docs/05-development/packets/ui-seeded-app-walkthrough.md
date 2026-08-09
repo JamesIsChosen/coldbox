@@ -1,12 +1,19 @@
-# UI seeded app walkthrough packet
+# UI shell walkthrough packet
+
+> Revision after owner feedback: the shipped application now uses the approved
+> card hierarchy with empty/live states and contains no invented route records,
+> balances, prices, dates, devices, or verification results. The seeded
+> walkthrough remains a separate visual reference only; it is not the shipped
+> application. The earlier seeded wording below is retained as implementation
+> history, while the current tip and current test results supersede it.
 
 ## 1. Summary
 
-This owner-directed UI branch preserves the approved comic-shell walkthrough as a
-complete seeded, clickable preview. It adds one shared centered floating detail
-menu with the approved red Close button, fills every route with honest
-placeholder content, embeds the supplied Coldbox wordmark and matching favicon
-sizes, and documents the full route map and extension contract.
+This owner-directed UI branch applies the approved comic-shell walkthrough to the
+actual application shell. It adds one shared centered floating detail menu with
+the approved red Close button, gives every route the final card hierarchy with
+honest empty states, embeds the supplied Coldbox wordmark and matching favicon
+sizes, and documents both the live shell and the separate visual walkthrough.
 
 This is roadmap-neutral UI work. It does not change the ROADMAP or claim any
 P0.19 completion. P0.19 remains [~] with physical acceptance deferred.
@@ -22,16 +29,14 @@ physical matrix deferred)
 
 Included:
 
-- Seeded Dashboard overview with portfolio, alerts, actions, and health cards.
-- Portfolio with sample holdings, allocation, chart, lots, transaction detail,
-  transfer classification, and public-export explanations.
-- Prices with median/spread, watchlist, chart, five-source ledger, stale-source
-  explanation, and privacy/source popups.
-- Registry with wallet records, address table, verification, and balance
-  explanations.
-- Devices with Coldcard, Trezor, and replacement-plan records.
-- Protected-layout previews for Entropy Lab, Seed Forge, Derivation, Backup Lab,
-  QR Studio, and Recovery.
+- Sample-free Dashboard, Portfolio, Prices, Registry, and Devices cards that
+  preserve the approved hierarchy while showing explicit no-record states.
+- Protected-layout shells for Entropy Lab, Seed Forge, Derivation, Backup Lab,
+  QR Studio, Recovery, and Verify Bench; no unbuilt feature is presented as
+  complete or populated.
+- The previous seeded walkthrough preserved locally as
+  build/coldbox-ui-walkthrough.html for visual review only; it is not part of
+  the shipped app or the build output contract.
 - Verify Bench, plus the existing Reference and Learn routes.
 - One shared floating popup layer centered in the viewport. It uses backdrop
   click, Escape, keyboard activation for capability rows, focus transfer, focus
@@ -115,8 +120,8 @@ approved UI mock, so the acceptance contract is:
 
 | Criterion | Evidence |
 |---|---|
-| Every approved route is visibly seeded | test/ui-walkthrough.test.js asserts all 15 route IDs and the browser harness visits every route |
-| Portfolio and market views show complete information architecture | Portfolio and Prices sections contain totals, allocations, charts, tables, source cards, and detail popups |
+| Every approved route uses the approved card hierarchy | test/ui-walkthrough.test.js asserts all 15 route IDs and the browser harness visits every route |
+| Unbuilt features do not present invented data | Portfolio, Prices, Registry, Devices, protected routes, and Verify Bench use explicit empty/unavailable states |
 | Detail actions use one centered popup style | Shared floating-menu-layer markup/CSS/handlers and popup contract test |
 | Close action is red and accessible | CSS uses var(--fill-red), modal is aria-modal, keyboard close and focus restoration are asserted |
 | Protected surfaces remain visibly calm and secret-free | Seed/derivation/recovery/QR previews use placeholders; the existing vault boundary test passes |
@@ -153,15 +158,15 @@ It proves:
 - Every popup trigger maps to a static popup content entry.
 - The shared dialog is modal, centered, keyboard-closeable, and red-close
   styled.
-- No seeded content uses inline style attributes.
+- No route content uses inline style attributes or invented records.
 - All supplied assets are non-empty, included in the explicit build manifest,
   and resolved into the final artifact.
-- The sample badge remains present.
+- The live **Design shell / no sample data** badge remains present.
 
 New browser checks in scripts/run-browser-harness.js prove, when browsers are
 available:
 
-- The wordmark and preview badge render.
+- The wordmark and design-shell badge render.
 - Light/dark toggles still work.
 - A system-health popup opens, has the red computed background, closes, and
   restores focus.
@@ -213,8 +218,8 @@ The wordmark PNG was checked as transparent RGBA artwork before copying.
   all are retained rather than selecting only one.
 - The transparent wordmark is the intended navbar replacement; no additional
   image editing or generated artwork was performed.
-- Seeded values are for layout comprehension only and are not test vectors or
-  claims about a user's holdings.
+- The standalone seeded reference is for layout comprehension only and is not
+  part of the application, a test vector, or a claim about a user's holdings.
 - Existing Vault, Reference, and Learn implementations remain authoritative
   where this preview overlaps them.
 - A roadmap-neutral UI branch is appropriate because the prior approved comic
@@ -227,7 +232,8 @@ The wordmark PNG was checked as transparent RGBA artwork before copying.
   wordmark aspect ratio does not crowd the badge or quick links.
 - Walk every popup from the route inventory. Check that the red Close button,
   centered placement, Escape behavior, and focus restoration remain consistent.
-- Verify the seeded badge is not removed when a route receives live data.
+- Verify the live shell keeps explicit empty/loading/unavailable states until a
+  route receives real data; keep seeded reference content separate.
 - Review static popup copy against architecture and the public-data model before
   replacing any placeholder with a live value.
 - Install the pinned browser binaries in a review environment and run the
@@ -243,7 +249,7 @@ Committed UI tip build: 1,939,484 bytes.
 
 Delta: +669,651 bytes (+653.96 KiB). The increase is primarily the embedded
 419,715-byte transparent wordmark expanded into a base64 data URI, plus the
-seeded route content and popup/CSS walkthrough. The artifact remains below the
+sample-free route cards and popup/CSS walkthrough. The artifact remains below the
 SPEC target of 3 MB.
 
 ## 12. Docs updated
@@ -257,4 +263,3 @@ SPEC target of 3 MB.
 No ADR was added because this uses the existing design-system and two-realm
 decisions; the shared popup is an implementation of the approved UI contract,
 not a new security or storage decision.
-

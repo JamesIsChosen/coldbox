@@ -149,6 +149,7 @@ __COLDBOX_QR_ENCODER__
   var vaultLockWithoutSave = document.getElementById('vault-lock-without-save');
   var vaultLockCancel = document.getElementById('vault-lock-cancel');
   var vaultPanicHide = document.getElementById('vault-panic-hide');
+  var topPanicHide = document.getElementById('panic-hide-top');
   var panicScreen = document.getElementById('panic-screen');
   var panicReload = document.getElementById('panic-reload');
   var coldFrame = null;
@@ -238,11 +239,11 @@ __COLDBOX_QR_ENCODER__
     });
   }
 
-  // This is the single source for the seeded UI walkthrough's floating cards.
-  // The values are public sample copy only: no seed, protected phrase, private key,
+  // This is the single source for the UI shell's floating cards.
+  // The copy is structural guidance only: no seed, protected phrase, private key,
   // xprv, or secret-compartment plaintext belongs in this object.
   var MOCK_POPUP_CONTENT = Object.freeze({
-    'popup-system-health': popup('System health', 'Every guard, one calm view', 'The health view breaks the shell into individually inspectable checks. The green state below is seeded preview copy, not a device claim.', [
+    'popup-system-health': popup('System health', 'Every guard, one calm view', 'The health view breaks the shell into individually inspectable checks. The state below is live capability reporting, not a device claim.', [
       '<strong>Sealed realm:</strong> private channel established and cold CSP active.',
       '<strong>Reachability:</strong> active probes report the conservative warm-shell state.',
       '<strong>Required randomness:</strong> both realms expose crypto.getRandomValues.',
@@ -259,7 +260,7 @@ __COLDBOX_QR_ENCODER__
       '<strong>Price:</strong> median across configured sources, with age and spread retained.',
       '<strong>Exclusions:</strong> hidden records are excluded from both totals and rows.',
       '<strong>Privacy:</strong> a balance lookup can reveal an address-to-IP relationship; the UI states that cost.'
-    ], 'Sample amount: $248,670.11. It is not connected to a wallet, chain, exchange, or account.'),
+    ], 'No portfolio total is present until the portfolio feature records real public data.'),
     'popup-dashboard-backup': popup('Dashboard / backup action', 'Verify the backup record', 'A pending backup action is a prompt to test recovery, not a claim that a backup is safe because it exists.', [
       '<strong>Open the record:</strong> confirm format, threshold, locations, and last verification date.',
       '<strong>Reconstruct:</strong> use the sealed realm to verify enough shares without exposing material here.',
@@ -306,31 +307,31 @@ __COLDBOX_QR_ENCODER__
       '<strong>Performance:</strong> historical prices are retained with their source age.',
       '<strong>Cost basis:</strong> lot pools are keyed by wallet and asset, not asset alone.',
       '<strong>Boundary:</strong> secret compartments remain sealed while the warm shell is online.'
-    ], 'Sample totals are visual placeholders. The final engine must show the source, timestamp, and method beside every derived figure.'),
+    ], 'No totals are shown until public records exist. The final engine must show the source, timestamp, and method beside every derived figure.'),
     'popup-portfolio-import': popup('Portfolio / import', 'Import activity safely', 'Import begins with a column-mapping and dry-run preview so nothing is written before the user sees what will be created.', [
       '<strong>Accepted sources:</strong> CSV or JSON public transaction records.',
       '<strong>Dry run:</strong> new rows, duplicates, missing basis, and malformed dates are shown first.',
       '<strong>Transfer rule:</strong> movement between the user’s own wallets is not a disposal.',
       '<strong>Rollback:</strong> cancelling the preview writes nothing.'
-    ], 'No file picker is opened by this seeded preview. This card describes the eventual interaction.'),
+    ], 'No file picker is opened by the UI shell. This card describes the eventual interaction.'),
     'popup-portfolio-chart': popup('Portfolio / chart', 'Read the chart without guessing', 'Charts provide context, not a substitute for the underlying rows and timestamps.', [
       '<strong>Series:</strong> portfolio value over time from stored public lots and historical prices.',
       '<strong>Currency:</strong> display currency can change without rewriting stored transaction values.',
       '<strong>Staleness:</strong> gaps or stale prices remain visible in the chart legend.',
       '<strong>Accessibility:</strong> the data table and text summary accompany the visual line.'
-    ], 'The plotted line is fixed sample data in this mock and has no market connection.'),
+    ], 'No plotted line is rendered until the portfolio feature has real public records and price history.'),
     'popup-portfolio-holdings': popup('Portfolio / holdings', 'What a holding row means', 'Each row links an asset to a wallet record and keeps the public accounting trail inspectable.', [
       '<strong>Quantity:</strong> the recorded amount, with units preserved.',
       '<strong>Value:</strong> quantity multiplied by the selected price snapshot.',
       '<strong>Allocation:</strong> the row’s share of the visible total.',
       '<strong>Verification:</strong> address and device status are separate from balance math.'
     ], 'Never put a seed phrase, private key, or protected phrase in a holding row.'),
-    'popup-portfolio-asset': popup('Portfolio / asset detail', 'Bitcoin · public asset detail', 'This is the expanded card a user opens from a holding row.', [
-      '<strong>Recorded quantity:</strong> 1.8421 BTC in the seeded example.',
-      '<strong>Wallet scope:</strong> Coldcard savings only; no cross-wallet lot pooling.',
-      '<strong>Cost basis:</strong> three public acquisition lots, FIFO selected.',
+    'popup-portfolio-asset': popup('Portfolio / asset detail', 'Public asset detail', 'This is the expanded card a user opens from a holding row.', [
+      '<strong>Recorded quantity:</strong> shown only after a public holding exists.',
+      '<strong>Wallet scope:</strong> the owning wallet record stays attached to the row.',
+      '<strong>Cost basis:</strong> the selected lot method and source rows remain inspectable.',
       '<strong>Next action:</strong> open the Registry address trail before relying on a balance.'
-    ], 'All values are sample data and intentionally use public-looking placeholders only.'),
+    ], 'No asset values are present in the UI shell.'),
     'popup-portfolio-export': popup('Portfolio / export', 'Export the public sheet', 'Exports contain public records only and should make their scope obvious before the file is written.', [
       '<strong>Included:</strong> holdings, transactions, lots, realized gains, and audit columns.',
       '<strong>Excluded:</strong> seed phrases, private keys, protected phrases, and secret notes.',
@@ -350,8 +351,8 @@ __COLDBOX_QR_ENCODER__
       '<strong>Evidence:</strong> user note and import source remain visible.'
     ], 'The final screen must let the user trace a number back to its public source row.'),
     'popup-portfolio-transfer': popup('Portfolio / transfer', 'Transfers are not disposals', 'Moving an asset between the user’s own wallet records preserves acquisition date and basis.', [
-      '<strong>Source:</strong> Tax reserve.',
-      '<strong>Destination:</strong> Hardware-wallet record.',
+      '<strong>Source:</strong> the originating wallet record.',
+      '<strong>Destination:</strong> the receiving wallet record.',
       '<strong>Tax event:</strong> none created by the transfer itself.',
       '<strong>Audit:</strong> both wallet IDs and the carried lot references remain attached.'
     ], 'This rule is a correctness boundary: a portfolio UI must make it difficult to misclassify movement as a sale.'),
@@ -360,7 +361,7 @@ __COLDBOX_QR_ENCODER__
       '<strong>Median:</strong> one stale source cannot skew the headline like a mean would.',
       '<strong>Failure:</strong> if sources fail, the UI retains the last-known value with its age.',
       '<strong>Privacy:</strong> the endpoint list and address-query cost remain visible.'
-    ], 'This preview does not make a network request; the displayed values remain fixed.'),
+    ], 'The UI shell does not make a network request or display a source value.'),
     'popup-prices-privacy': popup('Prices / privacy', 'What a lookup reveals', 'Market prices are lower-sensitivity than address lookups, but the app still makes the network boundary inspectable.', [
       '<strong>Price request:</strong> asks for market data without vault or address state.',
       '<strong>Balance request:</strong> can correlate a queried address with an IP and timing.',
@@ -368,25 +369,25 @@ __COLDBOX_QR_ENCODER__
       '<strong>Alternative:</strong> enter a public balance manually when privacy matters more than freshness.'
     ], 'The product does not claim that online mode is a physical airgap.'),
     'popup-prices-sources': popup('Prices / source rules', 'Why every source is shown', 'The source ledger makes stale, missing, and divergent readings visible instead of collapsing them into a confident-looking number.', [
-      '<strong>Five readings:</strong> CoinGecko, Coinbase, Kraken, CoinPaprika, and DIA in the seeded view.',
+      '<strong>Configured readings:</strong> the eventual source list and endpoint policy will be shown here.',
       '<strong>Median:</strong> the headline uses the middle value after source validation.',
       '<strong>Spread:</strong> high minus low is retained as a warning signal.',
       '<strong>Staleness:</strong> age is shown per source and carried into chart context.'
     ], 'The live source list and endpoints belong to the canonical API-source documentation.'),
-    'popup-price-source-coingecko': popup('Prices / source detail', 'CoinGecko reading', 'Sample source card: received successfully and included in the median.', ['<strong>Value:</strong> $78,422.90.', '<strong>Age:</strong> 2 minutes.', '<strong>Role:</strong> broad-coverage source with explicit key handling.', '<strong>Failure state:</strong> excluded from the next median if stale or invalid.']),
-    'popup-price-source-coinbase': popup('Prices / source detail', 'Coinbase reading', 'Sample source card: received successfully and included in the median.', ['<strong>Value:</strong> $78,381.00.', '<strong>Age:</strong> 2 minutes.', '<strong>Role:</strong> direct spot reading.', '<strong>Failure state:</strong> shown as unavailable rather than silently replaced.']),
-    'popup-price-source-kraken': popup('Prices / source detail', 'Kraken reading', 'Sample source card: received successfully and included in the median.', ['<strong>Value:</strong> $78,390.70.', '<strong>Age:</strong> 3 minutes.', '<strong>Role:</strong> independent spot reading.', '<strong>Failure state:</strong> source status remains visible in the ledger.']),
-    'popup-price-source-paprika': popup('Prices / source detail', 'CoinPaprika reading', 'Sample source card: stale and retained only as an inspectable comparison.', ['<strong>Value:</strong> $77,921.10.', '<strong>Age:</strong> 18 minutes.', '<strong>Role:</strong> coverage source.', '<strong>Failure state:</strong> stale status prevents false freshness.']),
-    'popup-price-source-dia': popup('Prices / source detail', 'DIA reading', 'Sample source card: received successfully and included in the median.', ['<strong>Value:</strong> $78,844.70.', '<strong>Age:</strong> 4 minutes.', '<strong>Role:</strong> independent market source.', '<strong>Failure state:</strong> spread remains visible even when the request succeeds.']),
+    'popup-price-source-coingecko': popup('Prices / source detail', 'Source reading', 'The source detail card will identify one configured public market source.', ['<strong>Value:</strong> shown only after a live reading succeeds.', '<strong>Age:</strong> retained beside the reading.', '<strong>Role:</strong> documented in the source policy.', '<strong>Failure state:</strong> unavailable or stale is shown explicitly.']),
+    'popup-price-source-coinbase': popup('Prices / source detail', 'Source reading', 'The source detail card will identify one configured public market source.', ['<strong>Value:</strong> shown only after a live reading succeeds.', '<strong>Age:</strong> retained beside the reading.', '<strong>Role:</strong> documented in the source policy.', '<strong>Failure state:</strong> unavailable or stale is shown explicitly.']),
+    'popup-price-source-kraken': popup('Prices / source detail', 'Source reading', 'The source detail card will identify one configured public market source.', ['<strong>Value:</strong> shown only after a live reading succeeds.', '<strong>Age:</strong> retained beside the reading.', '<strong>Role:</strong> documented in the source policy.', '<strong>Failure state:</strong> unavailable or stale is shown explicitly.']),
+    'popup-price-source-paprika': popup('Prices / source detail', 'Source reading', 'The source detail card will identify one configured public market source.', ['<strong>Value:</strong> shown only after a live reading succeeds.', '<strong>Age:</strong> retained beside the reading.', '<strong>Role:</strong> documented in the source policy.', '<strong>Failure state:</strong> unavailable or stale is shown explicitly.']),
+    'popup-price-source-dia': popup('Prices / source detail', 'Source reading', 'The source detail card will identify one configured public market source.', ['<strong>Value:</strong> shown only after a live reading succeeds.', '<strong>Age:</strong> retained beside the reading.', '<strong>Role:</strong> documented in the source policy.', '<strong>Failure state:</strong> unavailable or stale is shown explicitly.']),
     'popup-registry-new': popup('Registry / new record', 'Add a wallet record', 'The public record starts with identity and verification context, never with secret material.', ['<strong>Record:</strong> public name, chain family, device association, and notes.', '<strong>Secret link:</strong> optional reference to a vault record, not a seed display.', '<strong>First check:</strong> add a receive address only after independent verification.', '<strong>Save:</strong> public record can be edited without opening the secret compartment.']),
-    'popup-registry-filter': popup('Registry / filters', 'Find a record quickly', 'Filters are public metadata filters and can run entirely in the warm shell.', ['<strong>By device:</strong> Coldcard, Trezor, or unassigned.', '<strong>By verification:</strong> cold-verified, unverified, or stale.', '<strong>By asset:</strong> chain and address scheme.', '<strong>By concealment:</strong> hidden records remain excluded until explicitly revealed.']),
-    'popup-registry-coldcard': popup('Registry / wallet record', 'Coldcard savings', 'A wallet record collects the public trail needed to verify a hardware device later.', ['<strong>Public identity:</strong> wallet record name and master fingerprint when available.', '<strong>Accounts:</strong> Bitcoin account 0 with a visible derivation path.', '<strong>Addresses:</strong> 14 recorded, 12 cold-verified, 2 needing review.', '<strong>Backup:</strong> Primary Bitcoin SLIP-39 plan.']),
-    'popup-registry-trezor': popup('Registry / wallet record', 'Trezor daily', 'A multi-chain record keeps the chain and device relationship visible without storing a key.', ['<strong>Public identity:</strong> device record and fingerprint reference.', '<strong>Accounts:</strong> Ethereum and Solana public accounts.', '<strong>Addresses:</strong> 28 recorded, one address unverified.', '<strong>Next action:</strong> run the receive-address verification workflow.']),
-    'popup-registry-reserve': popup('Registry / wallet record', 'Tax reserve', 'A public reserve record makes the accounting destination explicit.', ['<strong>Asset:</strong> USDC public balance record.', '<strong>Label:</strong> tax reserve.', '<strong>Verification:</strong> two public addresses cold-verified.', '<strong>Privacy:</strong> visible balances reveal net worth even without secrets.']),
+    'popup-registry-filter': popup('Registry / filters', 'Find a record quickly', 'Filters are public metadata filters and can run entirely in the warm shell.', ['<strong>By device:</strong> recorded device, unassigned, or retired.', '<strong>By verification:</strong> cold-verified, unverified, or stale.', '<strong>By asset:</strong> chain and address scheme.', '<strong>By concealment:</strong> hidden records remain excluded until explicitly revealed.']),
+    'popup-registry-coldcard': popup('Registry / wallet record', 'Wallet record detail', 'A wallet record collects the public trail needed to verify a hardware device later.', ['<strong>Public identity:</strong> record name and fingerprint when available.', '<strong>Accounts:</strong> chain and account path remain visible.', '<strong>Addresses:</strong> each row carries its verification state.', '<strong>Backup:</strong> the public plan reference stays separate from material.']),
+    'popup-registry-trezor': popup('Registry / wallet record', 'Multi-chain record detail', 'A multi-chain record keeps chain and device relationships visible without storing a key.', ['<strong>Public identity:</strong> device record and fingerprint reference.', '<strong>Accounts:</strong> chain-specific public accounts.', '<strong>Addresses:</strong> each address can be verified independently.', '<strong>Next action:</strong> run the receive-address verification workflow.']),
+    'popup-registry-reserve': popup('Registry / wallet record', 'Public record detail', 'A public record makes the accounting destination explicit.', ['<strong>Asset:</strong> public asset label and optional balance record.', '<strong>Label:</strong> user-chosen public name.', '<strong>Verification:</strong> public addresses retain their own status.', '<strong>Privacy:</strong> visible balances reveal net worth even without secrets.']),
     'popup-registry-address': popup('Registry / address detail', 'Address verification trail', 'The address detail view separates what the registry knows from what a cold re-derivation proved.', ['<strong>Recorded:</strong> address string, source wallet, account, index, and label.', '<strong>State:</strong> cold-verified, unverified, or cold-verified-stale.', '<strong>Round trip:</strong> pasted destination text is compared character-for-character.', '<strong>Locked vault:</strong> reports vault-locked, never no-record.']),
     'popup-registry-balance': popup('Registry / balance lookup', 'Explicit balance lookup', 'A lookup is a user action with a visible privacy cost, not a background refresh that silently queries every address.', ['<strong>Before request:</strong> show the exact address and endpoint family.', '<strong>After request:</strong> show source, timestamp, and response status.', '<strong>Privacy:</strong> explain address-to-IP correlation.', '<strong>Offline:</strong> permit manual entry with a clear source note.']),
-    'popup-device-coldcard': popup('Devices / record', 'Coldcard Mk4', 'This seeded card demonstrates the hardware-wallet companion record.', ['<strong>Firmware:</strong> 1.3.5, marked current in the preview.', '<strong>Verification:</strong> fingerprint and receive-address checks are separate steps.', '<strong>Backup:</strong> linked to the Primary Bitcoin plan.', '<strong>Lifecycle:</strong> arrival, firmware, PIN rotation, retirement, and wipe notes remain public metadata.']),
-    'popup-device-trezor': popup('Devices / record', 'Trezor Safe 5', 'This card keeps an upcoming firmware review visible without pretending to perform it.', ['<strong>Firmware:</strong> 2.8.4, review soon in the preview.', '<strong>Assets:</strong> Ethereum and Solana public records.', '<strong>Verification:</strong> one address is intentionally unverified.', '<strong>Next:</strong> open the Verify Bench workflow.']),
+    'popup-device-coldcard': popup('Devices / record', 'Primary device detail', 'This card describes the public hardware-wallet companion record.', ['<strong>Firmware:</strong> shown only after a device record exists.', '<strong>Verification:</strong> fingerprint and receive-address checks are separate steps.', '<strong>Backup:</strong> linked to the selected public plan.', '<strong>Lifecycle:</strong> arrival, firmware, retirement, and wipe notes remain public metadata.']),
+    'popup-device-trezor': popup('Devices / record', 'Secondary device detail', 'This card describes a public hardware-wallet companion record without claiming a physical device is present.', ['<strong>Firmware:</strong> recorded with its review state.', '<strong>Assets:</strong> chain-specific public records remain separate.', '<strong>Verification:</strong> each address has its own result.', '<strong>Next:</strong> open the Verify Bench workflow.']),
     'popup-device-verify': popup('Devices / verification', 'Verify a hardware wallet', 'Verification is a three-way comparison: device screen, wallet software, and Coldbox derivation.', ['<strong>Step 1:</strong> derive the public address inside the sealed realm.', '<strong>Step 2:</strong> compare the hardware-wallet screen.', '<strong>Step 3:</strong> compare the destination paste-back.', '<strong>Result:</strong> record the exact state and timestamp, never just a green color.']),
     'popup-device-plan': popup('Devices / lifecycle', 'Replacement plan', 'A replacement record is planning metadata, not a key record.', ['<strong>Arrival check:</strong> photograph and record tamper evidence.', '<strong>Firmware:</strong> note the version before setup.', '<strong>Backup:</strong> verify the plan before retiring the old device.', '<strong>Quorum:</strong> keep device replacement survivable.']),
     'popup-entropy-collection': popup('Entropy Lab / collect', 'Collect physical entropy', 'The live flow accepts physical dice, coins, cards, or genuinely user-supplied hex, then records provenance.', ['<strong>Independent source:</strong> physical actions receive independent-source credit.', '<strong>Device RNG:</strong> convenience-generated dice or cards receive zero independent credit.', '<strong>Target:</strong> selected output strength is shown beside physical contribution.', '<strong>Boundary:</strong> raw values never enter the warm shell.']),
@@ -425,18 +426,18 @@ __COLDBOX_QR_ENCODER__
   }
 
   var routeDetails = Object.freeze({
-    vault: Object.freeze({ label: 'Vault', title: 'Vault', group: 'Workspace' }),
+    vault: Object.freeze({ label: 'Vault tools', title: 'Vault', group: 'Workspace' }),
     dashboard: Object.freeze({ label: 'Dashboard', title: 'Dashboard', group: 'Workspace' }),
     portfolio: Object.freeze({ label: 'Portfolio', title: 'Portfolio', group: 'Workspace' }),
     prices: Object.freeze({ label: 'Prices', title: 'Prices', group: 'Workspace' }),
     registry: Object.freeze({ label: 'Registry', title: 'Registry', group: 'Workspace' }),
     devices: Object.freeze({ label: 'Devices', title: 'Devices', group: 'Workspace' }),
-    entropy: Object.freeze({ label: 'Entropy Lab', title: 'Entropy Lab', group: 'Tools' }),
-    'seed-forge': Object.freeze({ label: 'Seed Forge', title: 'Seed Forge', group: 'Tools' }),
-    derivation: Object.freeze({ label: 'Derivation', title: 'Derivation', group: 'Tools' }),
-    backup: Object.freeze({ label: 'Backup Lab', title: 'Backup Lab', group: 'Tools' }),
-    qr: Object.freeze({ label: 'QR Studio', title: 'QR Studio', group: 'Tools' }),
-    recovery: Object.freeze({ label: 'Recovery', title: 'Recovery', group: 'Tools' }),
+    entropy: Object.freeze({ label: 'Entropy Lab', title: 'Entropy Lab', group: 'Tool decks' }),
+    'seed-forge': Object.freeze({ label: 'Secret tools', title: 'Seed Forge', group: 'Tool decks' }),
+    derivation: Object.freeze({ label: 'Derivation', title: 'Derivation', group: 'Tool decks' }),
+    backup: Object.freeze({ label: 'Backup & recovery', title: 'Backup Lab', group: 'Tool decks' }),
+    qr: Object.freeze({ label: 'QR & transfer', title: 'QR Studio', group: 'Tool decks' }),
+    recovery: Object.freeze({ label: 'Recovery', title: 'Recovery', group: 'Tool decks' }),
     verify: Object.freeze({ label: 'Verify Bench', title: 'Verify Bench', group: 'Reference' }),
     reference: Object.freeze({ label: 'Reference', title: 'Reference', group: 'Reference' }),
     learn: Object.freeze({ label: 'Learn', title: 'Learn', group: 'Reference' })
@@ -4017,6 +4018,9 @@ __COLDBOX_QR_ENCODER__
   }
   if (vaultPanicHide) {
     vaultPanicHide.addEventListener('click', panicHide);
+  }
+  if (topPanicHide) {
+    topPanicHide.addEventListener('click', panicHide);
   }
   if (panicReload) {
     panicReload.addEventListener('click', function () {

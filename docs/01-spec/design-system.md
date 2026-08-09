@@ -5,8 +5,9 @@ Authoritative for anything a user can see. Where [SPEC.md §15](SPEC.md) and thi
 
 Rationale for the visual direction is in [ADR-0009](../05-development/adr/0009-comic-visual-language.md). This document is the *what*; the ADR is the *why*.
 
-The complete route-by-route screen map, shared floating-menu contract, seeded
-data boundary, and feature-extension checklist live in the [UI walkthrough](ui-walkthrough.md).
+The complete route-by-route screen map, shared floating-menu contract, empty/live
+shell boundary, visual mock boundary, and feature-extension checklist live in the
+[UI walkthrough](ui-walkthrough.md).
 
 ---
 

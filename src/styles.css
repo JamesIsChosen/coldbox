@@ -336,6 +336,16 @@ samp {
   background: var(--fill-green);
 }
 
+.comic-btn-danger {
+  background: var(--fill-red);
+  color: var(--paper);
+}
+
+.comic-btn-danger:hover {
+  background: var(--danger);
+  color: var(--paper);
+}
+
 /* --------------------------------------------------------------------------
  * Navigation
  * -------------------------------------------------------------------------- */
@@ -380,6 +390,12 @@ samp {
   transition: transform 90ms ease, background-color 90ms ease, border-color 90ms ease, color 90ms ease, box-shadow 90ms ease;
 }
 
+.nav-link-button {
+  width: 100%;
+  color: var(--muted);
+  text-align: left;
+}
+
 .nav-link:hover {
   border-color: var(--outline);
   background: var(--surface-soft);
@@ -393,6 +409,15 @@ samp {
   background: var(--fill-cyan);
   box-shadow: 0.18rem 0.18rem 0 var(--drop);
   color: var(--fill-ink);
+}
+
+.nav-link-button:hover {
+  color: var(--text);
+}
+
+.nav-link-button:focus-visible {
+  outline: 0.2rem solid var(--fill-pink);
+  outline-offset: -0.2rem;
 }
 
 .nav-icon {
@@ -548,6 +573,44 @@ samp {
  * nothing that moves. A rotating sticker on a failed airgap check reads as a
  * joke at the exact moment the user needs to believe the interface.
  * -------------------------------------------------------------------------- */
+
+.system-health-workspace {
+  max-width: 78rem;
+  margin: clamp(3rem, 8vw, 6rem) auto 0;
+  padding-top: clamp(1.25rem, 3vw, 2rem);
+  border-top: var(--outline-width) solid var(--outline);
+}
+
+.system-health-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.system-health-heading h2 {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 3vw, 2.6rem);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.system-health-heading p {
+  max-width: 48rem;
+  margin: 0.6rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.system-health-workspace .realm-status,
+.system-health-workspace .airgap-banner,
+.system-health-workspace .capability-panel {
+  max-width: none;
+}
 
 .realm-status,
 .airgap-banner,
@@ -1064,6 +1127,10 @@ samp {
     -0.02em -0.02em 0 var(--drop),
     0.02em -0.02em 0 var(--drop),
     -0.02em 0.02em 0 var(--drop);
+}
+
+html[data-theme="light"] .page h1 {
+  color: var(--paper);
 }
 
 .page-lede {
@@ -1877,6 +1944,14 @@ samp {
     padding-bottom: 1rem;
   }
 
+  .system-health-heading {
+    display: block;
+  }
+
+  .system-health-heading .comic-btn {
+    margin-top: 0.8rem;
+  }
+
   .realm-status {
     grid-template-columns: minmax(0, 1fr);
     margin-top: 0.85rem;
@@ -2388,6 +2463,45 @@ samp {
   color: var(--paper-ink);
 }
 
+.mock-status-neutral {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+.mock-empty-metric {
+  color: var(--muted);
+}
+
+.mock-empty-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.35rem;
+  height: 4.6rem;
+  margin-top: 1rem;
+  padding: 0.35rem 0.45rem 0;
+  border-bottom: var(--outline-width-thin) solid var(--paper-rule);
+}
+
+.mock-empty-bars span {
+  flex: 1 1 0;
+  min-width: 0.35rem;
+  height: 0.5rem;
+  border: var(--outline-width-thin) dashed var(--paper-rule);
+  background: transparent;
+}
+
+.mock-empty-bars span:nth-child(2n) {
+  height: 1rem;
+}
+
+.mock-empty-bars span:nth-child(3n) {
+  height: 1.5rem;
+}
+
+.mock-value-neutral {
+  color: var(--paper-muted);
+}
+
 .mock-card-featured h2,
 .mock-card-featured h3,
 .mock-card-featured p,
@@ -2472,6 +2586,78 @@ samp {
   color: var(--muted);
   font-size: 0.78rem;
   line-height: 1.5;
+}
+
+.mock-empty-state {
+  display: grid;
+  gap: 0.35rem;
+  min-height: 7rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  align-content: center;
+  border: var(--outline-width-thin) dashed var(--paper-rule);
+  background: var(--surface-soft);
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.mock-empty-state strong {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+
+.mock-empty-state span,
+.mock-empty-state small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.mock-card-featured .mock-empty-state,
+.mock-card-paper .mock-empty-state {
+  border-color: var(--paper-rule);
+  background: rgba(255, 255, 255, 0.32);
+  color: var(--paper-muted);
+}
+
+.mock-card-featured .mock-empty-state strong,
+.mock-card-paper .mock-empty-state strong,
+.mock-card-featured .mock-empty-state span,
+.mock-card-paper .mock-empty-state span,
+.mock-card-featured .mock-empty-state small,
+.mock-card-paper .mock-empty-state small {
+  color: var(--paper-ink);
+}
+
+.mock-empty-chart {
+  display: grid;
+  place-items: center;
+  min-height: 13rem;
+  margin-top: 1rem;
+  border: var(--outline-width-thin) dashed var(--paper-rule);
+  background-image: linear-gradient(transparent 49%, var(--paper-rule) 50%, transparent 51%);
+  background-size: 100% 3rem;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mock-empty-qr {
+  display: grid;
+  place-items: center;
+  width: min(100%, 12rem);
+  aspect-ratio: 1;
+  margin: 1rem auto;
+  border: var(--outline-width) dashed var(--paper-rule);
+  background: repeating-linear-gradient(45deg, transparent 0 0.55rem, var(--paper-rule) 0.55rem 0.68rem);
+  color: var(--paper-muted);
+  font-family: var(--font-display);
+  font-size: 2rem;
+  letter-spacing: 0.08em;
 }
 
 .mock-card-featured .mock-card-note,

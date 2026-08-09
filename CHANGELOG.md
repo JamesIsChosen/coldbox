@@ -29,6 +29,17 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
   route map, popup contract, seeded-data boundary, and extension checklist so
   future features preserve the approved visual flow.
 
+### Changed — UI shell follows the approved mock without invented records (2026-08-08)
+
+- The shipped application now uses the approved mock hierarchy for its primary
+  route surfaces while showing explicit empty, unavailable, or planning states
+  wherever the underlying feature is not built yet.
+- The fully populated walkthrough remains available as the separate local
+  `build/coldbox-ui-walkthrough.html` visual reference; its balances, dates,
+  devices, and chart values are not application state and are not shipped.
+- Live realm, reachability, and capability checks remain functional in the
+  dedicated System Health section below the route content.
+
 ### Changed — P0.19 device-matrix remediation design (2026-08-08)
 
 - Windows hands-on remediation round 2: make Vault ID immutability across re-saves explicit/enforced, show an inline creation-passphrase mismatch error, update save status to `Saved · verified` / `Saved · unverified`, and route the cold visible lock button through the same warm unsaved/unverified confirmation gate.

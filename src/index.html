@@ -26,12 +26,13 @@ __COLDBOX_STYLES__
       </a>
       <p class="brand-badge">Pre-release · Not audited</p>
       <nav class="app-bar-actions" aria-label="Quick links">
-        <a class="comic-btn" href="#vault" data-route="vault">Vault</a>
-        <a class="comic-btn" href="#seed-forge" data-route="seed-forge">Seed Forge</a>
+        <a class="comic-btn" href="#vault" data-route="vault">Vault tools</a>
+        <a class="comic-btn" href="#seed-forge" data-route="seed-forge">Secret tools</a>
         <button class="comic-btn comic-btn-toggle" id="theme-toggle" type="button" aria-pressed="false">
           <span class="theme-toggle-icon" aria-hidden="true">☼</span>
           <span id="theme-toggle-label">Light mode</span>
         </button>
+        <button class="comic-btn comic-btn-danger" id="panic-hide-top" type="button">Panic conceal</button>
       </nav>
     </header>
 
@@ -40,21 +41,21 @@ __COLDBOX_STYLES__
         <div class="nav-scroll">
           <nav class="nav-group" aria-label="Workspace">
             <p class="nav-group-title">Workspace</p>
-            <a class="nav-link" href="#vault" data-route="vault"><span class="nav-icon" aria-hidden="true">V</span><span>Vault</span></a>
             <a class="nav-link" href="#dashboard" data-route="dashboard"><span class="nav-icon" aria-hidden="true">D</span><span>Dashboard</span></a>
+            <a class="nav-link" href="#vault" data-route="vault"><span class="nav-icon" aria-hidden="true">V</span><span>Vault tools</span></a>
             <a class="nav-link" href="#portfolio" data-route="portfolio"><span class="nav-icon" aria-hidden="true">P</span><span>Portfolio</span></a>
             <a class="nav-link" href="#prices" data-route="prices"><span class="nav-icon" aria-hidden="true">$</span><span>Prices</span></a>
             <a class="nav-link" href="#registry" data-route="registry"><span class="nav-icon" aria-hidden="true">R</span><span>Registry</span></a>
             <a class="nav-link" href="#devices" data-route="devices"><span class="nav-icon" aria-hidden="true">W</span><span>Devices</span></a>
           </nav>
 
-          <nav class="nav-group" aria-label="Tools">
-            <p class="nav-group-title">Tools</p>
+          <nav class="nav-group" aria-label="Tool decks">
+            <p class="nav-group-title">Tool decks</p>
+            <a class="nav-link" href="#seed-forge" data-route="seed-forge"><span class="nav-icon" aria-hidden="true">S</span><span>Secret tools</span></a>
             <a class="nav-link" href="#entropy" data-route="entropy"><span class="nav-icon" aria-hidden="true">E</span><span>Entropy Lab</span></a>
-            <a class="nav-link" href="#seed-forge" data-route="seed-forge"><span class="nav-icon" aria-hidden="true">S</span><span>Seed Forge</span></a>
             <a class="nav-link" href="#derivation" data-route="derivation"><span class="nav-icon" aria-hidden="true">∿</span><span>Derivation</span></a>
-            <a class="nav-link" href="#backup" data-route="backup"><span class="nav-icon" aria-hidden="true">B</span><span>Backup Lab</span></a>
-            <a class="nav-link" href="#qr" data-route="qr"><span class="nav-icon" aria-hidden="true">Q</span><span>QR Studio</span></a>
+            <a class="nav-link" href="#backup" data-route="backup"><span class="nav-icon" aria-hidden="true">B</span><span>Backup &amp; recovery</span></a>
+            <a class="nav-link" href="#qr" data-route="qr"><span class="nav-icon" aria-hidden="true">Q</span><span>QR &amp; transfer</span></a>
             <a class="nav-link" href="#recovery" data-route="recovery"><span class="nav-icon" aria-hidden="true">↺</span><span>Recovery</span></a>
           </nav>
 
@@ -63,6 +64,11 @@ __COLDBOX_STYLES__
             <a class="nav-link" href="#verify" data-route="verify"><span class="nav-icon" aria-hidden="true">✓</span><span>Verify Bench</span></a>
             <a class="nav-link" href="#reference" data-route="reference"><span class="nav-icon" aria-hidden="true">i</span><span>Reference</span></a>
             <a class="nav-link" href="#learn" data-route="learn"><span class="nav-icon" aria-hidden="true">?</span><span>Learn</span></a>
+          </nav>
+
+          <nav class="nav-group" aria-label="System">
+            <p class="nav-group-title">System</p>
+            <button class="nav-link nav-link-button" type="button" data-popup-open="popup-system-health" aria-controls="popup-system-health"><span class="nav-icon" aria-hidden="true">+</span><span>System health</span></button>
           </nav>
         </div>
 
@@ -81,113 +87,11 @@ __COLDBOX_STYLES__
           </div>
           <div class="top-actions">
             <span class="mode-badge"><span class="status-dot" aria-hidden="true"></span> Warm shell</span>
-            <span class="preview-badge">Seeded UI preview · sample data</span>
+            <span class="preview-badge">Design shell · no sample data</span>
           </div>
         </div>
 
         <p class="sr-only" id="route-announcement" aria-live="polite"></p>
-
-        <section class="realm-status" id="cold-realm-status" data-cold-state="starting" aria-labelledby="cold-realm-status-title" aria-live="polite">
-          <div class="realm-status-copy">
-            <p class="eyebrow">Security boundary / P0.8</p>
-            <h2 id="cold-realm-status-title"><span id="cold-realm-status-title-text">Establishing the sealed realm</span>
-              <button type="button" class="icon-button help-context-button" data-help-topic="glossary:cold-realm-warm-shell" aria-label="What is the sealed realm?">?</button>
-            </h2>
-            <p id="cold-realm-status-copy">The secret-capable side of Coldbox is starting inside an opaque sandbox. The shell will stay locked down if that boundary cannot be established.</p>
-          </div>
-          <div class="realm-status-state" aria-label="Sealed realm status">
-            <span class="status-dot" aria-hidden="true"></span>
-            <span id="cold-realm-status-label">Starting</span>
-          </div>
-          <div class="cold-frame-host" id="cold-realm-host" aria-label="Sealed realm viewport"></div>
-          <p class="realm-status-failure" id="cold-realm-failure" role="alert" hidden>Coldbox is locked down because the sealed realm could not be established. Reload a verified build in a supported browser; no secret operation is available in this state.</p>
-          <p class="protocol-warning" id="protocol-warning" role="alert" hidden>Unexpected protocol traffic was discarded and logged. No message was accepted.</p>
-        </section>
-
-        <section class="airgap-banner" id="airgap-banner" data-airgap-state="checking" aria-labelledby="airgap-banner-title" aria-live="polite">
-          <div class="airgap-banner-copy">
-            <p class="eyebrow">Airgap guard / P0.8</p>
-            <h2 id="airgap-banner-title"><span id="airgap-banner-title-text">Checking the airgap guard</span>
-              <button type="button" class="icon-button help-context-button" data-help-topic="glossary:airgapped" aria-label="What does airgapped mean?">?</button>
-            </h2>
-            <p id="airgap-banner-copy">Coldbox is confirming both CSP policies and the private cold-realm channel before vault operations can be considered.</p>
-            <div class="airgap-facts" aria-label="Network and isolation facts">
-              <p><strong>Warm reachability:</strong> <span id="warm-reachability-status">Checking external reachability.</span></p>
-              <p><strong>Cold isolation:</strong> <span id="cold-isolation-status">Checking CSP and runtime guards.</span></p>
-            </div>
-          </div>
-          <div class="airgap-banner-state" aria-label="Airgap and network status">
-            <span class="status-dot" aria-hidden="true"></span>
-            <span id="airgap-banner-label">Checking</span>
-          </div>
-        </section>
-
-        <section class="capability-panel" id="capability-panel" data-capability-state="checking" aria-labelledby="capability-panel-title" aria-live="polite">
-          <div class="capability-panel-header">
-            <div>
-              <p class="eyebrow">Boot self-check / P0.9</p>
-              <h2 id="capability-panel-title">Capability self-check
-                <button type="button" class="icon-button help-context-button" data-help-topic="glossary:capability-self-check" aria-label="Learn more about this panel">?</button>
-              </h2>
-              <p id="capability-summary">Coldbox is checking the platform capabilities needed for safe secret work and portable saves.</p>
-            </div>
-            <div class="capability-panel-state" aria-label="Capability self-check status">
-              <span class="status-dot" aria-hidden="true"></span>
-              <span id="capability-panel-label">Checking</span>
-            </div>
-          </div>
-          <div class="capability-list">
-            <article class="capability-row capability-row-clickable" id="capability-row-random-values" data-capability-row="randomValues" data-state="checking" data-popup-open="popup-capability-random-values" role="button" tabindex="0" aria-controls="popup-capability-random-values" aria-label="Open required randomness details">
-              <div>
-                <h3>Required randomness</h3>
-                <p>The warm shell and cold realm must both expose <code>crypto.getRandomValues</code>. There is no fallback.</p>
-              </div>
-              <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-random-values">Checking</span></div>
-              <p class="capability-row-detail" id="capability-detail-random-values">Checking both realms.</p>
-            </article>
-            <article class="capability-row capability-row-clickable" id="capability-row-crypto-subtle" data-capability-row="cryptoSubtle" data-state="checking" data-popup-open="popup-capability-crypto-subtle" role="button" tabindex="0" aria-controls="popup-capability-crypto-subtle" aria-label="Open WebCrypto details">
-              <div>
-                <h3>WebCrypto</h3>
-                <p>Reports whether <code>crypto.subtle</code> is exposed; the cold realm uses it only after its AES-GCM known-answer test passes.</p>
-              </div>
-              <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-crypto-subtle">Checking</span></div>
-              <p class="capability-row-detail" id="capability-detail-crypto-subtle">Checking both realms.</p>
-            </article>
-            <article class="capability-row capability-row-clickable" id="capability-row-wasm" data-capability-row="wasm" data-state="checking" data-popup-open="popup-capability-wasm" role="button" tabindex="0" aria-controls="popup-capability-wasm" aria-label="Open WebAssembly details">
-              <div>
-                <h3>WebAssembly</h3>
-                <p>Runs a harmless empty-module probe so CSP or platform restrictions are visible.</p>
-              </div>
-              <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-wasm">Checking</span></div>
-              <p class="capability-row-detail" id="capability-detail-wasm">Checking both realms.</p>
-            </article>
-            <article class="capability-row capability-row-clickable" id="capability-row-workers" data-capability-row="workers" data-state="checking" data-popup-open="popup-capability-workers" role="button" tabindex="0" aria-controls="popup-capability-workers" aria-label="Open Web Workers details">
-              <div>
-                <h3>Web Workers</h3>
-                <p>Creates and terminates a local blob worker; long tasks can fall back to chunked main-thread work.</p>
-              </div>
-              <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-workers">Checking</span></div>
-              <p class="capability-row-detail" id="capability-detail-workers">Checking both realms.</p>
-            </article>
-            <article class="capability-row capability-row-clickable" id="capability-row-camera" data-capability-row="camera" data-state="checking" data-popup-open="popup-capability-camera" role="button" tabindex="0" aria-controls="popup-capability-camera" aria-label="Open camera access details">
-              <div>
-                <h3>Camera access</h3>
-                <p>Reports camera API availability without requesting permission at boot.</p>
-              </div>
-              <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-camera">Checking</span></div>
-              <p class="capability-row-detail" id="capability-detail-camera">Checking the warm shell.</p>
-            </article>
-            <article class="capability-row capability-row-clickable" id="capability-row-save-paths" data-capability-row="savePaths" data-state="checking" data-popup-open="popup-capability-save-paths" role="button" tabindex="0" aria-controls="popup-capability-save-paths" aria-label="Open save paths details">
-              <div>
-                <h3>Save paths</h3>
-                <p>Detects File System Access, blob download, and manual text export without writing a file.</p>
-              </div>
-              <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-save-paths">Checking</span></div>
-              <p class="capability-row-detail" id="capability-detail-save-paths">Checking the warm shell.</p>
-            </article>
-          </div>
-          <p class="capability-crypto-summary" id="capability-crypto-summary" data-kdf-active="checking" aria-live="polite">Vault crypto: waiting for the sealed realm to report its active KDF.</p>
-        </section>
 
         <section class="page" id="page-dashboard" data-page="dashboard" aria-labelledby="page-title-dashboard">
           <header class="page-header">
@@ -195,140 +99,52 @@ __COLDBOX_STYLES__
             <h1 id="page-title-dashboard">Dashboard</h1>
             <p class="page-lede">A calm starting point for the public side of Coldbox. Your records, labels, and reference material will live here while secret work stays sealed away.</p>
           </header>
-          <section class="stage" id="stage" aria-labelledby="stage-title">
-            <div class="stage-intro">
-              <span class="panel-kicker">The two realms</span>
-              <h2 id="stage-title">One file. Two halves that cannot talk freely.</h2>
-              <p class="stage-lede">Move your pointer or scroll to turn the panels. Nothing here is live data — these describe how Coldbox is built.</p>
-            </div>
-
-            <div class="stage-viewport">
-              <div class="stage-scene" id="stage-scene">
-                <article class="stage-card stage-card-left" aria-labelledby="stage-card-warm">
-                  <div class="stage-card-head">
-                    <h3 class="stage-card-title" id="stage-card-warm">Warm shell</h3>
-                    <span class="stage-badge stage-badge-cyan">Online OK</span>
-                  </div>
-                  <p class="stage-card-sub">The outer document. This one.</p>
-                  <div class="stage-row">
-                    <span class="stage-mark stage-mark-cyan" aria-hidden="true">$</span>
-                    <span class="stage-row-copy"><span class="stage-row-name">Prices</span><span class="stage-row-note">Median of five sources</span></span>
-                    <span class="stage-row-value">Phase 3</span>
-                  </div>
-                  <div class="stage-row">
-                    <span class="stage-mark stage-mark-cyan" aria-hidden="true">P</span>
-                    <span class="stage-row-copy"><span class="stage-row-name">Portfolio</span><span class="stage-row-note">Lots and cost basis</span></span>
-                    <span class="stage-row-value">Phase 3</span>
-                  </div>
-                  <div class="stage-row">
-                    <span class="stage-mark stage-mark-cyan" aria-hidden="true">R</span>
-                    <span class="stage-row-copy"><span class="stage-row-name">Registry</span><span class="stage-row-note">Addresses and labels</span></span>
-                    <span class="stage-row-value">Phase 1</span>
-                  </div>
-                  <p class="speech-bubble">It can reach the network for public data. It never receives a secret.</p>
-                </article>
-
-                <article class="stage-card stage-card-center" aria-labelledby="stage-card-core">
-                  <p class="sound-effect" aria-hidden="true">Not a wallet!</p>
-                  <div class="stage-card-head">
-                    <h3 class="stage-card-title" id="stage-card-core">Coldbox</h3>
-                    <span class="stage-badge stage-badge-green">Companion</span>
-                  </div>
-                  <p class="stage-card-sub">Toolkit · wallet registry · portfolio manager</p>
-                  <div class="stage-row">
-                    <span class="stage-row-copy"><span class="stage-row-name">Holds your keys</span><span class="stage-row-note">Your hardware wallet does</span></span>
-                    <span class="stage-row-value stage-row-value-no">No</span>
-                  </div>
-                  <div class="stage-row">
-                    <span class="stage-row-copy"><span class="stage-row-name">Signs transactions</span><span class="stage-row-note">Permanent non-goal</span></span>
-                    <span class="stage-row-value stage-row-value-no">No</span>
-                  </div>
-                  <div class="stage-row">
-                    <span class="stage-row-copy"><span class="stage-row-name">Verifies your device</span><span class="stage-row-note">Catches address swaps</span></span>
-                    <span class="stage-row-value stage-row-value-yes">Yes</span>
-                  </div>
-                  <p class="stage-card-foot">It cannot spend your money — so an attacker who compromises it cannot either.</p>
-                </article>
-
-                <article class="stage-card stage-card-right" aria-labelledby="stage-card-cold">
-                  <div class="stage-card-head">
-                    <h3 class="stage-card-title" id="stage-card-cold">Sealed realm</h3>
-                    <span class="stage-badge stage-badge-pink">No network</span>
-                  </div>
-                  <p class="stage-card-sub">A sandboxed iframe with its own policy.</p>
-                  <div class="stage-row">
-                    <span class="stage-mark stage-mark-pink" aria-hidden="true">S</span>
-                    <span class="stage-row-copy"><span class="stage-row-name">Seed Forge</span><span class="stage-row-note">BIP-39 generate and check</span></span>
-                    <span class="stage-row-value">Phase 1</span>
-                  </div>
-                  <div class="stage-row">
-                    <span class="stage-mark stage-mark-pink" aria-hidden="true">B</span>
-                    <span class="stage-row-copy"><span class="stage-row-name">Backup Lab</span><span class="stage-row-note">SLIP-39, codex32, XOR</span></span>
-                    <span class="stage-row-value">Phase 2</span>
-                  </div>
-                  <div class="stage-row">
-                    <span class="stage-mark stage-mark-pink" aria-hidden="true">V</span>
-                    <span class="stage-row-copy"><span class="stage-row-name">Vault</span><span class="stage-row-note">Argon2id + AES-256-GCM</span></span>
-                    <span class="stage-row-value">Active</span>
-                  </div>
-                  <p class="speech-bubble"><code>connect-src 'none'</code> — no fetch, no XHR, no socket. Not disabled. Absent.</p>
-                </article>
-              </div>
-            </div>
-
-            <p class="stage-cue" aria-hidden="true">▼ How the boundary is built ▼</p>
-          </section>
-
-          <div class="card-grid card-grid-three">
-            <article class="info-card">
-              <span class="card-icon" aria-hidden="true">01</span>
-              <h2>A toolkit, not a wallet</h2>
-              <p>Coldbox holds no coins, reaches no blockchain to move them, and signs nothing. It is a companion to your hardware wallets: it checks their work, manages your backups, and keeps the records.</p>
-            </article>
-            <article class="info-card">
-              <span class="card-icon" aria-hidden="true">02</span>
-              <h2>Portable by default</h2>
-              <p>One file on a USB stick, opened by double-clicking. The interface is designed for a narrow phone screen up through a desktop window, with no server and no install step.</p>
-            </article>
-            <article class="info-card">
-              <span class="card-icon" aria-hidden="true">03</span>
-              <h2>Secrets get their own boundary</h2>
-              <p>The sealed cold realm is active, and the airgap guard keeps its policy visible. The shell does not create a shortcut around that boundary.</p>
-            </article>
-          </div>
-
           <section class="mock-preview-section" aria-labelledby="dashboard-preview-title">
             <div class="section-heading-row">
               <div>
-                <span class="panel-kicker">Seeded preview / public records</span>
+                <span class="panel-kicker">Workspace / public records</span>
                 <h2 id="dashboard-preview-title">The working day at a glance</h2>
               </div>
-              <button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-dashboard-alerts" aria-controls="popup-dashboard-alerts">Review alerts</button>
+              <button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-dashboard-alerts" aria-controls="popup-dashboard-alerts">Dashboard guide</button>
             </div>
             <div class="mock-dashboard-grid">
               <article class="mock-card mock-card-featured">
-                <div class="mock-card-header"><p class="mock-card-label">Portfolio value</p><span class="mock-status mock-status-green">Preview</span></div>
-                <p class="mock-metric mock-metric-large">$248,670.11</p>
-                <p class="mock-metric-change">+$5,322.40 <span>+2.18% today</span></p>
-                <div class="mock-mini-bars" aria-label="Sample seven-day portfolio trend"><span class="bar-35"></span><span class="bar-48"></span><span class="bar-44"></span><span class="bar-68"></span><span class="bar-60"></span><span class="bar-78"></span><span class="bar-92"></span></div>
-                <div class="mock-actions"><a class="comic-btn" href="#portfolio" data-route="portfolio">Open portfolio</a><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-dashboard-value" aria-controls="popup-dashboard-value">How this is calculated</button></div>
+                <div class="mock-card-header"><p class="mock-card-label">Portfolio value</p><span class="mock-status mock-status-neutral">No records</span></div>
+                <p class="mock-metric mock-metric-large mock-empty-metric">—</p>
+                <p class="mock-card-note">Portfolio totals will appear after public wallet records and prices exist. Coldbox does not invent a balance.</p>
+                <div class="mock-empty-bars" aria-label="No portfolio trend is available yet"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+                <div class="mock-actions"><a class="comic-btn" href="#portfolio" data-route="portfolio">Open portfolio</a><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-dashboard-value" aria-controls="popup-dashboard-value">How this will work</button></div>
               </article>
               <article class="mock-card">
-                <div class="mock-card-header"><p class="mock-card-label">Next actions</p><span class="mock-status mock-status-yellow">03 open</span></div>
-                <h3>Keep the important work in view.</h3>
+                <div class="mock-card-header"><p class="mock-card-label">Next actions</p><span class="mock-status mock-status-neutral">Nothing queued</span></div>
+                <h3>Start with the first safe step.</h3>
                 <ul class="mock-action-list">
-                  <li><span class="mock-list-icon mock-list-icon-yellow">!</span><span><strong>Verify backup record</strong><small>Coldcard Mk4 · due today</small></span><button class="text-button" type="button" data-popup-open="popup-dashboard-backup" aria-controls="popup-dashboard-backup">Open</button></li>
-                  <li><span class="mock-list-icon mock-list-icon-cyan">↗</span><span><strong>Review stale price</strong><small>BTC/USD · 18 minutes old</small></span><button class="text-button" type="button" data-route="prices">Open</button></li>
-                  <li><span class="mock-list-icon mock-list-icon-green">✓</span><span><strong>Check system health</strong><small>All required guards reported</small></span><button class="text-button" type="button" data-popup-open="popup-system-health" aria-controls="popup-system-health">Open</button></li>
+                  <li><span class="mock-list-icon mock-list-icon-yellow">01</span><span><strong>Open the vault workspace</strong><small>Use a local .cbx file or create a new vault.</small></span><a class="text-button" href="#vault" data-route="vault">Open</a></li>
+                  <li><span class="mock-list-icon mock-list-icon-cyan">02</span><span><strong>Plan public records</strong><small>Portfolio, prices, and registry are ready for future features.</small></span><a class="text-button" href="#registry" data-route="registry">View</a></li>
+                  <li><span class="mock-list-icon mock-list-icon-green">03</span><span><strong>Check system health</strong><small>Inspect the live platform checks.</small></span><button class="text-button" type="button" data-popup-open="popup-system-health" aria-controls="popup-system-health">Open</button></li>
                 </ul>
               </article>
               <article class="mock-card mock-card-paper">
-                <div class="mock-card-header"><p class="mock-card-label">At a glance</p><span class="mock-status mock-status-green">Ready</span></div>
+                <div class="mock-card-header"><p class="mock-card-label">At a glance</p><span class="mock-status mock-status-neutral">Ready to begin</span></div>
                 <h3>Today in Coldbox</h3>
-                <dl class="mock-stat-list"><div><dt>Active vaults</dt><dd>02</dd></div><div><dt>Pending actions</dt><dd>03</dd></div><div><dt>Last verified save</dt><dd>09:42</dd></div><div><dt>System health</dt><dd class="mock-value-good">GREEN</dd></div></dl>
+                <dl class="mock-stat-list"><div><dt>Active vaults</dt><dd>—</dd></div><div><dt>Pending actions</dt><dd>—</dd></div><div><dt>Last verified save</dt><dd>—</dd></div><div><dt>System health</dt><dd class="mock-value-neutral">See checks</dd></div></dl>
                 <button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-system-health" aria-controls="popup-system-health">Open system health</button>
               </article>
             </div>
+          </section>
+          <section class="mock-route-grid mock-route-grid-two" aria-label="Workspace starting points">
+            <article class="mock-card mock-card-paper">
+              <div class="mock-card-header"><p class="mock-card-label">Vault workspace</p><span class="mock-status mock-status-neutral">No active vault</span></div>
+              <h3>Your encrypted files belong here.</h3>
+              <p class="mock-card-note">Choose a local vault file or create one inside the sealed realm. Until then, this panel stays empty by design.</p>
+              <a class="comic-btn" href="#vault" data-route="vault">Open vault tools</a>
+            </article>
+            <article class="mock-card mock-card-paper">
+              <div class="mock-card-header"><p class="mock-card-label">Public records</p><span class="mock-status mock-status-neutral">No records</span></div>
+              <h3>Keep the public side inspectable.</h3>
+              <p class="mock-card-note">Portfolio, prices, registry, and device records will show real values only after the corresponding features are built.</p>
+              <a class="comic-btn comic-btn-secondary" href="#portfolio" data-route="portfolio">Open portfolio</a>
+            </article>
           </section>
         </section>
 
@@ -464,69 +280,69 @@ __COLDBOX_STYLES__
         </section>
 
         <section class="page" id="page-portfolio" data-page="portfolio" aria-labelledby="page-title-portfolio" hidden>
-          <header class="page-header"><p class="eyebrow">Workspace / Public data / Seeded preview</p><h1 id="page-title-portfolio">Portfolio</h1><p class="page-lede">A public view of holdings, transactions, lots, and performance. Every value below is sample data so the finished experience is visible before the live portfolio engine arrives.</p></header>
+          <header class="page-header"><p class="eyebrow">Workspace / Public records</p><h1 id="page-title-portfolio">Portfolio</h1><p class="page-lede">The finished portfolio surface will show holdings, transactions, lots, and performance here. No balances or assets are fabricated before that feature exists.</p></header>
           <section class="mock-hero-grid" aria-label="Portfolio summary">
-            <article class="mock-card mock-card-featured"><div class="mock-card-header"><p class="mock-card-label">Total tracked value</p><span class="mock-status mock-status-green">Sample data</span></div><p class="mock-metric mock-metric-large">$248,670.11</p><p class="mock-metric-change">+$5,322.40 <span>+2.18% today</span></p><p class="mock-card-note">3 wallet records · 4 assets · values last refreshed 09:42</p><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-portfolio-value" aria-controls="popup-portfolio-value">View calculation</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-portfolio-import" aria-controls="popup-portfolio-import">Import activity</button></div></article>
-            <article class="mock-card"><div class="mock-card-header"><p class="mock-card-label">Allocation</p><span class="mock-status mock-status-cyan">Public only</span></div><div class="mock-allocation"><div class="mock-donut" aria-label="Sample allocation: Bitcoin 58 percent, Ethereum 24 percent, Solana 10 percent, stablecoins 8 percent"><span>4 assets</span></div><ul class="mock-legend"><li><span class="legend-swatch legend-cyan"></span>Bitcoin <strong>58%</strong></li><li><span class="legend-swatch legend-pink"></span>Ethereum <strong>24%</strong></li><li><span class="legend-swatch legend-yellow"></span>Solana <strong>10%</strong></li><li><span class="legend-swatch legend-green"></span>USDC <strong>08%</strong></li></ul></div></article>
+            <article class="mock-card mock-card-featured"><div class="mock-card-header"><p class="mock-card-label">Total tracked value</p><span class="mock-status mock-status-neutral">No records</span></div><p class="mock-metric mock-metric-large mock-empty-metric">—</p><p class="mock-card-note">A total appears after public wallet records and price readings exist.</p><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-portfolio-value" aria-controls="popup-portfolio-value">View calculation</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-portfolio-import" aria-controls="popup-portfolio-import">Import plan</button></div></article>
+            <article class="mock-card"><div class="mock-card-header"><p class="mock-card-label">Allocation</p><span class="mock-status mock-status-neutral">Not available</span></div><div class="mock-empty-state"><strong>No assets recorded.</strong><span>The allocation chart will use the public records you choose to add.</span></div></article>
           </section>
-          <section class="mock-card mock-card-wide" aria-labelledby="portfolio-chart-title"><div class="section-heading-row"><div><p class="mock-card-label">Performance / sample series</p><h2 id="portfolio-chart-title">Value over the last 30 days</h2></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-portfolio-chart" aria-controls="popup-portfolio-chart">Chart details</button></div><div class="mock-chart-wrap"><svg class="mock-chart" viewBox="0 0 900 240" role="img" aria-label="Sample portfolio value chart rising from 221 thousand dollars to 248 thousand dollars"><path class="mock-chart-gridline" d="M20 30H880M20 90H880M20 150H880M20 210H880"></path><path class="mock-chart-fill" d="M20 196 L92 183 L164 190 L236 151 L308 166 L380 128 L452 143 L524 102 L596 118 L668 76 L740 91 L812 54 L880 67 L880 210 L20 210 Z"></path><path class="mock-chart-line" d="M20 196 L92 183 L164 190 L236 151 L308 166 L380 128 L452 143 L524 102 L596 118 L668 76 L740 91 L812 54 L880 67"></path><circle class="mock-chart-point" cx="880" cy="67" r="7"></circle></svg><div class="mock-chart-axis"><span>30 days ago</span><span>15 days ago</span><span>Today</span></div></div></section>
+          <section class="mock-card mock-card-wide" aria-labelledby="portfolio-chart-title"><div class="section-heading-row"><div><p class="mock-card-label">Performance / history</p><h2 id="portfolio-chart-title">Value over time</h2></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-portfolio-chart" aria-controls="popup-portfolio-chart">Chart details</button></div><div class="mock-empty-chart" role="img" aria-label="Portfolio chart is unavailable until records exist"><span>No series yet</span></div></section>
           <div class="mock-route-grid mock-route-grid-two">
-            <article class="mock-card mock-card-table"><div class="section-heading-row"><div><p class="mock-card-label">Holdings</p><h2>What is recorded</h2></div><button class="text-button" type="button" data-popup-open="popup-portfolio-holdings" aria-controls="popup-portfolio-holdings">View rules</button></div><div class="mock-table-wrap"><table class="mock-table"><thead><tr><th>Asset</th><th>Wallet</th><th>Amount</th><th>Value</th><th>24h</th></tr></thead><tbody><tr><th scope="row"><span class="asset-chip asset-chip-btc">₿</span>Bitcoin</th><td>Coldcard savings</td><td class="data-cell">1.8421 BTC</td><td class="data-cell">$144,382.40</td><td class="value-positive">+2.8%</td></tr><tr><th scope="row"><span class="asset-chip asset-chip-eth">Ξ</span>Ethereum</th><td>Trezor daily</td><td class="data-cell">18.20 ETH</td><td class="data-cell">$59,671.00</td><td class="value-positive">+1.2%</td></tr><tr><th scope="row"><span class="asset-chip asset-chip-sol">S</span>Solana</th><td>Trezor daily</td><td class="data-cell">126.00 SOL</td><td class="data-cell">$24,850.71</td><td class="value-negative">−0.6%</td></tr><tr><th scope="row"><span class="asset-chip asset-chip-usdc">$</span>USDC</th><td>Tax reserve</td><td class="data-cell">19,766 USDC</td><td class="data-cell">$19,766.00</td><td class="value-neutral">0.0%</td></tr></tbody></table></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-portfolio-asset" aria-controls="popup-portfolio-asset">Open asset detail</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-portfolio-export" aria-controls="popup-portfolio-export">Export public sheet</button></div></article>
-            <article class="mock-card mock-card-table"><div class="section-heading-row"><div><p class="mock-card-label">Lot activity</p><h2>Recent transactions</h2></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-portfolio-transaction" aria-controls="popup-portfolio-transaction">Add transaction</button></div><ul class="mock-activity-list"><li><span class="activity-mark activity-buy">BUY</span><span><strong>Bitcoin · 0.2500 BTC</strong><small>Coldcard savings · 2026-08-05 · basis recorded</small></span><button class="text-button" type="button" data-popup-open="popup-portfolio-transaction-detail" aria-controls="popup-portfolio-transaction-detail">Details</button></li><li><span class="activity-mark activity-transfer">MOVE</span><span><strong>USDC · 5,000 USDC</strong><small>Tax reserve → hardware wallet · not a disposal</small></span><button class="text-button" type="button" data-popup-open="popup-portfolio-transfer" aria-controls="popup-portfolio-transfer">Details</button></li><li><span class="activity-mark activity-sell">SELL</span><span><strong>Ethereum · 1.20 ETH</strong><small>Trezor daily · 2026-07-28 · 2 lots selected</small></span><button class="text-button" type="button" data-popup-open="popup-portfolio-transaction-detail" aria-controls="popup-portfolio-transaction-detail">Details</button></li></ul><div class="mock-callout"><strong>Basis method:</strong> FIFO by wallet and asset. Transfers preserve acquisition date and basis.</div></article>
+            <article class="mock-card mock-card-table"><div class="section-heading-row"><div><p class="mock-card-label">Holdings</p><h2>What is recorded</h2></div><button class="text-button" type="button" data-popup-open="popup-portfolio-holdings" aria-controls="popup-portfolio-holdings">View rules</button></div><div class="mock-empty-state"><strong>No holdings recorded.</strong><span>Asset, wallet, amount, value, and change columns will populate here.</span></div></article>
+            <article class="mock-card mock-card-table"><div class="section-heading-row"><div><p class="mock-card-label">Lot activity</p><h2>Recent transactions</h2></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-portfolio-transaction" aria-controls="popup-portfolio-transaction">Transaction plan</button></div><div class="mock-empty-state"><strong>No transactions recorded.</strong><span>Transaction and transfer history will appear after the portfolio feature is built.</span></div></article>
           </div>
         </section>
 
         <section class="page" id="page-prices" data-page="prices" aria-labelledby="page-title-prices" hidden>
-          <header class="page-header"><p class="eyebrow">Workspace / Online views / Seeded preview</p><h1 id="page-title-prices">Prices</h1><p class="page-lede">The market view keeps the headline number, source readings, spread, age, and privacy cost visible together. This preview makes no network request and uses fixed sample values.</p></header>
-          <section class="mock-hero-grid" aria-label="Price summary"><article class="mock-card mock-card-featured"><div class="mock-card-header"><p class="mock-card-label">BTC / USD median</p><span class="mock-status mock-status-cyan">5 sources</span></div><p class="mock-metric mock-metric-large">$78,382.40</p><p class="mock-card-note">Spread $77,921.10–$78,844.70 · last sample refresh 09:42</p><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-prices-refresh" aria-controls="popup-prices-refresh">Refresh prices</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-prices-privacy" aria-controls="popup-prices-privacy">Privacy note</button></div></article><article class="mock-card"><div class="mock-card-header"><p class="mock-card-label">Watchlist</p><span class="mock-status mock-status-green">Healthy</span></div><ul class="mock-price-list"><li><span><strong>BTC</strong><small>Bitcoin</small></span><span class="data-cell">$78,382.40</span><span class="value-positive">+2.8%</span></li><li><span><strong>ETH</strong><small>Ethereum</small></span><span class="data-cell">$3,278.63</span><span class="value-positive">+1.2%</span></li><li><span><strong>SOL</strong><small>Solana</small></span><span class="data-cell">$197.23</span><span class="value-negative">−0.6%</span></li></ul></article></section>
-          <section class="mock-card mock-card-wide" aria-labelledby="prices-chart-title"><div class="section-heading-row"><div><p class="mock-card-label">Historical sample</p><h2 id="prices-chart-title">BTC / USD · 30 days</h2></div><span class="mock-status mock-status-yellow">Sample series</span></div><div class="mock-chart-wrap"><svg class="mock-chart mock-chart-pink" viewBox="0 0 900 240" role="img" aria-label="Sample Bitcoin price chart"><path class="mock-chart-gridline" d="M20 30H880M20 90H880M20 150H880M20 210H880"></path><path class="mock-chart-fill" d="M20 178 L92 156 L164 169 L236 130 L308 146 L380 92 L452 112 L524 78 L596 120 L668 68 L740 84 L812 42 L880 61 L880 210 L20 210 Z"></path><path class="mock-chart-line" d="M20 178 L92 156 L164 169 L236 130 L308 146 L380 92 L452 112 L524 78 L596 120 L668 68 L740 84 L812 42 L880 61"></path></svg><div class="mock-chart-axis"><span>Jul 09</span><span>Jul 24</span><span>Aug 08</span></div></div></section>
-          <section class="mock-card mock-card-wide" aria-labelledby="price-sources-title"><div class="section-heading-row"><div><p class="mock-card-label">Source ledger</p><h2 id="price-sources-title">Every reading is inspectable</h2></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-prices-sources" aria-controls="popup-prices-sources">Source rules</button></div><div class="mock-source-grid"><button class="mock-source-card" type="button" data-popup-open="popup-price-source-coingecko" aria-controls="popup-price-source-coingecko"><strong>CoinGecko</strong><span class="mock-source-value">$78,422.90</span><small>Received · 2 min ago</small></button><button class="mock-source-card" type="button" data-popup-open="popup-price-source-coinbase" aria-controls="popup-price-source-coinbase"><strong>Coinbase</strong><span class="mock-source-value">$78,381.00</span><small>Received · 2 min ago</small></button><button class="mock-source-card" type="button" data-popup-open="popup-price-source-kraken" aria-controls="popup-price-source-kraken"><strong>Kraken</strong><span class="mock-source-value">$78,390.70</span><small>Received · 3 min ago</small></button><button class="mock-source-card" type="button" data-popup-open="popup-price-source-paprika" aria-controls="popup-price-source-paprika"><strong>CoinPaprika</strong><span class="mock-source-value">$77,921.10</span><small>Stale · 18 min ago</small></button><button class="mock-source-card" type="button" data-popup-open="popup-price-source-dia" aria-controls="popup-price-source-dia"><strong>DIA</strong><span class="mock-source-value">$78,844.70</span><small>Received · 4 min ago</small></button></div></section>
+          <header class="page-header"><p class="eyebrow">Workspace / Online views</p><h1 id="page-title-prices">Prices</h1><p class="page-lede">The finished market view will keep source readings, spread, age, and privacy cost visible together. No network reading is shown until the price feature is built.</p></header>
+          <section class="mock-hero-grid" aria-label="Price summary"><article class="mock-card mock-card-featured"><div class="mock-card-header"><p class="mock-card-label">Market median</p><span class="mock-status mock-status-neutral">No readings</span></div><p class="mock-metric mock-metric-large mock-empty-metric">—</p><p class="mock-card-note">A median will appear only after the configured public sources return readings.</p><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-prices-refresh" aria-controls="popup-prices-refresh">Refresh plan</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-prices-privacy" aria-controls="popup-prices-privacy">Privacy note</button></div></article><article class="mock-card"><div class="mock-card-header"><p class="mock-card-label">Watchlist</p><span class="mock-status mock-status-neutral">Empty</span></div><div class="mock-empty-state"><strong>No assets watched.</strong><span>Watchlist rows will appear after assets and source preferences are configured.</span></div></article></section>
+          <section class="mock-card mock-card-wide" aria-labelledby="prices-chart-title"><div class="section-heading-row"><div><p class="mock-card-label">Historical series</p><h2 id="prices-chart-title">Price over time</h2></div><span class="mock-status mock-status-neutral">No series</span></div><div class="mock-empty-chart" role="img" aria-label="Price chart is unavailable until readings exist"><span>No series yet</span></div></section>
+          <section class="mock-card mock-card-wide" aria-labelledby="price-sources-title"><div class="section-heading-row"><div><p class="mock-card-label">Source ledger</p><h2 id="price-sources-title">Every reading is inspectable</h2></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-prices-sources" aria-controls="popup-prices-sources">Source rules</button></div><div class="mock-empty-state"><strong>No source readings yet.</strong><span>The source ledger will list age, spread, response status, and privacy scope when the live view exists.</span></div></section>
         </section>
 
         <section class="page" id="page-registry" data-page="registry" aria-labelledby="page-title-registry" hidden>
-          <header class="page-header"><p class="eyebrow">Workspace / Public records / Seeded preview</p><h1 id="page-title-registry">Registry</h1><p class="page-lede">A searchable public index of wallet records, accounts, addresses, labels, devices, and notes. Seed material never needs to render here.</p></header>
-          <section class="mock-card mock-card-wide"><div class="section-heading-row"><div><p class="mock-card-label">Wallet records</p><h2>Three records, one clear identity trail</h2></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-registry-new" aria-controls="popup-registry-new">Add wallet record</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-registry-filter" aria-controls="popup-registry-filter">Filter records</button></div></div><div class="mock-registry-grid"><button class="mock-record-card" type="button" data-popup-open="popup-registry-coldcard" aria-controls="popup-registry-coldcard"><span class="record-icon record-icon-cyan">C</span><span><strong>Coldcard savings</strong><small>Bitcoin · 2 accounts · 14 addresses</small><small>Verified 2026-08-05</small></span><span class="record-arrow">→</span></button><button class="mock-record-card" type="button" data-popup-open="popup-registry-trezor" aria-controls="popup-registry-trezor"><span class="record-icon record-icon-pink">T</span><span><strong>Trezor daily</strong><small>Ethereum / Solana · 3 accounts · 28 addresses</small><small>Verification due in 12 days</small></span><span class="record-arrow">→</span></button><button class="mock-record-card" type="button" data-popup-open="popup-registry-reserve" aria-controls="popup-registry-reserve"><span class="record-icon record-icon-yellow">R</span><span><strong>Tax reserve</strong><small>USDC · 1 account · 4 addresses</small><small>Public labels complete</small></span><span class="record-arrow">→</span></button></div></section>
-          <section class="mock-card mock-card-wide mock-card-table"><div class="section-heading-row"><div><p class="mock-card-label">Address book</p><h2>Public addresses</h2></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-registry-address" aria-controls="popup-registry-address">Address details</button></div><div class="mock-table-wrap"><table class="mock-table"><thead><tr><th>Label</th><th>Wallet</th><th>Address</th><th>Verification</th><th>Balance lookup</th></tr></thead><tbody><tr><th scope="row">Long-term receive</th><td>Coldcard savings</td><td class="data-cell">bc1q…7k2p</td><td><span class="table-status table-status-good">Cold verified</span></td><td><button class="text-button" type="button" data-popup-open="popup-registry-balance" aria-controls="popup-registry-balance">View</button></td></tr><tr><th scope="row">Daily ETH</th><td>Trezor daily</td><td class="data-cell">0x71…a4c2</td><td><span class="table-status table-status-yellow">Unverified</span></td><td><button class="text-button" type="button" data-popup-open="popup-registry-balance" aria-controls="popup-registry-balance">View</button></td></tr><tr><th scope="row">Tax reserve</th><td>Tax reserve</td><td class="data-cell">0x93…1f80</td><td><span class="table-status table-status-good">Cold verified</span></td><td><button class="text-button" type="button" data-popup-open="popup-registry-balance" aria-controls="popup-registry-balance">View</button></td></tr></tbody></table></div></section>
+          <header class="page-header"><p class="eyebrow">Workspace / Public records</p><h1 id="page-title-registry">Registry</h1><p class="page-lede">The registry will become the searchable public index of wallet records, accounts, addresses, labels, devices, and notes. It is intentionally empty until that feature is built.</p></header>
+          <section class="mock-card mock-card-wide"><div class="section-heading-row"><div><p class="mock-card-label">Wallet records</p><h2>One clear identity trail</h2></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-registry-new" aria-controls="popup-registry-new">Add record plan</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-registry-filter" aria-controls="popup-registry-filter">Filter plan</button></div></div><div class="mock-empty-state"><strong>No wallet records yet.</strong><span>Device, chain, account, address, and verification rows will appear here without exposing secret material.</span></div></section>
+          <section class="mock-card mock-card-wide mock-card-table"><div class="section-heading-row"><div><p class="mock-card-label">Address book</p><h2>Public addresses</h2></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-registry-address" aria-controls="popup-registry-address">Address rules</button></div><div class="mock-empty-state"><strong>No addresses recorded.</strong><span>The table layout is reserved for public labels, verification state, and optional balance lookups.</span></div></section>
         </section>
 
         <section class="page" id="page-devices" data-page="devices" aria-labelledby="page-title-devices" hidden>
-          <header class="page-header"><p class="eyebrow">Workspace / Companion records / Seeded preview</p><h1 id="page-title-devices">Devices</h1><p class="page-lede">Hardware-wallet records keep model, firmware, verification, backup, and lifecycle notes together. The cards below are placeholders for public companion metadata.</p></header>
-          <section class="mock-device-grid"><article class="mock-card mock-device-card"><div class="mock-card-header"><span class="record-icon record-icon-cyan">C</span><span class="mock-status mock-status-green">Healthy</span></div><h2>Coldcard Mk4</h2><p class="mock-card-subtitle">Primary Bitcoin signing device</p><dl class="mock-detail-list"><div><dt>Firmware</dt><dd>1.3.5 · current</dd></div><div><dt>Last verified</dt><dd>2026-08-05</dd></div><div><dt>Backup record</dt><dd class="mock-value-good">Complete</dd></div><div><dt>Location</dt><dd>Home safe · public note</dd></div></dl><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-device-coldcard" aria-controls="popup-device-coldcard">Open device</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-device-verify" aria-controls="popup-device-verify">Verify workflow</button></div></article><article class="mock-card mock-device-card"><div class="mock-card-header"><span class="record-icon record-icon-pink">T</span><span class="mock-status mock-status-yellow">Review soon</span></div><h2>Trezor Safe 5</h2><p class="mock-card-subtitle">Daily Ethereum and Solana device</p><dl class="mock-detail-list"><div><dt>Firmware</dt><dd>2.8.4 · review</dd></div><div><dt>Last verified</dt><dd>2026-07-02</dd></div><div><dt>Backup record</dt><dd class="mock-value-good">Complete</dd></div><div><dt>Location</dt><dd>Desk drawer · public note</dd></div></dl><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-device-trezor" aria-controls="popup-device-trezor">Open device</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-device-verify" aria-controls="popup-device-verify">Verify workflow</button></div></article><article class="mock-card mock-device-card"><div class="mock-card-header"><span class="record-icon record-icon-yellow">L</span><span class="mock-status mock-status-cyan">Planning</span></div><h2>Replacement plan</h2><p class="mock-card-subtitle">A record for the next device, not a key</p><dl class="mock-detail-list"><div><dt>Owner</dt><dd>Unassigned</dd></div><div><dt>Purchase source</dt><dd>To be recorded</dd></div><div><dt>Quorum fit</dt><dd>2 of 3 devices</dd></div><div><dt>Next action</dt><dd>Document arrival check</dd></div></dl><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-device-plan" aria-controls="popup-device-plan">Open plan</button></div></article></section>
+          <header class="page-header"><p class="eyebrow">Workspace / Companion records</p><h1 id="page-title-devices">Devices</h1><p class="page-lede">Hardware-wallet records will keep model, firmware, verification, backup, and lifecycle notes together. No physical device is inferred or displayed here.</p></header>
+          <section class="mock-device-grid"><article class="mock-card mock-device-card"><div class="mock-card-header"><span class="record-icon record-icon-cyan">C</span><span class="mock-status mock-status-neutral">No record</span></div><h2>Primary device</h2><p class="mock-card-subtitle">A placeholder for a future public companion record.</p><div class="mock-empty-state"><strong>No device recorded.</strong><span>Model, firmware, verification, and backup fields will appear after the device feature is built.</span></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-device-coldcard" aria-controls="popup-device-coldcard">Device layout</button></div></article><article class="mock-card mock-device-card"><div class="mock-card-header"><span class="record-icon record-icon-pink">T</span><span class="mock-status mock-status-neutral">No record</span></div><h2>Secondary device</h2><p class="mock-card-subtitle">A placeholder for another public companion record.</p><div class="mock-empty-state"><strong>No device recorded.</strong><span>Verification and lifecycle history will appear here when supported.</span></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-device-trezor" aria-controls="popup-device-trezor">Device layout</button></div></article><article class="mock-card mock-device-card"><div class="mock-card-header"><span class="record-icon record-icon-yellow">+</span><span class="mock-status mock-status-neutral">Planning</span></div><h2>Replacement plan</h2><p class="mock-card-subtitle">A record for the next device, not a key.</p><div class="mock-empty-state"><strong>No plan recorded.</strong><span>Arrival checks and quorum notes will be added with the device workflow.</span></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-device-plan" aria-controls="popup-device-plan">Plan layout</button></div></article></section>
         </section>
 
         <section class="page" id="page-entropy" data-page="entropy" aria-labelledby="page-title-entropy" hidden>
-          <header class="page-header"><p class="eyebrow">Tools / Sealed realm / Seeded preview</p><h1 id="page-title-entropy">Entropy Lab</h1><p class="page-lede">A calm workspace for collecting physical entropy, mixing it with the device source, and checking bias before secret creation. The preview shows the flow without collecting or displaying entropy.</p></header>
-          <section class="mock-security-layout"><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Collection plan</p><span class="mock-status mock-status-yellow">Not started</span></div><div class="mock-stepper"><div class="mock-step mock-step-current"><span>1</span><strong>Collect</strong><small>Dice, coins, cards, or hex</small></div><div class="mock-step"><span>2</span><strong>Mix</strong><small>Independent source + CSPRNG</small></div><div class="mock-step"><span>3</span><strong>Health</strong><small>Bias and min-entropy</small></div></div><p class="mock-security-note">No entropy has been collected in this seeded preview. A live screen will keep the raw source inside the sealed realm.</p><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-entropy-collection" aria-controls="popup-entropy-collection">View collection flow</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-entropy-health" aria-controls="popup-entropy-health">View health meter</button></div></article><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Health meter</p><span class="mock-status mock-status-cyan">Example only</span></div><div class="mock-health-meter"><div class="mock-health-meter-track"><span class="mock-health-meter-fill"></span></div><div><strong>— bits measured</strong><small>Measurement appears after a real sample</small></div></div><ul class="mock-check-list"><li>Claimed strength shown beside measured strength</li><li>Bias warning blocks generation below target</li><li>Device RNG is not counted as independent entropy</li></ul><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-entropy-rules" aria-controls="popup-entropy-rules">Read the rules</button></article></section>
+          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-entropy">Entropy Lab</h1><p class="page-lede">This layout is reserved for physical entropy collection, source mixing, and health checks. No entropy is collected or displayed by the UI shell.</p></header>
+          <section class="mock-security-layout"><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Collection plan</p><span class="mock-status mock-status-neutral">Not available</span></div><div class="mock-stepper"><div class="mock-step mock-step-current"><span>1</span><strong>Collect</strong><small>Physical source</small></div><div class="mock-step"><span>2</span><strong>Mix</strong><small>Independent sources</small></div><div class="mock-step"><span>3</span><strong>Health</strong><small>Bias and strength</small></div></div><div class="mock-empty-state"><strong>Entropy Lab is not built yet.</strong><span>The raw source will remain inside the sealed realm when this feature exists.</span></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-entropy-collection" aria-controls="popup-entropy-collection">View layout</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-entropy-health" aria-controls="popup-entropy-health">Health layout</button></div></article><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Health meter</p><span class="mock-status mock-status-neutral">No measurement</span></div><div class="mock-empty-state"><strong>— bits measured</strong><span>Measurement appears only after a real sealed-realm sample.</span></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-entropy-rules" aria-controls="popup-entropy-rules">Read the rules</button></article></section>
         </section>
 
         <section class="page" id="page-seed-forge" data-page="seed-forge" aria-labelledby="page-title-seed-forge" hidden>
-          <header class="page-header"><p class="eyebrow">Tools / Sealed realm / Seeded preview</p><h1 id="page-title-seed-forge">Seed Forge</h1><p class="page-lede">The live tool will generate, validate, and fingerprint BIP-39 material inside the sealed realm. This screen shows the finished layout without placing a real seed in the warm shell.</p></header>
-          <section class="mock-security-layout"><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Create or validate</p><span class="mock-status mock-status-yellow">Sealed input</span></div><div class="mock-form-grid"><label>Word count<select disabled><option>24 words</option></select></label><label>Language<select disabled><option>English</option></select></label></div><div class="mock-secret-placeholder"><span>Seed words remain inside the sealed realm</span><strong>•••••• •••••• ••••••</strong><small>Preview intentionally does not render secret material.</small></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-seed-forge-create" aria-controls="popup-seed-forge-create">Preview create flow</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-seed-forge-validate" aria-controls="popup-seed-forge-validate">Preview validation</button></div></article><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Fingerprint and passphrase</p><span class="mock-status mock-status-cyan">Public result only</span></div><dl class="mock-detail-list"><div><dt>Master fingerprint</dt><dd class="data-cell">Not available in preview</dd></div><div><dt>Passphrase check</dt><dd>Confirm twice inside cold realm</dd></div><div><dt>BIP-85 children</dt><dd>Derived only after explicit choice</dd></div></dl><p class="mock-security-note">A fingerprint is public metadata; seed words and passphrases never enter this page.</p><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-seed-forge-boundary" aria-controls="popup-seed-forge-boundary">Why the boundary matters</button></article></section>
+          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-seed-forge">Seed Forge</h1><p class="page-lede">The live tool will generate, validate, and fingerprint protected material inside the sealed realm. The warm UI never renders secret content.</p></header>
+          <section class="mock-security-layout"><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Create or validate</p><span class="mock-status mock-status-neutral">Not available</span></div><div class="mock-secret-placeholder"><span>Protected input stays inside the sealed realm</span><strong>•••••• •••••• ••••••</strong><small>No secret material is present in this UI shell.</small></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-seed-forge-create" aria-controls="popup-seed-forge-create">View layout</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-seed-forge-validate" aria-controls="popup-seed-forge-validate">Validation layout</button></div></article><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Public result</p><span class="mock-status mock-status-neutral">No result</span></div><div class="mock-empty-state"><strong>No fingerprint available.</strong><span>Only explicitly approved public results may return to this page.</span></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-seed-forge-boundary" aria-controls="popup-seed-forge-boundary">Why the boundary matters</button></article></section>
         </section>
 
         <section class="page" id="page-derivation" data-page="derivation" aria-labelledby="page-title-derivation" hidden>
-          <header class="page-header"><p class="eyebrow">Tools / Sealed realm / Seeded preview</p><h1 id="page-title-derivation">Derivation</h1><p class="page-lede">Choose a chain and path inside the sealed realm; only public addresses, xpubs, and fingerprints return to the warm shell.</p></header>
-          <section class="mock-security-layout"><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Path builder</p><span class="mock-status mock-status-yellow">Protected input</span></div><div class="mock-form-grid"><label>Wallet record<select disabled><option>Coldcard savings</option></select></label><label>Chain<select disabled><option>Bitcoin · Native SegWit</option></select></label><label>Account<input class="data-cell" value="0" disabled></label><label>Range<input class="data-cell" value="0–19" disabled></label></div><div class="mock-path-preview"><span>Selected path</span><code>m/84'/0'/0'/0/i</code></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-derivation-path" aria-controls="popup-derivation-path">Explain this path</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-derivation-run" aria-controls="popup-derivation-run">Preview results</button></div></article><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Public results</p><span class="mock-status mock-status-cyan">No result yet</span></div><div class="mock-placeholder-panel"><strong>Addresses appear here after a sealed derivation run.</strong><span>Address values, xpubs, and fingerprints use monospace text and can be added to the Registry.</span></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-derivation-registry" aria-controls="popup-derivation-registry">Add-to-Registry preview</button></article></section>
+          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-derivation">Derivation</h1><p class="page-lede">Choose a chain and path inside the sealed realm; only approved public results may return to the warm shell.</p></header>
+          <section class="mock-security-layout"><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Path builder</p><span class="mock-status mock-status-neutral">Not available</span></div><div class="mock-empty-state"><strong>No wallet or chain selected.</strong><span>The path controls will be added with the derivation feature.</span></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-derivation-path" aria-controls="popup-derivation-path">Path layout</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-derivation-run" aria-controls="popup-derivation-run">Results layout</button></div></article><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Public results</p><span class="mock-status mock-status-neutral">No result</span></div><div class="mock-empty-state"><strong>No addresses available.</strong><span>Addresses, xpubs, and fingerprints will use the public registry flow.</span></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-derivation-registry" aria-controls="popup-derivation-registry">Registry layout</button></article></section>
         </section>
 
         <section class="page" id="page-backup" data-page="backup" aria-labelledby="page-title-backup" hidden>
-          <header class="page-header"><p class="eyebrow">Tools / Sealed realm / Seeded preview</p><h1 id="page-title-backup">Backup Lab</h1><p class="page-lede">Every backup surface starts with the scheme, threshold, locations, and last verification. Material stays protected; the registry keeps only the public record of the plan.</p></header>
-          <section class="mock-card mock-card-wide mock-security-card"><div class="section-heading-row"><div><p class="mock-card-label">Backup health</p><h2>Two plans need attention</h2></div><button class="comic-btn" type="button" data-popup-open="popup-backup-plan" aria-controls="popup-backup-plan">Create backup plan</button></div><div class="mock-table-wrap"><table class="mock-table"><thead><tr><th>Plan</th><th>Format</th><th>Threshold</th><th>Locations</th><th>Last verified</th><th>State</th></tr></thead><tbody><tr><th scope="row">Primary Bitcoin</th><td>SLIP-39</td><td class="data-cell">3 of 5</td><td>3 locations</td><td class="data-cell">2026-07-12</td><td><span class="table-status table-status-good">Verified</span></td></tr><tr><th scope="row">Daily device</th><td>codex32</td><td class="data-cell">2 of 3</td><td>2 locations</td><td class="data-cell">2026-04-21</td><td><span class="table-status table-status-yellow">Due</span></td></tr><tr><th scope="row">Emergency reserve</th><td>Seed XOR</td><td class="data-cell">3 of 3</td><td>1 location</td><td class="data-cell">Never</td><td><span class="table-status table-status-red">Unverified</span></td></tr></tbody></table></div><div class="mock-actions"><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-backup-verify" aria-controls="popup-backup-verify">Verify a backup</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-backup-locations" aria-controls="popup-backup-locations">Review locations</button></div></section>
+          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-backup">Backup Lab</h1><p class="page-lede">Backup plans will keep scheme, threshold, locations, and verification state visible while material remains protected. No plan records are present in the UI shell.</p></header>
+          <section class="mock-card mock-card-wide mock-security-card"><div class="section-heading-row"><div><p class="mock-card-label">Backup health</p><h2>Backup plans</h2></div><button class="comic-btn" type="button" data-popup-open="popup-backup-plan" aria-controls="popup-backup-plan">Plan layout</button></div><div class="mock-empty-state"><strong>No backup plans recorded.</strong><span>Plan format, threshold, locations, last verification, and state will populate this table after the feature is built.</span></div><div class="mock-actions"><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-backup-verify" aria-controls="popup-backup-verify">Verification layout</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-backup-locations" aria-controls="popup-backup-locations">Locations layout</button></div></section>
         </section>
 
         <section class="page" id="page-qr" data-page="qr" aria-labelledby="page-title-qr" hidden>
-          <header class="page-header"><p class="eyebrow">Tools / Sealed realm / Seeded preview</p><h1 id="page-title-qr">QR Studio</h1><p class="page-lede">QR is a transport surface, not a place to leave secrets. The finished tool separates public address QR, SeedQR, and live encrypted vault transfer.</p></header>
-          <section class="mock-route-grid mock-route-grid-three"><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Address QR</p><span class="mock-status mock-status-green">Public value</span></div><div class="mock-qr mock-qr-address" role="img" aria-label="Placeholder QR pattern for a public receive address"></div><p class="mock-card-note">Placeholder for a public receive address. No private material is encoded here.</p><button class="comic-btn" type="button" data-popup-open="popup-qr-address" aria-controls="popup-qr-address">Preview address QR</button></article><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">SeedQR</p><span class="mock-status mock-status-yellow">Cold only</span></div><div class="mock-qr mock-qr-seed" role="img" aria-label="Placeholder QR pattern for a SeedQR preview"></div><p class="mock-card-note">The real code is created only inside the sealed realm and is masked by default.</p><button class="comic-btn" type="button" data-popup-open="popup-qr-seed" aria-controls="popup-qr-seed">Preview SeedQR flow</button></article><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Live vault transfer</p><span class="mock-status mock-status-cyan">CBX-VT/1</span></div><div class="mock-transfer-placeholder"><span>LIVE</span><strong>encrypted frames</strong></div><p class="mock-card-note">No QR download or numbered frame export. Use a canonical <code>.cbx</code> file for durable storage.</p><a class="comic-btn" href="#vault" data-route="vault">Open transfer workspace</a></article></section>
+          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-qr">QR Studio</h1><p class="page-lede">QR is a transport surface, not a place to leave secrets. The finished tool will separate public address QR, SeedQR, and live encrypted vault transfer.</p></header>
+          <section class="mock-route-grid mock-route-grid-three"><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Address QR</p><span class="mock-status mock-status-neutral">Not available</span></div><div class="mock-empty-qr" role="img" aria-label="Public address QR is unavailable until the registry feature exists"><span>QR</span></div><p class="mock-card-note">A public address QR can be added after a verified address exists.</p><button class="comic-btn" type="button" data-popup-open="popup-qr-address" aria-controls="popup-qr-address">Address QR layout</button></article><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">SeedQR</p><span class="mock-status mock-status-neutral">Cold only</span></div><div class="mock-empty-qr" role="img" aria-label="SeedQR is unavailable in the UI shell"><span>QR</span></div><p class="mock-card-note">Secret-bearing QR remains inside the sealed realm and is not rendered here.</p><button class="comic-btn" type="button" data-popup-open="popup-qr-seed" aria-controls="popup-qr-seed">SeedQR layout</button></article><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Live vault transfer</p><span class="mock-status mock-status-neutral">Not started</span></div><div class="mock-empty-state"><strong>No transfer active.</strong><span>Use the Vault tools route when a real durable vault exists.</span></div><a class="comic-btn" href="#vault" data-route="vault">Open vault tools</a></article></section>
         </section>
 
         <section class="page" id="page-recovery" data-page="recovery" aria-labelledby="page-title-recovery" hidden>
-          <header class="page-header"><p class="eyebrow">Tools / Sealed realm / Seeded preview</p><h1 id="page-title-recovery">Recovery</h1><p class="page-lede">Recovery is a bounded search with explicit assumptions, operation counts, estimates, checkpoints, and cancellation. This preview shows the decision screen without accepting seed fragments.</p></header>
-          <section class="mock-security-layout"><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Recovery setup</p><span class="mock-status mock-status-yellow">Example only</span></div><div class="mock-stepper"><div class="mock-step mock-step-current"><span>1</span><strong>Describe</strong><small>Known words and target</small></div><div class="mock-step"><span>2</span><strong>Estimate</strong><small>Operations and live crypto path</small></div><div class="mock-step"><span>3</span><strong>Verify</strong><small>Candidate is never recovery</small></div></div><div class="mock-warning-box"><strong>Recovery never promises an answer.</strong><span>Checksum-only hits and database matches require confirmation against a real address or xpub.</span></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-recovery-estimate" aria-controls="popup-recovery-estimate">Preview estimate</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-recovery-checkpoint" aria-controls="popup-recovery-checkpoint">Checkpoint rules</button></div></article><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Search limits</p><span class="mock-status mock-status-cyan">Fail closed</span></div><dl class="mock-detail-list"><div><dt>Address generation limit</dt><dd class="data-cell">20 default</dd></div><div><dt>Cancel</dt><dd>Immediate</dd></div><div><dt>Search material</dt><dd>Encrypted checkpoint only</dd></div><div><dt>Result label</dt><dd>Candidate · verify required</dd></div></dl><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-recovery-limits" aria-controls="popup-recovery-limits">See all limits</button></article></section>
+          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-recovery">Recovery</h1><p class="page-lede">Recovery will be a bounded search with explicit assumptions, operation counts, estimates, checkpoints, and cancellation. No recovery search is available in this UI shell.</p></header>
+          <section class="mock-security-layout"><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Recovery setup</p><span class="mock-status mock-status-neutral">Not available</span></div><div class="mock-stepper"><div class="mock-step mock-step-current"><span>1</span><strong>Describe</strong><small>Known information</small></div><div class="mock-step"><span>2</span><strong>Estimate</strong><small>Bounded work</small></div><div class="mock-step"><span>3</span><strong>Verify</strong><small>Candidate is not proof</small></div></div><div class="mock-empty-state"><strong>Recovery is not built yet.</strong><span>No fragments, candidates, or search material are present here.</span></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-recovery-estimate" aria-controls="popup-recovery-estimate">Estimate layout</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-recovery-checkpoint" aria-controls="popup-recovery-checkpoint">Checkpoint rules</button></div></article><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Search limits</p><span class="mock-status mock-status-neutral">No search</span></div><div class="mock-empty-state"><strong>No limits active.</strong><span>Bounded operation and cancellation controls will be visible before any search begins.</span></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-recovery-limits" aria-controls="popup-recovery-limits">Limits layout</button></article></section>
         </section>
 
         <section class="page" id="page-verify" data-page="verify" aria-labelledby="page-title-verify" hidden>
-          <header class="page-header"><p class="eyebrow">Reference / Verification / Seeded preview</p><h1 id="page-title-verify">Verify Bench</h1><p class="page-lede">A collection of independent checks for public values and files. Each tool shows what it proves, what it cannot prove, and where the result came from.</p></header>
-          <section class="mock-tool-grid"><article class="mock-card mock-tool-card"><span class="card-icon">01</span><h2>File hasher</h2><p>Compare a file or folder against a SHA-256 manifest.</p><div class="mock-result mock-result-neutral"><strong>No file selected</strong><small>Drop zone and manifest comparison</small></div><button class="comic-btn" type="button" data-popup-open="popup-verify-file" aria-controls="popup-verify-file">Open file hasher</button></article><article class="mock-card mock-tool-card"><span class="card-icon">02</span><h2>Address validator</h2><p>Check encoding and checksum before a public address is recorded.</p><div class="mock-result mock-result-good"><strong>Example · checksum valid</strong><small>Not connected to a live registry</small></div><button class="comic-btn" type="button" data-popup-open="popup-verify-address" aria-controls="popup-verify-address">Open address check</button></article><article class="mock-card mock-tool-card"><span class="card-icon">03</span><h2>KDF calculator</h2><p>Benchmark the active path before choosing a vault profile.</p><div class="mock-result mock-result-yellow"><strong>Argon2id · not run</strong><small>Fast / Standard / Paranoid</small></div><button class="comic-btn" type="button" data-popup-open="popup-verify-kdf" aria-controls="popup-verify-kdf">Open KDF check</button></article></section>
+          <header class="page-header"><p class="eyebrow">Reference / Verification</p><h1 id="page-title-verify">Verify Bench</h1><p class="page-lede">Independent checks will show what they prove, what they cannot prove, and where each result came from. No verification result is fabricated here.</p></header>
+          <section class="mock-tool-grid"><article class="mock-card mock-tool-card"><span class="card-icon">01</span><h2>File hasher</h2><p>Compare a file or folder against a SHA-256 manifest.</p><div class="mock-empty-state"><strong>No file selected.</strong><small>Drop zone and manifest comparison</small></div><button class="comic-btn" type="button" data-popup-open="popup-verify-file" aria-controls="popup-verify-file">Hasher layout</button></article><article class="mock-card mock-tool-card"><span class="card-icon">02</span><h2>Address validator</h2><p>Check encoding and checksum before a public address is recorded.</p><div class="mock-empty-state"><strong>No address selected.</strong><small>Validation result appears after input exists</small></div><button class="comic-btn" type="button" data-popup-open="popup-verify-address" aria-controls="popup-verify-address">Validator layout</button></article><article class="mock-card mock-tool-card"><span class="card-icon">03</span><h2>KDF calculator</h2><p>Benchmark the active path before choosing a vault profile.</p><div class="mock-empty-state"><strong>No benchmark run.</strong><small>Profiles appear inside the sealed realm</small></div><button class="comic-btn" type="button" data-popup-open="popup-verify-kdf" aria-controls="popup-verify-kdf">Calculator layout</button></article></section>
         </section>
 
         <section class="page" id="page-reference" data-page="reference" aria-labelledby="page-title-reference" hidden>
@@ -633,6 +449,119 @@ __COLDBOX_STYLES__
             </article>
           </section>
         </section>
+
+        <section class="system-health-workspace" id="system-health-workspace" aria-labelledby="system-health-workspace-title">
+          <div class="system-health-heading">
+            <div>
+              <span class="panel-kicker">System / live checks</span>
+              <h2 id="system-health-workspace-title">System health</h2>
+              <p>Technical readiness stays available below the workspace so it never gets confused with portfolio or vault records.</p>
+            </div>
+            <button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-system-health" aria-controls="popup-system-health">Open health summary</button>
+          </div>
+
+          <section class="realm-status" id="cold-realm-status" data-cold-state="starting" aria-labelledby="cold-realm-status-title" aria-live="polite">
+            <div class="realm-status-copy">
+              <p class="eyebrow">Security boundary / P0.8</p>
+              <h2 id="cold-realm-status-title"><span id="cold-realm-status-title-text">Establishing the sealed realm</span>
+                <button type="button" class="icon-button help-context-button" data-help-topic="glossary:cold-realm-warm-shell" aria-label="What is the sealed realm?">?</button>
+              </h2>
+              <p id="cold-realm-status-copy">The secret-capable side of Coldbox is starting inside an opaque sandbox. The shell will stay locked down if that boundary cannot be established.</p>
+            </div>
+            <div class="realm-status-state" aria-label="Sealed realm status">
+              <span class="status-dot" aria-hidden="true"></span>
+              <span id="cold-realm-status-label">Starting</span>
+            </div>
+            <div class="cold-frame-host" id="cold-realm-host" aria-label="Sealed realm viewport"></div>
+            <p class="realm-status-failure" id="cold-realm-failure" role="alert" hidden>Coldbox is locked down because the sealed realm could not be established. Reload a verified build in a supported browser; no secret operation is available in this state.</p>
+            <p class="protocol-warning" id="protocol-warning" role="alert" hidden>Unexpected protocol traffic was discarded and logged. No message was accepted.</p>
+          </section>
+
+          <section class="airgap-banner" id="airgap-banner" data-airgap-state="checking" aria-labelledby="airgap-banner-title" aria-live="polite">
+            <div class="airgap-banner-copy">
+              <p class="eyebrow">Airgap guard / P0.8</p>
+              <h2 id="airgap-banner-title"><span id="airgap-banner-title-text">Checking the airgap guard</span>
+                <button type="button" class="icon-button help-context-button" data-help-topic="glossary:airgapped" aria-label="What does airgapped mean?">?</button>
+              </h2>
+              <p id="airgap-banner-copy">Coldbox is confirming both CSP policies and the private cold-realm channel before vault operations can be considered.</p>
+              <div class="airgap-facts" aria-label="Network and isolation facts">
+                <p><strong>Warm reachability:</strong> <span id="warm-reachability-status">Checking external reachability.</span></p>
+                <p><strong>Cold isolation:</strong> <span id="cold-isolation-status">Checking CSP and runtime guards.</span></p>
+              </div>
+            </div>
+            <div class="airgap-banner-state" aria-label="Airgap and network status">
+              <span class="status-dot" aria-hidden="true"></span>
+              <span id="airgap-banner-label">Checking</span>
+            </div>
+          </section>
+
+          <section class="capability-panel" id="capability-panel" data-capability-state="checking" aria-labelledby="capability-panel-title" aria-live="polite">
+            <div class="capability-panel-header">
+              <div>
+                <p class="eyebrow">Boot self-check / P0.9</p>
+                <h2 id="capability-panel-title">Capability self-check
+                  <button type="button" class="icon-button help-context-button" data-help-topic="glossary:capability-self-check" aria-label="Learn more about this panel">?</button>
+                </h2>
+                <p id="capability-summary">Coldbox is checking the platform capabilities needed for safe secret work and portable saves.</p>
+              </div>
+              <div class="capability-panel-state" aria-label="Capability self-check status">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span id="capability-panel-label">Checking</span>
+              </div>
+            </div>
+            <div class="capability-list">
+              <article class="capability-row capability-row-clickable" id="capability-row-random-values" data-capability-row="randomValues" data-state="checking" data-popup-open="popup-capability-random-values" role="button" tabindex="0" aria-controls="popup-capability-random-values" aria-label="Open required randomness details">
+                <div>
+                  <h3>Required randomness</h3>
+                  <p>The warm shell and cold realm must both expose <code>crypto.getRandomValues</code>. There is no fallback.</p>
+                </div>
+                <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-random-values">Checking</span></div>
+                <p class="capability-row-detail" id="capability-detail-random-values">Checking both realms.</p>
+              </article>
+              <article class="capability-row capability-row-clickable" id="capability-row-crypto-subtle" data-capability-row="cryptoSubtle" data-state="checking" data-popup-open="popup-capability-crypto-subtle" role="button" tabindex="0" aria-controls="popup-capability-crypto-subtle" aria-label="Open WebCrypto details">
+                <div>
+                  <h3>WebCrypto</h3>
+                  <p>Reports whether <code>crypto.subtle</code> is exposed; the cold realm uses it only after its AES-GCM known-answer test passes.</p>
+                </div>
+                <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-crypto-subtle">Checking</span></div>
+                <p class="capability-row-detail" id="capability-detail-crypto-subtle">Checking both realms.</p>
+              </article>
+              <article class="capability-row capability-row-clickable" id="capability-row-wasm" data-capability-row="wasm" data-state="checking" data-popup-open="popup-capability-wasm" role="button" tabindex="0" aria-controls="popup-capability-wasm" aria-label="Open WebAssembly details">
+                <div>
+                  <h3>WebAssembly</h3>
+                  <p>Runs a harmless empty-module probe so CSP or platform restrictions are visible.</p>
+                </div>
+                <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-wasm">Checking</span></div>
+                <p class="capability-row-detail" id="capability-detail-wasm">Checking both realms.</p>
+              </article>
+              <article class="capability-row capability-row-clickable" id="capability-row-workers" data-capability-row="workers" data-state="checking" data-popup-open="popup-capability-workers" role="button" tabindex="0" aria-controls="popup-capability-workers" aria-label="Open Web Workers details">
+                <div>
+                  <h3>Web Workers</h3>
+                  <p>Creates and terminates a local blob worker; long tasks can fall back to chunked main-thread work.</p>
+                </div>
+                <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-workers">Checking</span></div>
+                <p class="capability-row-detail" id="capability-detail-workers">Checking both realms.</p>
+              </article>
+              <article class="capability-row capability-row-clickable" id="capability-row-camera" data-capability-row="camera" data-state="checking" data-popup-open="popup-capability-camera" role="button" tabindex="0" aria-controls="popup-capability-camera" aria-label="Open camera access details">
+                <div>
+                  <h3>Camera access</h3>
+                  <p>Reports camera API availability without requesting permission at boot.</p>
+                </div>
+                <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-camera">Checking</span></div>
+                <p class="capability-row-detail" id="capability-detail-camera">Checking the warm shell.</p>
+              </article>
+              <article class="capability-row capability-row-clickable" id="capability-row-save-paths" data-capability-row="savePaths" data-state="checking" data-popup-open="popup-capability-save-paths" role="button" tabindex="0" aria-controls="popup-capability-save-paths" aria-label="Open save paths details">
+                <div>
+                  <h3>Save paths</h3>
+                  <p>Detects File System Access, blob download, and manual text export without writing a file.</p>
+                </div>
+                <div class="capability-row-state"><span class="status-dot" aria-hidden="true"></span><span id="capability-status-save-paths">Checking</span></div>
+                <p class="capability-row-detail" id="capability-detail-save-paths">Checking the warm shell.</p>
+              </article>
+            </div>
+            <p class="capability-crypto-summary" id="capability-crypto-summary" data-kdf-active="checking" aria-live="polite">Vault crypto: waiting for the sealed realm to report its active KDF.</p>
+          </section>
+        </section>
       </main>
     </div>
 
@@ -661,13 +590,13 @@ __COLDBOX_STYLES__
     <div class="mobile-more-menu" id="mobile-more-menu" hidden>
       <div class="mobile-more-header"><span>More sections</span><button class="icon-button icon-button-small" id="mobile-more-close" type="button" aria-label="Close more sections">×</button></div>
       <div class="mobile-more-links">
-        <a class="mobile-more-link" href="#vault" data-route="vault">Vault</a>
+        <a class="mobile-more-link" href="#vault" data-route="vault">Vault tools</a>
         <a class="mobile-more-link" href="#devices" data-route="devices">Devices</a>
         <a class="mobile-more-link" href="#entropy" data-route="entropy">Entropy Lab</a>
-        <a class="mobile-more-link" href="#seed-forge" data-route="seed-forge">Seed Forge</a>
+        <a class="mobile-more-link" href="#seed-forge" data-route="seed-forge">Secret tools</a>
         <a class="mobile-more-link" href="#derivation" data-route="derivation">Derivation</a>
-        <a class="mobile-more-link" href="#backup" data-route="backup">Backup Lab</a>
-        <a class="mobile-more-link" href="#qr" data-route="qr">QR Studio</a>
+        <a class="mobile-more-link" href="#backup" data-route="backup">Backup &amp; recovery</a>
+        <a class="mobile-more-link" href="#qr" data-route="qr">QR &amp; transfer</a>
         <a class="mobile-more-link" href="#recovery" data-route="recovery">Recovery</a>
         <a class="mobile-more-link" href="#verify" data-route="verify">Verify Bench</a>
         <a class="mobile-more-link" href="#reference" data-route="reference">Reference</a>

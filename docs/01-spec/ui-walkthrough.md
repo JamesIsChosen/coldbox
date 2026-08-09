@@ -1,6 +1,6 @@
 # Coldbox UI walkthrough
 
-**Canonical screen map and extension contract for the seeded Coldbox interface.**
+**Canonical screen map and extension contract for the Coldbox interface.**
 
 This document preserves the approved UI walkthrough while the underlying product
 features are still being built. It is a design contract, not a claim that every
@@ -11,12 +11,18 @@ secret-handling logic. The visual language and tokens remain canonical in the
 
 ## 1. How to read this walkthrough
 
-The current build is a fully seeded, clickable preview. It uses fixed sample
-records so a reviewer can walk through the information architecture without
-entering a seed, connecting a device, or making a network request from the
-preview cards.
+The shipped application is the empty/live shell: it uses the approved card
+hierarchy and shows explicit empty, unavailable, or live-status states. It does
+not embed invented balances, dates, wallet records, device records, prices, or
+verification results.
 
-Every sample value must be treated as a visual placeholder:
+The seeded walkthrough is a separate visual reference only. The workspace copy
+at `build/coldbox-ui-walkthrough.html` is the clickable demonstration of what
+fully built-out cards can look like; it is not shipped as the application and
+must never be treated as product data or a test fixture.
+
+When the separate visual reference is opened, every sample value must be treated
+as a visual placeholder:
 
 - Dollar amounts, dates, prices, wallet names, device records, addresses, and
   status counts are not live facts.
@@ -25,12 +31,12 @@ Every sample value must be treated as a visual placeholder:
 - A future live feature must replace a sample with an explicit loading,
   unavailable, stale, error, or verified state. It must not leave a sample
   value in place while implying that it came from a real source.
-- The small **Seeded UI preview / sample data** badge is part of the honesty
-  contract and stays visible anywhere seeded content is shown.
+- The live application uses **Design shell / no sample data**. A seeded visual
+  reference must keep its own sample-data label visible.
 
-The preview is intended to be opened from file:// after npm run build at
-build/coldbox.html. It is one document with embedded CSS, JavaScript, fonts,
-and brand artwork.
+The application is intended to be opened from `file://` after `npm run build` at
+`build/coldbox.html`. It is one document with embedded CSS, JavaScript, fonts,
+and brand artwork. The separate seeded reference is for visual review only.
 
 ## 2. Shell anatomy
 
@@ -44,7 +50,7 @@ The yellow masthead contains:
 
 1. The transparent supplied Coldbox wordmark, linked to Dashboard.
 2. The permanent **Pre-release / Not audited** badge.
-3. Quick links to Vault and Seed Forge.
+3. Quick links to Vault tools, Secret tools, theme, and Panic conceal.
 4. The Light mode / Dark mode control.
 
 The navbar wordmark is the supplied coldbox-wordmark.png. The lower-case C
@@ -55,10 +61,11 @@ These are all local build inputs; the browser never fetches them from a CDN.
 
 Desktop uses grouped links:
 
-- **Workspace:** Vault, Dashboard, Portfolio, Prices, Registry, Devices.
-- **Tools:** Entropy Lab, Seed Forge, Derivation, Backup Lab, QR Studio,
-  Recovery.
+- **Workspace:** Dashboard, Vault tools, Portfolio, Prices, Registry, Devices.
+- **Tool decks:** Secret tools, Entropy Lab, Derivation, Backup & recovery,
+  QR & transfer, Recovery.
 - **Reference:** Verify Bench, Reference, Learn.
+- **System:** System health opens the shared health popup.
 
 The active route is cyan. The rail remains a navigation surface, not a status
 claim. A green or red state must be explained in the content card or the
@@ -67,9 +74,10 @@ floating detail menu beside it.
 ### Content bar and status panels
 
 The content bar shows "Coldbox / current route", the **Warm shell** badge, and
-the seeded-preview badge. Below it, the shell reports the sealed-realm state,
-airgap/reachability state, and capability matrix. These are live foundation
-checks even when the route content is seeded.
+the **Design shell / no sample data** badge. The primary route content appears
+first. The technical health workspace follows the route content and reports the
+sealed-realm state, airgap/reachability state, and capability matrix. These are
+live foundation checks, not seeded route data.
 
 The capability rows are clickable. Each opens the same centered floating detail
 card described in section 4 and reports the current status, the evidence that
@@ -88,6 +96,10 @@ being appended below the page.
 The route names below are the stable navigation IDs. A feature implementation
 may add live behavior behind a route, but should not rename or remove the
 content hierarchy without updating this document and the browser walkthrough.
+The detailed record examples in a route's hierarchy describe the separate
+fully seeded visual reference; the shipped application uses the same structure
+with an honest empty, unavailable, planning, or live-status state until that
+feature exists.
 
 ### Dashboard (#dashboard)
 
@@ -97,18 +109,18 @@ and where to go next.
 **Visible hierarchy:**
 
 1. Command-center heading and short explanation.
-2. Three foundation cards: open the vault workspace, inspect system health,
-   and understand the public/cold split.
-3. Seeded **Working day at a glance** section with portfolio value, a seven-day
-   trend, next actions, and system-health summary.
+2. A **Working day at a glance** card grid with portfolio, next-action, and
+   at-a-glance surfaces.
+3. Empty-state workspace cards for Vault and public records.
+4. The live System health workspace below the route content.
 
 **Walkthrough actions:**
 
-- **Open portfolio** navigates to Portfolio.
-- **How this is calculated** opens the portfolio-value popup.
-- **Review alerts** opens the dashboard-alerts popup.
-- **Verify backup record** opens the dashboard-backup popup.
-- **Review stale price** navigates to Prices.
+- **Open portfolio** navigates to Portfolio's empty/live shell.
+- **How this will work** opens the portfolio-value explanation.
+- **Dashboard guide** opens the dashboard guidance popup.
+- **Open the vault workspace** navigates to the real Vault route.
+- **Plan public records** navigates to the Registry shell.
 - **Check system health** and **Open system health** open the system-health
   popup.
 
@@ -130,7 +142,8 @@ for create, unlock, save, load, transfer, lock, and panic conceal behavior.
 3. File and transfer controls.
 4. Protected controls rendered by the cold realm.
 
-The seeded preview does not invent a second vault implementation. New UI work
+The standalone visual reference does not invent a second vault implementation.
+New UI work
 must preserve the existing cold-realm message contract, save verification
 states, canonical .cbx save behavior, live CBX-VT/1 transfer semantics, and
 the panic-conceal screen.
@@ -146,11 +159,10 @@ into a warm-shell popup merely because it is visually convenient.
 
 **Visible hierarchy:**
 
-1. Total tracked value with sample-data status and daily change.
-2. Allocation donut and legend for Bitcoin, Ethereum, Solana, and USDC.
-3. A 30-day value chart with text axes and an accessible SVG label.
-4. Holdings table: asset, wallet record, amount, value, and daily change.
-5. Recent transaction/lots list with buy, move, and sell examples.
+1. Total tracked value and allocation cards, both empty until public records exist.
+2. A reserved performance chart with an explicit no-series state.
+3. Holdings table layout with a no-records state.
+4. Recent transaction/lots layout with a no-records state.
 
 **Popup actions:** total calculation, activity import, chart details, holding
 rules, asset detail, public export, add transaction, lot audit, and transfer
@@ -256,7 +268,8 @@ addresses, xpubs, and fingerprints returned to the registry.
 **Visible hierarchy:** path builder, chain/account/range fields, example path,
 and an empty public-results panel.
 
-**Popup actions:** explain path, preview results, and Add-to-Registry preview.
+**Popup actions:** explain path, inspect the planned results view, and inspect
+the planned Registry handoff.
 
 **Live replacement rules:** only the public projection crosses the realm
 boundary. The UI must identify chain, path, account, range, and verification
@@ -369,7 +382,7 @@ each route.
   when it closes.
 - The underlying page remains in place and can be read again when the popup
   closes.
-- Popup content is static seeded copy today. Future dynamic content must be
+- Popup content is static structural copy today. Future dynamic content must be
   escaped/structured and must not turn this route into a free-form HTML or
   secret-data sink.
 
@@ -389,8 +402,8 @@ scope is incomplete.
 
 ## 5. Display and data rules
 
-These rules keep the seeded visual language from becoming misleading when live
-features arrive:
+These rules keep the approved visual language from becoming misleading when
+live features arrive:
 
 - Display face for headings, labels, and comic captions; monospace for hashes,
   IDs, paths, addresses, timestamps, quantities, and other data.
@@ -418,8 +431,9 @@ Before merging a new route feature, use this checklist:
    why the existing primitives cannot express it.
 4. Give every detail action a stable data-popup-open key and add its complete
    content to the single popup content map. Do not create a second modal style.
-5. Mark seeded values clearly and define loading, stale, unavailable, error, and
-   verified states before connecting live data.
+5. If a visual reference uses seeded values, label them clearly. In the shipped
+   shell, define loading, stale, unavailable, error, and verified states before
+   connecting live data.
 6. Keep secret inputs/results in the cold realm and check the message schema for
    any public projection before wiring a warm control.
 7. Update the canonical docs/help content for user-facing behavior. Link to
@@ -436,41 +450,47 @@ Before merging a new route feature, use this checklist:
 
 ## 7. Recommended click-through order
 
-For a quick visual review, open the built HTML and follow this path:
+For a quick review of the shipped shell, open `build/coldbox.html` and follow
+this path:
 
-1. Dashboard: toggle light/dark mode, inspect the system-health popup, and
-   follow Open portfolio.
-2. Portfolio: inspect the chart, a holding, a transaction, and the transfer
-   classification popup.
-3. Prices: open the source rules and at least one stale/source card.
-4. Registry: open each wallet record and an address/balance detail.
-5. Devices: inspect a healthy device, a review-soon device, and the replacement
-   plan.
+1. Dashboard: toggle light/dark mode, inspect the empty workspace cards, open
+   the system-health popup, and follow Open portfolio.
+2. Portfolio: inspect the empty total, allocation, chart, holdings, and
+   transaction shells.
+3. Prices: inspect the empty median, watchlist, chart, and source-ledger shell.
+4. Registry: inspect the empty wallet-record and public-address shells.
+5. Devices: inspect the no-record primary, secondary, and replacement-plan
+   cards.
 6. Entropy Lab -> Seed Forge -> Derivation -> Backup Lab: confirm protected
-   screens are calm, clearly seeded, and use centered popups.
-7. QR Studio: inspect public address QR, cold-only SeedQR, and CBX-VT/1 copy.
-8. Recovery -> Verify Bench: inspect limits, candidate wording, and proof scope.
-9. Reference -> Learn: confirm provenance/legal notices and compiled help remain
+   screens are calm, empty, and use centered popups.
+7. QR Studio -> Recovery -> Verify Bench: inspect the placeholder QR, transfer,
+   recovery, and verification surfaces.
+8. Reference -> Learn: confirm provenance/legal notices and compiled help remain
    reachable.
-10. Open a capability row from the shell, close it with the red button, reopen
-    it with Enter, and close it with Escape. Confirm focus returns to the row.
+9. Open a capability row from the System Health section, close it with the red
+   button, reopen it with Enter, and close it with Escape. Confirm focus returns
+   to the row.
+
+For the full seeded visual walkthrough, open
+`build/coldbox-ui-walkthrough.html` separately and repeat the route order. That
+file demonstrates the intended populated card shapes and popup copy; it is not
+the shipped application and its values must never become default product data.
 
 ## 8. Live versus preview
 
-| Surface | Current seeded preview | Future live responsibility |
+| Surface | Shipped shell now | Separate visual reference / future live responsibility |
 |---|---|---|
 | Brand/artwork | Embedded supplied wordmark and favicon sizes | Keep assets local and reproducible |
-| Dashboard totals | Fixed public sample data | Aggregate verified public records with source age |
-| Portfolio/chart | Fixed holdings, lots, and SVG series | Connect to public data model and accessible data table |
-| Prices | Fixed five-source ledger | Warm-shell fetch, median/spread/stale policy |
-| Registry/devices | Fixed public metadata | Durable records, verification history, dated external facts |
-| Entropy/Seed Forge/Derivation/Backup | Protected-layout placeholders | Cold-realm workflows and public projections only |
-| QR Studio | Placeholder QR and CBX-VT/1 explanation | Public QR, cold-only SeedQR, live transfer, truthful fallback |
-| Recovery | Decision/limit placeholders | Bounded cold-realm search with checkpoint/cancel |
-| Verify Bench | Empty/example result states | Independent public verification tools and evidence |
+| Dashboard totals | Empty cards and no-record status | Populated visual reference; aggregate verified public records with source age |
+| Portfolio/chart | Empty total, allocation, chart, holdings, and transaction shells | Populated visual reference; connect to public data model and accessible data table |
+| Prices | Empty median, watchlist, chart, and source-ledger shells | Populated visual reference; warm-shell fetch, median/spread/stale policy |
+| Registry/devices | Empty record cards and address/device placeholders | Populated visual reference; durable records, verification history, dated external facts |
+| Entropy/Seed Forge/Derivation/Backup | Protected-layout placeholders | Calm visual reference; cold-realm workflows and public projections only |
+| QR Studio | Placeholder QR and live-transfer explanation | Calm visual reference; public QR, cold-only SeedQR, live transfer, truthful fallback |
+| Recovery | Empty decision/limit placeholders | Calm visual reference; bounded cold-realm search with checkpoint/cancel |
+| Verify Bench | Empty input/result states | Populated visual reference; independent public verification tools and evidence |
 | Reference/Learn | Existing provenance and compiled docs | Keep docs and help in sync with every feature |
 
 This table is the handoff boundary: implementing a live responsibility does
 not authorize changing the shell's visual language, popup contract, or realm
 rules. Update this document when the responsibility changes.
-
