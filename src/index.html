@@ -329,18 +329,22 @@ __COLDBOX_STYLES__
 
         <section class="page" id="page-entropy" data-page="entropy" aria-labelledby="page-title-entropy" hidden>
           <header class="page-header"><p class="eyebrow">Tools / Entropy</p><h1 id="page-title-entropy">Entropy Lab</h1><p class="page-lede">Dice, cards, coin flips, hex digits, fresh CSPRNG bytes, strength checks, and mixing stay together in the protected Entropy Lab workspace.</p></header>
-          <section class="cold-route-panel entropy-cold-realm-panel" aria-labelledby="entropy-cold-realm-title">
-            <div class="section-heading-row">
+          <section class="entropy-lab-panel" aria-labelledby="entropy-lab-panel-title">
+            <div class="section-heading-row entropy-lab-heading">
               <div>
-                <p class="panel-kicker">Entropy Lab tools</p>
-                <h2 id="entropy-cold-realm-title">Create entropy from independent sources</h2>
-                <p class="cold-route-panel-copy">Dice, coin flips, shuffled cards, hex digits, fresh CSPRNG bytes, and the entropy-strength meter stay together in this route-local workspace. The controls appear only while Entropy Lab is active.</p>
+                <p class="panel-kicker">Entropy Lab / P1.1</p>
+                <h2 id="entropy-lab-panel-title">Collect, measure, and mix</h2>
+                <p class="entropy-lab-copy">The existing entropy workspace is live below: record physical dice, coin, card, or hex input, draw fresh CSPRNG bytes, check strength, and mix only when the selected target is satisfied. Raw entropy and mixed bytes remain inside the protected tool surface.</p>
               </div>
-              <button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-entropy-session" aria-controls="popup-entropy-session">Entropy guide</button>
+              <div class="entropy-lab-guide-actions" aria-label="Entropy Lab guides">
+                <button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-entropy-session" aria-controls="popup-entropy-session">Session guide</button>
+                <button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-entropy-collection" aria-controls="popup-entropy-collection">Collection guide</button>
+                <button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-entropy-health" aria-controls="popup-entropy-health">Health guide</button>
+                <button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-entropy-rules" aria-controls="popup-entropy-rules">Meter rules</button>
+              </div>
             </div>
             <div class="cold-route-slot" id="entropy-cold-realm-slot"></div>
           </section>
-          <section class="mock-security-layout"><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Collection plan</p><span class="mock-status mock-status-neutral">Not available</span></div><div class="mock-stepper"><div class="mock-step mock-step-current"><span>1</span><strong>Collect</strong><small>Physical source</small></div><div class="mock-step"><span>2</span><strong>Mix</strong><small>Independent sources</small></div><div class="mock-step"><span>3</span><strong>Health</strong><small>Bias and strength</small></div></div><div class="mock-empty-state"><strong>Entropy Lab is not built yet.</strong><span>The raw source will remain inside the sealed realm when this feature exists.</span></div><div class="mock-actions"><button class="comic-btn" type="button" data-popup-open="popup-entropy-collection" aria-controls="popup-entropy-collection">View layout</button><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-entropy-health" aria-controls="popup-entropy-health">Health layout</button></div></article><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Health meter</p><span class="mock-status mock-status-neutral">No measurement</span></div><div class="mock-empty-state"><strong>— bits measured</strong><span>Measurement appears only after a real sealed-realm sample.</span></div><button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-entropy-rules" aria-controls="popup-entropy-rules">Read the rules</button></article></section>
         </section>
 
         <section class="page" id="page-seed-forge" data-page="seed-forge" aria-labelledby="page-title-seed-forge" hidden>

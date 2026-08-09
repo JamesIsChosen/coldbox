@@ -11,6 +11,7 @@ const indexSource = fs.readFileSync(path.join(projectRoot, 'src', 'index.html'),
 const mainSource = fs.readFileSync(path.join(projectRoot, 'src', 'main.js'), 'utf8');
 const coldIndexSource = fs.readFileSync(path.join(projectRoot, 'src', 'cold', 'index.html'), 'utf8');
 const coldMainSource = fs.readFileSync(path.join(projectRoot, 'src', 'cold', 'main.js'), 'utf8');
+const coldStylesSource = fs.readFileSync(path.join(projectRoot, 'src', 'cold', 'styles.css'), 'utf8');
 const stylesSource = fs.readFileSync(path.join(projectRoot, 'src', 'styles.css'), 'utf8');
 const buildSource = fs.readFileSync(path.join(projectRoot, 'scripts', 'build.js'), 'utf8');
 const buildPath = path.join(projectRoot, 'build', 'coldbox.html');
@@ -107,7 +108,8 @@ test('the UI shell covers every stable route and popup trigger', () => {
   assert.doesNotMatch(vaultSource, /id="vault-transfer-card"|id="vault-transfer-start"/);
   assert.match(entropySource, /id="entropy-cold-realm-slot"/);
   assert.match(entropySource, /data-popup-open="popup-entropy-session"/);
-  assert.match(entropySource, /Entropy Lab tools/);
+  assert.match(entropySource, /id="entropy-lab-panel-title"/);
+  assert.doesNotMatch(entropySource, /Entropy Lab is not built yet|Measurement appears only after a real sealed-realm sample/);
   assert.doesNotMatch(entropySource, /Sealed realm \/ (?:Vault tools|Entropy Lab)/);
   for (const toolId of [
     'cold-entropy-dice-face', 'cold-entropy-coin-heads', 'cold-entropy-card-grid',
@@ -129,6 +131,9 @@ test('the UI shell covers every stable route and popup trigger', () => {
   assert.match(coldMainSource, /message\.type === 'ui\.navigate'/);
   assert.match(coldMainSource, /kdfDetails\.hidden = !showVault/);
   assert.match(coldMainSource, /entropyLabSection\.hidden = !showEntropy/);
+  assert.match(coldIndexSource, /id="cold-realm-shell-status"/);
+  assert.match(coldStylesSource, /html\[data-cold-view="entropy"\] \.cold-realm-shell-status\s*\{[\s\S]*?display:\s*none/);
+  assert.match(coldStylesSource, /html\[data-cold-view="entropy"\] #cold-entropy-lab\s*\{/);
   const dashboardSource = indexSource.slice(
     indexSource.indexOf('<section class="page" id="page-dashboard"'),
     indexSource.indexOf('<section class="page" id="page-vault"')

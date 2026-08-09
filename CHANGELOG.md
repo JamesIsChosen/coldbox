@@ -70,6 +70,10 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 - The airgap guard is in the top app bar rather than the left navigation rail.
 - Panic conceal is hidden during normal routing, follows the active theme, and
   centers its red backing panel beneath the concealment copy at all widths.
+- Restored the live Entropy Lab presentation: dice, coin, cards, hex, CSPRNG,
+  strength, reset, target, and mix controls remain in the protected frame,
+  while the duplicate sealed-realm chrome and stale not-built placeholder are
+  removed from the Entropy route.
 
 ### Changed — P0.19 device-matrix remediation design (2026-08-08)
 

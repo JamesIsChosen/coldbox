@@ -12,10 +12,12 @@ __COLDBOX_COLD_STYLES__
 </head>
 <body>
   <main id="cold-realm-status" aria-live="polite">
-    <p class="eyebrow">Sealed realm</p>
-    <p id="cold-ready">Cold realm checking</p>
-    <p id="cold-realm-details">The CSP canary and runtime network guard are starting inside this sandbox.</p>
-    <p id="cold-protocol-warning" role="alert" hidden>Unexpected protocol traffic was discarded and logged. No message was accepted.</p>
+    <div id="cold-realm-shell-status" class="cold-realm-shell-status">
+      <p class="eyebrow">Sealed realm</p>
+      <p id="cold-ready">Cold realm checking</p>
+      <p id="cold-realm-details">The CSP canary and runtime network guard are starting inside this sandbox.</p>
+      <p id="cold-protocol-warning" role="alert" hidden>Unexpected protocol traffic was discarded and logged. No message was accepted.</p>
+    </div>
     <section id="cold-kdf-details" data-kdf-active="checking" aria-label="Vault cryptography">
       <p class="eyebrow">Vault details / P0.12</p>
       <p id="cold-kdf-active">Active KDF: checking.</p>

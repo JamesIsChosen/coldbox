@@ -580,7 +580,7 @@ async function verifyUiShellWalkthrough(browser, engine) {
     assert.equal(await vaultColdFrame.locator('html').getAttribute('data-cold-view'), 'vault', `${engine}: Vault route must show the sealed Vault view`);
     await page.locator('#nav-rail a[data-route="entropy"]').click();
     await page.locator('#page-entropy:not([hidden])').waitFor({ state: 'visible' });
-    await page.locator('.entropy-cold-realm-panel #cold-frame').waitFor({ state: 'visible' });
+    await page.locator('.entropy-lab-panel #cold-frame').waitFor({ state: 'visible' });
     assert.equal(await vaultColdFrame.locator('html').getAttribute('data-cold-view'), 'entropy', `${engine}: Entropy route must show only the sealed Entropy view`);
     await page.locator('#nav-rail a[data-route="system-health"]').click();
     await page.locator('#page-system-health:not([hidden])').waitFor({ state: 'visible' });
@@ -2165,6 +2165,8 @@ async function verifyEntropyLab(browser, engine) {
     const coldFrame = await getColdFrame(page, engine);
     await coldFrame.locator('html[data-crypto-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
     assert.equal(await coldFrame.locator('html').getAttribute('data-cold-view'), 'entropy', `${engine}: Entropy Lab did not activate the entropy view`);
+    assert.equal(await coldFrame.locator('#cold-realm-shell-status').isVisible(), false, `${engine}: Entropy Lab must not repeat the generic sealed-realm shell`);
+    await coldFrame.locator('#cold-entropy-lab').waitFor({ state: 'visible', timeout: 5000 });
 
     for (const toolId of [
       'cold-entropy-meter',

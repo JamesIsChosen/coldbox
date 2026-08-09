@@ -250,10 +250,11 @@ entropy in the warm shell.
 **Visible hierarchy:** a route-local Entropy Lab tools panel for the actual
 Collect -> Mix -> Health workspace. The protected workspace visibly includes
 dice, coin flips, shuffled cards, hex digits, fresh CSPRNG bytes, the entropy
-strength meter, undo/reset controls, target selection, and the mix action,
-followed by the not-started visual summary and rules that distinguish
-independent physical entropy from the device RNG. It does not repeat the Vault
-tools label or render Vault session controls.
+strength meter, undo/reset controls, target selection, and the mix action. The
+existing controls are the live surface; the route does not leave a stale
+"not-built" placeholder underneath them. The generic sealed-realm boot strip
+is hidden while this route is active because the route already introduces the
+protected tool surface, and Vault session controls remain on the Vault route.
 
 **Popup actions:** collection flow, health meter, and entropy rules.
 
@@ -530,8 +531,9 @@ The cold realm is one persistent opaque frame. Routing moves that frame between
 the Vault and Entropy Lab slots and sends only an allowlisted section name; it
 does not create a second secret session or carry secret material across the
 boundary. Vault mode exposes the KDF/session controls; Entropy mode exposes the
-full entropy toolset. System Health contains the warm live-check surface and
-capability rows only.
+full entropy toolset and suppresses only the duplicate generic sealed-realm
+boot strip. System Health contains the warm live-check surface and capability
+rows only.
 
 For the full seeded visual walkthrough, open
 `build/coldbox-ui-walkthrough.html` separately and repeat the route order. That
