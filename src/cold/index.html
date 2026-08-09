@@ -62,13 +62,7 @@ __COLDBOX_COLD_STYLES__
       <p id="cold-vault-help">Choose a public vault name in the warm Vault page first. The warm shell can carry encrypted bytes only; unlock phrases, confirmation, keyfiles, and decrypted compartments remain inside this opaque frame.</p>
     </section>
     <section id="cold-entropy-lab" aria-label="Entropy Lab">
-      <div class="cold-entropy-lab-heading">
-        <div>
-          <p class="eyebrow">Entropy Lab / P1.1</p>
-          <h1 id="cold-entropy-lab-title">Collect, measure, and mix</h1>
-        </div>
-        <p class="cold-entropy-tool-list">Dice · Coin · Cards · Hex · CSPRNG</p>
-      </div>
+      <p class="eyebrow">Entropy Lab / P1.1</p>
       <p id="cold-entropy-lab-help">Collect physical/manual entropy from dice, coin flips, shuffled cards, or genuinely user-supplied hex, then combine it with fresh CSPRNG bytes. A sound device RNG supplies the selected normal output strength; the independently collected physical/manual contribution determines how much fallback protection remains if that RNG is completely compromised. The Generate controls are simulation conveniences powered by the same device RNG as CSPRNG; generated values are labeled and receive zero independent-source credit. Recording no physical/manual entropy is supported, but that is CSPRNG-only security rather than two-source protection.</p>
       <div id="cold-entropy-meter" role="status" aria-live="polite" data-guaranteed-bits="0" data-independent-bits="0" data-device-rng-values="0" data-csprng-bits="0" data-output-strength-bits="128" data-fallback-bits="0" data-full-two-source-protection="false">
         <div class="cold-entropy-strength-row"><span>Normal output strength</span><strong id="cold-entropy-output-strength">128 bits</strong></div>

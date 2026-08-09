@@ -2166,7 +2166,14 @@ async function verifyEntropyLab(browser, engine) {
     await coldFrame.locator('html[data-crypto-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
     assert.equal(await coldFrame.locator('html').getAttribute('data-cold-view'), 'entropy', `${engine}: Entropy Lab did not activate the entropy view`);
     assert.equal(await coldFrame.locator('#cold-realm-shell-status').isVisible(), false, `${engine}: Entropy Lab must not repeat the generic sealed-realm shell`);
+    assert.equal(await coldFrame.locator('#cold-kdf-details').isVisible(), false, `${engine}: Entropy Lab must hide Vault details`);
+    assert.equal(await coldFrame.locator('#cold-vault-controls').isVisible(), false, `${engine}: Entropy Lab must hide Vault session controls`);
     await coldFrame.locator('#cold-entropy-lab').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(
+      (await coldFrame.locator('#cold-entropy-lab > .eyebrow').textContent()).trim(),
+      'Entropy Lab / P1.1',
+      `${engine}: Entropy Lab must retain the pre-mock P1.1 shell label`
+    );
 
     for (const toolId of [
       'cold-entropy-meter',

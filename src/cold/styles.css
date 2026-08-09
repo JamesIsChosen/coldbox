@@ -47,12 +47,11 @@ body {
   background: var(--cold-bg);
 }
 
-/* Vault mode keeps this boot/status strip visible. Entropy mode is already
-   introduced by the warm Entropy Lab surface, so repeating the generic
-   "Sealed realm" shell inside the tool frame only adds a second wrapper. The
-   status nodes remain in the DOM for the live health state and are surfaced by
-   the warm System Health route; only their duplicate presentation is hidden
-   while the entropy controls are active. */
+/* Vault mode keeps this boot/status strip visible. Entropy mode is introduced
+   by the route-local P1.1 panel, so the generic "Sealed realm" shell is hidden
+   while the full entropy tool surface is active. The status nodes remain in
+   the DOM for the live health state; only their duplicate presentation is
+   suppressed in Entropy Lab. */
 html[data-cold-view="entropy"] body {
   padding: 0;
 }
@@ -352,35 +351,6 @@ html[data-cold-view="entropy"] .cold-realm-shell-status {
 
 html[data-cold-view="entropy"] #cold-entropy-lab {
   margin-top: 0;
-}
-
-.cold-entropy-lab-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.8rem;
-}
-
-.cold-entropy-lab-heading h1 {
-  margin: 0.2rem 0 0;
-  color: var(--cold-text);
-  font-family: inherit;
-  font-size: 1.35rem;
-  font-weight: 400;
-}
-
-.cold-entropy-tool-list {
-  margin: 0;
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--cold-outline);
-  border-radius: 0.35rem;
-  background: var(--cold-yellow);
-  color: var(--cold-ink);
-  font-family: inherit;
-  font-size: 0.72rem;
-  line-height: 1.2;
-  text-align: right;
 }
 
 #cold-entropy-lab-help,

@@ -75,6 +75,14 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
   while the duplicate sealed-realm chrome and stale not-built placeholder are
   removed from the Entropy route.
 
+### Changed — restore the pre-mock Entropy Lab shell (2026-08-09)
+
+- Restored the original `Entropy Lab / P1.1` cold-realm shell label and kept
+  the complete pre-mock entropy controls in that protected surface.
+- Entropy route synchronization now starts neutral and applies the validated
+  route before displaying Vault details or session controls, so a delayed
+  route message cannot present the wrong cold workspace.
+
 ### Changed — P0.19 device-matrix remediation design (2026-08-08)
 
 - Windows hands-on remediation round 2: make Vault ID immutability across re-saves explicit/enforced, show an inline creation-passphrase mismatch error, update save status to `Saved · verified` / `Saved · unverified`, and route the cold visible lock button through the same warm unsaved/unverified confirmation gate.

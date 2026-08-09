@@ -165,6 +165,7 @@ __COLDBOX_QR_ENCODER__
   var coldRealmFailed = false;
   var coldMessagePort = null;
   var handshakeState = 'starting';
+  var pendingColdView = 'vault';
   var globalAnomalyCount = 0;
   var channelAnomalyCount = 0;
   var airgapFailure = false;
@@ -1585,10 +1586,11 @@ __COLDBOX_QR_ENCODER__
   }
 
   function sendColdView(route) {
+    var section = route === 'entropy' ? 'entropy' : 'vault';
+    pendingColdView = section;
     if (airgapFailure || handshakeState !== 'ready' || !coldMessagePort) {
       return;
     }
-    var section = route === 'entropy' ? 'entropy' : 'vault';
     var message = protocol.createMessage(
       'warm-to-cold',
       nextVaultMessageId('view'),
@@ -3562,7 +3564,7 @@ __COLDBOX_QR_ENCODER__
       coldRealmStatusLabel.textContent = 'Ready';
     }
     updateVaultControls();
-    sendColdView(routeFromLocation());
+    sendColdView(pendingColdView || routeFromLocation());
   }
 
   function handleProtocolPortMessage(event) {

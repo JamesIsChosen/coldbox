@@ -252,9 +252,11 @@ Collect -> Mix -> Health workspace. The protected workspace visibly includes
 dice, coin flips, shuffled cards, hex digits, fresh CSPRNG bytes, the entropy
 strength meter, undo/reset controls, target selection, and the mix action. The
 existing controls are the live surface; the route does not leave a stale
-"not-built" placeholder underneath them. The generic sealed-realm boot strip
-is hidden while this route is active because the route already introduces the
-protected tool surface, and Vault session controls remain on the Vault route.
+"not-built" placeholder underneath them. The cold surface retains the original
+`Entropy Lab / P1.1` shell label from the pre-mock implementation. The generic
+sealed-realm boot strip is hidden while this route is active because the route
+already introduces the protected tool surface, and Vault details/session
+controls remain on the Vault route.
 
 **Popup actions:** collection flow, health meter, and entropy rules.
 
@@ -530,10 +532,11 @@ concealed-state copy at desktop and mobile widths.
 The cold realm is one persistent opaque frame. Routing moves that frame between
 the Vault and Entropy Lab slots and sends only an allowlisted section name; it
 does not create a second secret session or carry secret material across the
-boundary. Vault mode exposes the KDF/session controls; Entropy mode exposes the
-full entropy toolset and suppresses only the duplicate generic sealed-realm
-boot strip. System Health contains the warm live-check surface and capability
-rows only.
+boundary. The frame starts neutral until the validated route message arrives,
+then Vault mode exposes the KDF/session controls and Entropy mode exposes the
+full pre-mock entropy toolset while hiding Vault details/session controls and
+the duplicate generic sealed-realm boot strip. System Health contains the warm
+live-check surface and capability rows only.
 
 For the full seeded visual walkthrough, open
 `build/coldbox-ui-walkthrough.html` separately and repeat the route order. That

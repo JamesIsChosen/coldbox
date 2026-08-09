@@ -416,3 +416,28 @@ System Health has no duplicate cold frame.
 | No redundant realm presentation | Entropy route source has no `Sealed realm / Vault tools` or duplicate `Sealed realm / Entropy Lab` label. |
 | Floating cards | `popup-vault-tools` and `popup-qr-transfer` are registered in the shared static popup map and use the same centered/red-close layer. |
 | Reproducible artifact | Two 8b5d191 builds match at `7555fdd107ba566b90b51fd0bc3102f998cfcae1e199fccbc539967af3a1fc61`; final size is 1,954,982 bytes. |
+
+## 17. Pre-mock Entropy Lab restoration
+
+The owner reported that the active Entropy route was still presenting Vault
+details/session instead of the protected Entropy Lab shell. I rechecked the
+pre-mock implementation at `eae0e4c` before changing the UI. That baseline's
+`src/cold/index.html` contains the complete live P1.1 surface and its original
+`Entropy Lab / P1.1` label; the current branch had retained the controls but
+had replaced that shell label with an additional wrapper heading.
+
+The current source now restores the original P1.1 shell label verbatim and
+keeps every existing control ID in the protected frame: dice, coin, cards, hex,
+CSPRNG, strength meter, undo/reset, target selection, and mixing. The cold
+frame begins in an explicit neutral view until the warm shell's allowlisted
+`ui.navigate` message arrives. Entropy mode hides `cold-kdf-details`,
+`cold-vault-controls`, and the duplicate generic sealed-realm status strip;
+Vault mode is the only mode that shows the KDF and session surfaces.
+
+The browser harness now checks the exact P1.1 label, waits for the Entropy
+surface, and asserts that both Vault sections are not visible while Entropy is
+active. The source contract also prevents the replacement wrapper heading from
+returning and checks the neutral-start route guard.
+
+Browser execution remains dependent on the environment's missing Playwright
+Chromium and Firefox binaries; no visual browser result is inferred here.

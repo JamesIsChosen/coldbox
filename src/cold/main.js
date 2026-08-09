@@ -13,6 +13,7 @@ __COLDBOX_CAPABILITIES__
   var readyMarker = document.getElementById('cold-ready');
   var protocolWarning = document.getElementById('cold-protocol-warning');
   var details = document.getElementById('cold-realm-details');
+  var coldRealmShellStatus = document.getElementById('cold-realm-shell-status');
   var messagePort = null;
   var handshakeState = 'starting';
   var globalAnomalyCount = 0;
@@ -119,6 +120,10 @@ __COLDBOX_CAPABILITIES__
   function setColdView(section) {
     var showVault = section === 'vault';
     var showEntropy = section === 'entropy';
+    var view = showEntropy ? 'entropy' : (showVault ? 'vault' : 'status');
+    if (coldRealmShellStatus) {
+      coldRealmShellStatus.hidden = showEntropy;
+    }
     if (kdfDetails) {
       kdfDetails.hidden = !showVault;
     }
@@ -130,8 +135,10 @@ __COLDBOX_CAPABILITIES__
     }
     document.documentElement.setAttribute(
       'data-cold-view',
-      showEntropy ? 'entropy' : (showVault ? 'vault' : 'status')
+      view
     );
+    document.documentElement.setAttribute('data-cold-vault-view', showVault ? 'visible' : 'hidden');
+    document.documentElement.setAttribute('data-cold-entropy-view', showEntropy ? 'visible' : 'hidden');
   }
 
   function recordGlobalMessageAnomaly() {
@@ -1813,7 +1820,11 @@ __COLDBOX_CAPABILITIES__
     return;
   }
 
-  setColdView('vault');
+  // Keep the frame in an explicit neutral state until the warm shell sends the
+  // current route over the validated channel. A failed or delayed route sync
+  // must never leave Vault details/session controls visible while Entropy Lab
+  // is the active warm route.
+  setColdView('status');
 
   if (benchmarkButton) {
     benchmarkButton.addEventListener('click', runBenchmark);

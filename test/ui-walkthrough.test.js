@@ -128,9 +128,15 @@ test('the UI shell covers every stable route and popup trigger', () => {
   assert.match(qrSource, /data-popup-open="popup-qr-transfer"/);
   assert.match(mainSource, /function placeColdRealm\(route\)/);
   assert.match(mainSource, /'ui\.navigate'/);
+  assert.match(mainSource, /pendingColdView = section/);
   assert.match(coldMainSource, /message\.type === 'ui\.navigate'/);
   assert.match(coldMainSource, /kdfDetails\.hidden = !showVault/);
+  assert.match(coldMainSource, /vaultControls\.hidden = !showVault/);
   assert.match(coldMainSource, /entropyLabSection\.hidden = !showEntropy/);
+  assert.match(coldMainSource, /coldRealmShellStatus\.hidden = showEntropy/);
+  assert.match(coldMainSource, /setColdView\('status'\)/);
+  assert.match(coldIndexSource, /<p class="eyebrow">Entropy Lab \/ P1\.1<\/p>/);
+  assert.doesNotMatch(coldIndexSource, /cold-entropy-lab-heading|cold-entropy-tool-list/);
   assert.match(coldIndexSource, /id="cold-realm-shell-status"/);
   assert.match(coldStylesSource, /html\[data-cold-view="entropy"\] \.cold-realm-shell-status\s*\{[\s\S]*?display:\s*none/);
   assert.match(coldStylesSource, /html\[data-cold-view="entropy"\] #cold-entropy-lab\s*\{/);
