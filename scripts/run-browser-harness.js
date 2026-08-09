@@ -522,6 +522,55 @@ async function createCspProbeFrame(page, engine) {
   return { frame, frameId };
 }
 
+async function verifySeededUiWalkthrough(browser, engine) {
+  const { harness, page } = await openPage(browser, buildPath);
+  const routeIds = [
+    'dashboard', 'vault', 'portfolio', 'prices', 'registry', 'devices', 'entropy',
+    'seed-forge', 'derivation', 'backup', 'qr', 'recovery', 'verify', 'reference',
+    'learn'
+  ];
+  try {
+    await harness.expectElementVisible('#app');
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('img.brand-wordmark[alt="Coldbox"]').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('.preview-badge').isVisible(), true, `${engine}: seeded preview badge must be visible`);
+
+    await page.locator('#theme-toggle').click();
+    await page.locator('html[data-theme="light"]').waitFor({ state: 'attached' });
+    await page.locator('#theme-toggle').click();
+    await page.locator('html[data-theme="dark"]').waitFor({ state: 'attached' });
+
+    const systemHealthTrigger = page.locator('[data-popup-open="popup-system-health"]').first();
+    await systemHealthTrigger.click();
+    await page.locator('#floating-menu-dialog:not([hidden])').waitFor({ state: 'visible' });
+    assert.match(await page.locator('#floating-menu-title').textContent(), /System health/i);
+    assert.equal(await page.locator('#floating-menu-close').isVisible(), true);
+    assert.equal(await page.locator('#floating-menu-close').evaluate((element) => getComputedStyle(element).backgroundColor), 'rgb(224, 32, 32)');
+    await page.locator('#floating-menu-close').click();
+    await page.locator('#floating-menu-dialog[hidden]').waitFor({ state: 'hidden' });
+    assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-popup-open')), 'popup-system-health');
+
+    const capabilityTrigger = page.locator('#capability-row-random-values');
+    await capabilityTrigger.press('Enter');
+    await page.locator('#floating-menu-dialog:not([hidden])').waitFor({ state: 'visible' });
+    assert.match(await page.locator('#floating-menu-summary').textContent(), /Current result:/);
+    await page.locator('#floating-menu-close').press('Escape');
+    await page.locator('#floating-menu-dialog[hidden]').waitFor({ state: 'hidden' });
+    assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.id), 'capability-row-random-values');
+
+    for (const routeId of routeIds) {
+      await page.locator(`#nav-rail a[data-route="${routeId}"]`).click();
+      await page.locator(`#page-${routeId}:not([hidden])`).waitFor({ state: 'visible' });
+      assert.equal(await page.locator(`#page-${routeId} h1`).count(), 1, `${engine}: ${routeId} must have a primary heading`);
+    }
+    await page.locator('#nav-rail a[data-route="dashboard"]').click();
+    await page.locator('#page-dashboard:not([hidden])').waitFor({ state: 'visible' });
+    await harness.expectNoConsoleErrors({ allowedFragments: [CANARY_ERROR_FRAGMENT, COLD_CANARY_ERROR_FRAGMENT] });
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyBuiltFile(browser, engine) {
   const { harness, page, reachability } = await openPage(browser, buildPath);
   try {
@@ -2288,6 +2337,7 @@ async function run() {
   for (const [engine, browserType] of [['Chromium', chromium], ['Firefox', firefox]]) {
     const browser = await browserType.launch({ headless: true });
     try {
+      await verifySeededUiWalkthrough(browser, engine);
       await verifyBuiltFile(browser, engine);
       await verifyStaleReachabilityOnlineSafety(browser, engine);
       await verifyVaultLibrary(browser, engine);

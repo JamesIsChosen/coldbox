@@ -14,6 +14,21 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
+### Added — seeded UI walkthrough and local brand artwork (2026-08-08)
+
+- The public shell now contains a complete seeded walkthrough for Dashboard,
+  Vault, Portfolio, Prices, Registry, Devices, Entropy Lab, Seed Forge,
+  Derivation, Backup Lab, QR Studio, Recovery, Verify Bench, Reference, and
+  Learn. Sample values are labeled and do not perform live feature work.
+- All detail actions share one centered floating card with focus restoration,
+  backdrop/Escape close behavior, and the approved red Close button. Capability
+  rows are individually inspectable.
+- The supplied transparent Coldbox wordmark replaces the navbar text. The
+  matching lower-case C favicon is embedded at ICO and 16/32/48/64 PNG sizes.
+- The canonical [UI walkthrough](docs/01-spec/ui-walkthrough.md) records the
+  route map, popup contract, seeded-data boundary, and extension checklist so
+  future features preserve the approved visual flow.
+
 ### Changed — P0.19 device-matrix remediation design (2026-08-08)
 
 - Windows hands-on remediation round 2: make Vault ID immutability across re-saves explicit/enforced, show an inline creation-passphrase mismatch error, update save status to `Saved · verified` / `Saved · unverified`, and route the cold visible lock button through the same warm unsaved/unverified confirmation gate.

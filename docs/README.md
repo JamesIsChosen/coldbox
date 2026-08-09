@@ -19,6 +19,7 @@ Everything about Coldbox lives here. Guides and the glossary compile into the ap
 |---|---|
 | [SPEC.md](01-spec/SPEC.md) | The full design document |
 | [Design system](01-spec/design-system.md) | Visual language, tokens, UI copy contract, accessibility floors |
+| [UI walkthrough](01-spec/ui-walkthrough.md) | Canonical seeded route map, popup contract, and extension checklist |
 | [Architecture](01-spec/architecture.md) | Two-realm split, message schema, failure modes |
 | [Vault format](01-spec/vault-format.md) | Byte-level `.cbx` specification |
 | [Data model](01-spec/data-model.md) | Entities and compartment assignment |

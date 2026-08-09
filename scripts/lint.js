@@ -18,12 +18,18 @@ const toolingJavaScriptFiles = Object.freeze([
   path.join(projectRoot, 'scripts', 'verify-vendor.js'),
   path.join(projectRoot, 'scripts', 'run-browser-harness.js')
 ]);
+const binarySourceExtensions = Object.freeze(new Set(['.ico', '.png']));
 
 const forbiddenConstructs = Object.freeze([
   Object.freeze({ name: 'eval', pattern: /(?<!wasm-unsafe-)\beval\b/g }),
   Object.freeze({ name: 'new Function', pattern: /\bnew\s+Function\b/g }),
-  Object.freeze({ name: 'import', pattern: /\bimport\b/g }),
-  Object.freeze({ name: 'require', pattern: /\brequire\b/g })
+  // Match executable module syntax rather than ordinary UI copy such as
+  // "Import activity" or "requirement". The fixtures exercise both dynamic
+  // import() and require(), while static imports are caught at a statement
+  // boundary.
+  Object.freeze({ name: 'import', pattern: /(?:^|[;\n])\s*import\s+(?:[\w{*]|['"])/gm }),
+  Object.freeze({ name: 'import', pattern: /\bimport\s*\(/g }),
+  Object.freeze({ name: 'require', pattern: /\brequire\s*\(/g })
 ]);
 const externalUrlPattern = /\b[a-z][a-z0-9+.-]{1,31}:\/\/[^\s"'<>]+/gi;
 const protocolRelativeUrlPattern = /(?<![:\w])\/\/[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}(?::\d+)?(?:[/?#][^\s"'<>]*)?/gi;
@@ -175,6 +181,10 @@ function checkVendorManifest(root) {
   JSON.parse(source);
 }
 
+function isBinarySourceFile(file) {
+  return binarySourceExtensions.has(path.extname(file).toLowerCase());
+}
+
 function reportFindings(findings) {
   findings.sort((left, right) => {
     const byFile = compareBytewise(left.file, right.file);
@@ -202,6 +212,9 @@ function main() {
   const findings = [];
 
   for (const file of sourceFiles) {
+    if (isBinarySourceFile(file)) {
+      continue;
+    }
     const source = fs.readFileSync(file, 'utf8');
     checkLineEndings(root, file, source);
     scanSourceFile(root, file, source, findings);

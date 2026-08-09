@@ -44,6 +44,19 @@ const sourceManifest = Object.freeze([
   Object.freeze({ file: 'index.html', token: '__COLDBOX_SCRIPT__', content: 'main.js' })
 ]);
 
+// Brand artwork is treated as build input, not as a runtime file. Keeping the
+// order and MIME types explicit makes the final file:// build deterministic
+// and ensures every supplied favicon size remains available to browsers that
+// choose their preferred icon density.
+const assetManifest = Object.freeze([
+  Object.freeze({ file: 'assets/brand/coldbox-wordmark.png', token: '__COLDBOX_WORDMARK__', mime: 'image/png' }),
+  Object.freeze({ file: 'assets/brand/favicon-c-lower.ico', token: '__COLDBOX_FAVICON_ICO__', mime: 'image/x-icon' }),
+  Object.freeze({ file: 'assets/brand/favicon-c-lower-16x16.png', token: '__COLDBOX_FAVICON_16__', mime: 'image/png' }),
+  Object.freeze({ file: 'assets/brand/favicon-c-lower-32x32.png', token: '__COLDBOX_FAVICON_32__', mime: 'image/png' }),
+  Object.freeze({ file: 'assets/brand/favicon-c-lower-48x48.png', token: '__COLDBOX_FAVICON_48__', mime: 'image/png' }),
+  Object.freeze({ file: 'assets/brand/favicon-c-lower-64x64.png', token: '__COLDBOX_FAVICON_64__', mime: 'image/png' })
+]);
+
 const coldRealmManifest = Object.freeze([
   Object.freeze({ file: 'index.html', token: '__COLDBOX_CRYPTO_VENDOR_SOURCE__', content: 'crypto-vendor.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_CRYPTO_LAYER__', content: 'crypto.js' }),
@@ -56,6 +69,15 @@ const coldRealmManifest = Object.freeze([
 function readSource(file) {
   const contents = fs.readFileSync(path.join(sourceRoot, file), 'utf8');
   return normalizeLineEndings(contents);
+}
+
+function readAssetDataUri(asset) {
+  const assetPath = path.join(sourceRoot, asset.file);
+  const bytes = fs.readFileSync(assetPath);
+  if (bytes.length === 0) {
+    throw new Error(`Brand asset is empty: ${assetPath}`);
+  }
+  return `data:${asset.mime};base64,${bytes.toString('base64')}`;
 }
 
 // Single source of truth for the in-app provenance panel: the same manifest
@@ -277,6 +299,10 @@ function assemble() {
     hashInlineBlocks(coldRealmDocument, 'style')
   );
 
+  for (const asset of assetManifest) {
+    document = injectOnce(document, asset.token, readAssetDataUri(asset));
+  }
+
   for (const placeholder of [
     '__COLDBOX_STYLES__',
     '__COLDBOX_SCRIPT__',
@@ -284,7 +310,8 @@ function assemble() {
     '__COLDBOX_FRAME_SCRIPT_HASHES__',
     '__COLDBOX_FRAME_STYLE_HASHES__',
     '__COLDBOX_HELP_CONTENT__',
-    '__COLDBOX_LICENSE_TEXT__'
+    '__COLDBOX_LICENSE_TEXT__',
+    ...assetManifest.map((asset) => asset.token)
   ]) {
     if (document.includes(placeholder)) {
       throw new Error(`Unresolved source placeholder in assembled document: ${placeholder}`);
