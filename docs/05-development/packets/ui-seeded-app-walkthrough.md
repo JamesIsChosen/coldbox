@@ -22,7 +22,7 @@ P0.19 completion. P0.19 remains [~] with physical acceptance deferred.
 
 Branch: ui-seeded-app-walkthrough
 
-Implementation commit: 672cfd7c15a837fe675fc001389c17f96daf0ec2
+Implementation commit: 8b5d191cf1c0a72a8219d8df2199f1dfd25e576a
 
 Base: 25ba569873b5343c6c88efda952bdfe592e08a83 (merged P0.19 implementation;
 physical matrix deferred)
@@ -34,6 +34,15 @@ Included:
 - Protected-layout shells for Entropy Lab, Seed Forge, Derivation, Backup Lab,
   QR Studio, Recovery, and Verify Bench; no unbuilt feature is presented as
   complete or populated.
+- The Entropy Lab keeps its complete route-local toolset visible: dice, coin,
+  cards, hex digits, CSPRNG, entropy-strength measurement, undo/reset, target,
+  and mix controls. Its warm panel no longer repeats the Vault tools label,
+  generic sealed-realm boot strip, or a stale not-built placeholder.
+- Vault Tools now uses a compact tool deck: Vault Library and canonical
+  encrypted-vault save remain visible together, while encrypted-text handoff
+  is an advanced collapsed card with all prior controls retained. The live
+  device-to-device transfer card is owned by QR Studio, with its existing
+  CBX-VT/1 controls and fallback preserved.
 - The previous seeded walkthrough preserved locally as
   build/coldbox-ui-walkthrough.html for visual review only; it is not part of
   the shipped app or the build output contract.
@@ -81,17 +90,19 @@ Result: Documentation hygiene check passed: 137 markdown file(s) checked,
 
 npm.cmd run build
 
-Current-tip (672cfd7) first result:
+Current-tip (8b5d191) first result:
 Built build/coldbox.html
-(ac67b1ac9149b68e7d2051fba5b265ee623bc06dcb06887c11630bd946ae5f15)
+(7555fdd107ba566b90b51fd0bc3102f998cfcae1e199fccbc539967af3a1fc61)
 
-Current-tip (672cfd7) second result:
+Current-tip (8b5d191) second result:
 Built build/coldbox.html
-(ac67b1ac9149b68e7d2051fba5b265ee623bc06dcb06887c11630bd946ae5f15)
+(7555fdd107ba566b90b51fd0bc3102f998cfcae1e199fccbc539967af3a1fc61)
 
 The sidecar contains the same SHA-256:
-ac67b1ac9149b68e7d2051fba5b265ee623bc06dcb06887c11630bd946ae5f15
+7555fdd107ba566b90b51fd0bc3102f998cfcae1e199fccbc539967af3a1fc61
 build/coldbox.html
+
+The final artifact size is 1,954,982 bytes.
 
 npm.cmd test
 
@@ -173,10 +184,15 @@ available:
 - A capability row opens by Enter, reports its current result, closes by
   Escape, and restores focus.
 - Each of the 16 routes becomes visible and has a primary heading.
+- Entropy Lab exposes the dice, coin, cards, hex, CSPRNG, strength, reset,
+  target, and mix controls inside the active cold frame.
+- Vault Tools keeps Library/save/handoff controls on one compact route-local
+  deck, and QR Studio exposes the live device-to-device transfer card.
 - No unexpected console errors appear in the walkthrough.
 
 The full unit suite passes 256 tests, including the new UI and protocol
-coverage. The browser harness prerequisite failure is environmental and is
+coverage. The focused UI/route contract run passes 25 tests. The browser
+harness prerequisite failure is environmental and is
 reported above; no browser result is inferred from another engine or platform.
 
 ## 7. Device matrix
@@ -245,13 +261,13 @@ The wordmark PNG was checked as transparent RGBA artwork before copying.
 
 Reviewed base 25ba569 build: 1,269,833 bytes.
 
-Committed UI tip build: 1,947,648 bytes.
+Committed UI tip build: 1,954,982 bytes.
 
-Delta: +677,815 bytes (+661.93 KiB). The increase is primarily the embedded
+Delta: +685,149 bytes (+669.09 KiB). The increase is primarily the embedded
 419,715-byte transparent wordmark expanded into a base64 data URI, plus the
-sample-free route cards and popup/CSS walkthrough. Removing the populated route
-records reduced the final artifact relative to the earlier seeded tip. The
-artifact remains below the
+sample-free route cards, popup/CSS walkthrough, and the route-local cold-frame
+markup. Removing the populated route records reduced the final artifact
+relative to the earlier seeded tip. The artifact remains below the
 SPEC target of 3 MB.
 
 ## 12. Docs updated
@@ -267,7 +283,7 @@ No ADR was added because this uses the existing design-system and two-realm
 decisions; the shared popup is an implementation of the approved UI contract,
 not a new security or storage decision.
 
-## 13. Current-tip correction evidence
+## 13. Earlier sample-free correction evidence (history)
 
 The owner correction is included in commit
 `05f55078b656505c8fc2d7b7c9b685e43735f33b`. The shipped artifact now presents
@@ -284,11 +300,11 @@ rg -n -i 'Seeded UI preview|Sample source card|sample data in this|sample data i
 No seeded route values found in shipped artifact.
 ```
 
-The current full suite result is 256 tests passed, 0 failed. The focused
-UI/route contract run is 23 tests passed, 0 failed. `npm.cmd run lint` and
+That correction's full suite result was 256 tests passed, 0 failed. The
+current focused UI/route contract run is 25 tests passed, 0 failed. `npm.cmd run lint` and
 `npm.cmd run check-docs` pass; the latter reports 137 markdown files and zero
 warnings. Two post-commit builds produced the identical SHA-256 recorded in
-section 3.
+the current section 3.
 
 `npm.cmd run test:browser` remains blocked only by the environment: the
 Playwright Chromium and Firefox binaries are not installed. The harness exits
@@ -325,9 +341,9 @@ at once. Contextual help uses the same selected-entry card and deep-link route.
 | Learn scope | help-empty-state, help-search-input, and help-detail-card implement one-entry-at-a-time help; legacy list containers stay hidden. |
 | Panic presentation | The panic screen has a red backing panel behind the concealed-state copy; the shared popup Close remains red. |
 
-## 15. Current route-ownership correction
+## 15. Prior route-ownership correction (history)
 
-The current implementation commit is
+The preceding implementation commit was
 672cfd7c15a837fe675fc001389c17f96daf0ec2. It preserves every existing Vault
 and Entropy Lab information surface while relocating ownership to the route
 where it belongs. One persistent opaque cold frame is placed inside Vault
@@ -356,3 +372,47 @@ single embedded, searchable glossary/detail card rather than a rendered list.
 | System Health | `page-system-health` has no `cold-frame-host` or entropy slot; health rows retain their floating card triggers. |
 | Floating cards | Shared `floating-menu-layer`/popup contract remains the only detail-menu style, including new Vault and Entropy session guides. |
 | Build | Two current-tip builds match at `ac67b1ac9149b68e7d2051fba5b265ee623bc06dcb06887c11630bd946ae5f15`. |
+
+## 16. Current tool ownership correction
+
+The current implementation commit is
+`8b5d191cf1c0a72a8219d8df2199f1dfd25e576a`. It carries the approved route
+ownership forward without deleting any feature or changing the underlying
+protocol behavior.
+
+Entropy Lab now visibly contains the complete entropy-creation surface inside
+the active cold frame: dice-face collection, coin flips, card draws, hex-digit
+input, CSPRNG draws, entropy-strength measurement, undo/reset, target, and
+mix controls. The route-local warm panel is labeled `Collect, measure, and mix`;
+the redundant `Sealed realm / Vault tools` presentation, generic cold boot
+strip, and stale `not built yet` placeholder are not repeated there. The
+existing opaque cold-frame/session boundary and allowlisted route switch remain
+unchanged.
+
+Vault Tools is now a compact deck rather than a long sequence of unrelated
+shells. Vault Library and canonical encrypted-vault save are grouped in the
+main grid. Encrypted text handoff remains available, with its original
+textarea, copy, clear, and status controls preserved inside an advanced
+collapsed card. Its card also links to QR Studio for transport. The full
+device-to-device vault transfer UI is removed from the Vault route and is now
+present as the live transfer card in QR Studio, retaining the sender, receiver,
+CBX-VT/1, fallback, and status IDs already covered by the tests.
+
+All detail actions continue to use the shared centered floating-card contract,
+including the new Vault Tools and QR Studio transfer guides. The browser
+harness now explicitly opens the collapsed encrypted-text handoff before using
+its controls and navigates to QR Studio before exercising transfer behavior.
+The static route test checks that all Entropy controls remain in the cold
+source, the warm Entropy route has no stale placeholder, the generic cold boot
+strip is suppressed only in Entropy mode, Vault owns its
+Library/session/save/handoff content, QR Studio owns the transfer card, and
+System Health has no duplicate cold frame.
+
+| Current ownership check | Evidence |
+|---|---|
+| Entropy Lab | `entropy-lab-panel` owns the route slot; `cold/index.html` contains the full entropy tool IDs; `test/ui-walkthrough.test.js` and the browser harness assert their visibility on the Entropy route. |
+| Vault Tools | `vault-tools-panel` groups Library, canonical save, and collapsed encrypted-text handoff while preserving the existing control IDs. |
+| QR Studio | `qr-transfer-card` owns the live device-to-device transfer sender/receiver UI and its transfer guide popup. |
+| No redundant realm presentation | Entropy route source has no `Sealed realm / Vault tools` or duplicate `Sealed realm / Entropy Lab` label. |
+| Floating cards | `popup-vault-tools` and `popup-qr-transfer` are registered in the shared static popup map and use the same centered/red-close layer. |
+| Reproducible artifact | Two 8b5d191 builds match at `7555fdd107ba566b90b51fd0bc3102f998cfcae1e199fccbc539967af3a1fc61`; final size is 1,954,982 bytes. |
