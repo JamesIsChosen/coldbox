@@ -22,7 +22,7 @@ P0.19 completion. P0.19 remains [~] with physical acceptance deferred.
 
 Branch: ui-seeded-app-walkthrough
 
-Implementation commit: 5d6fb99d60b565d067cbe2acac5b5b24b2d13fec
+Implementation commit: 672cfd7c15a837fe675fc001389c17f96daf0ec2
 
 Base: 25ba569873b5343c6c88efda952bdfe592e08a83 (merged P0.19 implementation;
 physical matrix deferred)
@@ -46,7 +46,7 @@ Included:
 - The supplied transparent wordmark and all six supplied favicon files are
   copied into src/assets/brand and embedded as data URIs during the build.
 - A precise build asset manifest and binary-aware source lint handling.
-- A browser-harness walkthrough for all 15 routes and popup keyboard/focus
+- A browser-harness walkthrough for all 16 routes and popup keyboard/focus
   behavior.
 - The canonical UI walkthrough at docs/01-spec/ui-walkthrough.md.
 
@@ -81,23 +81,23 @@ Result: Documentation hygiene check passed: 137 markdown file(s) checked,
 
 npm.cmd run build
 
-Current-tip (5d6fb99) first result:
+Current-tip (672cfd7) first result:
 Built build/coldbox.html
-(2fad0b39f4d5f20b8aef4ae05cd2cde35414275a7350d7af59ea235f47b562c3)
+(ac67b1ac9149b68e7d2051fba5b265ee623bc06dcb06887c11630bd946ae5f15)
 
-Current-tip (5d6fb99) second result:
+Current-tip (672cfd7) second result:
 Built build/coldbox.html
-(2fad0b39f4d5f20b8aef4ae05cd2cde35414275a7350d7af59ea235f47b562c3)
+(ac67b1ac9149b68e7d2051fba5b265ee623bc06dcb06887c11630bd946ae5f15)
 
 The sidecar contains the same SHA-256:
-2fad0b39f4d5f20b8aef4ae05cd2cde35414275a7350d7af59ea235f47b562c3
+ac67b1ac9149b68e7d2051fba5b265ee623bc06dcb06887c11630bd946ae5f15
 build/coldbox.html
 
 npm.cmd test
 
 Result:
-tests 255
-pass 255
+tests 256
+pass 256
 fail 0
 cancelled 0
 skipped 0
@@ -120,7 +120,7 @@ approved UI mock, so the acceptance contract is:
 
 | Criterion | Evidence |
 |---|---|
-| Every approved route uses the approved card hierarchy | test/ui-walkthrough.test.js asserts all 15 route IDs and the browser harness visits every route |
+| Every approved route uses the approved card hierarchy | test/ui-walkthrough.test.js asserts all 16 route IDs and the browser harness visits every route |
 | Unbuilt features do not present invented data | Portfolio, Prices, Registry, Devices, protected routes, and Verify Bench use explicit empty/unavailable states |
 | Detail actions use one centered popup style | Shared floating-menu-layer markup/CSS/handlers and popup contract test |
 | Close action is red and accessible | CSS uses var(--fill-red), modal is aria-modal, keyboard close and focus restoration are asserted |
@@ -154,7 +154,7 @@ New test file: test/ui-walkthrough.test.js.
 
 It proves:
 
-- All 15 stable routes have a page and route link.
+- All 16 stable routes have a page and route link.
 - Every popup trigger maps to a static popup content entry.
 - The shared dialog is modal, centered, keyboard-closeable, and red-close
   styled.
@@ -172,11 +172,11 @@ available:
   restores focus.
 - A capability row opens by Enter, reports its current result, closes by
   Escape, and restores focus.
-- Each of the 15 routes becomes visible and has a primary heading.
+- Each of the 16 routes becomes visible and has a primary heading.
 - No unexpected console errors appear in the walkthrough.
 
-The full unit suite includes the new 3 passing UI tests and the existing 252
-tests. The browser harness prerequisite failure is environmental and is
+The full unit suite passes 256 tests, including the new UI and protocol
+coverage. The browser harness prerequisite failure is environmental and is
 reported above; no browser result is inferred from another engine or platform.
 
 ## 7. Device matrix
@@ -245,9 +245,9 @@ The wordmark PNG was checked as transparent RGBA artwork before copying.
 
 Reviewed base 25ba569 build: 1,269,833 bytes.
 
-Committed UI tip build: 1,929,560 bytes.
+Committed UI tip build: 1,947,648 bytes.
 
-Delta: +659,727 bytes (+644.26 KiB). The increase is primarily the embedded
+Delta: +677,815 bytes (+661.93 KiB). The increase is primarily the embedded
 419,715-byte transparent wordmark expanded into a base64 data URI, plus the
 sample-free route cards and popup/CSS walkthrough. Removing the populated route
 records reduced the final artifact relative to the earlier seeded tip. The
@@ -270,7 +270,7 @@ not a new security or storage decision.
 ## 13. Current-tip correction evidence
 
 The owner correction is included in commit
-`5d6fb99d60b565d067cbe2acac5b5b24b2d13fec`. The shipped artifact now presents
+`05f55078b656505c8fc2d7b7c9b685e43735f33b`. The shipped artifact now presents
 the approved mock hierarchy first and uses empty, unavailable, planning, or
 live-status states wherever the feature is not built. The live realm,
 reachability, and capability surfaces remain present in the dedicated System
@@ -280,12 +280,12 @@ The following static scan was run against `build/coldbox.html` after the
 current-tip build:
 
 ```text
-rg -n -i 'Seeded UI preview|Sample source card|sample data in this|sample data in the|248,670|78,382|1.8421|Coldcard savings|Trezor daily|Tax reserve|Primary Bitcoin|Daily device|Emergency reserve|2026-08|2026-07' build/coldbox.html
+rg -n -i 'Seeded UI preview|Sample source card|sample data in this|sample data in the|248,670|78,382|1.8421|Coldcard savings|Trezor daily|Tax reserve|Primary Bitcoin|Daily device|Emergency reserve' build/coldbox.html
 No seeded route values found in shipped artifact.
 ```
 
-The current full suite result is 255 tests passed, 0 failed. The focused
-UI-plus-vault run is 25 tests passed, 0 failed. `npm.cmd run lint` and
+The current full suite result is 256 tests passed, 0 failed. The focused
+UI/route contract run is 23 tests passed, 0 failed. `npm.cmd run lint` and
 `npm.cmd run check-docs` pass; the latter reports 137 markdown files and zero
 warnings. Two post-commit builds produced the identical SHA-256 recorded in
 section 3.
@@ -298,3 +298,61 @@ was not weakened or treated as a browser PASS.
 The separate `build/coldbox-ui-walkthrough.html` file is a local ignored visual
 reference copied before the correction. It is intentionally not the shipped
 artifact, not application state, and not part of the single-file build output.
+
+## 14. Prior route-specific correction (history)
+
+The preceding implementation commit was
+05f55078b656505c8fc2d7b7c9b685e43735f33b. It makes System Health its own
+route, removes health cards and triggers from Dashboard, keeps Vault details
+and session lock/panic controls together, and places the airgap guard in a
+compact navigation caption. Boot self-check rows remain live and
+individually clickable. Portfolio, Prices, Registry, and Devices expose the
+approved empty-state card triggers without fabricated records.
+
+Learn now starts with a compact embedded-glossary prompt. Search results open
+one selected glossary term or guide in a detail card; the explanation-depth
+switcher rerenders only that entry. The compiled help corpus remains embedded
+and offline, but the page no longer renders the entire glossary and guide list
+at once. Contextual help uses the same selected-entry card and deep-link route.
+
+| Area | Evidence |
+|---|---|
+| Dashboard scope | The Dashboard source contains no system-health popup trigger or health row. |
+| System Health scope | page-system-health owns the cold-realm status and six capability rows; the navigation rail links to it. |
+| Airgap presentation | The preceding tip used a compact live navigation caption; the current tip moves it into the app-bar masthead. |
+| Vault scope | Vault details and session lock/panic controls are inside page-vault, before the vault card grid. |
+| Floating-card coverage | The static test requires the restored portfolio, price-source, registry, device-verification, dashboard-backup, and vault-detail triggers. |
+| Learn scope | help-empty-state, help-search-input, and help-detail-card implement one-entry-at-a-time help; legacy list containers stay hidden. |
+| Panic presentation | The panic screen has a red backing panel behind the concealed-state copy; the shared popup Close remains red. |
+
+## 15. Current route-ownership correction
+
+The current implementation commit is
+672cfd7c15a837fe675fc001389c17f96daf0ec2. It preserves every existing Vault
+and Entropy Lab information surface while relocating ownership to the route
+where it belongs. One persistent opaque cold frame is placed inside Vault
+tools by default and moves into the Entropy Lab panel only when `#entropy` is
+active. The System Health route has no cold-frame host and contains only the
+warm sealed-realm status plus the six individually clickable boot/capability
+checks. No second secret session or duplicate cold frame is created.
+
+The warm-to-cold route message is the existing allowlisted `ui.navigate`
+protocol shape and carries only `{ section: "vault" | "entropy" }`. It carries
+no secret material. Vault details, session guidance, KDF controls, and vault
+session status are hidden from the cold view unless Vault is active; Entropy
+Lab controls are hidden unless Entropy Lab is active. The existing Vault,
+Entropy, and System Health card information remains in the source.
+
+The Airgap guard is now a compact live caption in the top app-bar navbar, not
+the left rail or a route footer. Panic concealment is hidden on all normal
+routes, follows the active theme background, and uses a centered red backing
+panel behind the concealed-state copy on desktop and mobile. Learn remains a
+single embedded, searchable glossary/detail card rather than a rendered list.
+
+| Current ownership check | Evidence |
+|---|---|
+| Vault tools | `vault-cold-realm-panel` owns `cold-realm-host`, Vault details, and the session guide. |
+| Entropy Lab | `entropy-cold-realm-panel` owns the moved frame slot and route-local Entropy controls. |
+| System Health | `page-system-health` has no `cold-frame-host` or entropy slot; health rows retain their floating card triggers. |
+| Floating cards | Shared `floating-menu-layer`/popup contract remains the only detail-menu style, including new Vault and Entropy session guides. |
+| Build | Two current-tip builds match at `ac67b1ac9149b68e7d2051fba5b265ee623bc06dcb06887c11630bd946ae5f15`. |
