@@ -447,6 +447,14 @@ async function lockVaultDiscardingUnsaved(page) {
   }
 }
 
+async function openVaultManualHandoff(page) {
+  const details = page.locator('#page-vault .vault-tool-details');
+  if (await details.getAttribute('open') === null) {
+    await details.locator('summary').click();
+  }
+  await details.locator('#vault-manual-data').waitFor({ state: 'visible' });
+}
+
 async function openPage(browser, file, reachabilityMode = 'reachable', options = {}) {
   const page = await browser.newPage();
   const reachability = await installReachabilityRoutes(page, reachabilityMode);
@@ -760,6 +768,7 @@ async function verifyBuiltFile(browser, engine) {
 
     // Advanced Base64 is a handoff surface, not another save and not a QR
     // backup/export route. It remains usable without changing save status.
+    await openVaultManualHandoff(page);
     await page.locator('#vault-save-manual').click();
     await page.waitForFunction(() => document.querySelector('#vault-manual-data').value.length > 0);
     const manualVaultText = await page.locator('#vault-manual-data').inputValue();
@@ -773,9 +782,13 @@ async function verifyBuiltFile(browser, engine) {
     // become the sender for live QR. This keeps QR from becoming the sender's
     // first/only persistence path and also proves unchanged re-save remains
     // disabled rather than creating another look-alike file.
+    await page.locator('#nav-rail a[data-route="qr"]').click();
+    await page.locator('#page-qr:not([hidden])').waitFor({ state: 'visible' });
     assert.equal(await page.locator('#vault-transfer-start').isDisabled(), true, `${engine}: Saved · unverified vault must not start live transfer before its .cbx is reopened`);
     assert.equal(await page.locator('[id^="vault-transfer-download"]').count(), 0, `${engine}: live transfer must not expose a QR download action`);
 
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#vault-lock').click();
     await page.locator('#vault-lock-warning:not([hidden])').waitFor({ state: 'visible' });
     assert.match(
@@ -811,6 +824,8 @@ async function verifyBuiltFile(browser, engine) {
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     await page.locator('#vault-status-label').filter({ hasText: /Loaded/ }).waitFor({ state: 'visible', timeout: 5000 });
     assert.equal((await page.locator('#vault-active-id').textContent()).trim(), activeVaultIdText, `${engine}: reopening canonical .cbx must preserve Vault ID`);
+    await page.locator('#nav-rail a[data-route="qr"]').click();
+    await page.locator('#page-qr:not([hidden])').waitFor({ state: 'visible' });
     assert.equal(await page.locator('#vault-transfer-start').isDisabled(), false, `${engine}: durable loaded vault should enable live device transfer`);
 
     await page.locator('#vault-transfer-start').click();
@@ -837,6 +852,8 @@ async function verifyBuiltFile(browser, engine) {
 
     // Loaded durable vault has no dirty warning; lock normally before testing
     // the advanced Base64 handoff as an intentionally-unsaved local receipt.
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#vault-lock').click();
     await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
     await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
@@ -1100,6 +1117,7 @@ async function verifyVaultLibrary(browser, engine) {
         '',
         `${engine}: switching to ${name} left a stale manual export from the previous vault`
       );
+      await openVaultManualHandoff(page);
       await page.locator('#vault-save-manual').click();
       await page.waitForFunction(() => document.querySelector('#vault-manual-data').value.length > 0);
       const base64 = await page.locator('#vault-manual-data').inputValue();
@@ -1237,6 +1255,7 @@ async function verifyUnlockedRuntimeHealthLockdown(browser, engine) {
     await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
 
     await coldFrame.locator('html').evaluate((root) => root.setAttribute('data-airgap-state', 'red'));
+    await openVaultManualHandoff(page);
     await page.locator('#vault-save-manual').click();
     await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
     await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
@@ -1755,6 +1774,7 @@ async function verifyKeyfileUiAndRegressions(browser, engine) {
     await coldFrame.locator('#cold-vault-create').click();
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
 
+    await openVaultManualHandoff(page);
     await page.locator('#vault-save-manual').click();
     await page.waitForFunction(() => document.querySelector('#vault-manual-data').value.length > 0);
     const f1VaultText = await page.locator('#vault-manual-data').inputValue();
@@ -2145,6 +2165,18 @@ async function verifyEntropyLab(browser, engine) {
     const coldFrame = await getColdFrame(page, engine);
     await coldFrame.locator('html[data-crypto-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
     assert.equal(await coldFrame.locator('html').getAttribute('data-cold-view'), 'entropy', `${engine}: Entropy Lab did not activate the entropy view`);
+
+    for (const toolId of [
+      'cold-entropy-meter',
+      'cold-entropy-dice-face',
+      'cold-entropy-coin-heads',
+      'cold-entropy-card-grid',
+      'cold-entropy-hex-input',
+      'cold-entropy-csprng-draw',
+      'cold-entropy-mix-run'
+    ]) {
+      await coldFrame.locator(`#${toolId}`).waitFor({ state: 'visible', timeout: 5000 });
+    }
 
     const meter = coldFrame.locator('#cold-entropy-meter');
     const mixStatus = coldFrame.locator('#cold-entropy-mix-status');

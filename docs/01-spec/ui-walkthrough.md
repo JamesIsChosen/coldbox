@@ -150,8 +150,10 @@ for create, unlock, save, load, transfer, lock, and panic conceal behavior.
 3. Lock and panic controls bundled directly into the Vault workspace.
 4. One sealed-realm panel containing Vault details, the unlock session, keyfile
    option, and cold-realm status.
-5. File, save, encrypted-text, and transfer controls grouped beneath the
-   Vault tools deck.
+5. A compact Vault tools deck: Vault Library and canonical save sit together;
+   the advanced encrypted-text handoff is collapsed until needed.
+6. Device-to-device transfer is not duplicated here; the Vault tools deck links
+   to its live CBX-VT/1 card in QR Studio.
 
 The standalone visual reference does not invent a second vault implementation.
 New UI work
@@ -245,10 +247,13 @@ actually verified.
 **Purpose:** present the protected entropy collection flow without rendering
 entropy in the warm shell.
 
-**Visible hierarchy:** a route-local sealed-realm panel for the actual
-Collect -> Mix -> Health workspace, followed by the not-started visual summary,
-health-meter placeholder, and rules that distinguish independent physical
-entropy from the device RNG.
+**Visible hierarchy:** a route-local Entropy Lab tools panel for the actual
+Collect -> Mix -> Health workspace. The protected workspace visibly includes
+dice, coin flips, shuffled cards, hex digits, fresh CSPRNG bytes, the entropy
+strength meter, undo/reset controls, target selection, and the mix action,
+followed by the not-started visual summary and rules that distinguish
+independent physical entropy from the device RNG. It does not repeat the Vault
+tools label or render Vault session controls.
 
 **Popup actions:** collection flow, health meter, and entropy rules.
 
@@ -506,8 +511,8 @@ this path:
 7. Entropy Lab -> Seed Forge -> Derivation -> Backup Lab: confirm Entropy Lab
    owns the sealed entropy workspace, while the other protected screens remain
    calm, empty, and use centered popups.
-8. QR Studio -> Recovery -> Verify Bench: inspect the placeholder QR, transfer,
-   recovery, and verification surfaces.
+8. QR Studio -> Recovery -> Verify Bench: inspect the public/SeedQR placeholders,
+   then open the live transfer card, recovery, and verification surfaces.
 9. System Health: confirm only the warm live-check surface and boot capability
    rows are present; open the summary and each capability card, close with the
    red button, reopen a row with Enter, and close with Escape. Confirm focus
@@ -524,8 +529,9 @@ concealed-state copy at desktop and mobile widths.
 The cold realm is one persistent opaque frame. Routing moves that frame between
 the Vault and Entropy Lab slots and sends only an allowlisted section name; it
 does not create a second secret session or carry secret material across the
-boundary. System Health contains the warm live-check surface and capability
-rows only.
+boundary. Vault mode exposes the KDF/session controls; Entropy mode exposes the
+full entropy toolset. System Health contains the warm live-check surface and
+capability rows only.
 
 For the full seeded visual walkthrough, open
 `build/coldbox-ui-walkthrough.html` separately and repeat the route order. That
@@ -541,8 +547,9 @@ the shipped application and its values must never become default product data.
 | Portfolio/chart | Empty total, allocation, chart, holdings, and transaction shells | Populated visual reference; connect to public data model and accessible data table |
 | Prices | Empty median, watchlist, chart, and source-ledger shells | Populated visual reference; warm-shell fetch, median/spread/stale policy |
 | Registry/devices | Empty record cards and address/device placeholders | Populated visual reference; durable records, verification history, dated external facts |
-| Entropy/Seed Forge/Derivation/Backup | Protected-layout placeholders | Calm visual reference; cold-realm workflows and public projections only |
-| QR Studio | Placeholder QR and live-transfer explanation | Calm visual reference; public QR, cold-only SeedQR, live transfer, truthful fallback |
+| Entropy | Route-local cold tools for dice, coin, cards, hex, CSPRNG, strength, and mix | Keep raw entropy and mixed bytes in the cold realm |
+| Seed Forge/Derivation/Backup | Protected-layout placeholders | Calm visual reference; cold-realm workflows and public projections only |
+| QR Studio | Placeholder public/SeedQR cards plus the live-transfer card | Calm visual reference; public QR, cold-only SeedQR, live transfer, truthful fallback |
 | Recovery | Empty decision/limit placeholders | Calm visual reference; bounded cold-realm search with checkpoint/cancel |
 | Verify Bench | Empty input/result states | Populated visual reference; independent public verification tools and evidence |
 | System Health | Dedicated live-check route, individually clickable capability rows | Keep live evidence scoped to the system route; never infer physical platforms |

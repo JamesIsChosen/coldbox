@@ -9,6 +9,7 @@ const test = require('node:test');
 const projectRoot = path.resolve(__dirname, '..');
 const indexSource = fs.readFileSync(path.join(projectRoot, 'src', 'index.html'), 'utf8');
 const mainSource = fs.readFileSync(path.join(projectRoot, 'src', 'main.js'), 'utf8');
+const coldIndexSource = fs.readFileSync(path.join(projectRoot, 'src', 'cold', 'index.html'), 'utf8');
 const coldMainSource = fs.readFileSync(path.join(projectRoot, 'src', 'cold', 'main.js'), 'utf8');
 const stylesSource = fs.readFileSync(path.join(projectRoot, 'src', 'styles.css'), 'utf8');
 const buildSource = fs.readFileSync(path.join(projectRoot, 'scripts', 'build.js'), 'utf8');
@@ -37,8 +38,10 @@ const approvedPopupIds = Object.freeze([
   'popup-registry-balance',
   'popup-device-verify',
   'popup-vault-details',
+  'popup-vault-tools',
   'popup-vault-session',
-  'popup-entropy-session'
+  'popup-entropy-session',
+  'popup-qr-transfer'
 ]);
 
 const brandAssets = Object.freeze([
@@ -96,10 +99,31 @@ test('the UI shell covers every stable route and popup trigger', () => {
   );
   assert.match(vaultSource, /id="cold-realm-host"/);
   assert.match(vaultSource, /data-popup-open="popup-vault-details"/);
+  assert.match(vaultSource, /id="vault-tools-panel"|class="vault-tools-panel"/);
+  assert.match(vaultSource, /id="vault-file-input"/);
+  assert.match(vaultSource, /id="vault-save-file-system"/);
+  assert.match(vaultSource, /id="vault-manual-data"/);
   assert.match(vaultSource, /data-popup-open="popup-vault-session"/);
+  assert.doesNotMatch(vaultSource, /id="vault-transfer-card"|id="vault-transfer-start"/);
   assert.match(entropySource, /id="entropy-cold-realm-slot"/);
   assert.match(entropySource, /data-popup-open="popup-entropy-session"/);
+  assert.match(entropySource, /Entropy Lab tools/);
+  assert.doesNotMatch(entropySource, /Sealed realm \/ (?:Vault tools|Entropy Lab)/);
+  for (const toolId of [
+    'cold-entropy-dice-face', 'cold-entropy-coin-heads', 'cold-entropy-card-grid',
+    'cold-entropy-hex-input', 'cold-entropy-csprng-draw', 'cold-entropy-meter',
+    'cold-entropy-fallback-strength', 'cold-entropy-mix-run'
+  ]) {
+    assert.match(coldIndexSource, new RegExp(`id="${toolId}"`), `missing entropy tool ${toolId}`);
+  }
   assert.doesNotMatch(systemHealthSource, /id="cold-realm-host"|id="entropy-cold-realm-slot"/);
+  const qrSource = indexSource.slice(
+    indexSource.indexOf('<section class="page" id="page-qr"'),
+    indexSource.indexOf('<section class="page" id="page-recovery"')
+  );
+  assert.match(qrSource, /id="vault-transfer-card"/);
+  assert.match(qrSource, /id="vault-transfer-start"/);
+  assert.match(qrSource, /data-popup-open="popup-qr-transfer"/);
   assert.match(mainSource, /function placeColdRealm\(route\)/);
   assert.match(mainSource, /'ui\.navigate'/);
   assert.match(coldMainSource, /message\.type === 'ui\.navigate'/);

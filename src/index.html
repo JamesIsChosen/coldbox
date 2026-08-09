@@ -221,87 +221,69 @@ __COLDBOX_STYLES__
             </div>
           </section>
 
-          <div class="card-grid vault-card-grid">
-            <article class="info-card vault-card vault-library-card">
-              <span class="card-icon" aria-hidden="true">01</span>
-              <h2>Vault Library</h2>
-              <p>Coldbox can list only vault files or folders you explicitly grant. Select a named vault first; its unlock phrase is entered separately inside the sealed realm. Public names must be unique among vault identities this browser profile or granted library already knows.</p>
-              <input class="sr-only" id="vault-file-input" type="file" accept=".cbx,application/octet-stream" multiple>
-              <div class="vault-actions">
-                <button class="vault-button" id="vault-load-file" type="button">Choose vault files</button>
-                <button class="vault-button" id="vault-choose-folder" type="button">Choose vault folder</button>
+          <section class="vault-tools-panel" id="vault-tools-panel" aria-labelledby="vault-tools-title">
+            <div class="section-heading-row vault-tools-heading">
+              <div>
+                <p class="panel-kicker">Vault tools</p>
+                <h2 id="vault-tools-title">Files, saves, and handoffs</h2>
+                <p class="vault-tools-copy">Keep the durable file workflow together, then open the advanced text handoff only when a file path is not practical. Live device-to-device transfer lives in QR Studio.</p>
               </div>
-              <p class="vault-help" id="vault-library-empty">No vault files granted yet.</p>
-              <div id="vault-library-list" class="vault-library-list" role="list" aria-live="polite"></div>
-              <hr>
-              <h3>Create a new vault</h3>
-              <label class="vault-label" for="vault-create-name">Public vault name</label>
-              <input id="vault-create-name" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="e.g. Bitcoin Savings">
-              <p class="vault-help">This name is public and appears in filenames/library. Do not put a passphrase, seed phrase, private key, or other secret here.</p>
-              <div class="vault-actions">
-                <button class="vault-button" id="vault-create-prepare" type="button">Continue creation in sealed realm</button>
-              </div>
-            </article>
-
-            <article class="info-card vault-card">
-              <span class="card-icon" aria-hidden="true">02</span>
-              <h2>Save encrypted vault</h2>
-              <p>The prominent Save vault button above writes one canonical <code>.cbx</code> for this Vault ID. File System Access updates that same selected file and verifies it by reading it back. Browsers without writable file handles can download one canonical replacement copy, which remains unverified until reopened.</p>
-              <div class="vault-actions vault-actions-stack">
-                <button class="vault-button" id="vault-save-file-system" type="button">Save / update canonical .cbx (verified)</button>
-                <button class="vault-button" id="vault-save-download" type="button">Download canonical .cbx (unverified)</button>
-              </div>
-            </article>
-
-            <article class="info-card vault-card vault-card-manual">
-              <span class="card-icon" aria-hidden="true">03</span>
-              <h2>Encrypted text handoff (advanced)</h2>
-              <p>For unusual airgapped workflows, Coldbox can expose the encrypted <code>.cbx</code> bytes as Base64 text. This is not a canonical save and does not count as a verified backup. QR is deliberately not available here.</p>
-              <label class="vault-label" for="vault-manual-data">Encrypted vault Base64</label>
-              <textarea id="vault-manual-data" rows="7" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Encrypted bytes appear here or can be pasted here."></textarea>
-              <div class="vault-actions">
-                <button class="vault-button" id="vault-save-manual" type="button">Prepare encrypted text</button>
-                <button class="vault-button" id="vault-manual-copy" type="button" disabled>Copy text</button>
-                <button class="vault-button" id="vault-manual-share" type="button" disabled>Share text</button>
-                <button class="vault-button" id="vault-load-manual" type="button">Load pasted text</button>
-              </div>
-              <p class="vault-help" id="vault-manual-help">If clipboard or share access is unavailable, focus the text and use the browser's Copy command. Use a <code>.cbx</code> file for durable storage; use the live animated QR flow below only for device-to-device transfer.</p>
-            </article>
-
-            <article class="info-card vault-card vault-transfer-card" id="vault-transfer-card">
-              <span class="card-icon" aria-hidden="true">04</span>
-              <h2>Device-to-device vault transfer</h2>
-              <p>Animated QR is a live transfer only. The sending vault must already be unlocked from a durable local <code>.cbx</code> (or have a verified canonical save), nothing can be downloaded from this QR surface, and the receiving device must not already have this vault in its granted library. The receiving device still enters the vault's normal unlock phrase before it can open the transferred copy.</p>
-              <div class="vault-actions">
-                <button class="vault-button vault-button-primary" id="vault-transfer-start" type="button" disabled>Show animated QR</button>
-                <button class="vault-button" id="vault-transfer-pause" type="button" hidden>Pause</button>
-                <button class="vault-button vault-button-danger" id="vault-transfer-stop" type="button" hidden>Stop transfer</button>
-              </div>
-              <div class="vault-transfer-sender" id="vault-transfer-sender" hidden>
-                <img id="vault-transfer-image" class="vault-transfer-image" alt="Live encrypted vault transfer QR">
-                <p class="vault-help" id="vault-transfer-send-status" role="status" aria-live="polite">No transfer active.</p>
-              </div>
-              <hr>
-              <h3>Receive from another Coldbox device</h3>
-              <p class="vault-help">Camera permission is requested only after you choose Start camera scanner. If this browser cannot decode QR from the camera, use the canonical <code>.cbx</code> file instead.</p>
-              <div class="vault-actions">
-                <button class="vault-button" id="vault-transfer-receive" type="button">Start camera scanner</button>
-                <button class="vault-button vault-button-danger" id="vault-transfer-receive-stop" type="button" hidden>Stop camera</button>
-              </div>
-              <video id="vault-transfer-video" class="vault-transfer-video" autoplay playsinline muted hidden></video>
-              <p class="vault-help" id="vault-transfer-receive-status" role="status" aria-live="polite">Camera is off.</p>
-              <div id="vault-transfer-receipt" class="vault-transfer-receipt" hidden>
-                <p id="vault-transfer-receipt-summary"></p>
-                <label class="vault-label" for="vault-transfer-receive-name">Local public vault name</label>
-                <input id="vault-transfer-receive-name" type="text" maxlength="80" autocomplete="off" spellcheck="false">
-                <p class="vault-help">The sender's public name is suggested. Change it if that name already belongs to a different Vault ID on this device.</p>
+              <button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-vault-tools" aria-controls="popup-vault-tools">Tool map</button>
+            </div>
+            <div class="vault-tools-grid">
+              <article class="info-card vault-card vault-library-card">
+                <span class="card-icon" aria-hidden="true">01</span>
+                <h2>Vault Library</h2>
+                <p>Coldbox can list only vault files or folders you explicitly grant. Select a named vault first; its unlock phrase is entered separately inside the sealed realm. Public names must be unique among vault identities this browser profile or granted library already knows.</p>
+                <input class="sr-only" id="vault-file-input" type="file" accept=".cbx,application/octet-stream" multiple>
                 <div class="vault-actions">
-                  <button class="vault-button vault-button-primary" id="vault-transfer-load" type="button">Load received vault</button>
-                  <button class="vault-button" id="vault-transfer-discard" type="button">Discard received transfer</button>
+                  <button class="vault-button" id="vault-load-file" type="button">Choose vault files</button>
+                  <button class="vault-button" id="vault-choose-folder" type="button">Choose vault folder</button>
                 </div>
-              </div>
-            </article>
-          </div>
+                <p class="vault-help" id="vault-library-empty">No vault files granted yet.</p>
+                <div id="vault-library-list" class="vault-library-list" role="list" aria-live="polite"></div>
+                <hr>
+                <h3>Create a new vault</h3>
+                <label class="vault-label" for="vault-create-name">Public vault name</label>
+                <input id="vault-create-name" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="e.g. Bitcoin Savings">
+                <p class="vault-help">This name is public and appears in filenames/library. Do not put a passphrase, seed phrase, private key, or other secret here.</p>
+                <div class="vault-actions">
+                  <button class="vault-button" id="vault-create-prepare" type="button">Continue creation in sealed realm</button>
+                </div>
+              </article>
+
+              <article class="info-card vault-card vault-save-card">
+                <span class="card-icon" aria-hidden="true">02</span>
+                <h2>Save encrypted vault</h2>
+                <p>The prominent Save vault button above writes one canonical <code>.cbx</code> for this Vault ID. File System Access updates that same selected file and verifies it by reading it back. Browsers without writable file handles can download one canonical replacement copy, which remains unverified until reopened.</p>
+                <div class="vault-actions vault-actions-stack">
+                  <button class="vault-button" id="vault-save-file-system" type="button">Save / update canonical .cbx (verified)</button>
+                  <button class="vault-button" id="vault-save-download" type="button">Download canonical .cbx (unverified)</button>
+                </div>
+              </article>
+
+              <details class="info-card vault-card vault-card-manual vault-tool-details">
+                <summary class="vault-tool-summary">
+                  <span class="card-icon" aria-hidden="true">03</span>
+                  <span><strong>Encrypted text handoff</strong><small>Advanced · open only when needed</small></span>
+                </summary>
+                <div class="vault-tool-details-body">
+                  <h2>Encrypted text handoff (advanced)</h2>
+                  <p>For unusual airgapped workflows, Coldbox can expose the encrypted <code>.cbx</code> bytes as Base64 text. This is not a canonical save and does not count as a verified backup. QR is deliberately not available here.</p>
+                  <label class="vault-label" for="vault-manual-data">Encrypted vault Base64</label>
+                  <textarea id="vault-manual-data" rows="7" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Encrypted bytes appear here or can be pasted here."></textarea>
+                  <div class="vault-actions">
+                    <button class="vault-button" id="vault-save-manual" type="button">Prepare encrypted text</button>
+                    <button class="vault-button" id="vault-manual-copy" type="button" disabled>Copy text</button>
+                    <button class="vault-button" id="vault-manual-share" type="button" disabled>Share text</button>
+                    <button class="vault-button" id="vault-load-manual" type="button">Load pasted text</button>
+                  </div>
+                  <p class="vault-help" id="vault-manual-help">If clipboard or share access is unavailable, focus the text and use the browser's Copy command. Use a <code>.cbx</code> file for durable storage; use QR Studio for live device-to-device transfer.</p>
+                  <a class="text-button" href="#qr" data-route="qr">Open QR Studio</a>
+                </div>
+              </details>
+            </div>
+          </section>
 
           <section class="protocol-warning vault-lock-warning" id="vault-lock-warning" aria-live="polite" hidden>
             <p><strong>Confirm before locking.</strong> <span id="vault-lock-warning-copy">This vault has not completed a durable save. Save first if you need a durable copy.</span></p>
@@ -346,13 +328,13 @@ __COLDBOX_STYLES__
         </section>
 
         <section class="page" id="page-entropy" data-page="entropy" aria-labelledby="page-title-entropy" hidden>
-          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-entropy">Entropy Lab</h1><p class="page-lede">This layout is reserved for physical entropy collection, source mixing, and health checks. No entropy is collected or displayed by the UI shell.</p></header>
+          <header class="page-header"><p class="eyebrow">Tools / Entropy</p><h1 id="page-title-entropy">Entropy Lab</h1><p class="page-lede">Dice, cards, coin flips, hex digits, fresh CSPRNG bytes, strength checks, and mixing stay together in the protected Entropy Lab workspace.</p></header>
           <section class="cold-route-panel entropy-cold-realm-panel" aria-labelledby="entropy-cold-realm-title">
             <div class="section-heading-row">
               <div>
-                <p class="panel-kicker">Sealed realm / Entropy Lab</p>
-                <h2 id="entropy-cold-realm-title">Physical and manual entropy</h2>
-                <p class="cold-route-panel-copy">The entropy controls remain inside the sealed realm and are shown here only when this route is active. No collected material crosses into the warm shell.</p>
+                <p class="panel-kicker">Entropy Lab tools</p>
+                <h2 id="entropy-cold-realm-title">Create entropy from independent sources</h2>
+                <p class="cold-route-panel-copy">Dice, coin flips, shuffled cards, hex digits, fresh CSPRNG bytes, and the entropy-strength meter stay together in this route-local workspace. The controls appear only while Entropy Lab is active.</p>
               </div>
               <button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-entropy-session" aria-controls="popup-entropy-session">Entropy guide</button>
             </div>
@@ -377,8 +359,55 @@ __COLDBOX_STYLES__
         </section>
 
         <section class="page" id="page-qr" data-page="qr" aria-labelledby="page-title-qr" hidden>
-          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-qr">QR Studio</h1><p class="page-lede">QR is a transport surface, not a place to leave secrets. The finished tool will separate public address QR, SeedQR, and live encrypted vault transfer.</p></header>
-          <section class="mock-route-grid mock-route-grid-three"><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Address QR</p><span class="mock-status mock-status-neutral">Not available</span></div><div class="mock-empty-qr" role="img" aria-label="Public address QR is unavailable until the registry feature exists"><span>QR</span></div><p class="mock-card-note">A public address QR can be added after a verified address exists.</p><button class="comic-btn" type="button" data-popup-open="popup-qr-address" aria-controls="popup-qr-address">Address QR layout</button></article><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">SeedQR</p><span class="mock-status mock-status-neutral">Cold only</span></div><div class="mock-empty-qr" role="img" aria-label="SeedQR is unavailable in the UI shell"><span>QR</span></div><p class="mock-card-note">Secret-bearing QR remains inside the sealed realm and is not rendered here.</p><button class="comic-btn" type="button" data-popup-open="popup-qr-seed" aria-controls="popup-qr-seed">SeedQR layout</button></article><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Live vault transfer</p><span class="mock-status mock-status-neutral">Not started</span></div><div class="mock-empty-state"><strong>No transfer active.</strong><span>Use the Vault tools route when a real durable vault exists.</span></div><a class="comic-btn" href="#vault" data-route="vault">Open vault tools</a></article></section>
+          <header class="page-header"><p class="eyebrow">Tools / Transport</p><h1 id="page-title-qr">QR Studio</h1><p class="page-lede">QR is a transport surface, not a place to leave secrets. Public address QR, cold-only SeedQR, and live encrypted vault transfer belong here.</p></header>
+          <section class="mock-route-grid mock-route-grid-two"><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">Address QR</p><span class="mock-status mock-status-neutral">Not available</span></div><div class="mock-empty-qr" role="img" aria-label="Public address QR is unavailable until the registry feature exists"><span>QR</span></div><p class="mock-card-note">A public address QR can be added after a verified address exists.</p><button class="comic-btn" type="button" data-popup-open="popup-qr-address" aria-controls="popup-qr-address">Address QR layout</button></article><article class="mock-card mock-security-card"><div class="mock-card-header"><p class="mock-card-label">SeedQR</p><span class="mock-status mock-status-neutral">Cold only</span></div><div class="mock-empty-qr" role="img" aria-label="SeedQR is unavailable in the UI shell"><span>QR</span></div><p class="mock-card-note">Secret-bearing QR remains inside the sealed realm and is not rendered here.</p><button class="comic-btn" type="button" data-popup-open="popup-qr-seed" aria-controls="popup-qr-seed">SeedQR layout</button></article></section>
+          <section class="info-card vault-card qr-transfer-card" id="vault-transfer-card" aria-labelledby="qr-transfer-title">
+            <div class="section-heading-row">
+              <div>
+                <span class="card-icon" aria-hidden="true">03</span>
+                <h2 id="qr-transfer-title">Device-to-device vault transfer</h2>
+              </div>
+              <div class="qr-transfer-heading-actions">
+                <span class="mock-status mock-status-neutral">Live only</span>
+                <button class="comic-btn comic-btn-secondary" type="button" data-popup-open="popup-qr-transfer" aria-controls="popup-qr-transfer">Transfer guide</button>
+              </div>
+            </div>
+            <p>Animated QR is a live transfer only. The sending vault must already be unlocked from a durable local <code>.cbx</code> (or have a verified canonical save), nothing can be downloaded from this QR surface, and the receiving device must not already have this vault in its granted library. The receiving device still enters the vault's normal unlock phrase before it can open the transferred copy.</p>
+            <div class="vault-transfer-grid">
+              <div class="vault-transfer-column">
+                <h3>Send from this Coldbox device</h3>
+                <div class="vault-actions">
+                  <button class="vault-button vault-button-primary" id="vault-transfer-start" type="button" disabled>Show animated QR</button>
+                  <button class="vault-button" id="vault-transfer-pause" type="button" hidden>Pause</button>
+                  <button class="vault-button vault-button-danger" id="vault-transfer-stop" type="button" hidden>Stop transfer</button>
+                </div>
+                <div class="vault-transfer-sender" id="vault-transfer-sender" hidden>
+                  <img id="vault-transfer-image" class="vault-transfer-image" alt="Live encrypted vault transfer QR">
+                  <p class="vault-help" id="vault-transfer-send-status" role="status" aria-live="polite">No transfer active.</p>
+                </div>
+              </div>
+              <div class="vault-transfer-column">
+                <h3>Receive from another Coldbox device</h3>
+                <p class="vault-help">Camera permission is requested only after you choose Start camera scanner. If this browser cannot decode QR from the camera, use the canonical <code>.cbx</code> file instead.</p>
+                <div class="vault-actions">
+                  <button class="vault-button" id="vault-transfer-receive" type="button">Start camera scanner</button>
+                  <button class="vault-button vault-button-danger" id="vault-transfer-receive-stop" type="button" hidden>Stop camera</button>
+                </div>
+                <video id="vault-transfer-video" class="vault-transfer-video" autoplay playsinline muted hidden></video>
+                <p class="vault-help" id="vault-transfer-receive-status" role="status" aria-live="polite">Camera is off.</p>
+                <div id="vault-transfer-receipt" class="vault-transfer-receipt" hidden>
+                  <p id="vault-transfer-receipt-summary"></p>
+                  <label class="vault-label" for="vault-transfer-receive-name">Local public vault name</label>
+                  <input id="vault-transfer-receive-name" type="text" maxlength="80" autocomplete="off" spellcheck="false">
+                  <p class="vault-help">The sender's public name is suggested. Change it if that name already belongs to a different Vault ID on this device.</p>
+                  <div class="vault-actions">
+                    <button class="vault-button vault-button-primary" id="vault-transfer-load" type="button">Load received vault</button>
+                    <button class="vault-button" id="vault-transfer-discard" type="button">Discard received transfer</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
         </section>
 
         <section class="page" id="page-recovery" data-page="recovery" aria-labelledby="page-title-recovery" hidden>

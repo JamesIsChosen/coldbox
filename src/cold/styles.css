@@ -336,6 +336,35 @@ body {
   box-shadow: 0.2rem 0.2rem 0 var(--cold-drop);
 }
 
+.cold-entropy-lab-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}
+
+.cold-entropy-lab-heading h1 {
+  margin: 0.2rem 0 0;
+  color: var(--cold-text);
+  font-family: inherit;
+  font-size: 1.35rem;
+  font-weight: 400;
+}
+
+.cold-entropy-tool-list {
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--cold-outline);
+  border-radius: 0.35rem;
+  background: var(--cold-yellow);
+  color: var(--cold-ink);
+  font-family: inherit;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  text-align: right;
+}
+
 #cold-entropy-lab-help,
 #cold-entropy-lab-note {
   max-width: 48rem;

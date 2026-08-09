@@ -62,6 +62,11 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 - The single sealed-realm frame is organized under Vault tools for Vault
   details/session work and moves to Entropy Lab only while that route is active;
   System Health now contains only its live checks and capability rows.
+- Entropy Lab visibly carries its full cold toolset: dice, coin, cards, hex,
+  CSPRNG, strength meter, undo/reset, target selection, and mixing controls.
+- Vault Library, canonical save, and advanced encrypted-text handoff are now a
+  compact Vault tools deck; live device-to-device CBX-VT/1 transfer is grouped
+  in QR Studio instead of being duplicated on Vault.
 - The airgap guard is in the top app bar rather than the left navigation rail.
 - Panic conceal is hidden during normal routing, follows the active theme, and
   centers its red backing panel beneath the concealment copy at all widths.
