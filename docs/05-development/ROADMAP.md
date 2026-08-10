@@ -200,7 +200,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
 - [x] P1.1 Entropy Lab: dice, coins, cards, CSPRNG, mixing
 - [x] P1.2 Entropy Health Meter and Bias Analyzer
 - [~] P1.3 Seed Forge: BIP-39 generate, validate, passphrase, fingerprint
-  **Current state (recorded 2026-08-09):** cold-only generation consumes the Entropy Lab `mix()` byte contract, validates all ten vendored BIP-39 wordlists with per-word/checksum status, supports duplicate-confirmed passphrases and the BIP-32 master fingerprint, and clears secret state on cold session teardown. Independent vector evidence and the browser matrix are recorded in `packets/p1.3-seed-forge.md`; the reviewer must independently verify and flip this marker to `[x]` on PASS.
+  **Current state (recorded 2026-08-10):** the cold-only flow is Entropy Lab → Mix → Use this mix in Seed Forge → BIP-39 mnemonic → optional passphrase → raw BIP-39 seed + live master fingerprint. The explicit handoff consumes the exact mixed bytes once without a second mix; confirmed passphrase changes re-derive the current mnemonic's raw seed and fingerprint, and all derived secret state clears on mismatch or teardown. All ten vendored BIP-39 wordlists are covered by official PBKDF2 vectors, including Japanese final NFKD handling. Evidence and the remediation response are recorded in `packets/p1.3-seed-forge.md`; the unchanged FAIL report is `packets/p1.3-seed-forge.review.md`; a fresh independent review must verify the new exact head and flip this marker to `[x]` on PASS. PR #36 remains DO NOT MERGE until then.
 - [ ] P1.4 Derivation engine: BIP-32 core plus Bitcoin script types
 - [ ] P1.5 Derivation: EVM and generic arbitrary-path mode
 - [ ] P1.6 Registry CRUD: wallets, accounts, addresses

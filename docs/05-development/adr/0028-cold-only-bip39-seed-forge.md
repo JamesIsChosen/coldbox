@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-09
-**Review date:** 2026-08-09
+**Review date:** 2026-08-10
 
 ## Context
 
@@ -22,26 +22,38 @@ only exposed the AES/KDF subset needed by earlier roadmap items.
 - Bundle the already-pinned `@scure/bip39` and `@scure/bip32` module graphs,
   their `@scure/base` dependency, and all ten official BIP-39 wordlists inside
   the cold realm. No new runtime artifact or network path is introduced.
-- Use Entropy Lab's `mix()` result as the only Seed Forge generation input.
-  When the available CSPRNG buffer is short, Seed Forge draws the exact
-  additional bytes through the existing cold `cryptoLayer.randomBytes()` and
-  adds them to the same session before calling `mix()`. A failed draw or mix
-  throws and no phrase is produced.
+- Use Entropy Lab's `mix()` result as the Seed Forge generation input. The
+  ordinary Generate action draws the exact additional CSPRNG bytes needed
+  through the existing cold `cryptoLayer.randomBytes()` wrapper, adds them to
+  the same session, and then calls `mix()`. A failed draw or mix throws and no
+  phrase is produced.
+- A successful explicit Mix action copies its exact returned bytes into a
+  cold-local, one-use pending slot. The adjacent **Use this mix in Seed Forge**
+  action consumes that exact copy without drawing or mixing again. Entropy Lab
+  input changes, output-size changes, session teardown, and successful
+  consumption clear and zero the pending copy; a target mismatch fails closed.
 - Do not call the vendored BIP-39 `generateMnemonic()` helper: its internal
   random-byte helper would bypass the application's explicit entropy-session
   accounting. The wrapper calls `entropyToMnemonic()` with the already mixed
   bytes instead.
 - Normalize phrase words with NFKD before validation and preserve the Japanese
-  canonical ideographic separator for PBKDF2. The vendored decoder receives a
-  canonical ordinary-space copy only for checksum/index decoding because its
-  Japanese output and decoder separator differ.
+  canonical ideographic separator for display. The vendored decoder receives
+  a canonical ordinary-space copy only for checksum/index decoding because
+  its Japanese output and decoder separator differ. Before PBKDF2, the
+  reconstructed mnemonic sentence is NFKD-normalized again, so Japanese U+3000
+  becomes the ASCII space required by BIP-39's published vector.
 - Derive the 64-byte BIP-39 seed with PBKDF2-HMAC-SHA512, 2,048 rounds, using
   NFKD mnemonic text and the `mnemonic` + NFKD passphrase salt. Build the
   BIP-32 master key with `@scure/bip32` and display only its first-four-byte
-  HASH160 fingerprint as eight lowercase hexadecimal characters.
+  HASH160 fingerprint as eight lowercase hexadecimal characters. Keep the
+  derived seed in cold-local memory for the current generated or validated
+  phrase, masked by default with an explicit 30-second reveal; recompute both
+  the seed and fingerprint whenever the confirmed passphrase changes, and
+  clear them on mismatch, invalid phrase, or cold session teardown.
 - Keep the generated phrase masked by default, require duplicate passphrase
-  entries before deriving a fingerprint, auto-remask a revealed phrase after
-  30 seconds, and clear all Seed Forge state on cold session teardown.
+  entries before any seed or fingerprint calculation, auto-remask a revealed
+  phrase or raw seed after 30 seconds, and provide no clipboard or storage
+  action for raw seed material.
 - Do not add a warm-cold message type. The warm shell cannot request, receive,
   or store the mnemonic, passphrase, derived seed, raw mixed bytes, or
   fingerprint in this item.
@@ -63,12 +75,13 @@ the 2,048-word checksum coding and secp256k1 master-key construction.
 
 ### Positive
 
-- BIP-39 generation, validation, passphrase derivation, and fingerprint output
-  are available offline inside the sealed realm.
+- BIP-39 generation, validation, passphrase derivation, the raw 64-byte seed,
+  and fingerprint output are available offline inside the sealed realm.
 - All supported official wordlists use the same checked path, including
   Japanese NFKD text and separators.
 - The generated phrase cannot silently use a second random source outside the
-  Entropy Lab accounting.
+  Entropy Lab accounting, and an explicit Mix result cannot silently be
+  replaced by a second mix during the handoff.
 
 ### Negative
 

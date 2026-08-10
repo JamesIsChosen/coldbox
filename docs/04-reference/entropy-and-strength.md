@@ -58,7 +58,7 @@ The evidence panel reports Pearson chi-square uniformity with an upper-tail p-va
 | 🟡 **Adequate** | Measured reaches the selected target, no chi-square flag, and is below 256 bits | Advisory P1.2 label |
 | 🟢 **Strong** | Measured reaches 256 bits | Advisory P1.2 label |
 
-The thresholds are ordered and non-overlapping. P1.2 does not block Entropy Lab's Mix entropy control; it reports evidence. Seed Forge (P1.3) consumes `mix()` output only after the cold realm has enough fresh CSPRNG bytes for the selected target, fails closed rather than producing a shorter phrase, and requires an explicit acknowledgement when the selected physical/manual source is marginal.
+The thresholds are ordered and non-overlapping. P1.2 does not block Entropy Lab's Mix entropy control; it reports evidence. For the P1.3 handoff, a successful Mix result is held cold-locally until the user selects **Use this mix in Seed Forge**, which consumes that exact result once without a second mix. Changing collected input or output size clears the pending result. Seed Forge fails closed rather than producing a shorter phrase and requires an explicit acknowledgement when the selected physical/manual source is marginal; the separate Generate action may draw fresh CSPRNG bytes through the same session.
 
 ---
 

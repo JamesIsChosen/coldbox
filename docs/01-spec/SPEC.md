@@ -484,6 +484,27 @@ Scope: transaction, address, public key, input, output, and xpub labels. Coldbox
 
 **Entropy Lab 🎲** — dice (d6, base-6 and 4-outcome-discard mappings), coin flips, playing cards, hex, and CSPRNG. Big touch targets, running bit-count meter, undo. The meter separates **normal output strength** (the selected 128–256-bit result under a sound device CSPRNG) from **independent-source fallback strength** (the conservative physical/manual entropy that remains if the device RNG is completely compromised). Device-RNG-generated dice/coins/cards/hex count as simulation only and add zero independent-source credit. **Mixing**: source material is XORed with fresh CSPRNG output then hashed; partial physical/manual entropy may improve fallback strength, but **full two-source protection** is claimed only when the independent physical/manual contribution itself reaches the selected output size. **Bias Analyzer** (replacing *Entropy Bias.html*): per-symbol frequency, an observed empirical min-entropy estimate, chi-square with p-value, runs test, serial correlation, and deterministic pattern warnings. The analyzer is advisory and never replaces P1.1's integer accounting; exact definitions are in [ADR-0027](../05-development/adr/0027-entropy-health-statistical-diagnostics.md). Produces 128–256 bits of raw entropy, in the same form Seed Forge consumes (P1.3) — see [ADR-0023](../05-development/adr/0023-entropy-lab-seed-forge-boundary.md) for why this is phrased as a cold-local byte contract rather than a hand-off that spans two roadmap items.
 
+**P1.3 Seed Forge contract:** the finished cold-only flow is **Entropy Lab →
+Mix → Use this mix in Seed Forge → BIP-39 mnemonic → optional passphrase →
+raw BIP-39 seed + live master fingerprint**. A successful Mix action retains
+the exact returned bytes in a cold-local one-use slot; the explicit Use action
+consumes those bytes without a second mix. Changing Entropy Lab input or the
+selected output size invalidates that slot, and a target mismatch fails closed.
+The separate Generate action may draw and mix a fresh CSPRNG-backed result
+through the same Entropy Lab session.
+
+The mnemonic uses one of the ten vendored official BIP-39 wordlists at 128,
+160, 192, 224, or 256 entropy bits. Validation reports word and checksum
+status in the cold realm. The optional passphrase is duplicate-confirmed; a
+matching change re-derives the current mnemonic's 64-byte PBKDF2-HMAC-SHA512
+seed and master fingerprint without generating a new mnemonic, while a
+mismatch clears both derived outputs. The raw seed is an advanced cold-only
+output, masked by default, revealed only by an explicit timed action, and has
+no clipboard or storage action. Japanese U+3000 is retained for canonical
+display, then the reconstructed mnemonic sentence is NFKD-normalized before
+PBKDF2 so the separator becomes the required ASCII space. xprv/xpub/ypub/zpub,
+script/path derivation, and child derivation remain later roadmap scope.
+
 #### 11.1a Entropy Health Meter
 
 A live strength indicator wherever a secret is created — seed phrases, vault passphrases, BIP-39 passphrases, and Diceware output. Present throughout collection, not as a verdict at the end.

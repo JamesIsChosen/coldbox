@@ -115,9 +115,12 @@ P0.13 keeps the mode decision explicit at unlock time. The cold realm starts in 
 
 P1.3 extends the same pure-JS cold path with the pinned `@scure/bip39` and
 `@scure/bip32` helpers for BIP-39 wordlists, PBKDF2-HMAC-SHA512 seed derivation,
-and the four-byte HASH160 master fingerprint. Seed Forge supplies entropy from
-Entropy Lab rather than calling a library-owned random-byte helper, and no
-phrase, passphrase, derived seed, or fingerprint enters the warm shell.
+the raw 64-byte BIP-39 seed, and the four-byte HASH160 master fingerprint. An
+explicit Entropy Lab Mix is retained and consumed once by the cold-local Seed
+Forge handoff; it is not remixed. Seed Forge supplies ordinary generation
+entropy from Entropy Lab rather than calling a library-owned random-byte
+helper, and no phrase, passphrase, derived seed, raw seed, or fingerprint
+enters the warm shell.
 
 ---
 

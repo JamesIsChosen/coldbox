@@ -63,7 +63,7 @@ The exact claimed-bit and observed-estimate definitions, including the finite-sa
 | 🟡 Adequate | Reaches the selected target without a chi-square flag, below 256 bits |
 | 🟢 Strong | ≥256 bits |
 
-These are P1.2 Entropy Lab labels, not a statistical generation gate. Seed Forge (P1.3) consumes only a selected-size result from the sealed realm's `mix()` contract and asks for an explicit acknowledgement when the selected physical/manual source is marginal. A shortage of fresh CSPRNG bytes fails closed rather than producing a shorter phrase.
+These are P1.2 Entropy Lab labels, not a statistical generation gate. For the P1.3 handoff, click **Mix entropy**, then **Use this mix in Seed Forge**; the exact selected-size result is consumed once and is never silently remixed. A later Entropy Lab input or output-size change clears the pending result. Seed Forge asks for an explicit acknowledgement when the selected physical/manual source is marginal, and a shortage of fresh CSPRNG bytes fails closed rather than producing a shorter phrase.
 
 If you see pattern warnings — long runs, sequences, alternation — check your recording. Real dice do produce runs, so it's a prompt to look, not an accusation. See [entropy and strength](../04-reference/entropy-and-strength.md).
 
@@ -71,20 +71,20 @@ If you see pattern warnings — long runs, sequences, alternation — check your
 
 ## 2. Generate the seed
 
-Seed Forge → the entropy carries over. Choose 12, 15, 18, 21, or 24 words (128–256 bits), and choose the BIP-39 language.
+Seed Forge → select **Use this mix in Seed Forge** to consume the recorded Entropy Lab result. Choose 12, 15, 18, 21, or 24 words (128–256 bits), and choose the BIP-39 language. A separate Generate action is available for a fresh CSPRNG-only result.
 
 Both are beyond brute force. 24 words is margin against future cryptanalysis, not a fix for a weak 12. Some hardware wallets require 24.
 
 **Record the master fingerprint** — eight hex characters shown alongside. This is how you'll identify the wallet everywhere without revealing anything secret.
 
 ::: plain
-Seed Forge keeps the phrase hidden until you reveal it briefly for writing down. It checks an existing phrase word by word, tells you if the checksum is wrong, and shows a short fingerprint so you can recognize the same wallet later.
+Seed Forge keeps the phrase hidden until you reveal it briefly for writing down. It checks an existing phrase word by word, tells you if the checksum is wrong, and shows a short fingerprint so you can recognize the same wallet later. An advanced raw BIP-39 seed is masked by default and has no clipboard or storage action.
 :::
 ::: working
-Seed Forge turns Entropy Lab's selected-size bytes into a BIP-39 phrase, or validates one you paste into the sealed realm. If you use a passphrase, enter it twice: one character changed creates a different wallet, so the fingerprint is withheld until both entries match.
+Seed Forge turns the exact Entropy Lab Mix result into a BIP-39 phrase, or validates one you paste into the sealed realm. If you use a passphrase, enter it twice: one character changed creates a different wallet, so the raw seed and fingerprint are withheld until both entries match. Once they match, both outputs recalculate for the current phrase without generating a new mnemonic.
 :::
 ::: technical
-Generation uses the vendored BIP-39 wordlists with NFKD normalization. The optional passphrase is NFKD-normalized as PBKDF2-HMAC-SHA512 salt material with 2,048 rounds; the master fingerprint is the first four bytes of HASH160 of the BIP-32 master public key. These values stay inside the cold iframe.
+Generation uses the vendored BIP-39 wordlists with NFKD normalization. The optional passphrase is NFKD-normalized as PBKDF2-HMAC-SHA512 salt material with 2,048 rounds; the raw 64-byte BIP-39 seed and master fingerprint are recalculated on confirmed passphrase changes. Japanese's U+3000 display separator is NFKD-normalized in the final PBKDF2 mnemonic text. These values stay inside the cold iframe.
 :::
 
 ---
