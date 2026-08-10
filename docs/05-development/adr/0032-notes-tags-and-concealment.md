@@ -1,6 +1,6 @@
 # ADR-0032: Notes stay in their declared compartment and concealment is session-scoped
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2026-08-10
 
 ## Context
