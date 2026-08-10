@@ -12,6 +12,7 @@ __COLDBOX_CAPABILITIES__
   var entropyLab = window.__coldboxEntropyLab;
   var entropyHealth = window.__coldboxEntropyHealth;
   var seedForge = window.__coldboxSeedForge;
+  var derivation = window.__coldboxDerivation;
   var readyMarker = document.getElementById('cold-ready');
   var protocolWarning = document.getElementById('cold-protocol-warning');
   var details = document.getElementById('cold-realm-details');
@@ -2942,7 +2943,7 @@ __COLDBOX_CAPABILITIES__
     messagePort.postMessage(readyMessage);
   }
 
-  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer || !vaultLayer || !entropyLab || !seedForge) {
+  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer || !vaultLayer || !entropyLab || !seedForge || !derivation) {
     return;
   }
 

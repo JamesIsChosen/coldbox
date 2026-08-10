@@ -12,6 +12,7 @@ const CRYPTO_SEEDS = Object.freeze([
   '@noble/hashes/legacy.js',
   '@noble/hashes/pbkdf2.js',
   '@noble/hashes/sha2.js',
+  '@scure/base/index.js',
   '@scure/bip32/index.js',
   '@scure/bip39/index.js',
   '@scure/bip39/wordlists/czech.js',
@@ -381,9 +382,12 @@ function createNobleBundle(projectRoot) {
   });
   lines.push('var __coldboxNobleAes = __coldboxNobleLoad("@noble/ciphers/aes.js");');
   lines.push('var __coldboxNobleHash = __coldboxNobleLoad("@noble/hashes/sha2.js");');
+  lines.push('var __coldboxNobleLegacy = __coldboxNobleLoad("@noble/hashes/legacy.js");');
+  lines.push('var __coldboxNobleSecp256k1 = __coldboxNobleLoad("@noble/curves/secp256k1.js");');
   lines.push('var __coldboxNobleHkdf = __coldboxNobleLoad("@noble/hashes/hkdf.js");');
   lines.push('var __coldboxNoblePbkdf2 = __coldboxNobleLoad("@noble/hashes/pbkdf2.js");');
   lines.push('var __coldboxNobleHashUtils = __coldboxNobleLoad("@noble/hashes/utils.js");');
+  lines.push('var __coldboxScureBase = __coldboxNobleLoad("@scure/base/index.js");');
   lines.push('var __coldboxBip32 = __coldboxNobleLoad("@scure/bip32/index.js");');
   lines.push('var __coldboxBip39 = __coldboxNobleLoad("@scure/bip39/index.js");');
   lines.push('var __coldboxBip39Czech = __coldboxNobleLoad("@scure/bip39/wordlists/czech.js");');
@@ -403,7 +407,15 @@ function createNobleBundle(projectRoot) {
   lines.push('  pbkdf2Async: __coldboxNoblePbkdf2.pbkdf2Async,');
   lines.push('  sha256: __coldboxNobleHash.sha256,');
   lines.push('  sha512: __coldboxNobleHash.sha512,');
+  lines.push('  ripemd160: __coldboxNobleLegacy.ripemd160,');
   lines.push('  utf8ToBytes: __coldboxNobleHashUtils.utf8ToBytes');
+  lines.push('});');
+  lines.push('window.__coldboxSecp256k1 = __coldboxNobleSecp256k1.secp256k1;');
+  lines.push('window.__coldboxBase = Object.freeze({');
+  lines.push('  base58: __coldboxScureBase.base58,');
+  lines.push('  base58check: __coldboxScureBase.createBase58check(__coldboxNobleHash.sha256),');
+  lines.push('  bech32: __coldboxScureBase.bech32,');
+  lines.push('  bech32m: __coldboxScureBase.bech32m');
   lines.push('});');
   lines.push('window.__coldboxBip32 = Object.freeze({');
   lines.push('  HDKey: __coldboxBip32.HDKey');

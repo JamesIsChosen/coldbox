@@ -36,6 +36,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0026](0026-canonical-vault-save-and-live-transfer.md) | One canonical vault file; animated QR is live device-to-device transfer only | Accepted |
 | [0027](0027-entropy-health-statistical-diagnostics.md) | Entropy Health uses advisory finite-sample statistical diagnostics | Accepted |
 | [0028](0028-cold-only-bip39-seed-forge.md) | Cold-only BIP-39 Seed Forge and master fingerprint | Accepted |
+| [0029](0029-cold-only-bitcoin-derivation-engine.md) | Cold-only Bitcoin BIP-32 derivation engine and script encodings | Accepted |
 
 ## When to write one
 
