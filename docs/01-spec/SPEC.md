@@ -4,7 +4,7 @@
 **Secrets are cryptographically incapable of reaching the network. Everything else works online.**
 
 Status: Draft for review. Phase 0 in progress.
-Date: 2026-08-08 · Supersedes v0.4 · *"Coldbox" is a working name — see §22*
+Date: 2026-08-09 · Supersedes v0.4 · *"Coldbox" is a working name — see §22*
 
 ---
 
@@ -482,7 +482,7 @@ Scope: transaction, address, public key, input, output, and xpub labels. Coldbox
 
 ### 11.1 Cold realm modules
 
-**Entropy Lab 🎲** — dice (d6, base-6 and 4-outcome-discard mappings), coin flips, playing cards, hex, and CSPRNG. Big touch targets, running bit-count meter, undo. The meter separates **normal output strength** (the selected 128–256-bit result under a sound device CSPRNG) from **independent-source fallback strength** (the conservative physical/manual entropy that remains if the device RNG is completely compromised). Device-RNG-generated dice/coins/cards/hex count as simulation only and add zero independent-source credit. **Mixing**: source material is XORed with fresh CSPRNG output then hashed; partial physical/manual entropy may improve fallback strength, but **full two-source protection** is claimed only when the independent physical/manual contribution itself reaches the selected output size. **Bias Analyzer** (replacing *Entropy Bias.html*): per-symbol frequency, chi-square with p-value, runs test, serial correlation. Produces 128–256 bits of raw entropy, in the same form Seed Forge will consume once it exists (P1.3) — see [ADR-0023](../05-development/adr/0023-entropy-lab-seed-forge-boundary.md) for why this is phrased as Entropy Lab's own deliverable rather than a hand-off that spans two roadmap items.
+**Entropy Lab 🎲** — dice (d6, base-6 and 4-outcome-discard mappings), coin flips, playing cards, hex, and CSPRNG. Big touch targets, running bit-count meter, undo. The meter separates **normal output strength** (the selected 128–256-bit result under a sound device CSPRNG) from **independent-source fallback strength** (the conservative physical/manual entropy that remains if the device RNG is completely compromised). Device-RNG-generated dice/coins/cards/hex count as simulation only and add zero independent-source credit. **Mixing**: source material is XORed with fresh CSPRNG output then hashed; partial physical/manual entropy may improve fallback strength, but **full two-source protection** is claimed only when the independent physical/manual contribution itself reaches the selected output size. **Bias Analyzer** (replacing *Entropy Bias.html*): per-symbol frequency, an observed empirical min-entropy estimate, chi-square with p-value, runs test, serial correlation, and deterministic pattern warnings. The analyzer is advisory and never replaces P1.1's integer accounting; exact definitions are in [ADR-0027](../05-development/adr/0027-entropy-health-statistical-diagnostics.md). Produces 128–256 bits of raw entropy, in the same form Seed Forge will consume once it exists (P1.3) — see [ADR-0023](../05-development/adr/0023-entropy-lab-seed-forge-boundary.md) for why this is phrased as Entropy Lab's own deliverable rather than a hand-off that spans two roadmap items.
 
 #### 11.1a Entropy Health Meter
 
@@ -495,9 +495,9 @@ A live strength indicator wherever a secret is created — seed phrases, vault p
 | | Meaning |
 |---|---|
 | **Claimed bits** | What the input *should* yield — 50 d6 rolls × log₂6 = 129.2 bits |
-| **Measured bits** | Bias-corrected min-entropy from the observed distribution |
+| **Measured bits** | Observed empirical min-entropy estimate from the recorded distribution |
 
-A gap between them is the entire point. Fifty rolls of a loaded die claim 129 bits and deliver fewer, and the user needs to see that rather than a green bar.
+A gap between them is the entire point. Fifty rolls of a loaded die claim 129 bits and show a lower observed estimate, and the user needs to see that rather than a green bar. The estimate is finite-sample evidence, not a confidence-bound guarantee; the analyzer's exact formulas and unavailable-test rules are in [ADR-0027](../05-development/adr/0027-entropy-health-statistical-diagnostics.md).
 
 **States:**
 
@@ -514,7 +514,7 @@ Targets: 128 bits for a 12-word seed, 256 for 24 words. **Blocking below target 
 
 **Honest handling of each source:**
 
-- **Dice, coins, cards** — exactly computable. The meter is a measurement.
+- **Dice, coins, cards** — their source models and claimed bits are exactly computable. The observed diagnostics are evidence about the recording, not proof that the physical source is fair; cards drawn without replacement do not receive iid tests.
 - **CSPRNG** — 256 bits by definition. The bar shows full, with a note that it measures the *source*, not the platform RNG's integrity, which cannot be assessed from output.
 - **Diceware passphrases** — exact: word count × log₂(wordlist size). 6 EFF Large words = 77.5 bits.
 - **Human-chosen passphrases** — **shown as a range, never a single number**, with the limitation stated plainly. Entropy estimation for human-chosen text is heuristic; every meter that displays "84 bits" for a typed passphrase is inventing precision it does not have. The app shows a conservative band and recommends Diceware instead.

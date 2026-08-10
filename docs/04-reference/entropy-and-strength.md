@@ -28,7 +28,7 @@ The meter always shows **claimed bits** and **measured bits**.
 
 **Claimed** is what your input should theoretically produce. Fifty rolls of a six-sided die: 50 × log₂(6) = **129.2 bits**.
 
-**Measured** is the bias-corrected min-entropy from the distribution you actually produced.
+**Measured** is an observed empirical min-entropy estimate from the distribution you actually produced. It is not a bias-corrected confidence bound or a guarantee of true min-entropy.
 
 If your die is chipped, or you're unconsciously favouring certain faces, or you misread a roll, claimed and measured diverge. A single green bar would hide that. Two numbers make it visible.
 
@@ -43,6 +43,12 @@ An attacker doesn't guess averagely — they guess the most likely candidate fir
 
 Both are displayed. Min-entropy drives the bar.
 
+### What the Bias Analyzer can and cannot establish
+
+The analyzer reads physical/manual observations only; device-RNG simulations are excluded. For a fixed alphabet, its measured estimate uses the largest observed symbol frequency: `n × -log₂(max observed count / n)`. This is deliberately an estimate from finite data. A sample can miss a high-probability outcome, so neither this number nor a passing statistical test proves that the source is fair or that a platform CSPRNG is sound.
+
+The evidence panel reports Pearson chi-square uniformity with an upper-tail p-value when every expected bin has at least five observations, the NIST binary runs test when its sample and proportion preconditions hold, and NIST lag-one serial correlation with an advisory 95% band. These tests are unavailable for cards drawn without replacement; cards retain their exact claimed permutation bits and order/pattern review. Long runs, ordered sequences, alternation, and repeated blocks are deterministic prompts to inspect the recording. Full formulas, thresholds, and fail-closed reasons live in [ADR-0027](../05-development/adr/0027-entropy-health-statistical-diagnostics.md).
+
 ---
 
 ## The states
@@ -51,7 +57,7 @@ Both are displayed. Min-entropy drives the bar.
 |---|---|---|
 | 🔴 **Insufficient** | Below the target for your seed length | **Generation blocked.** No override |
 | 🟠 **Marginal** | Enough quantity, but bias detected | Warns; requires explicit acknowledgement |
-| 🟡 **Adequate** | ≥ 128 bits measured | Proceeds |
+| 🟡 **Adequate** | ≥ the selected target measured | Proceeds |
 | 🟢 **Strong** | ≥ 256 bits measured | Proceeds |
 
 **Insufficient cannot be overridden.** There is no legitimate reason to generate a seed from too little entropy, so the app doesn't offer a way to. The override exists only for detected bias, where you may have a reason to accept it — a slightly uneven die across a large sample, for instance.
@@ -95,7 +101,7 @@ Real dice do produce runs — `4 4 4 4` happens. The warning is a prompt to chec
 
 ### Dice, coins, cards
 
-Exactly computable, physically observable, and you don't have to trust any software. The gold standard, and the reason the app supports them prominently.
+Their source models are exactly computable and physically observable, and you don't have to trust any software to record the raw values. The Bias Analyzer adds finite-sample evidence about the recording; it does not prove that the source is fair.
 
 Use **casino-grade dice** if you're being careful. Ordinary dice have rounded corners and drilled pips, both of which introduce measurable bias. The Bias Analyzer will show you if yours are unusually skewed across enough rolls.
 
@@ -190,4 +196,5 @@ The last two lose more money than weak entropy ever has.
 
 - [Glossary: entropy](../00-overview/glossary.md)
 - [SPEC.md §11.1a](../01-spec/SPEC.md)
+- [ADR-0027: Entropy Health statistical diagnostics](../05-development/adr/0027-entropy-health-statistical-diagnostics.md)
 - [First wallet guide](../03-guides/first-wallet.md)

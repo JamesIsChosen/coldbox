@@ -34,6 +34,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0024](0024-warm-reachability-monitor.md) | Warm-shell active reachability monitoring does not change the cold airgap boundary | Accepted |
 | [0025](0025-vault-identity-library-and-save-ux.md) | Vault identity is portable and random; names/library/save UX stay in the warm shell | Accepted · amended by 0026 |
 | [0026](0026-canonical-vault-save-and-live-transfer.md) | One canonical vault file; animated QR is live device-to-device transfer only | Accepted |
+| [0027](0027-entropy-health-statistical-diagnostics.md) | Entropy Health uses advisory finite-sample statistical diagnostics | Accepted |
 
 ## When to write one
 

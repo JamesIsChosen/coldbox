@@ -44,16 +44,16 @@ The combiner computes `SHA-256(user_entropy XOR csprng_output)` (or the equivale
 Two numbers, side by side:
 
 - **Claimed** — what your input should yield
-- **Measured** — bias-corrected min-entropy actually achieved
+- **Measured** — an observed min-entropy estimate from the outcomes recorded so far
 
 ::: plain
-A gap between the two numbers means your source is leaning one way — like a die that lands on 6 a little too often. Fifty rolls of a die like that would claim about 129 bits of randomness on paper, but actually hand you less.
+A gap between the two numbers means your source is leaning one way — like a die that lands on 6 a little too often. The estimate is a prompt to inspect the recording, not proof that the die or the platform RNG is good or bad.
 :::
 ::: working
-A gap between claimed and measured entropy means bias was detected in the source. Fifty rolls of a loaded die claim 129 bits of entropy but deliver fewer, because the bias makes some outcomes predictable.
+A gap between claimed and measured entropy is evidence that the recorded outcomes differ from the source model. Small samples can make the statistical tests unavailable, and a passing test cannot prove a source is fair.
 :::
 ::: technical
-"Claimed" is `rolls × log2(faces)` (or the equivalent for the chosen source); "measured" is bias-corrected min-entropy, `H_∞ = -log2(max probability)` estimated over the recorded sequence, which is always ≤ the claimed figure and equal only for a perfectly uniform source.
+The exact claimed-bit and observed-estimate definitions, including the finite-sample limits and unavailable-test rules, are maintained in [entropy and strength](../04-reference/entropy-and-strength.md) and [ADR-0027](../05-development/adr/0027-entropy-health-statistical-diagnostics.md). The analyzer is evidence about physical/manual recordings only; device-RNG simulations are excluded.
 :::
 
 | State | Meaning |

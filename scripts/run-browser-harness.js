@@ -2077,6 +2077,11 @@ async function verifyEntropyLab(browser, engine) {
     const meter = coldFrame.locator('#cold-entropy-meter');
     const mixStatus = coldFrame.locator('#cold-entropy-mix-status');
     const target = coldFrame.locator('#cold-entropy-target');
+    const healthPanel = coldFrame.locator('#cold-entropy-health');
+    const healthSource = coldFrame.locator('#cold-entropy-health-source');
+    assert.equal(await healthPanel.getAttribute('data-state'), 'insufficient');
+    assert.equal(await healthPanel.getAttribute('data-source'), 'dice-base6');
+    assert.match(await coldFrame.locator('#cold-entropy-health-state').textContent(), /Insufficient/i);
     assert.match(await coldFrame.locator('#cold-entropy-dice-random').textContent(), /device RNG/i);
     assert.match(await coldFrame.locator('#cold-entropy-coin-random').textContent(), /device RNG/i);
     assert.match(await coldFrame.locator('#cold-entropy-card-random').textContent(), /device RNG/i);
@@ -2097,6 +2102,7 @@ async function verifyEntropyLab(browser, engine) {
     assert.equal(await meter.getAttribute('data-device-rng-values'), '20');
     assert.match(await coldFrame.locator('#cold-entropy-dice-log').textContent(), /Device RNG:/);
     assert.doesNotMatch(await coldFrame.locator('#cold-entropy-dice-log').textContent(), /Physical\/manual:/);
+    assert.match(await coldFrame.locator('#cold-entropy-health-samples').textContent(), /simulations excluded/i);
     await coldFrame.locator('#cold-entropy-dice-reset').click();
 
     // Bulk manual dice, including an invalid character, remain usable and
@@ -2106,8 +2112,27 @@ async function verifyEntropyLab(browser, engine) {
     assert.match(await coldFrame.locator('#cold-entropy-dice-status').textContent(), /Added 6 base-6 rolls.*Ignored invalid character\(s\): x/);
     assert.ok(Number(await meter.getAttribute('data-fallback-bits')) > 0);
     assert.match(await coldFrame.locator('#cold-entropy-dice-log').textContent(), /Physical\/manual:/);
+    await healthSource.selectOption('dice-base6');
+    assert.equal(await coldFrame.locator('#cold-entropy-health-samples').textContent(), '6');
+    assert.equal(await coldFrame.locator('#cold-entropy-health-frequency-body tr').count(), 6);
+    assert.match(await coldFrame.locator('#cold-entropy-health-chi').textContent(), /expected bin|not available/i);
     await coldFrame.locator('#cold-entropy-dice-reset').click();
     assert.equal(await meter.getAttribute('data-fallback-bits'), '0');
+
+    // Twenty alternating manual coin flips exercise the live runs test and
+    // pattern warning. The selected source changes without reloading the
+    // cold realm, and the analyzer remains an advisory diagnostic because
+    // the selected 128-bit output is still insufficient.
+    for (let flip = 0; flip < 20; flip += 1) {
+      await coldFrame.locator(flip % 2 === 0 ? '#cold-entropy-coin-heads' : '#cold-entropy-coin-tails').click();
+    }
+    await healthSource.selectOption('coin');
+    assert.equal(await coldFrame.locator('#cold-entropy-health-samples').textContent(), '20');
+    assert.match(await coldFrame.locator('#cold-entropy-health-chi').textContent(), /chi2=/i);
+    assert.match(await coldFrame.locator('#cold-entropy-health-runs').textContent(), /runs=20.*warning/i);
+    assert.match(await coldFrame.locator('#cold-entropy-health-patterns').textContent(), /alternating pattern/i);
+    await coldFrame.locator('#cold-entropy-coin-reset').click();
+    await healthSource.selectOption('dice-base6');
 
     // Partial real manual entropy: 8 hex digits = 32 independent bits. Adding
     // generated simulations must not change that fallback.
@@ -2146,10 +2171,17 @@ async function verifyEntropyLab(browser, engine) {
     assert.equal(await firstCard.isDisabled(), true);
     assert.ok(Number(await meter.getAttribute('data-fallback-bits')) > 0);
     assert.match(await coldFrame.locator('#cold-entropy-card-log').textContent(), /Physical\/manual:/);
+    await healthSource.selectOption('cards');
+    assert.equal(await healthPanel.getAttribute('data-state'), 'not-applicable');
+    assert.equal(await coldFrame.locator('#cold-entropy-health-samples').textContent(), '1');
+    assert.match(await coldFrame.locator('#cold-entropy-health-chi').textContent(), /not applicable.*without replacement/i);
+    assert.equal(await coldFrame.locator('#cold-entropy-health-measured').textContent(), 'Not available');
+    assert.match(await coldFrame.locator('#cold-entropy-health-disclosure').textContent(), /without-replacement permutation/i);
     await coldFrame.locator('#cold-entropy-undo').click();
     assert.equal(await firstCard.isDisabled(), false);
     assert.equal(await coldFrame.locator('#cold-entropy-card-log').textContent(), 'None yet.');
     assert.equal(await meter.getAttribute('data-fallback-bits'), '0');
+    await healthSource.selectOption('dice-base6');
 
     const randomCountBox = await coldFrame.locator('#cold-entropy-dice-random-count').boundingBox();
     assert.ok(randomCountBox && randomCountBox.height >= 44,

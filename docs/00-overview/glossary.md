@@ -624,6 +624,17 @@ The specific notices AGPLv3 §0 defines and §5(d) requires an interactive UI to
 See [ADR-0018](../05-development/adr/0018-agplv3-license.md): a URL to the licence text was rejected outright, since it would be unreachable in the airgapped case the app is designed for and would itself be an outbound reference the `connect-src 'none'` cold-realm CSP and the project's no-network-fetch constraint forbid. The embedded text is asserted byte-identical to the repository's own `LICENSE` file by a Node test, so the two cannot silently drift.
 :::
 
+**Bias Analyzer** (in Entropy Lab)
+::: plain
+The part of Entropy Lab that looks for warning signs in the dice, coin, or other physical results you recorded. It shows what appeared, but a clean result is not proof that a computer's random-number generator is trustworthy.
+:::
+::: working
+An advisory view of physical/manual samples: it shows per-symbol frequencies, an observed min-entropy estimate, chi-square and runs evidence, lag-one correlation, and recognizable patterns. Device-RNG simulations are excluded, and samples too small for a meaningful test are labeled unavailable.
+:::
+::: technical
+P1.2's finite-sample diagnostics are specified in [ADR-0027](../05-development/adr/0027-entropy-health-statistical-diagnostics.md) and summarized in [entropy-and-strength.md](../04-reference/entropy-and-strength.md). They never replace P1.1's integer possibility-space accounting, do not apply iid tests to without-replacement card permutations, and cannot establish platform CSPRNG integrity.
+:::
+
 ---
 
 ## Things people get wrong
