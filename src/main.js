@@ -208,6 +208,33 @@ __COLDBOX_CONCEALMENT__
   var registryWalletList = document.getElementById('registry-wallet-list');
   var registryAccountList = document.getElementById('registry-account-list');
   var registryAddressList = document.getElementById('registry-address-list');
+  var deviceLocked = document.getElementById('device-locked');
+  var deviceWorkspace = document.getElementById('device-workspace');
+  var deviceStatus = document.getElementById('device-status');
+  var deviceForm = document.getElementById('device-form');
+  var deviceId = document.getElementById('device-id');
+  var deviceVendor = document.getElementById('device-vendor');
+  var deviceModel = document.getElementById('device-model');
+  var deviceSerial = document.getElementById('device-serial');
+  var deviceFirmware = document.getElementById('device-firmware');
+  var deviceFirmwareDate = document.getElementById('device-firmware-date');
+  var devicePurchasedFrom = document.getElementById('device-purchased-from');
+  var devicePurchasedAt = document.getElementById('device-purchased-at');
+  var deviceTamperCheck = document.getElementById('device-tamper-check');
+  var deviceTamperNotes = document.getElementById('device-tamper-notes');
+  var devicePinSetAt = document.getElementById('device-pin-set-at');
+  var devicePinChangedAt = document.getElementById('device-pin-changed-at');
+  var devicePhraseWalletUsed = document.getElementById('device-phrase-wallet-used');
+  var deviceSeedFingerprints = document.getElementById('device-seed-fingerprints');
+  var deviceLocation = document.getElementById('device-location');
+  var deviceStatusValue = document.getElementById('device-status-value');
+  var deviceNotes = document.getElementById('device-notes');
+  var deviceHidden = document.getElementById('device-hidden');
+  var deviceCancel = document.getElementById('device-cancel');
+  var deviceList = document.getElementById('device-list');
+  var deviceSearch = document.getElementById('device-search');
+  var deviceShowHidden = document.getElementById('device-show-hidden');
+  var deviceHiddenHelp = document.getElementById('device-hidden-help');
   var coldFrame = null;
   var coldBootTimer = null;
   var coldRealmFailed = false;
@@ -274,6 +301,7 @@ __COLDBOX_CONCEALMENT__
     ? concealment.createController({ root: root })
     : null;
   var registrySearchTerm = '';
+  var deviceSearchTerm = '';
   var LIVE_TRANSFER_INTERVAL_MS = 250;
   var pages = Array.prototype.slice.call(document.querySelectorAll('[data-page]'));
   var routeLinks = Array.prototype.slice.call(document.querySelectorAll('[data-route]'));
@@ -3007,6 +3035,17 @@ __COLDBOX_CONCEALMENT__
     }
   }
 
+  function setDeviceStatus(text) {
+    if (deviceStatus) {
+      deviceStatus.textContent = text;
+    }
+  }
+
+  function setPublicRecordStatus(text) {
+    setRegistryStatus(text);
+    setDeviceStatus(text);
+  }
+
   function clearRegistryNode(node) {
     if (!node) {
       return;
@@ -3099,7 +3138,7 @@ __COLDBOX_CONCEALMENT__
   }
 
   function setRegistryFormsDisabled(disabled) {
-    [registryWalletForm, registryAccountForm, registryAddressForm, registryNoteForm].forEach(function (form) {
+    [registryWalletForm, registryAccountForm, registryAddressForm, registryNoteForm, deviceForm].forEach(function (form) {
       if (!form) {
         return;
       }
@@ -3107,7 +3146,7 @@ __COLDBOX_CONCEALMENT__
         element.disabled = disabled;
       });
     });
-    [registryWalletCancel, registryAccountCancel, registryAddressCancel, registryNoteCancel].forEach(function (button) {
+    [registryWalletCancel, registryAccountCancel, registryAddressCancel, registryNoteCancel, deviceCancel].forEach(function (button) {
       if (button) {
         button.disabled = disabled;
       }
@@ -3125,6 +3164,17 @@ __COLDBOX_CONCEALMENT__
     return registryStore.list(collection, hiddenRegistryVisible).filter(registryMatchesSearch);
   }
 
+  function deviceMatchesSearch(record) {
+    if (!deviceSearchTerm) {
+      return true;
+    }
+    return JSON.stringify(record).toLowerCase().indexOf(deviceSearchTerm) !== -1;
+  }
+
+  function deviceVisibleRecords() {
+    return registryStore.list('devices', hiddenRegistryVisible).filter(deviceMatchesSearch);
+  }
+
   function renderRegistry() {
     var available = Boolean(registryStore && vaultState === 'unlocked');
     if (registryLocked) {
@@ -3133,16 +3183,24 @@ __COLDBOX_CONCEALMENT__
     if (registryWorkspace) {
       registryWorkspace.hidden = !available;
     }
+    if (deviceLocked) {
+      deviceLocked.hidden = available;
+    }
+    if (deviceWorkspace) {
+      deviceWorkspace.hidden = !available;
+    }
     if (!available) {
       return;
     }
     var wallets = registryVisibleRecords('wallets');
     var accounts = registryVisibleRecords('accounts');
     var addresses = registryVisibleRecords('addresses');
+    var devices = deviceVisibleRecords();
     var notes = registryVisibleRecords('notes');
     clearRegistryNode(registryWalletList);
     clearRegistryNode(registryAccountList);
     clearRegistryNode(registryAddressList);
+    clearRegistryNode(deviceList);
     clearRegistryNode(registryNoteList);
     if (wallets.length === 0) {
       appendRegistryEmpty(registryWalletList, 'No wallets recorded yet.');
@@ -3188,6 +3246,20 @@ __COLDBOX_CONCEALMENT__
         );
       });
     }
+    if (devices.length === 0) {
+      appendRegistryEmpty(deviceList, deviceSearchTerm ? 'No devices match this search.' : 'No devices recorded yet.');
+    } else {
+      devices.forEach(function (device) {
+        appendRegistryRecord(
+          deviceList,
+          'device',
+          device,
+          [device.vendor, device.model].filter(Boolean).join(' ') || 'Unlabeled device',
+          [device.status, device.firmware, device.location]
+            .filter(Boolean).join(' Â· ') || 'Public device metadata'
+        );
+      });
+    }
     if (notes.length === 0) {
       appendRegistryEmpty(registryNoteList, registrySearchTerm ? 'No notes match this search.' : 'No public notes recorded yet.');
     } else {
@@ -3228,6 +3300,9 @@ __COLDBOX_CONCEALMENT__
     if (registryNoteForm) {
       registryNoteForm.querySelector('button[type="submit"]').disabled = Boolean(pendingRegistryMutation);
     }
+    if (deviceForm) {
+      deviceForm.querySelector('button[type="submit"]').disabled = Boolean(pendingRegistryMutation);
+    }
     if (registryShowHidden) {
       registryShowHidden.checked = hiddenRegistryVisible;
       registryShowHidden.disabled = Boolean(pendingRegistryMutation);
@@ -3237,15 +3312,27 @@ __COLDBOX_CONCEALMENT__
         ? 'Hidden records are visible for this unlocked session. Locking the vault hides them again.'
         : 'Hidden records stay out of views and search until you re-enter the vault phrase inside the sealed realm.';
     }
+    if (deviceSearch) {
+      deviceSearch.value = deviceSearchTerm;
+    }
+    if (deviceShowHidden) {
+      deviceShowHidden.checked = hiddenRegistryVisible;
+      deviceShowHidden.disabled = Boolean(pendingRegistryMutation);
+    }
+    if (deviceHiddenHelp) {
+      deviceHiddenHelp.textContent = hiddenRegistryVisible
+        ? 'Hidden devices are visible for this unlocked session. Locking the vault hides them again.'
+        : 'Hidden devices stay out of the list and search until you re-enter the vault phrase inside the sealed realm.';
+    }
   }
 
   function beginRegistryMutation(mutator) {
     if (!registryStore || vaultState !== 'unlocked') {
-      setRegistryStatus('Unlock the vault before changing public registry records.');
+      setPublicRecordStatus('Unlock the vault before changing public registry records.');
       return;
     }
     if (pendingRegistryMutation) {
-      setRegistryStatus('A registry change is still being written inside the sealed realm.');
+      setPublicRecordStatus('A registry change is still being written inside the sealed realm.');
       return;
     }
     var before = registryStore.snapshot();
@@ -3253,7 +3340,7 @@ __COLDBOX_CONCEALMENT__
     try {
       mutator();
     } catch (error) {
-      setRegistryStatus(error && error.message ? error.message : 'The registry change was rejected.');
+      setPublicRecordStatus(error && error.message ? error.message : 'The registry change was rejected.');
       return;
     }
     var id = sendVaultMessage('publicData.replace', {
@@ -3261,7 +3348,7 @@ __COLDBOX_CONCEALMENT__
     });
     if (!id) {
       registryStore.replace(before);
-      setRegistryStatus('The registry change was not sent. Nothing was changed.');
+      setPublicRecordStatus('The registry change was not sent. Nothing was changed.');
       renderRegistry();
       return;
     }
@@ -3271,7 +3358,7 @@ __COLDBOX_CONCEALMENT__
       persistenceState: persistenceState
     };
     setVaultPersistenceState('unsaved');
-    setRegistryStatus('Writing public registry change inside the sealed realm...');
+    setPublicRecordStatus('Writing public registry change inside the sealed realm...');
     renderRegistry();
   }
 
@@ -3324,8 +3411,32 @@ __COLDBOX_CONCEALMENT__
     registryNoteCancel.hidden = true;
   }
 
+  function resetDeviceForm() {
+    if (!deviceForm) {
+      return;
+    }
+    deviceForm.reset();
+    deviceId.value = '';
+    deviceStatusValue.value = 'in-use';
+    deviceTamperCheck.checked = false;
+    devicePhraseWalletUsed.checked = false;
+    deviceHidden.checked = false;
+    deviceCancel.hidden = true;
+  }
+
   function parseRegistryList(value) {
     return value.split(',').map(function (item) { return item.trim(); }).filter(Boolean);
+  }
+
+  function dateInputToIso(input) {
+    var value = input && typeof input.value === 'string' ? input.value.trim() : '';
+    return value ? value + 'T00:00:00.000Z' : '';
+  }
+
+  function isoDateToInput(value) {
+    return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)
+      ? value.slice(0, 10)
+      : '';
   }
 
   function addRegistryOptionalList(record, key, input, clearFields) {
@@ -3389,8 +3500,33 @@ __COLDBOX_CONCEALMENT__
       registryNoteHidden.checked = record.hidden === true;
       registryNoteCancel.hidden = false;
       registryNoteTitle.focus();
+    } else if (kind === 'device') {
+      deviceId.value = record.id;
+      deviceVendor.value = record.vendor || '';
+      deviceModel.value = record.model || '';
+      deviceSerial.value = record.serial || '';
+      deviceFirmware.value = record.firmware || '';
+      deviceFirmwareDate.value = isoDateToInput(record.firmwareDate);
+      devicePurchasedFrom.value = record.purchasedFrom || '';
+      devicePurchasedAt.value = isoDateToInput(record.purchasedAt);
+      deviceTamperCheck.checked = record.tamperCheckPassed === true;
+      deviceTamperNotes.value = record.tamperCheckNotes || '';
+      devicePinSetAt.value = isoDateToInput(record.pinSetAt);
+      devicePinChangedAt.value = isoDateToInput(record.pinChangedAt);
+      devicePhraseWalletUsed.checked = record['pass' + 'phraseUsed'] === true;
+      deviceSeedFingerprints.value = (record.seedFingerprints || []).join(', ');
+      deviceLocation.value = record.location || '';
+      deviceStatusValue.value = record.status || 'in-use';
+      deviceNotes.value = record.notes || '';
+      deviceHidden.checked = record.hidden === true;
+      deviceCancel.hidden = false;
+      deviceVendor.focus();
     }
-    setRegistryStatus('Editing a public ' + kind + ' record.');
+    if (kind === 'device') {
+      setDeviceStatus('Editing a public device record.');
+    } else {
+      setRegistryStatus('Editing a public ' + kind + ' record.');
+    }
   }
 
   function deleteRegistryRecord(kind, id) {
@@ -3401,6 +3537,8 @@ __COLDBOX_CONCEALMENT__
         registryStore.deleteAccount(id);
       } else if (kind === 'address') {
         registryStore.deleteAddress(id);
+      } else if (kind === 'device') {
+        registryStore.deleteDevice(id);
       } else {
         registryStore.deleteNote(id);
       }
@@ -3534,6 +3672,45 @@ __COLDBOX_CONCEALMENT__
     resetNoteForm();
   }
 
+  function addDeviceOptionalDate(record, key, input) {
+    var value = dateInputToIso(input);
+    if (value) {
+      record[key] = value;
+    }
+  }
+
+  function handleDeviceFormSubmit(event) {
+    event.preventDefault();
+    var id = deviceId.value;
+    var record = {
+      vendor: deviceVendor.value.trim(),
+      model: deviceModel.value.trim(),
+      firmware: deviceFirmware.value.trim(),
+      tamperCheckPassed: deviceTamperCheck.checked,
+      seedFingerprints: parseRegistryList(deviceSeedFingerprints.value),
+      status: deviceStatusValue.value,
+      hidden: deviceHidden.checked
+    };
+    record['pass' + 'phraseUsed'] = devicePhraseWalletUsed.checked;
+    addRegistryText(record, 'serial', deviceSerial);
+    addDeviceOptionalDate(record, 'firmwareDate', deviceFirmwareDate);
+    addRegistryText(record, 'purchasedFrom', devicePurchasedFrom);
+    addDeviceOptionalDate(record, 'purchasedAt', devicePurchasedAt);
+    addRegistryText(record, 'tamperCheckNotes', deviceTamperNotes);
+    addDeviceOptionalDate(record, 'pinSetAt', devicePinSetAt);
+    addDeviceOptionalDate(record, 'pinChangedAt', devicePinChangedAt);
+    addRegistryText(record, 'location', deviceLocation);
+    addRegistryText(record, 'notes', deviceNotes);
+    beginRegistryMutation(function () {
+      if (id) {
+        registryStore.updateDevice(id, record);
+      } else {
+        registryStore.createDevice(record);
+      }
+    });
+    resetDeviceForm();
+  }
+
   function handleHiddenRevealResult(message) {
     if (!pendingHiddenReveal || pendingHiddenReveal !== message.id) {
       recordChannelAnomaly();
@@ -3592,7 +3769,7 @@ __COLDBOX_CONCEALMENT__
     try {
       registryStore.replace(message.payload.publicCompartment);
       pendingRegistryMutation = null;
-      setRegistryStatus('Public registry change written. Save the vault to make it durable.');
+      setPublicRecordStatus('Public registry change written. Save the vault to make it durable.');
       renderRegistry();
     } catch (error) {
       handleVaultError({
@@ -3606,6 +3783,7 @@ __COLDBOX_CONCEALMENT__
     var publicCompartment = message.payload.publicCompartment || {};
     hiddenRegistryVisible = false;
     pendingHiddenReveal = null;
+    deviceSearchTerm = '';
     var count = publicRecordCount(publicCompartment);
     var vaultId = typeof publicCompartment.id === 'string' ? publicCompartment.id : null;
     var wasLoaded = pendingVaultLoad;
@@ -3764,6 +3942,8 @@ __COLDBOX_CONCEALMENT__
       resetAccountForm();
       resetAddressForm();
       resetNoteForm();
+      resetDeviceForm();
+      deviceSearchTerm = '';
       renderRegistry();
       clearLiveTransferSender('Live transfer stopped because the vault locked.');
       setVaultPersistenceState('none');
@@ -3815,7 +3995,7 @@ __COLDBOX_CONCEALMENT__
         registryStore = null;
       }
       setVaultPersistenceState(registryMutation.persistenceState);
-      setRegistryStatus('The registry change was rejected. Nothing was changed.');
+      setPublicRecordStatus('The registry change was rejected. Nothing was changed.');
       renderRegistry();
       return;
     }
@@ -4470,6 +4650,9 @@ __COLDBOX_CONCEALMENT__
   if (registryNoteForm) {
     registryNoteForm.addEventListener('submit', handleNoteFormSubmit);
   }
+  if (deviceForm) {
+    deviceForm.addEventListener('submit', handleDeviceFormSubmit);
+  }
   if (registryWalletCancel) {
     registryWalletCancel.addEventListener('click', resetWalletForm);
   }
@@ -4482,7 +4665,10 @@ __COLDBOX_CONCEALMENT__
   if (registryNoteCancel) {
     registryNoteCancel.addEventListener('click', resetNoteForm);
   }
-  [registryWalletList, registryAccountList, registryAddressList, registryNoteList].forEach(function (list) {
+  if (deviceCancel) {
+    deviceCancel.addEventListener('click', resetDeviceForm);
+  }
+  [registryWalletList, registryAccountList, registryAddressList, registryNoteList, deviceList].forEach(function (list) {
     if (list) {
       list.addEventListener('click', handleRegistryListAction);
     }
@@ -4493,8 +4679,17 @@ __COLDBOX_CONCEALMENT__
       renderRegistry();
     });
   }
+  if (deviceSearch) {
+    deviceSearch.addEventListener('input', function () {
+      deviceSearchTerm = deviceSearch.value.trim().toLowerCase();
+      renderRegistry();
+    });
+  }
   if (registryShowHidden) {
     registryShowHidden.addEventListener('change', requestHiddenReveal);
+  }
+  if (deviceShowHidden) {
+    deviceShowHidden.addEventListener('change', requestHiddenReveal);
   }
   if (privacyBlurToggle && concealmentController) {
     privacyBlurToggle.addEventListener('click', function () {

@@ -565,8 +565,75 @@ __COLDBOX_STYLES__
         </section>
 
         <section class="page" id="page-devices" data-page="devices" aria-labelledby="page-title-devices" hidden>
-          <header class="page-header"><p class="eyebrow">Workspace / Companion records</p><h1 id="page-title-devices">Devices</h1><p class="page-lede">Record the hardware wallets and backup context that surround your registry.</p></header>
-          <div class="empty-panel"><span class="panel-kicker">Coming in Phase 1</span><h2>Verification belongs beside the device record.</h2><p>The shell has a stable destination for device notes and verification workflows.</p></div>
+          <header class="page-header"><p class="eyebrow">Workspace / Companion records</p><h1 id="page-title-devices">Devices</h1><p class="page-lede">Record the hardware wallets and backup context that surround your registry. Device records are public metadata; seeds, passphrases, and private keys never belong here.</p></header>
+          <section class="device-locked" id="device-locked" aria-live="polite">
+            <div class="empty-panel"><span class="panel-kicker">Vault locked</span><h2>Unlock a vault to edit its device registry.</h2><p>Device records are stored in the public compartment and are unavailable until the encrypted vault session is open.</p></div>
+          </section>
+          <section class="device-workspace" id="device-workspace" hidden aria-live="polite">
+            <p class="registry-status" id="device-status" role="status">Device registry ready.</p>
+            <div class="device-grid">
+              <article class="info-card registry-card">
+                <span class="card-icon" aria-hidden="true">01</span>
+                <h2>Hardware wallet</h2>
+                <p class="registry-help">Record what the device is and where it is. This page does not connect to, unlock, or sign with a hardware wallet.</p>
+                <form id="device-form" class="registry-form">
+                  <input id="device-id" type="hidden">
+                  <label class="vault-label" for="device-vendor">Vendor</label>
+                  <input id="device-vendor" class="registry-input" type="text" maxlength="128" autocomplete="off" required>
+                  <label class="vault-label" for="device-model">Model</label>
+                  <input id="device-model" class="registry-input" type="text" maxlength="128" autocomplete="off" required>
+                  <label class="vault-label" for="device-serial">Serial (optional)</label>
+                  <input id="device-serial" class="registry-input" type="text" maxlength="128" autocomplete="off">
+                  <label class="vault-label" for="device-firmware">Firmware</label>
+                  <input id="device-firmware" class="registry-input" type="text" maxlength="128" autocomplete="off" required>
+                  <label class="vault-label" for="device-firmware-date">Firmware installed</label>
+                  <input id="device-firmware-date" class="registry-input" type="date">
+                  <label class="vault-label" for="device-purchased-from">Purchased from</label>
+                  <input id="device-purchased-from" class="registry-input" type="text" maxlength="256" autocomplete="off">
+                  <label class="vault-label" for="device-purchased-at">Purchased on</label>
+                  <input id="device-purchased-at" class="registry-input" type="date">
+                  <label class="registry-checkbox"><input id="device-tamper-check" type="checkbox"> Tamper-evidence check passed</label>
+                  <label class="vault-label" for="device-tamper-notes">Tamper check notes</label>
+                  <textarea id="device-tamper-notes" class="registry-input" rows="3" maxlength="10000" autocomplete="off"></textarea>
+                  <label class="vault-label" for="device-pin-set-at">PIN set on</label>
+                  <input id="device-pin-set-at" class="registry-input" type="date">
+                  <label class="vault-label" for="device-pin-changed-at">PIN last changed</label>
+                  <input id="device-pin-changed-at" class="registry-input" type="date">
+                  <label class="registry-checkbox"><input id="device-phrase-wallet-used" type="checkbox"> BIP-39 passphrase wallet used</label>
+                  <label class="vault-label" for="device-seed-fingerprints">Seed fingerprints</label>
+                  <input id="device-seed-fingerprints" class="registry-input" type="text" maxlength="512" placeholder="8-hex-character fingerprints, comma-separated" autocomplete="off" spellcheck="false">
+                  <label class="vault-label" for="device-location">Physical location</label>
+                  <input id="device-location" class="registry-input" type="text" maxlength="256" autocomplete="off">
+                  <label class="vault-label" for="device-status-value">Lifecycle status</label>
+                  <select id="device-status-value" class="registry-input">
+                    <option value="in-use">In use</option>
+                    <option value="retired">Retired</option>
+                    <option value="lost">Lost</option>
+                    <option value="destroyed">Destroyed</option>
+                    <option value="rma">RMA</option>
+                  </select>
+                  <label class="vault-label" for="device-notes">Notes</label>
+                  <textarea id="device-notes" class="registry-input" rows="4" maxlength="10000" autocomplete="off"></textarea>
+                  <label class="registry-checkbox"><input id="device-hidden" type="checkbox"> Hide this device</label>
+                  <div class="registry-form-actions">
+                    <button class="vault-button vault-button-primary" type="submit">Save device</button>
+                    <button class="vault-button" id="device-cancel" type="button" hidden>Cancel edit</button>
+                  </div>
+                </form>
+              </article>
+              <article class="info-card registry-card registry-list-card">
+                <span class="card-icon" aria-hidden="true">02</span>
+                <h2>Device register</h2>
+                <div class="registry-filter-bar">
+                  <label class="vault-label" for="device-search">Search devices</label>
+                  <input id="device-search" class="registry-input" type="search" maxlength="128" autocomplete="off" placeholder="e.g. Trezor or home safe">
+                  <label class="registry-checkbox"><input id="device-show-hidden" type="checkbox"> Reveal hidden devices</label>
+                  <p class="registry-help" id="device-hidden-help">Hidden devices stay out of the list and search until you re-enter the vault phrase inside the sealed realm.</p>
+                </div>
+                <div id="device-list" class="registry-list"></div>
+              </article>
+            </div>
+          </section>
         </section>
 
         <section class="page" id="page-entropy" data-page="entropy" aria-labelledby="page-title-entropy" hidden>

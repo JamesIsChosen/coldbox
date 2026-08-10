@@ -1194,6 +1194,61 @@ async function verifyRegistryCrud(browser, engine) {
   }
 }
 
+async function verifyDeviceRegistry(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    const coldFrame = await getColdFrame(page, engine);
+    await createPreparedVault(page, coldFrame, 'device registry harness phrase', 'Device Registry Harness Vault');
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#nav-rail a[data-route="devices"]').click();
+    await page.locator('#page-devices:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('#device-workspace:not([hidden])').waitFor({ state: 'visible' });
+
+    await page.locator('#device-vendor').fill('Trezor');
+    await page.locator('#device-model').fill('Safe 5');
+    await page.locator('#device-firmware').fill('2.8.1');
+    await page.locator('#device-location').fill('Home safe');
+    await page.locator('#device-seed-fingerprints').fill('deadbeef');
+    await page.locator('#device-tamper-check').check();
+    await page.locator('#device-form button[type="submit"]').click();
+    await page.locator('#device-status').filter({ hasText: /written/i }).waitFor({ state: 'visible', timeout: 5000 });
+    const deviceCard = page.locator('#device-list .registry-record').filter({ hasText: 'Trezor Safe 5' });
+    await deviceCard.waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await deviceCard.textContent(), /in-use/i, `${engine}: new device did not show its lifecycle status`);
+
+    await page.locator('#device-search').fill('home safe');
+    await deviceCard.waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#device-search').fill('');
+    await deviceCard.locator('[data-registry-action="delete"]').click();
+    await page.locator('#device-status').filter({ hasText: /written/i }).waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#device-list').filter({ hasText: /No devices recorded yet/i }).waitFor({ state: 'visible', timeout: 5000 });
+
+    await page.locator('#device-show-hidden').check();
+    await coldFrame.locator('#cold-concealment-controls').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-concealment-passphrase').fill('device registry harness phrase');
+    await coldFrame.locator('#cold-concealment-reveal').click();
+    await deviceCard.waitFor({ state: 'visible', timeout: 5000 });
+    await deviceCard.locator('[data-registry-action="edit"]').click();
+    await page.locator('#device-status-value').selectOption('retired');
+    await page.locator('#device-form button[type="submit"]').click();
+    await page.locator('#device-status').filter({ hasText: /written/i }).waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await deviceCard.textContent(), /retired/i, `${engine}: device update did not show the new lifecycle status`);
+
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    await lockVaultDiscardingUnsaved(page);
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await page.locator('#device-workspace').getAttribute('hidden'), '', `${engine}: device workspace remained visible after lock`);
+    console.log(`${engine}: device registry CRUD, lifecycle status, search, hidden reveal, and lock teardown passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyNotesAndConcealment(browser, engine) {
   const { page } = await openPage(browser, buildPath, 'reachable', { suspendReachabilityInterval: true });
   try {
@@ -2820,6 +2875,7 @@ async function run() {
       await verifyNotesAndConcealment(browser, engine);
       await verifyColdSecretNotes(browser, engine);
       await verifyRegistryCrud(browser, engine);
+      await verifyDeviceRegistry(browser, engine);
       await verifyEntropyLab(browser, engine);
       await verifySeedForge(browser, engine);
       await verifyUnlockedRuntimeHealthLockdown(browser, engine);

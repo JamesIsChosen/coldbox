@@ -428,6 +428,61 @@ test('public notes are bounded, public-only records with canonical tags', () => 
   }).payload.revealed, true);
 });
 
+test('device records accept bounded lifecycle fields and reject unsafe shapes', () => {
+  const protocol = loadProtocol();
+  const deviceId = '550e8400-e29b-41d4-a716-446655440004';
+  const device = protocol.validateMessage('warm-to-cold', {
+    id: 'device-write-1',
+    type: 'publicData.replace',
+    payload: {
+      publicCompartment: {
+        devices: [{
+          id: deviceId,
+          vendor: 'Trezor',
+          model: 'Safe 5',
+          serial: 'TS5-001',
+          firmware: '2.8.1',
+          firmwareDate: '2026-08-10T00:00:00.000Z',
+          purchasedFrom: 'Authorized retailer',
+          purchasedAt: '2026-08-10T00:00:00.000Z',
+          tamperCheckPassed: true,
+          tamperCheckNotes: 'Seal matched.',
+          pinSetAt: '2026-08-10T00:00:00.000Z',
+          pinChangedAt: '2026-08-10T00:00:00.000Z',
+          passphraseUsed: true,
+          seedFingerprints: [SAFE_FINGERPRINT],
+          location: 'Home safe',
+          status: 'in-use',
+          notes: 'Primary device.',
+          hidden: false,
+          unknownNumber: 7
+        }]
+      }
+    }
+  });
+  assert.ok(device);
+  assert.equal(device.payload.publicCompartment.devices[0].unknownNumber, undefined);
+  assert.equal(device.payload.publicCompartment.devices[0].seedFingerprints[0], SAFE_FINGERPRINT);
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'device-bad-status',
+    type: 'publicData.replace',
+    payload: {
+      publicCompartment: {
+        devices: [{ id: deviceId, vendor: 'Trezor', model: 'Safe 5', firmware: '2.8.1', status: 'active' }]
+      }
+    }
+  }), null);
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'device-bad-date',
+    type: 'publicData.replace',
+    payload: {
+      publicCompartment: {
+        devices: [{ id: deviceId, vendor: 'Trezor', model: 'Safe 5', firmware: '2.8.1', firmwareDate: 'not-a-date', status: 'in-use' }]
+      }
+    }
+  }), null);
+});
+
 test('public notes are bounded, public-only records with canonical tags', () => {
   const protocol = loadProtocol();
   const noteId = '550e8400-e29b-41d4-a716-446655440003';

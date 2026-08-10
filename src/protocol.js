@@ -59,6 +59,13 @@
     'worker-unavailable'
   ]);
   var WARNING_SET = makeSet(WARNING_CODES);
+  var DEVICE_STATUS_SET = makeSet([
+    'in-use',
+    'retired',
+    'lost',
+    'destroyed',
+    'rma'
+  ]);
   var KDF_ACTIVE = Object.freeze([
     'argon2id-standard',
     'argon2id-fast',
@@ -338,6 +345,26 @@
       notes: 'text:10000',
       tags: 'tags',
       hidden: 'boolean'
+    }),
+    devices: Object.freeze({
+      id: 'uuid',
+      vendor: 'text:128',
+      model: 'text:128',
+      serial: 'text:128',
+      firmware: 'text:128',
+      firmwareDate: 'iso',
+      purchasedFrom: 'text:256',
+      purchasedAt: 'iso',
+      tamperCheckPassed: 'boolean',
+      tamperCheckNotes: 'text:10000',
+      pinSetAt: 'iso',
+      pinChangedAt: 'iso',
+      passphraseUsed: 'boolean',
+      seedFingerprints: 'fingerprints',
+      location: 'text:256',
+      status: 'device-status',
+      notes: 'text:10000',
+      hidden: 'boolean'
     })
   });
 
@@ -354,7 +381,8 @@
   var REGISTRY_REQUIRED_FIELDS = Object.freeze({
     wallets: Object.freeze(['id']),
     accounts: Object.freeze(['id', 'walletId']),
-    addresses: Object.freeze(['id', 'accountId', 'index', 'address'])
+    addresses: Object.freeze(['id', 'accountId', 'index', 'address']),
+    devices: Object.freeze(['id', 'vendor', 'model', 'firmware', 'status'])
   });
 
   function cleanIsoTimestamp(value) {
@@ -397,6 +425,21 @@
         return null;
       }
       result.push(xpub);
+    }
+    return result;
+  }
+
+  function cleanPublicFingerprints(value) {
+    if (!Array.isArray(value) || value.length > 32) {
+      return null;
+    }
+    var result = [];
+    for (var index = 0; index < value.length; index += 1) {
+      var fingerprint = cleanFingerprint(value[index]);
+      if (fingerprint === null) {
+        return null;
+      }
+      result.push(fingerprint);
     }
     return result;
   }
@@ -463,6 +506,9 @@
     if (rule === 'xpubs') {
       return cleanPublicXpubs(value);
     }
+    if (rule === 'fingerprints') {
+      return cleanPublicFingerprints(value);
+    }
     if (rule === 'uuids') {
       return cleanPublicUuids(value);
     }
@@ -489,6 +535,12 @@
     }
     if (rule === 'balanceSnapshot') {
       return cleanBalanceSnapshot(value);
+    }
+    if (rule === 'iso') {
+      return cleanIsoTimestamp(value);
+    }
+    if (rule === 'device-status') {
+      return cleanEnum(value, DEVICE_STATUS_SET, 32);
     }
     if (rule.indexOf('text:') === 0) {
       return cleanText(value, Number(rule.slice(5)));

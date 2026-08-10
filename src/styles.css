@@ -1280,6 +1280,10 @@ samp {
   margin-top: 1.5rem;
 }
 
+.device-workspace {
+  margin-top: 1.5rem;
+}
+
 .registry-status {
   margin: 0 0 1rem;
   padding: 0.75rem 1rem;
@@ -1292,10 +1296,15 @@ samp {
 }
 
 .registry-forms,
+.device-grid,
 .registry-lists {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1.25rem;
+}
+
+.device-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .registry-filter-bar {
@@ -2016,6 +2025,7 @@ samp {
   }
 
   .registry-forms,
+  .device-grid,
   .registry-lists {
     grid-template-columns: 1fr;
   }
