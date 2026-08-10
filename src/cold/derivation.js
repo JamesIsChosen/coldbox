@@ -278,6 +278,9 @@
       || (publicKey[0] !== 2 && publicKey[0] !== 3)) {
       throw new TypeError('Bitcoin public keys must be 33-byte compressed secp256k1 points.');
     }
+    // Hashing a syntactically compressed byte string is not enough: every
+    // script family must reject bytes that are not a real secp256k1 point.
+    secp.Point.fromBytes(publicKey);
     var keyHash = hash160(publicKey);
     if (type === 'p2pkh') {
       return base.base58check.encode(concatBytes(new Uint8Array([network.p2pkhVersion]), keyHash));
@@ -425,8 +428,8 @@
     var addresses = [];
     try {
       accountNode = bip32.HDKey.fromExtendedKey(xpub, versionBytes(network, detected.scriptType));
-      if (accountNode.depth === 0) {
-        throw new TypeError('Watch-only Bitcoin derivation requires an account-level extended public key.');
+      if (accountNode.depth !== 3 || accountNode.index < HARDENED_OFFSET) {
+        throw new TypeError('Watch-only Bitcoin derivation requires a depth-3 hardened account-level extended public key.');
       }
       chainNode = deriveSegments(accountNode, [change]);
       wipeNode(accountNode);

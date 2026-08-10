@@ -17,7 +17,8 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 ### Added — P1.4 Bitcoin derivation engine (2026-08-10)
 
 - **Cold-only BIP-32 derivation.** The sealed realm now derives Bitcoin account paths for P2PKH, P2SH-P2WPKH, P2WPKH, and BIP-86 P2TR on mainnet and testnet, with hardened path parsing, bounded batches, account-level watch-only xpub support, and public-only high-level results.
-- **Independent vector coverage.** Official BIP-32/BIP-49/BIP-84/BIP-86 vectors, negative malformed-input fixtures, and an independent Node/OpenSSL secp256k1 public-key check cover the engine. The upstream BIP-32 text's checksum-invalid public-key row is retained as an explicit negative fixture rather than silently corrected.
+- **Independent vector coverage.** Official BIP-32/BIP-49/BIP-84/BIP-86 vectors, negative malformed-input fixtures, and an independent Node/OpenSSL secp256k1 public-key check cover the engine. The official BIP-32 `m/0'/1/2'` extended public key is asserted byte-for-byte.
+- **Derivation remediation.** Watch-only Bitcoin imports now require a depth-3 hardened account child, and every script family rejects compressed bytes that are not a valid secp256k1 point before constructing an address.
 - **Structural boundary.** `@scure/base` encodings and the secp256k1 point API are vendored into the cold realm; no new message type or network capability was added. See [ADR-0029](docs/05-development/adr/0029-cold-only-bitcoin-derivation-engine.md).
 
 ### Added / fixed — P1.3 Seed Forge (2026-08-10)

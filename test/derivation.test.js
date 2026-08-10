@@ -62,11 +62,7 @@ const BIP32_VECTOR_1 = [
   },
   {
     path: "m/0'/1/2'",
-    // The published bitcoin/bips row has a checksum-invalid ext pub. Keep it
-    // as a negative fixture; the ext prv and independent Node public-key
-    // calculation below still verify this derivation step.
-    xpub: 'xpub6D4BDPcP2GT577Vvch3R8wDkScZWzQzMMUm3PWbmWvVJrZwY4VUNgqFJPMM3No2dFDFGTsxxpG5uJh7n7epu4trkrX7x7DogT5Uv6fcLW5',
-    invalidXpub: true,
+    xpub: 'xpub6D4BDPcP2GT577Vvch3R8wDkScZWzQzMMUm3PWbmWvVJrZwQY4VUNgqFJPMM3No2dFDFGTsxxpG5uJh7n7epu4trkrX7x7DogT5Uv6fcLW5',
     xprv: 'xprv9z4pot5VBttmtdRTWfWQmoH1taj2axGVzFqSb8C9xaxKymcFzXBDptWmT7FwuEzG3ryjH4ktypQSAewRiNMjANTtpgP4mLTj34bhnZX7UiM'
   },
   {
@@ -91,15 +87,7 @@ test('BIP-32 vector 1 matches the published extended private and public keys', (
       scriptType: 'p2pkh'
     });
     try {
-      if (vector.invalidXpub) {
-        assert.throws(
-          () => context.__coldboxBase.base58check.decode(vector.xpub),
-          /checksum/i,
-          vector.path
-        );
-      } else {
-        assert.equal(node.publicExtendedKey, vector.xpub, vector.path);
-      }
+      assert.equal(node.publicExtendedKey, vector.xpub, vector.path);
       assert.equal(node.privateExtendedKey, vector.xprv, vector.path);
       const privatePayload = context.__coldboxBase.base58check.decode(vector.xprv);
       const ecdh = crypto.createECDH('secp256k1');
@@ -143,6 +131,22 @@ test('BIP-49 and BIP-84 published vectors produce the expected account keys and 
   assert.deepEqual([...watchOnly.addresses], [...native.addresses]);
   assert.equal(watchOnly.fingerprint, null);
   assert.equal(typeof watchOnly.accountFingerprint, 'string');
+  const nestedWatchOnly = derivation.deriveBitcoinFromXpub(nested.xpub, {
+    network: 'testnet',
+    scriptType: 'p2sh-p2wpkh',
+    count: 1
+  });
+  assert.deepEqual([...nestedWatchOnly.addresses], [...nested.addresses]);
+  const taproot = derivation.deriveBitcoinFromSeed(BIP39_ZERO_ENTROPY_SEED, {
+    network: 'mainnet',
+    scriptType: 'p2tr',
+    count: 1
+  });
+  const taprootWatchOnly = derivation.deriveBitcoinFromXpub(taproot.xpub, {
+    scriptType: 'p2tr',
+    count: 1
+  });
+  assert.deepEqual([...taprootWatchOnly.addresses], [...taproot.addresses]);
   assert.throws(
     () => derivation.deriveBitcoinFromXpub(native.xpub, { network: 'testnet' }),
     /network does not match/i
@@ -218,18 +222,30 @@ test('Bitcoin derivation returns a public projection and rejects unsafe inputs',
     () => derivation.addressFromPublicKey(new Uint8Array(33), 'p2wpkh', 'mainnet'),
     /compressed secp256k1/i
   );
-
-  const root = derivation.deriveNode(BIP32_VECTOR_1_SEED, 'm', {
-    network: 'mainnet',
-    scriptType: 'p2pkh'
-  });
-  try {
+  const invalidPoint = new Uint8Array(33).fill(0xff);
+  invalidPoint[0] = 2;
+  for (const scriptType of ['p2pkh', 'p2sh-p2wpkh', 'p2wpkh', 'p2tr']) {
     assert.throws(
-      () => derivation.deriveBitcoinFromXpub(root.publicExtendedKey),
-      /account-level/i
+      () => derivation.addressFromPublicKey(invalidPoint, scriptType, 'mainnet'),
+      undefined,
+      `invalid compressed point must fail for ${scriptType}`
     );
-  } finally {
-    root.wipePrivateData();
+  }
+
+  for (const path of ['m', "m/44'", "m/44'/0'", "m/44'/0'/0'/0", "m/44'/0'/0"]) {
+    const node = derivation.deriveNode(BIP32_VECTOR_1_SEED, path, {
+      network: 'mainnet',
+      scriptType: 'p2pkh'
+    });
+    try {
+      assert.throws(
+        () => derivation.deriveBitcoinFromXpub(node.publicExtendedKey),
+        /depth-3 hardened account-level/i,
+        path
+      );
+    } finally {
+      node.wipePrivateData();
+    }
   }
   assert.throws(
     () => derivation.deriveBitcoinFromXpub('xpub-not-valid'),

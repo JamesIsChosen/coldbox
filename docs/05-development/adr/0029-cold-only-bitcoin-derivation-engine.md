@@ -18,7 +18,7 @@ Implement a cold-only JavaScript derivation module around the vendored `@scure/b
 - BIP-84 P2WPKH (`m/84'`), Bech32 v0
 - BIP-86 key-path P2TR (`m/86'`), Bech32m v1
 
-It also accepts account-level extended public keys using the standard xpub/tpub and SLIP-132 ypub/upub/zpub/vpub version bytes. Only non-hardened children are derived from those keys. A watch-only result does not claim a master fingerprint that the xpub cannot carry; it reports the account fingerprint separately.
+It also accepts only depth-3, hardened-account extended public keys using the standard xpub/tpub and SLIP-132 ypub/upub/zpub/vpub version bytes. Only non-hardened children are derived from those keys. Before any script-family address hash, the compressed public key is parsed as a secp256k1 point; syntactically compressed but invalid bytes are rejected. A watch-only result does not claim a master fingerprint that the xpub cannot carry; it reports the account fingerprint separately.
 
 No seed, private key, extended private key, or secret-bearing message is added to the protocol. `connect-src 'none'` and the existing warm/cold boundary remain unchanged.
 
