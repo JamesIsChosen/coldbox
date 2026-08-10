@@ -10,6 +10,7 @@ __COLDBOX_CAPABILITIES__
   var cryptoLayer = window.__coldboxCrypto;
   var vaultLayer = window.__coldboxVault;
   var entropyLab = window.__coldboxEntropyLab;
+  var entropyHealth = window.__coldboxEntropyHealth;
   var readyMarker = document.getElementById('cold-ready');
   var protocolWarning = document.getElementById('cold-protocol-warning');
   var details = document.getElementById('cold-realm-details');
@@ -32,6 +33,9 @@ __COLDBOX_CAPABILITIES__
   var passphraseConfirmWrap = document.getElementById('cold-vault-create-confirmation');
   var passphraseConfirmInput = document.getElementById('cold-vault-passphrase-confirm');
   var passphraseConfirmError = document.getElementById('cold-vault-create-error');
+  var passphraseHealthPanel = document.getElementById('cold-vault-passphrase-health');
+  var passphraseHealthState = document.getElementById('cold-vault-passphrase-health-state');
+  var passphraseHealthCopy = document.getElementById('cold-vault-passphrase-health-copy');
   var createVaultButton = document.getElementById('cold-vault-create');
   var unlockVaultButton = document.getElementById('cold-vault-unlock');
   var lockVaultButton = document.getElementById('cold-vault-lock');
@@ -79,6 +83,18 @@ __COLDBOX_CAPABILITIES__
   var entropyFallbackStrength = document.getElementById('cold-entropy-fallback-strength');
   var entropySimulatedCount = document.getElementById('cold-entropy-simulated-count');
   var entropyCsprngStrength = document.getElementById('cold-entropy-csprng-strength');
+  var entropyHealthPanel = document.getElementById('cold-entropy-health');
+  var entropyHealthSource = document.getElementById('cold-entropy-health-source');
+  var entropyHealthState = document.getElementById('cold-entropy-health-state');
+  var entropyHealthSamples = document.getElementById('cold-entropy-health-samples');
+  var entropyHealthClaimed = document.getElementById('cold-entropy-health-claimed');
+  var entropyHealthMeasured = document.getElementById('cold-entropy-health-measured');
+  var entropyHealthChi = document.getElementById('cold-entropy-health-chi');
+  var entropyHealthRuns = document.getElementById('cold-entropy-health-runs');
+  var entropyHealthCorrelation = document.getElementById('cold-entropy-health-correlation');
+  var entropyHealthFrequencyBody = document.getElementById('cold-entropy-health-frequency-body');
+  var entropyHealthPatterns = document.getElementById('cold-entropy-health-patterns');
+  var entropyHealthDisclosure = document.getElementById('cold-entropy-health-disclosure');
   var entropyTargetSelect = document.getElementById('cold-entropy-target');
   var entropyMixButton = document.getElementById('cold-entropy-mix-run');
   var entropyMixStatus = document.getElementById('cold-entropy-mix-status');
@@ -334,6 +350,304 @@ __COLDBOX_CAPABILITIES__
     return parts.length === 0 ? 'None yet.' : parts.join(' · ');
   }
 
+  function manualHealthValues(values, provenances) {
+    var manual = [];
+    for (var index = 0; index < values.length; index += 1) {
+      if (provenances[index] === entropyLab.PROVENANCE_MANUAL) {
+        manual.push(values[index]);
+      }
+    }
+    return manual;
+  }
+
+  function healthSource(id, label, values, provenances, alphabetSize, options) {
+    var config = options || {};
+    var manual = manualHealthValues(values, provenances);
+    return {
+      id: id,
+      label: label,
+      values: manual,
+      simulatedCount: values.length - manual.length,
+      alphabetSize: alphabetSize,
+      symbolLabels: config.symbolLabels || [],
+      claimedBits: config.claimedBits,
+      claimedBitsPerSymbol: config.claimedBitsPerSymbol,
+      withoutReplacement: Boolean(config.withoutReplacement)
+    };
+  }
+
+  function buildEntropyHealthSources() {
+    if (!entropySession) {
+      return [];
+    }
+    var base6Labels = [];
+    var discardLabels = [];
+    var hexLabels = [];
+    var cardLabels = [];
+    for (var face = 1; face <= 6; face += 1) {
+      base6Labels.push(String(face));
+    }
+    for (var acceptedFace = 1; acceptedFace <= 4; acceptedFace += 1) {
+      discardLabels.push(String(acceptedFace));
+    }
+    for (var nibble = 0; nibble < 16; nibble += 1) {
+      hexLabels.push(nibble.toString(16));
+    }
+    for (var cardIndex = 0; cardIndex < 52; cardIndex += 1) {
+      cardLabels.push(cardLabel(cardIndex));
+    }
+
+    // The session stores every finite-alphabet symbol zero-based; labels keep
+    // the physical notation (die faces 1-6 and discard outcomes 1-4).
+    var base6Values = entropySession.diceDigits.slice();
+    var base6Source = healthSource(
+      'dice-base6', 'Dice - base-6', base6Values, entropySession.diceProvenance, 6,
+      { symbolLabels: base6Labels, claimedBitsPerSymbol: Math.log2(6) }
+    );
+
+    var discardValues = [];
+    for (var discardIndex = 0; discardIndex + 2 <= entropySession.discardDiceBits.length; discardIndex += 2) {
+      discardValues.push(
+        (entropySession.discardDiceBits[discardIndex] << 1)
+          | entropySession.discardDiceBits[discardIndex + 1]
+      );
+    }
+    var discardSource = healthSource(
+      'dice-discard', 'Dice - 1-4 discard', discardValues,
+      entropySession.discardDiceProvenance, 4,
+      { symbolLabels: discardLabels, claimedBitsPerSymbol: 2 }
+    );
+
+    var coinSource = healthSource(
+      'coin', 'Coin flips', entropySession.coinBits, entropySession.coinProvenance, 2,
+      { symbolLabels: ['T', 'H'], claimedBitsPerSymbol: 1 }
+    );
+
+    var hexValues = [];
+    for (var hexIndex = 0; hexIndex + 4 <= entropySession.hexBits.length; hexIndex += 4) {
+      hexValues.push(
+        (entropySession.hexBits[hexIndex] << 3)
+        | (entropySession.hexBits[hexIndex + 1] << 2)
+        | (entropySession.hexBits[hexIndex + 2] << 1)
+        | entropySession.hexBits[hexIndex + 3]
+      );
+    }
+    var hexSource = healthSource(
+      'hex', 'Hex digits', hexValues, entropySession.hexProvenance, 16,
+      { symbolLabels: hexLabels, claimedBitsPerSymbol: 4 }
+    );
+
+    var cardValues = entropySession.cardOrder.slice();
+    var cardProvenance = entropySession.cardProvenance.slice();
+    var manualCardClaimedBits = 0;
+    for (var cardOrderIndex = 0; cardOrderIndex < cardValues.length; cardOrderIndex += 1) {
+      if (cardProvenance[cardOrderIndex] === entropyLab.PROVENANCE_MANUAL) {
+        var poolSize = entropySession.cardDrawPoolSizes[cardOrderIndex];
+        if (Number.isInteger(poolSize) && poolSize > 0) {
+          manualCardClaimedBits += Math.log2(poolSize);
+        }
+      }
+    }
+    var cardSource = healthSource(
+      'cards', 'Playing cards', cardValues, cardProvenance, 52,
+      { symbolLabels: cardLabels, claimedBits: manualCardClaimedBits, withoutReplacement: true }
+    );
+    return [base6Source, discardSource, coinSource, cardSource, hexSource];
+  }
+
+  function formatHealthBits(value) {
+    if (value === null || value === undefined || !Number.isFinite(value)) {
+      return 'Not available';
+    }
+    return value.toFixed(1) + ' bits';
+  }
+
+  function formatHealthPValue(value) {
+    if (value === null || value === undefined || !Number.isFinite(value)) {
+      return 'not available';
+    }
+    return value < 0.0001 ? '<0.0001' : value.toFixed(4);
+  }
+
+  function healthTestUnavailable(reason) {
+    var messages = {
+      'without-replacement': 'not applicable to cards drawn without replacement',
+      'expected-counts-too-small': 'not available until each expected bin has at least 5 samples',
+      'sample-too-small': 'not available until at least 20 samples',
+      'symbol-counts-too-small': 'not available until both projected symbol counts are above 10',
+      'proportion-too-skewed': 'not available while the observed split is too skewed',
+      'one-symbol-only': 'not available with only one observed symbol',
+      'zero-variance': 'not available because all values are identical'
+    };
+    return messages[reason] || 'not available';
+  }
+
+  function healthStateText(analysis, targetBits) {
+    if (analysis.state === 'not-applicable') {
+      return 'Not applicable - cards are drawn without replacement';
+    }
+    if (analysis.state === 'marginal') {
+      return 'Marginal (advisory) - chi-square p < 0.01; inspect the recording';
+    }
+    if (analysis.state === 'strong') {
+      return 'Strong (advisory) - measured min-entropy is at least 256 bits';
+    }
+    if (analysis.state === 'adequate') {
+      return 'Adequate (advisory) - measured min-entropy reaches ' + targetBits + ' bits';
+    }
+    return 'Insufficient (advisory) - measured min-entropy is below ' + targetBits + ' bits';
+  }
+
+  function renderHealthFrequency(source, analysis) {
+    if (!entropyHealthFrequencyBody) {
+      return;
+    }
+    entropyHealthFrequencyBody.textContent = '';
+    for (var index = 0; index < analysis.frequencies.length; index += 1) {
+      var frequency = analysis.frequencies[index];
+      var row = document.createElement('tr');
+      var symbolCell = document.createElement('td');
+      var countCell = document.createElement('td');
+      var shareCell = document.createElement('td');
+      symbolCell.textContent = source.symbolLabels[frequency.symbol] || String(frequency.symbol);
+      countCell.textContent = String(frequency.count);
+      shareCell.textContent = (frequency.probability * 100).toFixed(1) + '%';
+      row.appendChild(symbolCell);
+      row.appendChild(countCell);
+      row.appendChild(shareCell);
+      entropyHealthFrequencyBody.appendChild(row);
+    }
+  }
+
+  function renderHealthPatternWarnings(source, warnings) {
+    if (!entropyHealthPatterns) {
+      return;
+    }
+    entropyHealthPatterns.setAttribute('data-warning', warnings.length > 0 ? 'true' : 'false');
+    if (warnings.length === 0) {
+      entropyHealthPatterns.textContent = 'No pattern warnings yet.';
+      return;
+    }
+    var messages = warnings.map(function (warning) {
+      if (warning.code === 'long-run') {
+        return 'long run of ' + (source.symbolLabels[warning.symbol] || String(warning.symbol)) + ' (' + warning.length + ')';
+      }
+      if (warning.code === 'ascending-sequence') {
+        return 'ascending sequence (' + warning.length + ' values)';
+      }
+      if (warning.code === 'descending-sequence') {
+        return 'descending sequence (' + warning.length + ' values)';
+      }
+      if (warning.code === 'alternation') {
+        return 'alternating pattern (' + warning.length + ' values)';
+      }
+      return 'repeated block (' + warning.blockLength + ' values repeated)';
+    });
+    entropyHealthPatterns.textContent = 'Pattern warning - inspect: ' + messages.join('; ') + '.';
+  }
+
+  function updateEntropyHealth() {
+    if (!entropyHealth || !entropyHealthPanel || !entropyHealthSource || !entropySession) {
+      return;
+    }
+    var sources = buildEntropyHealthSources();
+    var selectedId = entropyHealthSource.value;
+    var source = sources[0];
+    for (var index = 0; index < sources.length; index += 1) {
+      if (sources[index].id === selectedId) {
+        source = sources[index];
+        break;
+      }
+    }
+    entropyHealthPanel.setAttribute('data-source', source.id);
+    if (source.values.length === 0) {
+      entropyHealthPanel.setAttribute('data-state', 'insufficient');
+      entropyHealthState.textContent = 'Insufficient (advisory) - collect physical/manual samples first';
+      entropyHealthSamples.textContent = source.simulatedCount > 0
+        ? '0 physical/manual (' + source.simulatedCount + ' simulations excluded)'
+        : '0';
+      entropyHealthClaimed.textContent = '0 bits';
+      entropyHealthMeasured.textContent = 'Not available';
+      entropyHealthChi.textContent = source.simulatedCount > 0
+        ? 'No physical/manual samples (simulations excluded)'
+        : 'Not available yet';
+      entropyHealthRuns.textContent = 'Not available yet';
+      entropyHealthCorrelation.textContent = 'Not available yet';
+      if (entropyHealthDisclosure) {
+        entropyHealthDisclosure.textContent = source.simulatedCount > 0
+          ? 'Device-RNG simulations are excluded from this analysis. Add physical/manual samples; passing tests are not proof that a platform RNG is sound. P1.2 is advisory and does not block mixing.'
+          : 'Warnings are prompts to inspect the recording, not proof of a broken source. Insufficient sample size leaves a test unavailable. P1.2 is advisory and does not block mixing; the analyzer never replaces the CSPRNG or the integer independent-source accounting.';
+      }
+      if (entropyHealthFrequencyBody) {
+        entropyHealthFrequencyBody.textContent = '';
+        var emptyRow = document.createElement('tr');
+        var emptyCell = document.createElement('td');
+        emptyCell.colSpan = 3;
+        emptyCell.textContent = source.simulatedCount > 0
+          ? 'Device-RNG simulations are excluded; add physical/manual samples.'
+          : 'No physical/manual samples yet.';
+        emptyRow.appendChild(emptyCell);
+        entropyHealthFrequencyBody.appendChild(emptyRow);
+      }
+      renderHealthPatternWarnings(source, []);
+      return;
+    }
+
+    var targetBits = Number(entropyTargetSelect && entropyTargetSelect.value) || 128;
+    var analysis;
+    try {
+      analysis = entropyHealth.analyze(source.values, {
+        alphabetSize: source.alphabetSize,
+        targetBits: targetBits,
+        claimedBits: source.claimedBits,
+        claimedBitsPerSymbol: source.claimedBitsPerSymbol,
+        withoutReplacement: source.withoutReplacement
+      });
+    } catch (error) {
+      entropyHealthPanel.setAttribute('data-state', 'unavailable');
+      entropyHealthState.textContent = 'Unavailable - invalid source state';
+      entropyHealthSamples.textContent = '0';
+      entropyHealthClaimed.textContent = 'Not available';
+      entropyHealthMeasured.textContent = 'Not available';
+      entropyHealthChi.textContent = 'Not available';
+      entropyHealthRuns.textContent = 'Not available';
+      entropyHealthCorrelation.textContent = 'Not available';
+      if (entropyHealthPatterns) {
+        entropyHealthPatterns.setAttribute('data-warning', 'true');
+        entropyHealthPatterns.textContent = 'Analysis failed closed: ' + error.message;
+      }
+      if (entropyHealthDisclosure) {
+        entropyHealthDisclosure.textContent = 'Analysis failed closed. P1.2 remains advisory and does not block mixing. The analyzer never replaces the CSPRNG or the integer independent-source accounting.';
+      }
+      return;
+    }
+
+    entropyHealthPanel.setAttribute('data-state', analysis.state);
+    entropyHealthState.textContent = healthStateText(analysis, targetBits);
+    entropyHealthSamples.textContent = String(analysis.sampleCount)
+      + (source.simulatedCount > 0 ? ' physical/manual (' + source.simulatedCount + ' simulations excluded)' : '');
+    entropyHealthClaimed.textContent = formatHealthBits(analysis.claimedBits);
+    entropyHealthMeasured.textContent = formatHealthBits(analysis.measuredBits);
+    entropyHealthChi.textContent = analysis.chiSquare.available
+      ? 'chi2=' + analysis.chiSquare.statistic.toFixed(2) + ', p=' + formatHealthPValue(analysis.chiSquare.pValue)
+      : healthTestUnavailable(analysis.chiSquare.reason);
+    entropyHealthRuns.textContent = analysis.runs.available
+      ? 'runs=' + analysis.runs.runs + ', p=' + formatHealthPValue(analysis.runs.pValue)
+        + (analysis.runs.biasDetected ? ' - warning' : '')
+      : healthTestUnavailable(analysis.runs.reason);
+    entropyHealthCorrelation.textContent = analysis.serialCorrelation.available
+      ? 'r1=' + analysis.serialCorrelation.value.toFixed(3)
+        + (analysis.serialCorrelation.significant ? ' - outside 95% band' : '')
+      : healthTestUnavailable(analysis.serialCorrelation.reason);
+    renderHealthFrequency(source, analysis);
+    renderHealthPatternWarnings(source, analysis.patternWarnings);
+    if (entropyHealthDisclosure) {
+      entropyHealthDisclosure.textContent = source.withoutReplacement
+        ? 'Cards are a without-replacement permutation: frequency and iid randomness tests are intentionally not reported. The card order is still shown for review.'
+        : 'Warnings are prompts to inspect the recording, not proof of a broken source. Passing tests are not proof that a platform RNG is sound. P1.2 is advisory and does not block mixing or ask for acknowledgement; Seed Forge (P1.3) owns any future generation gate.';
+    }
+  }
+
   function updateEntropyMeter() {
     if (!entropyMeter || !entropySession || !entropyTargetSelect) {
       return;
@@ -509,7 +823,7 @@ __COLDBOX_CAPABILITIES__
       entropyHexInput, entropyHexAdd,
       entropyHexRandomCount, entropyHexRandomButton, entropyHexResetButton,
       entropyCsprngCount, entropyCsprngDraw, entropyCsprngResetButton,
-      entropyUndoButton, entropyTargetSelect, entropyMixButton
+      entropyUndoButton, entropyHealthSource, entropyTargetSelect, entropyMixButton
     ];
     for (var index = 0; index < controls.length; index += 1) {
       if (controls[index]) {
@@ -543,6 +857,7 @@ __COLDBOX_CAPABILITIES__
     updateEntropyHexLog();
     refreshCardLog();
     updateEntropyMeter();
+    updateEntropyHealth();
     updateEntropyCsprngStatus();
     updateEntropyMixStatus();
   }
@@ -898,6 +1213,12 @@ __COLDBOX_CAPABILITIES__
       });
     }
 
+    if (entropyHealthSource) {
+      entropyHealthSource.addEventListener('change', function () {
+        updateEntropyHealth();
+      });
+    }
+
     if (entropyMixButton) {
       entropyMixButton.addEventListener('click', function () {
         var targetBits = Number(entropyTargetSelect.value);
@@ -964,6 +1285,34 @@ __COLDBOX_CAPABILITIES__
     passphraseConfirmError.hidden = !text;
   }
 
+  // Human-chosen text has no trustworthy numeric entropy estimate. This
+  // creation-only surface stays hidden during ordinary unlock and gives the
+  // user the conservative range/limitation guidance from the reference docs.
+  function updateVaultPassphraseHealth() {
+    if (!passphraseHealthPanel) {
+      return;
+    }
+    var creationActive = createPrepared && !vaultUnlocked;
+    passphraseHealthPanel.hidden = !creationActive;
+    passphraseHealthPanel.setAttribute('data-mode', creationActive ? 'creation' : 'unlock');
+    if (!creationActive) {
+      passphraseHealthPanel.setAttribute('data-state', 'not-applicable');
+      return;
+    }
+    var entered = Boolean(passphraseInput && passphraseInput.value.length > 0);
+    passphraseHealthPanel.setAttribute('data-state', entered ? 'entered' : 'empty');
+    if (passphraseHealthState) {
+      passphraseHealthState.textContent = entered
+        ? 'Unknown range — no numeric estimate'
+        : 'Not estimated yet';
+    }
+    if (passphraseHealthCopy) {
+      passphraseHealthCopy.textContent = entered
+        ? 'Human-chosen text has an unknown entropy range; spelling and length cannot establish a numeric score. Use six Diceware words or more for a new vault.'
+        : 'Enter a new phrase to see this guidance. Human-chosen text has an unknown entropy range; the sealed realm does not invent a numeric score from spelling or length. Use six Diceware words or more for a new vault.';
+    }
+  }
+
   function vaultControlsReady() {
     return vaultCryptoReady && handshakeState === 'ready' && messagePort !== null;
   }
@@ -994,6 +1343,7 @@ __COLDBOX_CAPABILITIES__
     if (keyfileInput) {
       keyfileInput.disabled = !ready || vaultBusy || vaultUnlocked || !(keyfileToggle && keyfileToggle.checked);
     }
+    updateVaultPassphraseHealth();
   }
 
   function zeroKeyfile() {
@@ -1092,6 +1442,11 @@ __COLDBOX_CAPABILITIES__
     setCreateConfirmationError('');
     if (passphraseConfirmWrap) {
       passphraseConfirmWrap.hidden = true;
+    }
+    if (passphraseHealthPanel) {
+      passphraseHealthPanel.hidden = true;
+      passphraseHealthPanel.setAttribute('data-mode', 'unlock');
+      passphraseHealthPanel.setAttribute('data-state', 'not-applicable');
     }
   }
 
@@ -1796,7 +2151,10 @@ __COLDBOX_CAPABILITIES__
     createVaultButton.addEventListener('click', createEmptyVault);
   }
   if (passphraseInput) {
-    passphraseInput.addEventListener('input', function () { setCreateConfirmationError(''); });
+    passphraseInput.addEventListener('input', function () {
+      setCreateConfirmationError('');
+      updateVaultPassphraseHealth();
+    });
   }
   if (passphraseConfirmInput) {
     passphraseConfirmInput.addEventListener('input', function () { setCreateConfirmationError(''); });

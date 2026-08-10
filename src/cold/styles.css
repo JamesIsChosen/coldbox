@@ -18,6 +18,7 @@
 
   --cold-bg: #1a1a24;
   --cold-surface: #232331;
+  --cold-input: #303044;
   --cold-outline: #f4f0e2;
   --cold-drop: #000000;
   --cold-text: #fffdf5;
@@ -281,6 +282,34 @@ body {
   outline-offset: 0.1rem;
 }
 
+#cold-vault-passphrase-health {
+  max-width: 48rem;
+  margin-top: 0.55rem;
+  padding: 0.45rem 0.55rem;
+  border: 0.13rem dashed var(--cold-outline);
+  border-radius: 0.3rem;
+  background: var(--cold-bg);
+}
+
+#cold-vault-passphrase-health[hidden] {
+  display: none;
+}
+
+#cold-vault-passphrase-health .eyebrow {
+  margin: 0;
+}
+
+#cold-vault-passphrase-health-state {
+  color: var(--cold-yellow);
+}
+
+#cold-vault-passphrase-health-copy {
+  margin: 0.3rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
 #cold-vault-actions {
   display: flex;
   flex-wrap: wrap;
@@ -475,6 +504,120 @@ body {
   font-size: 0.66rem;
   font-weight: 600;
   line-height: 1.35;
+}
+
+/* P1.2 diagnostics stay visually subordinate to the strength surface: they
+   are useful evidence about a recorded source, never a proof that the
+   platform RNG is healthy. */
+#cold-entropy-health {
+  margin-top: 0.65rem;
+  padding: 0.55rem 0.6rem;
+  border: 0.13rem dashed var(--cold-outline);
+  border-radius: 0.35rem;
+  background: var(--cold-surface);
+}
+
+#cold-entropy-health h2 {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+#cold-entropy-health-help,
+#cold-entropy-health-disclosure,
+#cold-entropy-health-patterns {
+  margin: 0.35rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+#cold-entropy-health-source-label {
+  display: block;
+  margin-top: 0.45rem;
+  color: var(--cold-text);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+#cold-entropy-health-source {
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  margin-top: 0.25rem;
+  padding: 0.35rem 0.5rem;
+  border: 0.13rem solid var(--cold-outline);
+  border-radius: 0.25rem;
+  background: var(--cold-input);
+  color: var(--cold-text);
+  font: inherit;
+}
+
+#cold-entropy-health-source:focus-visible {
+  outline: 0.18rem solid var(--cold-yellow);
+  outline-offset: 0.12rem;
+}
+
+#cold-entropy-health-summary {
+  margin-top: 0.45rem;
+}
+
+#cold-entropy-health-state {
+  color: var(--cold-yellow);
+}
+
+#cold-entropy-health[data-state="marginal"] #cold-entropy-health-state,
+#cold-entropy-health[data-state="not-applicable"] #cold-entropy-health-state {
+  color: var(--cold-red);
+}
+
+#cold-entropy-health[data-state="adequate"] #cold-entropy-health-state,
+#cold-entropy-health[data-state="strong"] #cold-entropy-health-state {
+  color: var(--cold-green);
+}
+
+#cold-entropy-health-frequency {
+  width: 100%;
+  margin-top: 0.5rem;
+  border-collapse: collapse;
+  font-size: 0.68rem;
+}
+
+#cold-entropy-health-frequency caption {
+  margin-bottom: 0.25rem;
+  color: var(--cold-text);
+  font-weight: 800;
+  text-align: left;
+}
+
+#cold-entropy-health-frequency th,
+#cold-entropy-health-frequency td {
+  padding: 0.22rem 0.3rem;
+  border: 0.08rem solid var(--cold-outline);
+  text-align: right;
+}
+
+#cold-entropy-health-frequency th:first-child,
+#cold-entropy-health-frequency td:first-child {
+  text-align: left;
+}
+
+#cold-entropy-health-frequency th {
+  color: var(--cold-text);
+}
+
+#cold-entropy-health-frequency td {
+  color: var(--cold-muted);
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+#cold-entropy-health-patterns[data-warning="true"] {
+  color: var(--cold-red);
+  font-weight: 800;
+}
+
+#cold-entropy-health-disclosure {
+  font-size: 0.64rem;
 }
 
 #cold-entropy-dice-random-row,

@@ -44,26 +44,26 @@ The combiner computes `SHA-256(user_entropy XOR csprng_output)` (or the equivale
 Two numbers, side by side:
 
 - **Claimed** — what your input should yield
-- **Measured** — bias-corrected min-entropy actually achieved
+- **Measured** — an observed min-entropy estimate from the outcomes recorded so far
 
 ::: plain
-A gap between the two numbers means your source is leaning one way — like a die that lands on 6 a little too often. Fifty rolls of a die like that would claim about 129 bits of randomness on paper, but actually hand you less.
+A gap between the two numbers means your source is leaning one way — like a die that lands on 6 a little too often. The estimate is a prompt to inspect the recording, not proof that the die or the platform RNG is good or bad.
 :::
 ::: working
-A gap between claimed and measured entropy means bias was detected in the source. Fifty rolls of a loaded die claim 129 bits of entropy but deliver fewer, because the bias makes some outcomes predictable.
+A gap between claimed and measured entropy is evidence that the recorded outcomes differ from the source model. Small samples can make the statistical tests unavailable, and a passing test cannot prove a source is fair.
 :::
 ::: technical
-"Claimed" is `rolls × log2(faces)` (or the equivalent for the chosen source); "measured" is bias-corrected min-entropy, `H_∞ = -log2(max probability)` estimated over the recorded sequence, which is always ≤ the claimed figure and equal only for a perfectly uniform source.
+The exact claimed-bit and observed-estimate definitions, including the finite-sample limits and unavailable-test rules, are maintained in [entropy and strength](../04-reference/entropy-and-strength.md) and [ADR-0027](../05-development/adr/0027-entropy-health-statistical-diagnostics.md). The analyzer is evidence about physical/manual recordings only; device-RNG simulations are excluded.
 :::
 
 | State | Meaning |
 |---|---|
-| 🔴 Insufficient | Blocked. Keep rolling |
-| 🟠 Marginal | Enough rolls, bias detected. Investigate before overriding |
-| 🟡 Adequate | ≥128 bits. Fine |
+| 🔴 Insufficient | Below the selected target. P1.2 advisory; future Seed Forge blocks generation |
+| 🟠 Marginal | Target reached but chi-square flags bias. P1.2 advisory; future Seed Forge owns acknowledgement |
+| 🟡 Adequate | Reaches the selected target without a chi-square flag, below 256 bits |
 | 🟢 Strong | ≥256 bits |
 
-**Insufficient cannot be overridden.** There's no legitimate reason to generate a seed from too little entropy.
+These are P1.2 Entropy Lab labels, not a current Mix entropy gate. Seed Forge (P1.3) is the future generation boundary: it will block below-target generation and decide how a marginal acknowledgement is recorded. There is no Seed Forge path yet.
 
 If you see pattern warnings — long runs, sequences, alternation — check your recording. Real dice do produce runs, so it's a prompt to look, not an accusation. See [entropy and strength](../04-reference/entropy-and-strength.md).
 
@@ -97,7 +97,7 @@ An optional extra secret creating a completely separate wallet.
 The passphrase is used verbatim (after UTF-8 NFKD normalization) as PBKDF2-HMAC-SHA512 salt material alongside the mnemonic — see "Passphrase" in the [glossary](../00-overview/glossary.md) — so there is no checksum or verification step analogous to BIP-39's word-list checksum; a one-character deviation silently derives a different, internally-valid seed.
 :::
 
-**If you use one:** generate it in Passphrase Studio (six Diceware words minimum), back it up as carefully as the seed but stored *separately*, and **verify the fingerprint** before sending anything.
+**If you use one:** generate it in Passphrase Studio (six Diceware words minimum), back it up as carefully as the seed but stored *separately*, and **verify the fingerprint** before sending anything. The vault-creation form repeats the human-chosen guidance live as an unknown range rather than inventing a numeric score; ordinary unlock does not show creation guidance.
 
 ---
 

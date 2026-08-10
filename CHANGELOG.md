@@ -14,6 +14,17 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
+### Added — P1.2 Entropy Health Meter and Bias Analyzer (2026-08-09)
+
+- **Entropy Health** now shows claimed bits, an observed empirical min-entropy estimate, per-symbol frequencies, and advisory chi-square, runs, lag-one correlation, and pattern diagnostics for physical/manual dice, coin, and hex observations. Device-RNG simulations are explicitly excluded from the analysis.
+- **Cards are handled as without-replacement permutations:** their claimed permutation bits and order warnings remain visible, while iid frequency/runs/correlation results are reported as not applicable. Small or malformed samples fail closed rather than producing a misleading pass.
+- Statistical definitions and limitations are recorded in [ADR-0027](docs/05-development/adr/0027-entropy-health-statistical-diagnostics.md); P1.1's integer entropy accounting remains the security authority.
+
+### Fixed — P1.2 independent-review remediation (2026-08-09)
+
+- Added creation-only live guidance for human-chosen vault passphrases without inventing a numeric entropy score; ordinary unlock keeps that panel hidden.
+- Tightened the runs-test large-sample precondition, corrected repeated-block detection, and made P1.2's advisory state thresholds and future P1.3 generation boundary explicit across the specification and help content.
+
 ### Changed — P0.19 device-matrix remediation design (2026-08-08)
 
 - Windows hands-on remediation round 2: make Vault ID immutability across re-saves explicit/enforced, show an inline creation-passphrase mismatch error, update save status to `Saved · verified` / `Saved · unverified`, and route the cold visible lock button through the same warm unsaved/unverified confirmation gate.
@@ -417,7 +428,7 @@ Roadmap item stays `[~]`.
 ### Added — spec v0.3 (2026-08-02)
 
 - Hardware wallet companion role as the project's primary framing (§14a): device registry, fingerprint and receive-address verification, vendor support matrix, Seed XOR, multisig quorum survivability analysis
-- Entropy Health Meter on every secret-creation screen — measures min-entropy rather than Shannon, shows claimed vs measured bits side by side, blocks generation below target, and refuses to give false-precision numbers for human-chosen passphrases
+- Entropy Health Meter on every secret-creation screen — measures min-entropy rather than Shannon, shows claimed vs measured bits side by side, reserves below-target generation blocking for the future Seed Forge boundary, and refuses to give false-precision numbers for human-chosen passphrases
 - codex32 (BIP-93) backup format — Shamir shares verifiable by hand with pen and paper
 - BIP-329 wallet label import and export for portability with Sparrow, Nunchuk, BitBoxApp, and BTCPay
 - Plain-English Help system at three depth levels, single-sourced with `docs/`
