@@ -482,7 +482,7 @@ Scope: transaction, address, public key, input, output, and xpub labels. Coldbox
 
 ### 11.1 Cold realm modules
 
-**Entropy Lab 🎲** — dice (d6, base-6 and 4-outcome-discard mappings), coin flips, playing cards, hex, and CSPRNG. Big touch targets, running bit-count meter, undo. The meter separates **normal output strength** (the selected 128–256-bit result under a sound device CSPRNG) from **independent-source fallback strength** (the conservative physical/manual entropy that remains if the device RNG is completely compromised). Device-RNG-generated dice/coins/cards/hex count as simulation only and add zero independent-source credit. **Mixing**: source material is XORed with fresh CSPRNG output then hashed; partial physical/manual entropy may improve fallback strength, but **full two-source protection** is claimed only when the independent physical/manual contribution itself reaches the selected output size. **Bias Analyzer** (replacing *Entropy Bias.html*): per-symbol frequency, an observed empirical min-entropy estimate, chi-square with p-value, runs test, serial correlation, and deterministic pattern warnings. The analyzer is advisory and never replaces P1.1's integer accounting; exact definitions are in [ADR-0027](../05-development/adr/0027-entropy-health-statistical-diagnostics.md). Produces 128–256 bits of raw entropy, in the same form Seed Forge will consume once it exists (P1.3) — see [ADR-0023](../05-development/adr/0023-entropy-lab-seed-forge-boundary.md) for why this is phrased as Entropy Lab's own deliverable rather than a hand-off that spans two roadmap items.
+**Entropy Lab 🎲** — dice (d6, base-6 and 4-outcome-discard mappings), coin flips, playing cards, hex, and CSPRNG. Big touch targets, running bit-count meter, undo. The meter separates **normal output strength** (the selected 128–256-bit result under a sound device CSPRNG) from **independent-source fallback strength** (the conservative physical/manual entropy that remains if the device RNG is completely compromised). Device-RNG-generated dice/coins/cards/hex count as simulation only and add zero independent-source credit. **Mixing**: source material is XORed with fresh CSPRNG output then hashed; partial physical/manual entropy may improve fallback strength, but **full two-source protection** is claimed only when the independent physical/manual contribution itself reaches the selected output size. **Bias Analyzer** (replacing *Entropy Bias.html*): per-symbol frequency, an observed empirical min-entropy estimate, chi-square with p-value, runs test, serial correlation, and deterministic pattern warnings. The analyzer is advisory and never replaces P1.1's integer accounting; exact definitions are in [ADR-0027](../05-development/adr/0027-entropy-health-statistical-diagnostics.md). Produces 128–256 bits of raw entropy, in the same form Seed Forge consumes (P1.3) — see [ADR-0023](../05-development/adr/0023-entropy-lab-seed-forge-boundary.md) for why this is phrased as a cold-local byte contract rather than a hand-off that spans two roadmap items.
 
 #### 11.1a Entropy Health Meter
 
@@ -503,12 +503,12 @@ A gap between them is the entire point. Fifty rolls of a loaded die claim 129 bi
 
 | State | Threshold | Behaviour |
 |---|---|---|
-| 🔴 Insufficient | Measured < selected target | Advisory P1.2 label; the future Seed Forge generation path blocks below target |
-| 🟠 Marginal | Measured ≥ selected target and bias detected (χ² p < 0.01) | Advisory P1.2 warning; the future Seed Forge path owns any acknowledgement |
+| 🔴 Insufficient | Measured < selected target | Advisory P1.2 label; Seed Forge still requires the selected fresh CSPRNG target |
+| 🟠 Marginal | Measured ≥ selected target and bias detected (χ² p < 0.01) | Advisory P1.2 warning; Seed Forge requires an explicit acknowledgement before generation |
 | 🟡 Adequate | Measured ≥ selected target, no chi-square flag, and < 256 bits | Advisory P1.2 label |
 | 🟢 Strong | Measured ≥ 256 bits | Advisory P1.2 label |
 
-Targets: 128 bits for a 12-word seed, 256 for 24 words. The thresholds are ordered and non-overlapping: the selected target is evaluated before the 256-bit strong threshold. P1.2 is advisory and does not block Entropy Lab's Mix entropy control or require acknowledgement. Seed Forge (P1.3) owns the future generation boundary: below-target generation remains a hard block, while any marginal-state acknowledgement is handled there rather than inferred by P1.2.
+Targets: 128 bits for a 12-word seed, 256 for 24 words. The thresholds are ordered and non-overlapping: the selected target is evaluated before the 256-bit strong threshold. P1.2 is advisory and does not block Entropy Lab's Mix entropy control. Seed Forge (P1.3) consumes `mix()` output only after the cold realm has enough fresh CSPRNG bytes for the selected target; it fails closed rather than producing a shorter phrase, and requires an explicit acknowledgement when the selected physical/manual source is marginal.
 
 **Live pattern warnings during collection**, not after: unusually long runs of one value, ascending or descending sequences, alternating patterns, and repeated blocks. These catch a stuck die, a misread, and the human tendency to unconsciously "balance" results.
 
@@ -615,7 +615,7 @@ The cold realm has an opaque origin and **cannot persist anything** — no `loca
 
 ##### Coverage
 
-- **All nine BIP-39 wordlists.** Language is detected from the legible words and confirmed by the user; a phrase mixing wordlists is reported as such rather than silently searched in one.
+- **All ten BIP-39 wordlists.** Language is detected from the legible words and confirmed by the user; a phrase mixing wordlists is reported as such rather than silently searched in one.
 - **SLIP-39 share repair** — damaged or short shares, using the same error models against SLIP-39's own wordlist and checksum.
 - **codex32 correction** — the BCH code over GF(32) is error-*correcting*, so a damaged codex32 share is repaired arithmetically rather than searched. This is the only format here where recovery is deterministic, and it is presented that way.
 - **Address database import** — optional, user-supplied, never shipped. Constraints in §11.1c.
@@ -889,7 +889,7 @@ Zero runtime dependencies. Everything vendored, pinned, listed in Provenance wit
 | SLIP-39 + `secrets.js` | Shamir schemes | 45 KB |
 | QR encoder + `jsQR` | generation + optional scanning | 55 KB |
 | Chain address formatters | Tier 1 encodings | 60 KB |
-| BIP-39 wordlists (all nine languages) | | 103 KB |
+| BIP-39 wordlists (all ten languages) | | 103 KB |
 | codex32 + Seed XOR + BIP-329 + BC-UR | new in v0.3 | 45 KB |
 | Help content (three depths, guides, glossary) | compiled from `docs/` | ≈ 344 KB (measured; see note below) |
 | SLIP-39 wordlist | | 8 KB |
@@ -1113,7 +1113,7 @@ My pick would be **Cairn** — it carries the inheritance and continuity meaning
 | # | Decision |
 |---|---|
 | 1 | **`vaultOnlinePolicy` = `public-only`** by default. Portfolio works online, secrets sealed |
-| 2 | **All nine BIP-39 languages** embedded (+90 KB) |
+| 2 | **All ten BIP-39 languages** embedded (+90 KB) |
 | 5 | **Multi-currency**, using CoinGecko's native `vs_currency` plus **Frankfurter** for fiat↔fiat — free, no key, no signup (§7.1a) |
 | 6 | **Historical backfill available, manual always possible**, three modes, Manual as default (§7.1b) |
 | — | **Entropy Health Meter** on every secret-creation screen, measuring min-entropy with claimed-vs-measured bits shown side by side (§11.1a) |

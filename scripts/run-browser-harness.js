@@ -2280,6 +2280,96 @@ async function verifyEntropyLab(browser, engine) {
   }
 }
 
+async function verifySeedForge(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    const coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-seed-forge[data-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
+
+    const language = coldFrame.locator('#cold-seed-forge-language');
+    const target = coldFrame.locator('#cold-seed-forge-target');
+    assert.equal(await language.locator('option').count(), 10, `${engine}: Seed Forge must expose all ten vendored BIP-39 wordlists`);
+    assert.equal(await coldFrame.locator('#cold-seed-forge-word-fields .cold-seed-forge-word-field').count(), 24);
+    assert.equal(await coldFrame.locator('#cold-seed-forge-generated').isHidden(), true);
+
+    // Duplicate confirmation is a hard local gate. The phrase and passphrase
+    // are test fixtures only; neither enters the parent document.
+    await coldFrame.locator('#cold-seed-forge-passphrase-input').fill('test passphrase');
+    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('different passphrase');
+    await coldFrame.locator('#cold-seed-forge-generate').click();
+    assert.match(await coldFrame.locator('#cold-seed-forge-passphrase-error').textContent(), /do not match/i);
+    assert.equal(await coldFrame.locator('#cold-seed-forge-generated').isHidden(), true);
+
+    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('test passphrase');
+    await coldFrame.locator('#cold-seed-forge-generate').click();
+    await coldFrame.locator('#cold-seed-forge-generated:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-seed-forge-generated-words li').count(), 12);
+    assert.match(await coldFrame.locator('#cold-seed-forge-generated-fingerprint').textContent(), /^[0-9a-f]{8}$/);
+    assert.match(await coldFrame.locator('#cold-seed-forge-status').textContent(), /Generated a 12-word BIP-39 phrase/i);
+    assert.ok(
+      (await coldFrame.locator('#cold-seed-forge-generated-words .cold-seed-forge-word-value').first().textContent()).includes('••'),
+      `${engine}: generated words must be masked by default`
+    );
+    await coldFrame.locator('#cold-seed-forge-reveal').click();
+    assert.doesNotMatch(
+      await coldFrame.locator('#cold-seed-forge-generated-words .cold-seed-forge-word-value').first().textContent(),
+      /••/
+    );
+    await coldFrame.locator('#cold-seed-forge-reveal').click();
+    assert.match(
+      await coldFrame.locator('#cold-seed-forge-generated-words .cold-seed-forge-word-value').first().textContent(),
+      /••/
+    );
+
+    // Official public BIP-39 vector: the Trezor/python-mnemonic vector with
+    // passphrase TREZOR. This verifies validation, per-word status, NFKD
+    // passphrase handling, and the cold-side fingerprint readout in a real
+    // browser frame.
+    await coldFrame.locator('#cold-seed-forge-passphrase-input').fill('TREZOR');
+    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('TREZOR');
+    const officialMnemonic = [
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
+    ].join(' ');
+    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(officialMnemonic);
+    await coldFrame.locator('#cold-seed-forge-validate').click();
+    await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-seed-forge-word-fields .cold-seed-forge-word-field[data-state="valid"]').count(), 12);
+    assert.equal((await coldFrame.locator('#cold-seed-forge-validation-fingerprint').textContent()).trim(), 'b4e3f5ed');
+
+    // Negative validation: known words with a bad checksum fail closed, and
+    // an unknown word is reported inline rather than being silently accepted.
+    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(
+      officialMnemonic.replace('about', 'abandon')
+    );
+    await coldFrame.locator('#cold-seed-forge-validate').click();
+    assert.match(await coldFrame.locator('#cold-seed-forge-validation-status').textContent(), /checksum does not match/i);
+    assert.equal(await coldFrame.locator('#cold-seed-forge-word-fields .cold-seed-forge-word-field[data-state="checksum"]').count(), 12);
+    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(
+      officialMnemonic.replace('about', 'not-a-word')
+    );
+    await coldFrame.locator('#cold-seed-forge-validate').click();
+    assert.match(await coldFrame.locator('#cold-seed-forge-validation-status').textContent(), /not in the selected/i);
+    assert.equal(await coldFrame.locator('#cold-seed-forge-word-fields .cold-seed-forge-word-field[data-state="unknown"]').count(), 1);
+    assert.equal((await coldFrame.locator('#cold-seed-forge-validation-fingerprint').textContent()).trim(), 'Not calculated');
+
+    // The 256-bit selection produces the corresponding 24-word shape and
+    // stays synchronized with Entropy Lab's target selector.
+    await target.selectOption('256');
+    assert.equal(await coldFrame.locator('#cold-entropy-target').inputValue(), '256');
+    await coldFrame.locator('#cold-seed-forge-passphrase-input').fill('');
+    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('');
+    await coldFrame.locator('#cold-seed-forge-generate').click();
+    await coldFrame.locator('#cold-seed-forge-generated-words li').nth(23).waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-seed-forge-generated-words li').count(), 24);
+
+    console.log(`${engine}: Seed Forge language list, CSPRNG generation, passphrase confirmation, masked reveal, official BIP-39 validation, fingerprint, negative cases, and 24-word target passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyDevOnlyDependency() {
   const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
   assert.equal(packageJson.dependencies?.playwright, undefined);
@@ -2334,6 +2424,7 @@ async function run() {
       await verifyStaleReachabilityOnlineSafety(browser, engine);
       await verifyVaultLibrary(browser, engine);
       await verifyEntropyLab(browser, engine);
+      await verifySeedForge(browser, engine);
       await verifyUnlockedRuntimeHealthLockdown(browser, engine);
       await verifyProviderNeutering(browser, engine);
       await verifyPreexistingProviderLockdown(browser, engine);

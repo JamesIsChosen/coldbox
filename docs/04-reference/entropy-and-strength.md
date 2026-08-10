@@ -53,12 +53,12 @@ The evidence panel reports Pearson chi-square uniformity with an upper-tail p-va
 
 | State | Meaning | What happens |
 |---|---|---|
-| 🔴 **Insufficient** | Measured below the selected target | Advisory P1.2 label; future Seed Forge blocks generation below target |
-| 🟠 **Marginal** | Measured reaches the selected target and chi-square flags bias | Advisory P1.2 warning; future Seed Forge owns any acknowledgement |
+| 🔴 **Insufficient** | Measured below the selected target | Advisory P1.2 label; Seed Forge still requires the selected fresh CSPRNG target |
+| 🟠 **Marginal** | Measured reaches the selected target and chi-square flags bias | Advisory P1.2 warning; Seed Forge requires an explicit acknowledgement before generation |
 | 🟡 **Adequate** | Measured reaches the selected target, no chi-square flag, and is below 256 bits | Advisory P1.2 label |
 | 🟢 **Strong** | Measured reaches 256 bits | Advisory P1.2 label |
 
-The thresholds are ordered and non-overlapping. P1.2 does not block Entropy Lab's Mix entropy control or require acknowledgement; it reports evidence while the Seed Forge (P1.3) generation boundary is not yet built. When Seed Forge lands, below-target generation remains a hard block and any marginal-state acknowledgement belongs there.
+The thresholds are ordered and non-overlapping. P1.2 does not block Entropy Lab's Mix entropy control; it reports evidence. Seed Forge (P1.3) consumes `mix()` output only after the cold realm has enough fresh CSPRNG bytes for the selected target, fails closed rather than producing a shorter phrase, and requires an explicit acknowledgement when the selected physical/manual source is marginal.
 
 ---
 

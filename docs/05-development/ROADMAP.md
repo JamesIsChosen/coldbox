@@ -195,11 +195,12 @@ Nothing above this phase is safe to build until the container is trustworthy.
 
 ## Phase 1 — Core wallet
 
-*Blocked until Phase 0 is complete.*
+*P0.19 remains deferred by maintainer decision; P1.3 work is explicitly authorized to proceed while the device matrix stays `[~] human-required`.*
 
 - [x] P1.1 Entropy Lab: dice, coins, cards, CSPRNG, mixing
 - [x] P1.2 Entropy Health Meter and Bias Analyzer
-- [ ] P1.3 Seed Forge: BIP-39 generate, validate, passphrase, fingerprint
+- [~] P1.3 Seed Forge: BIP-39 generate, validate, passphrase, fingerprint
+  **Current state (recorded 2026-08-09):** cold-only generation consumes the Entropy Lab `mix()` byte contract, validates all ten vendored BIP-39 wordlists with per-word/checksum status, supports duplicate-confirmed passphrases and the BIP-32 master fingerprint, and clears secret state on cold session teardown. Independent vector evidence and the browser matrix are recorded in `packets/p1.3-seed-forge.md`; the reviewer must independently verify and flip this marker to `[x]` on PASS.
 - [ ] P1.4 Derivation engine: BIP-32 core plus Bitcoin script types
 - [ ] P1.5 Derivation: EVM and generic arbitrary-path mode
 - [ ] P1.6 Registry CRUD: wallets, accounts, addresses

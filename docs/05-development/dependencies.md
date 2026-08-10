@@ -23,7 +23,7 @@ The pinned `@noble/*`, `@scure/*`, and Argon2 artifacts below are recorded in [v
 | `qrcode-generator` | 1.4.4 | Ephemeral SVG/data-URL rendering for live encrypted `CBX-VT/1` transfer frames; never durable QR export | `ab6ed47d378877441deae95972e07b2716c26545a735a23aa6b9d442b33026ed` |
 | `jsQR` | TBD | Camera decoding (optional) | `TBD` |
 
-P0.2 verifies and stores release artifacts. P0.10 now extracts the selected `@noble` modules and the embedded `argon2-browser` WASM bundle into the cold realm; the remaining TBD libraries are still not runtime-ready.
+P0.2 verifies and stores release artifacts. P1.3 bundles the BIP-39 encoder/decoder, all ten official wordlists, and the BIP-32 master-key helper into the cold realm alongside the selected `@noble` modules and embedded `argon2-browser` WASM bundle; the remaining TBD libraries are still not runtime-ready.
 
 ## Fonts (vendored; inlined as `data:` URIs by the build)
 
@@ -40,7 +40,7 @@ Only the **latin** WOFF2 subsets are extracted — one face from Bangers, two we
 
 | File | Source | Size |
 |---|---|---|
-| BIP-39 wordlists (9 languages) | bitcoin/bips | ~103 KB |
+| BIP-39 wordlists (10 languages) | bitcoin/bips | ~103 KB |
 | SLIP-39 wordlist (1024) | satoshilabs/slips | ~8 KB |
 | EFF Large (7776) | eff.org | ~60 KB |
 | EFF Short 2.0 (1296) | eff.org | ~15 KB |
