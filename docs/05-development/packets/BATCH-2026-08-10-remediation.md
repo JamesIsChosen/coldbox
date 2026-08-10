@@ -1,8 +1,8 @@
 # Batch remediation 2026-08-10
 
 **Scope:** remediate the preserved stacked review findings for P1.4 through
-P1.9, restack in dependency order, keep every PR open, and stop at the P1.9
-human hardware gate.
+P1.9, restack in dependency order, keep every PR open, and prepare one
+consolidated independent review after the P1.9 human hardware gate.
 
 The original historical stop snapshot remains in
 [BATCH-2026-08-10.md](BATCH-2026-08-10.md) and is not edited. This file is the
@@ -17,7 +17,7 @@ additive remediation snapshot.
 | P1.6 | `p1.6-registry-crud-wallets-accounts-addresses` | [#39](https://github.com/JamesIsChosen/coldbox/pull/39) | `p1.5-derivation-evm-arbitrary-path` | `cc4a2f97d5b4faa824cbdf12b8764dabacd92688` | Software remediation complete; open, unmerged |
 | P1.7 | `p1.7-notes-tags-concealment` | [#40](https://github.com/JamesIsChosen/coldbox/pull/40) | `p1.6-registry-crud-wallets-accounts-addresses` | `3d100b5cc2ac05dba840e4eae255fd8fbf1a8b79` | Software remediation complete; open, unmerged |
 | P1.8 | `p1.8-device-registry` | [#41](https://github.com/JamesIsChosen/coldbox/pull/41) | `p1.7-notes-tags-concealment` | `7ae8df6e4afe8f370a2cde60f99719f361d008b9` | Software remediation complete; open, unmerged |
-| P1.9 | `p1.9-verification-workflows` | [#42](https://github.com/JamesIsChosen/coldbox/pull/42) | `p1.8-device-registry` | `8a359a13e6f1de34ac6e12435dec40fa009daf47` | Software/browser gates pass; human hardware gate open |
+| P1.9 | `p1.9-verification-workflows` | [#42](https://github.com/JamesIsChosen/coldbox/pull/42) | `p1.8-device-registry` | `8a359a13e6f1de34ac6e12435dec40fa009daf47` | Software/browser/hardware gates pass; open, unmerged |
 
 All six branches remain stacked in the table's order. No branch was merged.
 P1.10 through P1.13 were not started.
@@ -43,14 +43,21 @@ byte-for-byte; the remediation does not rewrite review history.
 - Chromium and Firefox browser harnesses passed, including CSP/airgap,
   tamper, zeroization, and P1.9 cold-local wallet-handoff coverage.
 
+## Human hardware evidence
+
+The human-required gate is cleared. The user ran Coldbox from the local
+`file://` build on a Windows PC in Microsoft Edge with Wi-Fi and Ethernet
+physically disconnected, using a SeedSigner at firmware `0.8.0` and a
+throwaway seed generated solely for this test. Fingerprint, receive address,
+xpub, backup fingerprint, and passphrase-derived identity all matched. The
+exact Edge version was not recorded; no production seed or secret was
+committed.
+
 ## Stop condition
 
-The batch stops at P1.9 because final acceptance requires real hardware
-wallet validation. The human must perform and record that physical check; no
-agent can substitute for it. Until then P1.9 remains `[~]`, and no next
-roadmap item starts.
+The human-required hardware stop is cleared. P1.9 remains `[~]` pending
+independent review. Perform one fresh independent stacked review of PRs
+#37-#42 as a single consolidated review, then stop for the reviewer’s verdict;
+do not create six separate review rounds and do not merge anything.
 
-After the hardware result is recorded, perform one fresh independent stacked
-review of PRs #37-#42 as a single consolidated review. Review the stack in
-dependency order within that one review, but do not create six separate review
-rounds. Do not merge anything as part of this remediation handoff.
+P1.10 through P1.13 remain untouched.
