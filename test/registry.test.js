@@ -94,6 +94,78 @@ test('registry rejects missing relationships, secret-shaped text, and arbitrary 
   );
 });
 
+test('registry snapshots and replacements enforce whole-compartment relationships', () => {
+  const registry = loadRegistry();
+  const orphanAccount = {
+    id: '550e8400-e29b-41d4-a716-446655440001',
+    walletId: '550e8400-e29b-41d4-a716-446655440002'
+  };
+  assert.throws(
+    () => registry.createStore({ accounts: [orphanAccount] }),
+    /relationship|public registry rejected/
+  );
+
+  const store = registry.createStore({ id: VAULT_ID });
+  const wallet = store.createWallet({ label: 'Whole compartment' });
+  const account = store.createAccount({ walletId: wallet.id, asset: 'BTC' });
+  const address = store.createAddress({ accountId: account.id, index: 0, address: ADDRESS });
+  const orphanedAccount = store.snapshot();
+  orphanedAccount.accounts[0].walletId = '550e8400-e29b-41d4-a716-446655440002';
+  assert.throws(() => store.replace(orphanedAccount), /relationship|public registry rejected/);
+  const orphanedAddress = store.snapshot();
+  orphanedAddress.addresses[0].accountId = '550e8400-e29b-41d4-a716-446655440002';
+  assert.throws(() => store.replace(orphanedAddress), /relationship|public registry rejected/);
+  assert.equal(store.find('addresses', address.id).accountId, account.id);
+});
+
+test('registry optional fields can be explicitly cleared with schema-safe update options', () => {
+  const registry = loadRegistry();
+  const store = registry.createStore({ id: VAULT_ID });
+  const wallet = store.createWallet({
+    label: 'Clear me',
+    network: 'bitcoin',
+    primaryPath: "m/84'/0'/0'",
+    tags: ['temporary']
+  });
+  const account = store.createAccount({
+    walletId: wallet.id,
+    asset: 'BTC',
+    path: "m/84'/0'/0'",
+    label: 'Account label',
+    tags: ['temporary']
+  });
+  const address = store.createAddress({
+    accountId: account.id,
+    index: 0,
+    address: ADDRESS,
+    label: 'Address label',
+    tags: ['temporary']
+  });
+
+  store.updateWallet(wallet.id, { label: 'Set again', tags: ['set'] });
+  store.updateAccount(account.id, { label: 'Set again', tags: ['set'] });
+  store.updateAddress(address.id, { label: 'Set again', tags: ['set'] });
+  store.updateWallet(wallet.id, {}, { clearFields: ['label', 'network', 'primaryPath', 'tags'] });
+  store.updateAccount(account.id, {}, { clearFields: ['asset', 'path', 'label', 'tags'] });
+  store.updateAddress(address.id, {}, { clearFields: ['label', 'tags'] });
+
+  assert.equal('label' in store.find('wallets', wallet.id), false);
+  assert.equal('network' in store.find('wallets', wallet.id), false);
+  assert.equal('primaryPath' in store.find('wallets', wallet.id), false);
+  assert.equal('tags' in store.find('wallets', wallet.id), false);
+  assert.equal('label' in store.find('accounts', account.id), false);
+  assert.equal('path' in store.find('accounts', account.id), false);
+  assert.equal('tags' in store.find('addresses', address.id), false);
+  assert.throws(
+    () => store.updateWallet(wallet.id, {}, { clearFields: ['id'] }),
+    /cannot be cleared/
+  );
+  assert.throws(
+    () => store.updateWallet(wallet.id, {}, { clearFields: ['unsupported'] }),
+    /cannot be cleared/
+  );
+});
+
 test('registry fails closed when secure randomness is unavailable', () => {
   const registry = loadRegistry(true);
   const store = registry.createStore({ id: VAULT_ID });

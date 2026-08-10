@@ -9,9 +9,9 @@ P1.6 needs durable create, update, and soft-hide operations for public Wallet, A
 
 ## Decision
 
-The warm shell owns a public-only registry store. It mutates a cloned public projection locally, then sends the complete next projection through `publicData.replace`. The protocol validates each registry collection against a closed field schema, rejects secret keys and secret-shaped text, and bounds all accepted strings and collections. The cold session accepts the replacement only while unlocked, requires the authenticated Vault ID to remain unchanged, replaces the padded public plaintext, and replies with the sanitized projection through `publicData.updated`.
+The warm shell owns a public-only registry store. It mutates a cloned public projection locally, then sends the complete next projection through `publicData.replace`. The protocol validates each registry collection against a closed field schema, rejects secret keys and secret-shaped text, bounds all accepted strings and collections, and validates the whole-compartment foreign-key relationships: every account must name a wallet and every address must name an account. The cold session accepts the replacement only while unlocked, requires the authenticated Vault ID to remain unchanged, replaces the padded public plaintext, and replies with the sanitized projection through `publicData.updated`.
 
-Registry IDs are UUIDs generated with `crypto.getRandomValues` in the warm shell. Deletes are represented by `hidden: true`; hard deletion is not part of this item. Account and Address creation/update require an existing Wallet or Account relationship respectively.
+Registry IDs are UUIDs generated with `crypto.getRandomValues` in the warm shell. Deletes are represented by `hidden: true`; hard deletion is not part of this item. Account and Address creation/update require an existing Wallet or Account relationship respectively. An update may explicitly clear only optional schema fields through a `clearFields` list; required fields and IDs cannot be cleared. The warm form translates an intentionally empty optional control into that explicit clear operation instead of sending an invalid empty value.
 
 ## Rationale
 
@@ -24,11 +24,14 @@ The complete-projection acknowledgment makes the warm copy and the cold session'
 - Labels and registry metadata are useful in the warm shell while the secret realm remains opaque.
 - A rejected write can restore the warm snapshot without claiming it was durable.
 - Vault ID lineage remains authenticated and immutable through public updates.
+- Orphaned accounts and addresses cannot enter either an in-memory snapshot or durable public compartment.
+- Users can remove optional metadata deliberately while required schema fields remain present.
 
 ### Negative
 
 - Each registry mutation sends and re-encrypts the complete public projection, rather than applying a small in-vault patch.
 - The warm UI must wait for a typed acknowledgment before treating a mutation as accepted.
+- A clear operation is explicit and schema-bound; an empty string is not treated as a universal delete signal.
 
 ### Risks
 

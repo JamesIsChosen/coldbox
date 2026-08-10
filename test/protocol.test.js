@@ -357,6 +357,24 @@ test('registry records use collection-specific public schemas for both write and
       }
     }
   }), null);
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'registry-orphan-account',
+    type: 'publicData.replace',
+    payload: {
+      publicCompartment: {
+        accounts: [{ id: accountId, walletId: '550e8400-e29b-41d4-a716-446655440009' }]
+      }
+    }
+  }), null);
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'registry-orphan-address',
+    type: 'publicData.replace',
+    payload: {
+      publicCompartment: {
+        addresses: [{ id: addressId, accountId: '550e8400-e29b-41d4-a716-446655440009', index: 0, address: SAFE_ADDRESS }]
+      }
+    }
+  }), null);
 });
 
 test('recognizable secret content is rejected from allowed public fields', () => {

@@ -3285,27 +3285,30 @@ __COLDBOX_QR_ENCODER__
     }
   }
 
-  function addRegistryText(record, key, input) {
+  function addRegistryText(record, key, input, clearFields) {
     var value = input.value.trim();
     if (value) {
       record[key] = value;
+    } else if (clearFields) {
+      clearFields.push(key);
     }
   }
 
   function handleWalletFormSubmit(event) {
     event.preventDefault();
     var id = registryWalletId.value;
+    var clearFields = id ? [] : null;
     var record = {
-      type: registryWalletType.value,
-      network: registryWalletNetwork.value.trim(),
-      scriptType: registryWalletScript.value.trim()
+      type: registryWalletType.value
     };
-    addRegistryText(record, 'label', registryWalletLabel);
-    addRegistryText(record, 'primaryPath', registryWalletPath);
-    addRegistryText(record, 'fingerprint', registryWalletFingerprint);
+    addRegistryText(record, 'label', registryWalletLabel, clearFields);
+    addRegistryText(record, 'network', registryWalletNetwork, clearFields);
+    addRegistryText(record, 'scriptType', registryWalletScript, clearFields);
+    addRegistryText(record, 'primaryPath', registryWalletPath, clearFields);
+    addRegistryText(record, 'fingerprint', registryWalletFingerprint, clearFields);
     beginRegistryMutation(function () {
       if (id) {
-        registryStore.updateWallet(id, record);
+        registryStore.updateWallet(id, record, { clearFields: clearFields });
       } else {
         registryStore.createWallet(record);
       }
@@ -3316,15 +3319,16 @@ __COLDBOX_QR_ENCODER__
   function handleAccountFormSubmit(event) {
     event.preventDefault();
     var id = registryAccountId.value;
+    var clearFields = id ? [] : null;
     var record = {
       walletId: registryAccountWallet.value
     };
-    addRegistryText(record, 'asset', registryAccountAsset);
-    addRegistryText(record, 'path', registryAccountPath);
-    addRegistryText(record, 'label', registryAccountLabel);
+    addRegistryText(record, 'asset', registryAccountAsset, clearFields);
+    addRegistryText(record, 'path', registryAccountPath, clearFields);
+    addRegistryText(record, 'label', registryAccountLabel, clearFields);
     beginRegistryMutation(function () {
       if (id) {
-        registryStore.updateAccount(id, record);
+        registryStore.updateAccount(id, record, { clearFields: clearFields });
       } else {
         registryStore.createAccount(record);
       }
@@ -3335,6 +3339,7 @@ __COLDBOX_QR_ENCODER__
   function handleAddressFormSubmit(event) {
     event.preventDefault();
     var id = registryAddressId.value;
+    var clearFields = id ? [] : null;
     var existing = id && registryStore ? registryStore.find('addresses', id) : null;
     var record = {
       accountId: registryAddressAccount.value,
@@ -3343,10 +3348,10 @@ __COLDBOX_QR_ENCODER__
       isChange: registryAddressChange.checked,
       used: existing ? existing.used === true : false
     };
-    addRegistryText(record, 'label', registryAddressLabel);
+    addRegistryText(record, 'label', registryAddressLabel, clearFields);
     beginRegistryMutation(function () {
       if (id) {
-        registryStore.updateAddress(id, record);
+        registryStore.updateAddress(id, record, { clearFields: clearFields });
       } else {
         registryStore.createAddress(record);
       }

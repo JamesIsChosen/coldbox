@@ -16,9 +16,9 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 
 ### Added — P1.6 registry CRUD (2026-08-10)
 
-- **Warm public registry.** Wallet, account, and address records can be created, edited, and soft-hidden from the warm shell while the vault is unlocked; relationship checks and secure random UUIDs are enforced locally.
+- **Warm public registry.** Wallet, account, and address records can be created, edited, and soft-hidden from the warm shell while the vault is unlocked; whole-compartment relationship checks, explicit schema-safe clearing of optional fields, and secure random UUIDs are enforced locally.
 - **Cold persistence gate.** Registry changes cross only as the typed `publicData.replace` / `publicData.updated` public-projection messages. The cold session re-encrypts the updated public compartment, preserves the authenticated Vault ID, and never exposes secret-compartment plaintext.
-- **Schema and negative coverage.** Collection-specific protocol validation rejects unknown text, secret-shaped values, malformed relationships, and invalid balance timestamps; CRUD, clone isolation, soft-delete, randomness, and persistence tests are included. See [ADR-0031](docs/05-development/adr/0031-public-registry-mutation-boundary.md).
+- **Schema and negative coverage.** Collection-specific protocol validation rejects unknown text, secret-shaped values, malformed relationships, and invalid balance timestamps; CRUD, clone isolation, soft-delete, explicit set/clear, persistence, and Chromium/Firefox browser tests are included. See [ADR-0031](docs/05-development/adr/0031-public-registry-mutation-boundary.md).
 
 ### Added — P1.5 EVM and arbitrary-path derivation (2026-08-10)
 

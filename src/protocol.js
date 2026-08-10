@@ -559,6 +559,30 @@
     return result;
   }
 
+  function hasPublicRecord(compartment, collection, id) {
+    var records = compartment[collection];
+    if (!Array.isArray(records)) {
+      return false;
+    }
+    return records.some(function (record) { return record.id === id; });
+  }
+
+  function cleanPublicRelationships(compartment) {
+    var accounts = compartment.accounts;
+    if (Array.isArray(accounts) && accounts.some(function (account) {
+      return !hasPublicRecord(compartment, 'wallets', account.walletId);
+    })) {
+      return false;
+    }
+    var addresses = compartment.addresses;
+    if (Array.isArray(addresses) && addresses.some(function (address) {
+      return !hasPublicRecord(compartment, 'accounts', address.accountId);
+    })) {
+      return false;
+    }
+    return true;
+  }
+
   function cleanPublicCompartment(value) {
     if (!isRecord(value)) {
       return null;
@@ -586,6 +610,9 @@
         return null;
       }
       result[collection] = cleaned;
+    }
+    if (!cleanPublicRelationships(result)) {
+      return null;
     }
     return result;
   }

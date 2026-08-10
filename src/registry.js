@@ -21,6 +21,7 @@
       'balanceSnapshot', 'notes', 'tags', 'hidden'
     ])
   });
+  var RELATION_PLACEHOLDER_ID = '550e8400-e29b-41d4-a716-446655440000';
 
   if (!protocol || typeof protocol.validateMessage !== 'function'
     || typeof protocol.isSecretContent !== 'function') {
@@ -83,6 +84,25 @@
     return value;
   }
 
+  function findInCollection(value, collection, id) {
+    return Array.isArray(value[collection]) && value[collection].some(function (record) {
+      return isRecord(record) && record.id === id;
+    });
+  }
+
+  function validateRelationships(value) {
+    if (Array.isArray(value.accounts) && value.accounts.some(function (account) {
+      return !isRecord(account) || !findInCollection(value, 'wallets', account.walletId);
+    })) {
+      throw new Error('The registry relationship does not exist in the public compartment.');
+    }
+    if (Array.isArray(value.addresses) && value.addresses.some(function (address) {
+      return !isRecord(address) || !findInCollection(value, 'accounts', address.accountId);
+    })) {
+      throw new Error('The registry relationship does not exist in the public compartment.');
+    }
+  }
+
   function checkAllowedFields(value, collection) {
     if (!isRecord(value)) {
       throw new Error('A registry record must be an object.');
@@ -95,18 +115,60 @@
     });
   }
 
-  function prepareRecord(collection, value, existing) {
+  function validateClearFields(collection, clearFields) {
+    if (clearFields === undefined) {
+      return [];
+    }
+    if (!Array.isArray(clearFields)) {
+      throw new Error('Registry clearFields must be an array.');
+    }
+    var allowed = ALLOWED_FIELDS[collection];
+    var required = REQUIRED_FIELDS[collection];
+    var seen = Object.create(null);
+    return clearFields.map(function (field) {
+      if (typeof field !== 'string' || allowed.indexOf(field) === -1
+        || required.indexOf(field) !== -1 || seen[field]) {
+        throw new Error('The registry field cannot be cleared.');
+      }
+      seen[field] = true;
+      return field;
+    });
+  }
+
+  function clearFieldsForUpdate(collection, options) {
+    if (options === undefined) {
+      return [];
+    }
+    if (!isRecord(options) || Object.keys(options).some(function (key) {
+      return key !== 'clearFields';
+    })) {
+      throw new Error('Registry update options are not supported.');
+    }
+    return validateClearFields(collection, options.clearFields);
+  }
+
+  function prepareRecord(collection, value, existing, clearFields) {
     var source = value || {};
+    var fieldsToClear = clearFields || [];
     checkAllowedFields(source, collection);
     var candidate = existing ? clone(existing) : {};
     Object.keys(source).forEach(function (key) {
       candidate[key] = source[key];
+    });
+    fieldsToClear.forEach(function (field) {
+      delete candidate[field];
     });
     if (!hasOwn(candidate, 'id')) {
       candidate.id = secureUuid();
     }
     var compartment = {};
     compartment[collection] = [candidate];
+    if (collection === 'accounts') {
+      compartment.wallets = [{ id: candidate.walletId }];
+    } else if (collection === 'addresses') {
+      compartment.wallets = [{ id: RELATION_PLACEHOLDER_ID }];
+      compartment.accounts = [{ id: candidate.accountId, walletId: RELATION_PLACEHOLDER_ID }];
+    }
     var clean = validateCompartment(compartment);
     var record = clean[collection][0];
     REQUIRED_FIELDS[collection].forEach(function (field) {
@@ -130,11 +192,17 @@
   }
 
   function createStore(publicCompartment) {
-    var state = emptyCollections(validateCompartment(publicCompartment || {}));
+    var source = publicCompartment || {};
+    validateRelationships(source);
+    var state = emptyCollections(validateCompartment(source));
+    validateRelationships(state);
     var vaultId = state.id;
 
     function replace(nextCompartment) {
-      var next = emptyCollections(validateCompartment(nextCompartment || {}));
+      var source = nextCompartment || {};
+      validateRelationships(source);
+      var next = emptyCollections(validateCompartment(source));
+      validateRelationships(next);
       if (vaultId !== undefined || next.id !== undefined) {
         if (vaultId !== next.id) {
           throw new Error('The registry cannot change the authenticated Vault ID.');
@@ -188,12 +256,12 @@
       return clone(record);
     }
 
-    function update(collection, id, patch) {
+    function update(collection, id, patch, options) {
       var existing = findRecord(state, collection, id);
       if (!existing) {
         throw new Error('The registry record was not found.');
       }
-      var record = prepareRecord(collection, patch, existing);
+      var record = prepareRecord(collection, patch, existing, clearFieldsForUpdate(collection, options));
       if (record.id !== id) {
         throw new Error('The registry ID cannot change.');
       }
@@ -218,13 +286,13 @@
       find: find,
       counts: counts,
       createWallet: function (value) { return insert('wallets', value); },
-      updateWallet: function (id, value) { return update('wallets', id, value); },
+      updateWallet: function (id, value, options) { return update('wallets', id, value, options); },
       deleteWallet: function (id) { return softDelete('wallets', id); },
       createAccount: function (value) { return insert('accounts', value); },
-      updateAccount: function (id, value) { return update('accounts', id, value); },
+      updateAccount: function (id, value, options) { return update('accounts', id, value, options); },
       deleteAccount: function (id) { return softDelete('accounts', id); },
       createAddress: function (value) { return insert('addresses', value); },
-      updateAddress: function (id, value) { return update('addresses', id, value); },
+      updateAddress: function (id, value, options) { return update('addresses', id, value, options); },
       deleteAddress: function (id) { return softDelete('addresses', id); }
     });
   }
