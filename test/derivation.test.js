@@ -42,6 +42,15 @@ const BIP39_ZERO_ENTROPY_SEED = bytes(
   '5eb00bbddcf069084889a8ab9155568165f5c453ccb85e70811aaed6f6da5fc19'
   + 'a5ac40b389cd370d086206dec8aa6c43daea6690f20ad3d8d48b2d2ce9e38e4'
 );
+// ethereumjs/ethereumjs-monorepo wallet HD-key fixture, copied from its
+// published hdkey.spec.ts test.
+const ETHEREUMJS_FIXTURE_SEED = bytes(
+  '747f302d9c916698912d5f70be53a6cf53bc495803a5523d3a7c3afa2afba94e'
+  + 'c3803f838b3e1929ab5481f9da35441372283690fdcf27372c38f40ba134fe03'
+);
+const ETHEREUMJS_FIXTURE_ADDRESS = '0x4dcccf58c6573eb896250b0c9647a40c1673af44';
+const ETHEREUMJS_FIXTURE_PRIVATE_KEY =
+  'f62a8ea4ab7025d151ccd84981c66278d0d3cd58ff837467cdc51229915a22d1';
 
 // BIP-32 vector 1, copied from the published bitcoin/bips test vector.
 const BIP32_VECTOR_1 = [
@@ -267,4 +276,87 @@ test('Bitcoin derivation returns a public projection and rejects unsafe inputs',
   } finally {
     account.wipePrivateData();
   }
+});
+
+test('EIP-55 official vectors and Ethereum HD-key fixture derive EVM addresses', () => {
+  const derivation = createContext().__coldboxDerivation;
+  const eip55Vectors = [
+    ['52908400098527886e0f7030069857d2e4169ee7', '0x52908400098527886E0F7030069857D2E4169EE7'],
+    ['8617e340b3d01fa5f11f306f4090fd50e238070d', '0x8617E340B3D01FA5F11F306F4090FD50E238070D'],
+    ['de709f2102306220921060314715629080e2fb77', '0xde709f2102306220921060314715629080e2fb77'],
+    ['27b1fdb04752bbc536007a920d24acb045561c26', '0x27b1fdb04752bbc536007a920d24acb045561c26'],
+    ['5aaeb6053f3e94c9b9a09f33669435e7ef1beaed', '0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed'],
+    ['fb6916095ca1df60bb79ce92ce3ea74c37c5d359', '0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359'],
+    ['dbf03b407c01e7cd3cbea99509d93f8dddc8c6fb', '0xdbF03B407c01E7cD3CBea99509d93f8DDDC8C6FB'],
+    ['d1220a0cf47c7b9be7a2e6ba89f429762e7b9adb', '0xD1220A0cf47c7B9Be7A2E6BA89F429762e7b9aDb']
+  ];
+  for (const [lower, checksummed] of eip55Vectors) {
+    assert.equal(derivation.checksumEvmAddress(lower), checksummed);
+    assert.equal(derivation.isEvmAddress(checksummed), true);
+  }
+  assert.equal(
+    derivation.isEvmAddress('0x4dCccf58c6573eb896250b0c9647a40c1673af44'),
+    false
+  );
+
+  const arbitrary = derivation.deriveArbitraryFromSeed(
+    ETHEREUMJS_FIXTURE_SEED,
+    "m/44'/60'/0'/0/0"
+  );
+  assert.equal(arbitrary.privateKeyHex, ETHEREUMJS_FIXTURE_PRIVATE_KEY);
+  assert.equal(arbitrary.wif.length > 40, true);
+  assert.equal(arbitrary.path, "m/44'/60'/0'/0/0");
+
+  const evm = derivation.deriveEvmFromSeed(ETHEREUMJS_FIXTURE_SEED, { count: 1 });
+  assert.deepEqual([...evm.addresses], [
+    derivation.checksumEvmAddress(ETHEREUMJS_FIXTURE_ADDRESS.slice(2))
+  ]);
+  assert.deepEqual([...evm.paths], ["m/44'/60'/0'/0/0"]);
+  assert.equal(evm.xpub.startsWith('xpub'), true);
+
+  const watchOnly = derivation.deriveEvmFromXpub(evm.xpub, { count: 1 });
+  assert.deepEqual([...watchOnly.addresses], [...evm.addresses]);
+  assert.deepEqual([...watchOnly.paths], [...evm.paths]);
+  assert.equal(watchOnly.fingerprint, null);
+  assert.equal(typeof watchOnly.accountFingerprint, 'string');
+
+  const arbitraryWatchOnly = derivation.deriveArbitraryFromXpub(evm.xpub, 'm/0/0');
+  assert.equal(arbitraryWatchOnly.path, 'm/0/0');
+  assert.equal(arbitraryWatchOnly.xpub, arbitrary.xpub);
+  assert.equal(JSON.stringify(arbitraryWatchOnly).includes('privateKey'), false);
+});
+
+test('EVM and arbitrary-path derivation reject unsafe public operations', () => {
+  const derivation = createContext().__coldboxDerivation;
+  assert.throws(
+    () => derivation.checksumEvmAddress('00'.repeat(19)),
+    /exactly 20 bytes/i
+  );
+  assert.throws(
+    () => derivation.deriveEvmFromSeed(BIP32_VECTOR_1_SEED, { count: 1001 }),
+    /between 1 and 1000/i
+  );
+  assert.throws(
+    () => derivation.deriveArbitraryFromXpub(
+      'xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8',
+      "m/0'"
+    ),
+    /hardened/i
+  );
+  const root = derivation.deriveNode(BIP32_VECTOR_1_SEED, 'm', {
+    network: 'mainnet',
+    scriptType: 'p2pkh'
+  });
+  try {
+    assert.throws(
+      () => derivation.deriveEvmFromXpub(root.publicExtendedKey, { count: 1 }),
+      /account-level/i
+    );
+  } finally {
+    root.wipePrivateData();
+  }
+  assert.throws(
+    () => derivation.deriveEvmFromXpub('tpub-not-evm', { count: 1 }),
+    /mainnet xpub/i
+  );
 });

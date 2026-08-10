@@ -12,6 +12,7 @@ const CRYPTO_SEEDS = Object.freeze([
   '@noble/hashes/legacy.js',
   '@noble/hashes/pbkdf2.js',
   '@noble/hashes/sha2.js',
+  '@noble/hashes/sha3.js',
   '@scure/base/index.js',
   '@scure/bip32/index.js',
   '@scure/bip39/index.js',
@@ -382,6 +383,7 @@ function createNobleBundle(projectRoot) {
   });
   lines.push('var __coldboxNobleAes = __coldboxNobleLoad("@noble/ciphers/aes.js");');
   lines.push('var __coldboxNobleHash = __coldboxNobleLoad("@noble/hashes/sha2.js");');
+  lines.push('var __coldboxNobleSha3 = __coldboxNobleLoad("@noble/hashes/sha3.js");');
   lines.push('var __coldboxNobleLegacy = __coldboxNobleLoad("@noble/hashes/legacy.js");');
   lines.push('var __coldboxNobleSecp256k1 = __coldboxNobleLoad("@noble/curves/secp256k1.js");');
   lines.push('var __coldboxNobleHkdf = __coldboxNobleLoad("@noble/hashes/hkdf.js");');
@@ -407,6 +409,7 @@ function createNobleBundle(projectRoot) {
   lines.push('  pbkdf2Async: __coldboxNoblePbkdf2.pbkdf2Async,');
   lines.push('  sha256: __coldboxNobleHash.sha256,');
   lines.push('  sha512: __coldboxNobleHash.sha512,');
+  lines.push('  keccak256: __coldboxNobleSha3.keccak_256,');
   lines.push('  ripemd160: __coldboxNobleLegacy.ripemd160,');
   lines.push('  utf8ToBytes: __coldboxNobleHashUtils.utf8ToBytes');
   lines.push('});');
