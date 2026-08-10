@@ -2483,7 +2483,7 @@ __COLDBOX_CAPABILITIES__
       || typeof currentVaultSession.getSecretData !== 'function'
       || typeof currentVaultSession.replaceSecretData !== 'function') {
       if (secretNoteList) {
-        secretNoteList.textContent = 'Secret notes require an offline unlocked vault with a secret compartment.';
+        secretNoteList.textContent = 'Secret notes need an offline unlocked vault with a secret compartment.';
       }
       return;
     }
