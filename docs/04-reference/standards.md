@@ -15,7 +15,7 @@ Adoption status changes as wallets ship support and proposals activate. Re-check
 | Standard | Title | Use |
 |---|---|---|
 | [BIP-32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki) | Hierarchical Deterministic Wallets | Foundation of all derivation |
-| [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) | Mnemonic code | Seed phrases, all nine wordlists |
+| [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) | Mnemonic code | Seed phrases, all ten wordlists |
 | [BIP-43](https://github.com/bitcoin/bips/blob/master/bip-0043.mediawiki) | Purpose field | Path structure |
 | [BIP-44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki) | Multi-account hierarchy | Legacy paths |
 | [BIP-49](https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki) | Nested SegWit | `3...` addresses |

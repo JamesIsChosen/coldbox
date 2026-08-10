@@ -113,6 +113,17 @@ P0.12 adds a cold-only, user-triggered benchmark that runs Fast, Standard, and P
 
 P0.13 keeps the mode decision explicit at unlock time. The cold realm starts in online-safe mode, opens only the public compartment there, and exposes the full opener only after the warm shell reports offline. The online-safe opener unwraps the DEK and derives only `cbx/public/v1`; it never derives `cbx/secret/v1`. A transition back to online clears the active cold session.
 
+P1.3 extends the same pure-JS cold path with the pinned `@scure/bip39` and
+`@scure/bip32` helpers for BIP-39 wordlists, PBKDF2-HMAC-SHA512 seed derivation,
+the raw 64-byte BIP-39 seed, and the four-byte HASH160 master fingerprint. An
+explicit Entropy Lab Mix is retained and consumed once by the cold-local Seed
+Forge handoff; it is not remixed. Seed Forge supplies ordinary generation
+entropy from Entropy Lab rather than calling a library-owned random-byte
+helper. Generate and Validate Existing Phrase use separate cold-local
+passphrase/confirmation pairs and separate seed/fingerprint state; a matching
+edit or mismatch affects only its own workflow. No phrase, passphrase, derived
+seed, raw seed, or fingerprint enters the warm shell.
+
 ---
 
 ## Protocol-mandated primitives

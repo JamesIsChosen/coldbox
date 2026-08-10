@@ -21,6 +21,21 @@ This is a maintainer decision, not an implementation detail: it resolves a genui
 
 **What P1.3 (Seed Forge) is obligated to do because of this decision:** consume a plain byte buffer of one of the five valid lengths, produced however the caller obtained it (Entropy Lab being the only current source). Nothing about Entropy Lab's internal design — the accumulation math, the mixing construction, the CSPRNG-only fallback — should need to change once Seed Forge exists; only a new call site consuming `entropyLab.mix()`'s return value is expected to be added.
 
+## Amendment (2026-08-10)
+
+P1.3 now closes that loop. Seed Forge calls `entropyLab.mix()` inside the
+cold document, and no byte-buffer, mnemonic, passphrase, or fingerprint crosses
+the realm boundary. The original decision remains intact: Entropy Lab owns the
+raw-byte contract, while Seed Forge owns BIP-39 conversion and the generation
+UI. The implementation choice is recorded in [ADR-0028](0028-cold-only-bip39-seed-forge.md).
+
+The completed UI contract is deliberately one-shot: a successful Entropy Lab
+Mix copies its exact result into cold-local pending state, and **Use this mix
+in Seed Forge** consumes that copy without calling `mix()` again. Any later
+Entropy Lab input or target-size change invalidates the pending result. This
+does not move the bytes across the realm boundary or add metadata to the raw
+byte contract; it makes the local consumer's lifetime explicit.
+
 ## Consequences
 
 - P1.1 can be marked complete (once its remaining, unrelated review findings are resolved) without P1.3 existing. The roadmap's sequencing (P1.1 before P1.3) is now internally consistent with what a single-item PR can deliver.

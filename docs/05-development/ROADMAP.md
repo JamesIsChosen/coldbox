@@ -195,11 +195,12 @@ Nothing above this phase is safe to build until the container is trustworthy.
 
 ## Phase 1 — Core wallet
 
-*Blocked until Phase 0 is complete.*
+*P0.19 remains deferred by maintainer decision; P1.3 work is explicitly authorized to proceed while the device matrix stays `[~] human-required`.*
 
 - [x] P1.1 Entropy Lab: dice, coins, cards, CSPRNG, mixing
 - [x] P1.2 Entropy Health Meter and Bias Analyzer
-- [ ] P1.3 Seed Forge: BIP-39 generate, validate, passphrase, fingerprint
+- [x] P1.3 Seed Forge: BIP-39 generate, validate, passphrase, fingerprint
+  **Current state (recorded 2026-08-10):** the cold-only flow is Entropy Lab → Mix → Use this mix in Seed Forge → BIP-39 mnemonic → optional passphrase → raw BIP-39 seed + live master fingerprint. Generate and Validate Existing Phrase have separate passphrase/confirmation pairs and separate live seed/fingerprint derivation state; matching or mismatching one workflow affects only that workflow, and teardown clears both. The explicit handoff consumes the exact mixed bytes once without a second mix. All ten vendored BIP-39 wordlists are covered by official PBKDF2 vectors, including Japanese final NFKD handling. Evidence and the remediation response are recorded in `packets/p1.3-seed-forge.md`; the unchanged FAIL report is `packets/p1.3-seed-forge.review.md`; a fresh independent review must verify the new exact head and flip this marker to `[x]` on PASS. PR #36 remains DO NOT MERGE until then.
 - [ ] P1.4 Derivation engine: BIP-32 core plus Bitcoin script types
 - [ ] P1.5 Derivation: EVM and generic arbitrary-path mode
 - [ ] P1.6 Registry CRUD: wallets, accounts, addresses

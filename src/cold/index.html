@@ -101,7 +101,7 @@ __COLDBOX_COLD_STYLES__
           <tbody id="cold-entropy-health-frequency-body"><tr><td colspan="3">No physical/manual samples yet.</td></tr></tbody>
         </table>
         <p id="cold-entropy-health-patterns" aria-live="polite">No pattern warnings yet.</p>
-        <p id="cold-entropy-health-disclosure">Warnings are prompts to inspect the recording, not proof of a broken source. Insufficient sample size leaves a test unavailable. P1.2 is advisory: it does not block Entropy Lab mixing or ask for acknowledgement. Seed Forge (P1.3) owns any future generation gate.</p>
+        <p id="cold-entropy-health-disclosure">Warnings are prompts to inspect the recording, not proof of a broken source. Insufficient sample size leaves a test unavailable. P1.2 is advisory and does not block Entropy Lab mixing; Seed Forge asks for an explicit acknowledgement only when the selected source is marked marginal.</p>
       </section>
       <div id="cold-entropy-lab-inputs">
         <fieldset id="cold-entropy-dice">
@@ -192,8 +192,88 @@ __COLDBOX_COLD_STYLES__
         <p id="cold-entropy-mix-status" role="status" aria-live="polite">Not enough entropy collected yet.</p>
         <p id="cold-entropy-mix-output-label" hidden>Mixed entropy (hex). This is raw key material — treat it like a seed.</p>
         <output id="cold-entropy-mix-output" hidden></output>
+        <button id="cold-entropy-mix-use-seed-forge" type="button" hidden disabled>Use this mix in Seed Forge</button>
+        <p id="cold-entropy-mix-handoff-status" role="status" aria-live="polite" hidden></p>
       </div>
-      <p id="cold-entropy-lab-note">Seed Forge (P1.3), which turns this into a BIP-39 mnemonic, has not been built yet. P1.2 diagnostics are advisory; Seed Forge owns any future generation block or acknowledgement. The mixed bytes stay in this sealed realm and are not carried anywhere.</p>
+      <p id="cold-entropy-lab-note">Seed Forge below can generate from a fresh CSPRNG-only draw, or you can follow the explicit handoff: Mix entropy, then select “Use this mix in Seed Forge” once. P1.2 diagnostics remain advisory, while Seed Forge owns the generation boundary and any marginal-state acknowledgement. The mixed bytes, mnemonic, passphrase, raw BIP-39 seed, and fingerprint stay in this sealed realm and are not carried anywhere.</p>
+    </section>
+    <section id="cold-seed-forge" aria-label="Seed Forge" data-state="locked">
+      <p class="eyebrow">Seed Forge / P1.3</p>
+      <p id="cold-seed-forge-help">Generate or validate a BIP-39 phrase inside this sealed realm. For a recorded Entropy Lab result, choose the language and word count, select “Use this mix in Seed Forge,” and the exact mixed bytes are consumed once without a second mix. Normal CSPRNG-only generation is also available. Each workflow has its own optional passphrase pair; phrases, passphrases, raw BIP-39 seeds, and fingerprints never cross the realm boundary.</p>
+      <div id="cold-seed-forge-controls">
+        <label for="cold-seed-forge-language">BIP-39 language</label>
+        <select id="cold-seed-forge-language" disabled></select>
+        <label for="cold-seed-forge-target">Seed length</label>
+        <select id="cold-seed-forge-target" disabled>
+          <option value="128">12 words (128 bits)</option>
+          <option value="160">15 words (160 bits)</option>
+          <option value="192">18 words (192 bits)</option>
+          <option value="224">21 words (224 bits)</option>
+          <option value="256">24 words (256 bits)</option>
+        </select>
+        <button id="cold-seed-forge-generate" type="button" disabled>Generate seed phrase</button>
+      </div>
+      <p id="cold-seed-forge-status" role="status" aria-live="polite">Seed Forge is waiting for the cold-realm crypto self-test.</p>
+      <div id="cold-seed-forge-marginal-wrap" hidden>
+        <label id="cold-seed-forge-marginal-label" for="cold-seed-forge-marginal-ack">
+          <input id="cold-seed-forge-marginal-ack" type="checkbox" disabled>
+          I reviewed the advisory bias warning for the selected physical/manual source and want to continue.
+        </label>
+      </div>
+      <section id="cold-seed-forge-generated-passphrase" class="cold-seed-forge-passphrase" aria-labelledby="cold-seed-forge-generated-passphrase-title">
+        <h2 id="cold-seed-forge-generated-passphrase-title">Generate passphrase (optional)</h2>
+        <p id="cold-seed-forge-generated-passphrase-help">A passphrase creates a different wallet for the generated phrase. An exact duplicate is required before its fingerprint and raw seed are read. An empty pair means no passphrase. This pair affects only Generate.</p>
+        <label for="cold-seed-forge-generated-passphrase-input">Generate passphrase (never leaves this realm)</label>
+        <input id="cold-seed-forge-generated-passphrase-input" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+        <label for="cold-seed-forge-generated-passphrase-confirm">Confirm Generate passphrase</label>
+        <input id="cold-seed-forge-generated-passphrase-confirm" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+        <p id="cold-seed-forge-generated-passphrase-error" class="cold-vault-inline-error" role="alert" aria-live="assertive" hidden></p>
+      </section>
+      <section id="cold-seed-forge-generated" hidden aria-labelledby="cold-seed-forge-generated-title">
+        <h2 id="cold-seed-forge-generated-title">Generated phrase</h2>
+        <p id="cold-seed-forge-generated-help">The numbered words are masked by default. Reveal them only while transcribing, then hide them again.</p>
+        <ol id="cold-seed-forge-generated-words" aria-label="Generated BIP-39 words"></ol>
+        <button id="cold-seed-forge-reveal" type="button" disabled>Reveal for 30 seconds</button>
+        <div class="cold-seed-forge-fingerprint-row">
+          <span>Master fingerprint</span>
+          <strong id="cold-seed-forge-generated-fingerprint">Not calculated</strong>
+        </div>
+        <section id="cold-seed-forge-generated-raw" class="cold-seed-forge-raw" hidden aria-labelledby="cold-seed-forge-generated-raw-title">
+          <h2 id="cold-seed-forge-generated-raw-title">Advanced: raw BIP-39 seed</h2>
+          <p class="cold-seed-forge-generated-help">This 64-byte seed is masked by default and remains only in this sealed realm. It is recalculated when the confirmed Generate passphrase changes; reveal it briefly only when a controlled offline workflow requires the raw value.</p>
+          <output id="cold-seed-forge-generated-seed" aria-label="Generated raw 64-byte BIP-39 seed">Not calculated</output>
+          <button id="cold-seed-forge-generated-seed-reveal" type="button" disabled>Reveal raw seed for 30 seconds</button>
+        </section>
+      </section>
+      <section id="cold-seed-forge-validator" aria-labelledby="cold-seed-forge-validator-title">
+        <h2 id="cold-seed-forge-validator-title">Validate an existing phrase</h2>
+        <p id="cold-seed-forge-validator-help">Paste or type a phrase into the masked field. The numbered fields show per-word status inside this realm; checksum validation is separate from word spelling. The validation passphrase pair affects only this existing phrase.</p>
+        <label for="cold-seed-forge-mnemonic-input">Phrase to validate (masked)</label>
+        <input id="cold-seed-forge-mnemonic-input" type="password" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+        <section id="cold-seed-forge-validation-passphrase" class="cold-seed-forge-passphrase" aria-labelledby="cold-seed-forge-validation-passphrase-title">
+          <h2 id="cold-seed-forge-validation-passphrase-title">Validation passphrase (optional)</h2>
+          <p id="cold-seed-forge-validation-passphrase-help">A passphrase creates a different wallet for the validated phrase. An exact duplicate is required before its fingerprint and raw seed are read. An empty pair means no passphrase. This pair affects only Validate Existing Phrase.</p>
+          <label for="cold-seed-forge-validation-passphrase-input">Validation passphrase (never leaves this realm)</label>
+          <input id="cold-seed-forge-validation-passphrase-input" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <label for="cold-seed-forge-validation-passphrase-confirm">Confirm validation passphrase</label>
+          <input id="cold-seed-forge-validation-passphrase-confirm" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <p id="cold-seed-forge-validation-passphrase-error" class="cold-vault-inline-error" role="alert" aria-live="assertive" hidden></p>
+        </section>
+        <div id="cold-seed-forge-word-fields" aria-label="BIP-39 word validation fields"></div>
+        <button id="cold-seed-forge-validate" type="button" disabled>Validate phrase</button>
+        <p id="cold-seed-forge-validation-status" role="status" aria-live="polite">No phrase entered.</p>
+        <div class="cold-seed-forge-fingerprint-row">
+          <span>Validated phrase fingerprint</span>
+          <strong id="cold-seed-forge-validation-fingerprint">Not calculated</strong>
+        </div>
+        <section id="cold-seed-forge-validation-raw" class="cold-seed-forge-raw" hidden aria-labelledby="cold-seed-forge-validation-raw-title">
+          <h2 id="cold-seed-forge-validation-raw-title">Advanced: raw BIP-39 seed</h2>
+          <p class="cold-seed-forge-generated-help">This 64-byte seed is masked by default and remains only in this sealed realm. It follows the confirmed validation passphrase for the validated phrase and is cleared when the phrase or passphrase is invalid.</p>
+          <output id="cold-seed-forge-validation-seed" aria-label="Validated raw 64-byte BIP-39 seed">Not calculated</output>
+          <button id="cold-seed-forge-validation-seed-reveal" type="button" disabled>Reveal raw seed for 30 seconds</button>
+        </section>
+      </section>
+      <p id="cold-seed-forge-note">Write the words down offline and verify them from paper. A fingerprint is only a public identifier: it cannot recover a phrase. The raw BIP-39 seed is an advanced cold-only output; it is masked by default and has no clipboard or storage action. BIP-85 child phrases, xprv/xpub/ypub/zpub, script/path derivation, WIF, addresses, and password derivation are separate roadmap items.</p>
     </section>
   </main>
   <script>
@@ -202,6 +282,7 @@ __COLDBOX_CRYPTO_LAYER__
 __COLDBOX_VAULT_LAYER__
 __COLDBOX_ENTROPY_LAB_LAYER__
 __COLDBOX_ENTROPY_HEALTH_LAYER__
+__COLDBOX_SEED_FORGE_LAYER__
 __COLDBOX_COLD_SCRIPT__
   </script>
 </body>

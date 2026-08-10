@@ -734,3 +734,365 @@ body {
   font-size: 0.74rem;
   word-break: break-all;
 }
+
+#cold-entropy-mix-use-seed-forge {
+  margin-top: 0.55rem;
+  border-color: var(--cold-pink);
+  background: var(--cold-yellow);
+}
+
+#cold-entropy-mix-handoff-status {
+  max-width: 48rem;
+  margin: 0.35rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+#cold-entropy-mix-handoff-status[hidden],
+#cold-entropy-mix-use-seed-forge[hidden] {
+  display: none;
+}
+
+/* Seed Forge (P1.3). This surface is deliberately kept beside Entropy Lab
+   inside the sealed document. Mnemonic and passphrase controls use password
+   inputs or masked output until the user explicitly asks for a brief reveal. */
+
+#cold-seed-forge {
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.75rem;
+  border: 0.16rem solid var(--cold-outline);
+  border-radius: 0.35rem;
+  background: var(--cold-surface);
+  box-shadow: 0.2rem 0.2rem 0 var(--cold-drop);
+}
+
+#cold-seed-forge-help,
+#cold-seed-forge-note,
+#cold-seed-forge-generated-help,
+#cold-seed-forge-validator-help,
+#cold-seed-forge-generated-passphrase-help,
+#cold-seed-forge-validation-passphrase-help {
+  max-width: 48rem;
+  margin: 0.3rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+#cold-seed-forge-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+}
+
+#cold-seed-forge-controls label,
+.cold-seed-forge-passphrase label,
+#cold-seed-forge-validator > label {
+  display: block;
+  color: var(--cold-text);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+#cold-seed-forge-controls select,
+#cold-seed-forge-controls button,
+.cold-seed-forge-passphrase input,
+#cold-seed-forge-mnemonic-input,
+#cold-seed-forge-validator > button {
+  min-height: 2.75rem;
+  margin-top: 0.25rem;
+  padding: 0.35rem 0.5rem;
+  border: 0.14rem solid var(--cold-outline);
+  border-radius: 0.3rem;
+  background: var(--cold-bg);
+  color: var(--cold-text);
+  font: inherit;
+  font-size: 0.72rem;
+}
+
+#cold-seed-forge-controls select {
+  min-width: 10rem;
+}
+
+#cold-seed-forge-controls button,
+#cold-seed-forge-validator > button,
+#cold-seed-forge-reveal,
+.cold-seed-forge-raw button {
+  border-color: var(--cold-drop);
+  background: var(--cold-green);
+  box-shadow: 0.15rem 0.15rem 0 var(--cold-drop);
+  color: var(--cold-ink);
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+#cold-seed-forge-controls button:disabled,
+#cold-seed-forge-validator > button:disabled,
+#cold-seed-forge-reveal:disabled,
+.cold-seed-forge-raw button:disabled {
+  background: var(--cold-disabled-fill);
+  box-shadow: none;
+  color: var(--cold-ink);
+  cursor: not-allowed;
+}
+
+#cold-seed-forge-controls select:focus-visible,
+#cold-seed-forge-controls button:focus-visible,
+.cold-seed-forge-passphrase input:focus-visible,
+#cold-seed-forge-mnemonic-input:focus-visible,
+#cold-seed-forge-validator > button:focus-visible,
+#cold-seed-forge-reveal:focus-visible,
+#cold-seed-forge-generated-seed-reveal:focus-visible,
+#cold-seed-forge-validation-seed-reveal:focus-visible,
+#cold-seed-forge-marginal-ack:focus-visible,
+#cold-seed-forge-word-fields input:focus-visible {
+  outline: 0.2rem solid var(--cold-pink);
+  outline-offset: 0.18rem;
+}
+
+#cold-seed-forge-status,
+#cold-seed-forge-validation-status {
+  margin: 0.45rem 0 0;
+  padding-left: 0.55rem;
+  border-left: 0.28rem solid var(--cold-yellow);
+  color: var(--cold-yellow);
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+#cold-seed-forge-status[data-state="ready"],
+#cold-seed-forge-validation-status[data-state="valid"] {
+  border-left-color: var(--cold-green);
+  color: var(--cold-green);
+}
+
+#cold-seed-forge-status[data-state="error"],
+#cold-seed-forge-validation-status[data-state="invalid"] {
+  border-left-color: var(--cold-red);
+  color: var(--cold-red);
+}
+
+#cold-seed-forge-marginal-wrap {
+  margin-top: 0.55rem;
+  padding: 0.45rem 0.55rem;
+  border: 0.13rem dashed var(--cold-red);
+  background: var(--cold-bg);
+  color: var(--cold-text);
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+#cold-seed-forge-marginal-wrap[hidden],
+#cold-seed-forge-generated[hidden] {
+  display: none;
+}
+
+#cold-seed-forge-marginal-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+#cold-seed-forge-marginal-ack {
+  flex: 0 0 auto;
+  min-width: 1.15rem;
+  min-height: 1.15rem;
+  margin: 0.05rem 0 0;
+}
+
+.cold-seed-forge-passphrase,
+#cold-seed-forge-generated,
+#cold-seed-forge-validator,
+.cold-seed-forge-raw {
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  border-top: 0.13rem solid var(--cold-outline);
+}
+
+.cold-seed-forge-passphrase h2,
+#cold-seed-forge-generated h2,
+#cold-seed-forge-validator h2,
+.cold-seed-forge-raw h2 {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+.cold-seed-forge-passphrase input,
+#cold-seed-forge-mnemonic-input {
+  display: block;
+  width: min(100%, 34rem);
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  letter-spacing: 0.06em;
+}
+
+.cold-seed-forge-passphrase input + label {
+  margin-top: 0.5rem;
+}
+
+#cold-seed-forge-generated-passphrase-error,
+#cold-seed-forge-validation-passphrase-error {
+  max-width: 48rem;
+}
+
+#cold-seed-forge-generated-words {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.35rem 0.55rem;
+  margin: 0.6rem 0 0;
+  padding-left: 1.7rem;
+}
+
+#cold-seed-forge-generated-words li {
+  min-height: 2.1rem;
+  padding: 0.35rem 0.45rem;
+  border: 0.1rem solid var(--cold-outline);
+  border-radius: 0.25rem;
+  background: var(--cold-bg);
+  color: var(--cold-text);
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+#cold-seed-forge-generated-words li::marker {
+  color: var(--cold-yellow);
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+.cold-seed-forge-word-value {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+#cold-seed-forge-reveal {
+  min-height: 2.75rem;
+  margin-top: 0.55rem;
+  padding: 0.35rem 0.7rem;
+}
+
+.cold-seed-forge-raw {
+  max-width: 48rem;
+}
+
+.cold-seed-forge-raw output {
+  display: block;
+  margin-top: 0.45rem;
+  padding: 0.5rem 0.6rem;
+  border: 0.16rem solid var(--cold-red);
+  border-radius: 0.3rem;
+  background: var(--cold-bg);
+  color: var(--cold-text);
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.cold-seed-forge-raw button {
+  min-height: 2.75rem;
+  margin-top: 0.45rem;
+  padding: 0.35rem 0.7rem;
+}
+
+.cold-seed-forge-fingerprint-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  max-width: 34rem;
+  margin-top: 0.6rem;
+  padding: 0.45rem 0.55rem;
+  border-left: 0.28rem solid var(--cold-yellow);
+  background: var(--cold-bg);
+  color: var(--cold-muted);
+  font-size: 0.7rem;
+}
+
+.cold-seed-forge-fingerprint-row strong {
+  color: var(--cold-text);
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  letter-spacing: 0.1em;
+}
+
+#cold-seed-forge-word-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.45rem 0.55rem;
+  margin-top: 0.6rem;
+}
+
+.cold-seed-forge-word-field {
+  min-width: 0;
+  padding: 0.35rem 0.4rem;
+  border: 0.1rem solid var(--cold-outline);
+  border-radius: 0.25rem;
+  background: var(--cold-bg);
+}
+
+.cold-seed-forge-word-field[data-state="valid"] {
+  border-color: var(--cold-green);
+}
+
+.cold-seed-forge-word-field[data-state="unknown"],
+.cold-seed-forge-word-field[data-state="checksum"] {
+  border-color: var(--cold-red);
+}
+
+.cold-seed-forge-word-field label {
+  display: block;
+  color: var(--cold-muted);
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.62rem;
+}
+
+.cold-seed-forge-word-field input {
+  display: block;
+  width: 100%;
+  min-height: 2.35rem;
+  margin-top: 0.2rem;
+  padding: 0.3rem 0.4rem;
+  border: 0.1rem solid var(--cold-outline);
+  border-radius: 0.2rem;
+  background: var(--cold-input);
+  color: var(--cold-text);
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.7rem;
+}
+
+.cold-seed-forge-word-field input:focus {
+  border-color: var(--cold-drop);
+}
+
+.cold-seed-forge-word-status {
+  display: block;
+  min-height: 1.1rem;
+  margin-top: 0.2rem;
+  color: var(--cold-muted);
+  font-size: 0.6rem;
+  line-height: 1.2;
+}
+
+.cold-seed-forge-word-field[data-state="valid"] .cold-seed-forge-word-status {
+  color: var(--cold-green);
+}
+
+.cold-seed-forge-word-field[data-state="unknown"] .cold-seed-forge-word-status,
+.cold-seed-forge-word-field[data-state="checksum"] .cold-seed-forge-word-status {
+  color: var(--cold-red);
+}
+
+#cold-seed-forge-validator > button {
+  margin-top: 0.55rem;
+}
+
+#cold-seed-forge-note {
+  margin-top: 0.65rem;
+  padding-top: 0.55rem;
+  border-top: 0.13rem solid var(--cold-outline);
+}

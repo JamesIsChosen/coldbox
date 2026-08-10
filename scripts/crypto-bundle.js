@@ -5,11 +5,25 @@ const path = require('node:path');
 const posixPath = require('node:path').posix;
 const zlib = require('node:zlib');
 
-const NOBLE_SEEDS = Object.freeze([
+const CRYPTO_SEEDS = Object.freeze([
   '@noble/ciphers/aes.js',
+  '@noble/curves/secp256k1.js',
   '@noble/hashes/hkdf.js',
+  '@noble/hashes/legacy.js',
   '@noble/hashes/pbkdf2.js',
-  '@noble/hashes/sha2.js'
+  '@noble/hashes/sha2.js',
+  '@scure/bip32/index.js',
+  '@scure/bip39/index.js',
+  '@scure/bip39/wordlists/czech.js',
+  '@scure/bip39/wordlists/english.js',
+  '@scure/bip39/wordlists/french.js',
+  '@scure/bip39/wordlists/italian.js',
+  '@scure/bip39/wordlists/japanese.js',
+  '@scure/bip39/wordlists/korean.js',
+  '@scure/bip39/wordlists/portuguese.js',
+  '@scure/bip39/wordlists/simplified-chinese.js',
+  '@scure/bip39/wordlists/spanish.js',
+  '@scure/bip39/wordlists/traditional-chinese.js'
 ]);
 
 const packageTarCache = new Map();
@@ -76,6 +90,15 @@ function readVendorFile(projectRoot, moduleId) {
 
 function resolveModuleId(fromId, specifier) {
   if (!specifier.startsWith('.')) {
+    if (specifier === '@scure/base') {
+      return '@scure/base/index.js';
+    }
+    if (specifier === '@scure/bip32') {
+      return '@scure/bip32/index.js';
+    }
+    if (specifier === '@scure/bip39') {
+      return '@scure/bip39/index.js';
+    }
     return specifier;
   }
   const resolved = posixPath.normalize(posixPath.join(posixPath.dirname(fromId), specifier));
@@ -312,7 +335,7 @@ function transformModule(moduleId, originalSource) {
 
 function collectModuleGraph(projectRoot) {
   const modules = new Map();
-  const pending = [...NOBLE_SEEDS];
+  const pending = [...CRYPTO_SEEDS];
   while (pending.length > 0) {
     const moduleId = pending.pop();
     if (modules.has(moduleId)) {
@@ -328,7 +351,7 @@ function collectModuleGraph(projectRoot) {
     const imports = [...source.matchAll(/\bimport\s+([\s\S]*?)\s+from\s+(["'])([^"']+)\2\s*;?/g)];
     imports.forEach((match) => {
       const dependency = resolveModuleId(moduleId, match[3]);
-      if (dependency.startsWith('@noble/')) {
+      if (dependency.startsWith('@noble/') || dependency.startsWith('@scure/')) {
         pending.push(dependency);
       } else {
         throw new Error(`Unexpected crypto bundle dependency ${dependency}`);
@@ -361,6 +384,18 @@ function createNobleBundle(projectRoot) {
   lines.push('var __coldboxNobleHkdf = __coldboxNobleLoad("@noble/hashes/hkdf.js");');
   lines.push('var __coldboxNoblePbkdf2 = __coldboxNobleLoad("@noble/hashes/pbkdf2.js");');
   lines.push('var __coldboxNobleHashUtils = __coldboxNobleLoad("@noble/hashes/utils.js");');
+  lines.push('var __coldboxBip32 = __coldboxNobleLoad("@scure/bip32/index.js");');
+  lines.push('var __coldboxBip39 = __coldboxNobleLoad("@scure/bip39/index.js");');
+  lines.push('var __coldboxBip39Czech = __coldboxNobleLoad("@scure/bip39/wordlists/czech.js");');
+  lines.push('var __coldboxBip39English = __coldboxNobleLoad("@scure/bip39/wordlists/english.js");');
+  lines.push('var __coldboxBip39French = __coldboxNobleLoad("@scure/bip39/wordlists/french.js");');
+  lines.push('var __coldboxBip39Italian = __coldboxNobleLoad("@scure/bip39/wordlists/italian.js");');
+  lines.push('var __coldboxBip39Japanese = __coldboxNobleLoad("@scure/bip39/wordlists/japanese.js");');
+  lines.push('var __coldboxBip39Korean = __coldboxNobleLoad("@scure/bip39/wordlists/korean.js");');
+  lines.push('var __coldboxBip39Portuguese = __coldboxNobleLoad("@scure/bip39/wordlists/portuguese.js");');
+  lines.push('var __coldboxBip39SimplifiedChinese = __coldboxNobleLoad("@scure/bip39/wordlists/simplified-chinese.js");');
+  lines.push('var __coldboxBip39Spanish = __coldboxNobleLoad("@scure/bip39/wordlists/spanish.js");');
+  lines.push('var __coldboxBip39TraditionalChinese = __coldboxNobleLoad("@scure/bip39/wordlists/traditional-chinese.js");');
   lines.push('window.__coldboxNobleCrypto = Object.freeze({');
   lines.push('  gcm: __coldboxNobleAes.gcm,');
   lines.push('  hkdf: __coldboxNobleHkdf.hkdf,');
@@ -369,6 +404,26 @@ function createNobleBundle(projectRoot) {
   lines.push('  sha256: __coldboxNobleHash.sha256,');
   lines.push('  sha512: __coldboxNobleHash.sha512,');
   lines.push('  utf8ToBytes: __coldboxNobleHashUtils.utf8ToBytes');
+  lines.push('});');
+  lines.push('window.__coldboxBip32 = Object.freeze({');
+  lines.push('  HDKey: __coldboxBip32.HDKey');
+  lines.push('});');
+  lines.push('window.__coldboxBip39 = Object.freeze({');
+  lines.push('  entropyToMnemonic: __coldboxBip39.entropyToMnemonic,');
+  lines.push('  mnemonicToEntropy: __coldboxBip39.mnemonicToEntropy,');
+  lines.push('  validateMnemonic: __coldboxBip39.validateMnemonic,');
+  lines.push('  wordlists: Object.freeze({');
+  lines.push('    czech: __coldboxBip39Czech.wordlist,');
+  lines.push('    english: __coldboxBip39English.wordlist,');
+  lines.push('    french: __coldboxBip39French.wordlist,');
+  lines.push('    italian: __coldboxBip39Italian.wordlist,');
+  lines.push('    japanese: __coldboxBip39Japanese.wordlist,');
+  lines.push('    korean: __coldboxBip39Korean.wordlist,');
+  lines.push('    portuguese: __coldboxBip39Portuguese.wordlist,');
+  lines.push('    simplifiedChinese: __coldboxBip39SimplifiedChinese.wordlist,');
+  lines.push('    spanish: __coldboxBip39Spanish.wordlist,');
+  lines.push('    traditionalChinese: __coldboxBip39TraditionalChinese.wordlist');
+  lines.push('  })');
   lines.push('});');
   return `${lines.join('\n')}\n`;
 }

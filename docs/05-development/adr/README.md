@@ -35,6 +35,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0025](0025-vault-identity-library-and-save-ux.md) | Vault identity is portable and random; names/library/save UX stay in the warm shell | Accepted · amended by 0026 |
 | [0026](0026-canonical-vault-save-and-live-transfer.md) | One canonical vault file; animated QR is live device-to-device transfer only | Accepted |
 | [0027](0027-entropy-health-statistical-diagnostics.md) | Entropy Health uses advisory finite-sample statistical diagnostics | Accepted |
+| [0028](0028-cold-only-bip39-seed-forge.md) | Cold-only BIP-39 Seed Forge and master fingerprint | Accepted |
 
 ## When to write one
 

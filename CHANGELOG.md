@@ -14,6 +14,13 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
+### Added / fixed — P1.3 Seed Forge (2026-08-10)
+
+- **Cold-only BIP-39 generation and validation.** Seed Forge supports 12/15/18/21/24 words and all ten vendored official wordlists, validates each word plus the checksum, and keeps the phrase masked until an explicit short reveal.
+- **Exact Mix handoff.** A successful Entropy Lab Mix exposes a one-use **Use this mix in Seed Forge** action. The exact mixed bytes are consumed without a second mix, and entropy/target changes clear the pending copy.
+- **Live passphrase derivation.** Generate and Validate Existing Phrase each have a separate passphrase/confirmation pair and separate live raw-seed/fingerprint state; a matching change or mismatch affects only its own workflow. Both remain cold-only, masked by default, and clear on teardown. No clipboard or storage action exists.
+- **Fail-closed coverage.** Independent official first PBKDF2 vectors for all ten languages, including Japanese final NFKD handling, an independent Node/OpenSSL master-fingerprint reference, malformed-input negatives, and Chromium/Firefox assertions for the exact handoff and dynamic derivation are included. Structural choices are recorded in [ADR-0028](docs/05-development/adr/0028-cold-only-bip39-seed-forge.md).
+
 ### Added — P1.2 Entropy Health Meter and Bias Analyzer (2026-08-09)
 
 - **Entropy Health** now shows claimed bits, an observed empirical min-entropy estimate, per-symbol frequencies, and advisory chi-square, runs, lag-one correlation, and pattern diagnostics for physical/manual dice, coin, and hex observations. Device-RNG simulations are explicitly excluded from the analysis.

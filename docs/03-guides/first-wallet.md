@@ -58,12 +58,12 @@ The exact claimed-bit and observed-estimate definitions, including the finite-sa
 
 | State | Meaning |
 |---|---|
-| 🔴 Insufficient | Below the selected target. P1.2 advisory; future Seed Forge blocks generation |
-| 🟠 Marginal | Target reached but chi-square flags bias. P1.2 advisory; future Seed Forge owns acknowledgement |
+| 🔴 Insufficient | Below the selected target. P1.2 advisory; Seed Forge still requires the selected fresh CSPRNG target |
+| 🟠 Marginal | Target reached but chi-square flags bias. P1.2 advisory; Seed Forge asks for an explicit acknowledgement |
 | 🟡 Adequate | Reaches the selected target without a chi-square flag, below 256 bits |
 | 🟢 Strong | ≥256 bits |
 
-These are P1.2 Entropy Lab labels, not a current Mix entropy gate. Seed Forge (P1.3) is the future generation boundary: it will block below-target generation and decide how a marginal acknowledgement is recorded. There is no Seed Forge path yet.
+These are P1.2 Entropy Lab labels, not a statistical generation gate. For the P1.3 handoff, click **Mix entropy**, then **Use this mix in Seed Forge**; the exact selected-size result is consumed once and is never silently remixed. A later Entropy Lab input or output-size change clears the pending result. Seed Forge asks for an explicit acknowledgement when the selected physical/manual source is marginal, and a shortage of fresh CSPRNG bytes fails closed rather than producing a shorter phrase.
 
 If you see pattern warnings — long runs, sequences, alternation — check your recording. Real dice do produce runs, so it's a prompt to look, not an accusation. See [entropy and strength](../04-reference/entropy-and-strength.md).
 
@@ -71,11 +71,21 @@ If you see pattern warnings — long runs, sequences, alternation — check your
 
 ## 2. Generate the seed
 
-Seed Forge → the entropy carries over. Choose 12 words (128 bits) or 24 (256 bits).
+Seed Forge → select **Use this mix in Seed Forge** to consume the recorded Entropy Lab result. Choose 12, 15, 18, 21, or 24 words (128–256 bits), and choose the BIP-39 language. A separate Generate action is available for a fresh CSPRNG-only result.
 
 Both are beyond brute force. 24 words is margin against future cryptanalysis, not a fix for a weak 12. Some hardware wallets require 24.
 
 **Record the master fingerprint** — eight hex characters shown alongside. This is how you'll identify the wallet everywhere without revealing anything secret.
+
+::: plain
+Seed Forge keeps the phrase hidden until you reveal it briefly for writing down. It checks an existing phrase word by word, tells you if the checksum is wrong, and shows a short fingerprint so you can recognize the same wallet later. An advanced raw BIP-39 seed is masked by default and has no clipboard or storage action.
+:::
+::: working
+Seed Forge turns the exact Entropy Lab Mix result into a BIP-39 phrase, or validates one you paste into the sealed realm. Generate and Validate Existing Phrase each have their own optional passphrase pair. One character changed creates a different wallet, so that workflow's raw seed and fingerprint are withheld until its two entries match; once they match, only that workflow recalculates for its current phrase.
+:::
+::: technical
+Generation uses the vendored BIP-39 wordlists with NFKD normalization. Each workflow's optional passphrase is NFKD-normalized as PBKDF2-HMAC-SHA512 salt material with 2,048 rounds; its raw 64-byte BIP-39 seed and master fingerprint are recalculated on confirmed changes to that workflow's pair only. Japanese's U+3000 display separator is NFKD-normalized in the final PBKDF2 mnemonic text. These values stay inside the cold iframe.
+:::
 
 ---
 

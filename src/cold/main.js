@@ -11,6 +11,7 @@ __COLDBOX_CAPABILITIES__
   var vaultLayer = window.__coldboxVault;
   var entropyLab = window.__coldboxEntropyLab;
   var entropyHealth = window.__coldboxEntropyHealth;
+  var seedForge = window.__coldboxSeedForge;
   var readyMarker = document.getElementById('cold-ready');
   var protocolWarning = document.getElementById('cold-protocol-warning');
   var details = document.getElementById('cold-realm-details');
@@ -100,7 +101,50 @@ __COLDBOX_CAPABILITIES__
   var entropyMixStatus = document.getElementById('cold-entropy-mix-status');
   var entropyMixOutputLabel = document.getElementById('cold-entropy-mix-output-label');
   var entropyMixOutput = document.getElementById('cold-entropy-mix-output');
+  var entropyMixUseSeedForgeButton = document.getElementById('cold-entropy-mix-use-seed-forge');
+  var entropyMixHandoffStatus = document.getElementById('cold-entropy-mix-handoff-status');
+  var seedForgePanel = document.getElementById('cold-seed-forge');
+  var seedForgeLanguage = document.getElementById('cold-seed-forge-language');
+  var seedForgeTarget = document.getElementById('cold-seed-forge-target');
+  var seedForgeGenerateButton = document.getElementById('cold-seed-forge-generate');
+  var seedForgeStatus = document.getElementById('cold-seed-forge-status');
+  var seedForgeMarginalWrap = document.getElementById('cold-seed-forge-marginal-wrap');
+  var seedForgeMarginalAck = document.getElementById('cold-seed-forge-marginal-ack');
+  var seedForgeGeneratedPassphrase = document.getElementById('cold-seed-forge-generated-passphrase-input');
+  var seedForgeGeneratedPassphraseConfirm = document.getElementById('cold-seed-forge-generated-passphrase-confirm');
+  var seedForgeGeneratedPassphraseError = document.getElementById('cold-seed-forge-generated-passphrase-error');
+  var seedForgeGenerated = document.getElementById('cold-seed-forge-generated');
+  var seedForgeGeneratedWords = document.getElementById('cold-seed-forge-generated-words');
+  var seedForgeRevealButton = document.getElementById('cold-seed-forge-reveal');
+  var seedForgeGeneratedFingerprint = document.getElementById('cold-seed-forge-generated-fingerprint');
+  var seedForgeGeneratedRaw = document.getElementById('cold-seed-forge-generated-raw');
+  var seedForgeGeneratedSeed = document.getElementById('cold-seed-forge-generated-seed');
+  var seedForgeGeneratedSeedReveal = document.getElementById('cold-seed-forge-generated-seed-reveal');
+  var seedForgeMnemonicInput = document.getElementById('cold-seed-forge-mnemonic-input');
+  var seedForgeValidationPassphrase = document.getElementById('cold-seed-forge-validation-passphrase-input');
+  var seedForgeValidationPassphraseConfirm = document.getElementById('cold-seed-forge-validation-passphrase-confirm');
+  var seedForgeValidationPassphraseError = document.getElementById('cold-seed-forge-validation-passphrase-error');
+  var seedForgeWordFields = document.getElementById('cold-seed-forge-word-fields');
+  var seedForgeValidateButton = document.getElementById('cold-seed-forge-validate');
+  var seedForgeValidationStatus = document.getElementById('cold-seed-forge-validation-status');
+  var seedForgeValidationFingerprint = document.getElementById('cold-seed-forge-validation-fingerprint');
+  var seedForgeValidationRaw = document.getElementById('cold-seed-forge-validation-raw');
+  var seedForgeValidationSeed = document.getElementById('cold-seed-forge-validation-seed');
+  var seedForgeValidationSeedReveal = document.getElementById('cold-seed-forge-validation-seed-reveal');
   var entropySession = entropyLab ? entropyLab.createSession() : null;
+  var seedForgeWordInputs = [];
+  var generatedMnemonic = '';
+  var generatedLanguage = 'english';
+  var generatedRevealed = false;
+  var generatedRevealTimer = null;
+  var generatedSeedBytes = null;
+  var validationSeedBytes = null;
+  var generatedSeedRevealed = false;
+  var validationSeedRevealed = false;
+  var generatedSeedRevealTimer = null;
+  var validationSeedRevealTimer = null;
+  var pendingSeedForgeMix = null;
+  var pendingSeedForgeMixTargetBits = null;
   var CARD_RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
   var CARD_SUITS = ['♠', '♥', '♦', '♣'];
   var vaultCryptoReady = false;
@@ -318,6 +362,35 @@ __COLDBOX_CAPABILITIES__
     entropyMixOutput.textContent = bytesToHex(bytes);
     entropyMixOutput.hidden = false;
     entropyMixOutputLabel.hidden = false;
+  }
+
+  function clearPendingSeedForgeMix() {
+    zeroBytes(pendingSeedForgeMix);
+    pendingSeedForgeMix = null;
+    pendingSeedForgeMixTargetBits = null;
+    if (entropyMixUseSeedForgeButton) {
+      entropyMixUseSeedForgeButton.hidden = true;
+      entropyMixUseSeedForgeButton.disabled = true;
+    }
+    if (entropyMixHandoffStatus) {
+      entropyMixHandoffStatus.hidden = true;
+      entropyMixHandoffStatus.textContent = '';
+    }
+  }
+
+  function retainPendingSeedForgeMix(bytes, targetBits) {
+    clearPendingSeedForgeMix();
+    pendingSeedForgeMix = new Uint8Array(bytes);
+    pendingSeedForgeMixTargetBits = targetBits;
+    if (entropyMixUseSeedForgeButton) {
+      entropyMixUseSeedForgeButton.hidden = false;
+      entropyMixUseSeedForgeButton.disabled = !vaultCryptoReady;
+    }
+    if (entropyMixHandoffStatus) {
+      entropyMixHandoffStatus.hidden = false;
+      entropyMixHandoffStatus.textContent = 'This exact mixed byte array is held locally for one use. Select the matching Seed Forge size, then use the button once; changing Entropy Lab input or output size clears it.';
+    }
+    updateSeedForgeControls();
   }
 
   function formatEntropyFallback(strength) {
@@ -576,7 +649,7 @@ __COLDBOX_CAPABILITIES__
       if (entropyHealthDisclosure) {
         entropyHealthDisclosure.textContent = source.simulatedCount > 0
           ? 'Device-RNG simulations are excluded from this analysis. Add physical/manual samples; passing tests are not proof that a platform RNG is sound. P1.2 is advisory and does not block mixing.'
-          : 'Warnings are prompts to inspect the recording, not proof of a broken source. Insufficient sample size leaves a test unavailable. P1.2 is advisory and does not block mixing; the analyzer never replaces the CSPRNG or the integer independent-source accounting.';
+          : 'Warnings are prompts to inspect the recording, not proof of a broken source. Insufficient sample size leaves a test unavailable. P1.2 is advisory and does not block mixing; the analyzer never replaces the CSPRNG or the integer independent-source accounting. Seed Forge asks for acknowledgement only when this selected source is marginal.';
       }
       if (entropyHealthFrequencyBody) {
         entropyHealthFrequencyBody.textContent = '';
@@ -644,7 +717,7 @@ __COLDBOX_CAPABILITIES__
     if (entropyHealthDisclosure) {
       entropyHealthDisclosure.textContent = source.withoutReplacement
         ? 'Cards are a without-replacement permutation: frequency and iid randomness tests are intentionally not reported. The card order is still shown for review.'
-        : 'Warnings are prompts to inspect the recording, not proof of a broken source. Passing tests are not proof that a platform RNG is sound. P1.2 is advisory and does not block mixing or ask for acknowledgement; Seed Forge (P1.3) owns any future generation gate.';
+        : 'Warnings are prompts to inspect the recording, not proof of a broken source. Passing tests are not proof that a platform RNG is sound. P1.2 is advisory and does not block mixing; Seed Forge asks for acknowledgement only when this selected source is marginal.';
     }
   }
 
@@ -842,8 +915,10 @@ __COLDBOX_CAPABILITIES__
     refreshCardGrid();
     if (!preserveOutput) {
       setEntropyMixOutput(null);
+      clearPendingSeedForgeMix();
     }
     if (!ready) {
+      updateSeedForgeControls();
       return;
     }
     if (entropyUndoButton) {
@@ -860,6 +935,7 @@ __COLDBOX_CAPABILITIES__
     updateEntropyHealth();
     updateEntropyCsprngStatus();
     updateEntropyMixStatus();
+    updateSeedForgeControls();
   }
 
   function updateEntropyMixStatus() {
@@ -1209,6 +1285,9 @@ __COLDBOX_CAPABILITIES__
 
     if (entropyTargetSelect) {
       entropyTargetSelect.addEventListener('change', function () {
+        if (seedForgeTarget) {
+          seedForgeTarget.value = entropyTargetSelect.value;
+        }
         updateEntropyLabControls();
       });
     }
@@ -1243,6 +1322,7 @@ __COLDBOX_CAPABILITIES__
         // wipe the result being displayed on the next two lines.
         updateEntropyLabControls({ preserveOutput: true });
         setEntropyMixOutput(mixed);
+        retainPendingSeedForgeMix(mixed, targetBits);
         if (entropyMixStatus) {
           var strength = entropyLab.strengthSummary(entropySession, targetBits);
           var securityText = strength.fullTwoSourceProtection
@@ -1250,12 +1330,733 @@ __COLDBOX_CAPABILITIES__
             : (strength.fallbackBits === 0
               ? ' CSPRNG-only security: independent-source fallback is 0 bits.'
               : ' Normal output strength is ' + targetBits + ' bits if the device RNG is sound; independent-source fallback is ~' + strength.fallbackBits + ' bits, not full two-source protection.');
-          entropyMixStatus.textContent = 'Mixed ' + targetBits + ' bits.' + securityText + ' Seed Forge (P1.3) is not built yet; this output is not carried anywhere.';
+          entropyMixStatus.textContent = 'Mixed ' + targetBits + ' bits.' + securityText + ' The exact result is ready: use it once in Seed Forge below.';
         }
       });
     }
 
+    if (entropyMixUseSeedForgeButton) {
+      entropyMixUseSeedForgeButton.addEventListener('click', function () {
+        if (!pendingSeedForgeMix) {
+          return;
+        }
+        generateSeedPhrase(pendingSeedForgeMix, true);
+      });
+    }
+
     updateEntropyLabControls();
+  }
+
+  // --- Seed Forge (P1.3) ---------------------------------------------------
+  //
+  // Everything in this section stays in the cold document. The only input
+  // from Entropy Lab is the byte array returned by mix(); no mnemonic,
+  // passphrase, derived seed, or fingerprint is sent to the warm shell.
+
+  function setSeedForgeStatus(state, text) {
+    if (seedForgePanel) {
+      seedForgePanel.setAttribute('data-state', state);
+    }
+    if (seedForgeStatus) {
+      seedForgeStatus.setAttribute('data-state', state);
+      seedForgeStatus.textContent = text;
+    }
+  }
+
+  function setSeedForgePassphraseError(output, text) {
+    if (!output) {
+      return;
+    }
+    output.textContent = text || '';
+    output.hidden = !text;
+  }
+
+  function seedForgePassphrasePairValid(passphraseInput, confirmationInput, errorOutput) {
+    var passphrase = passphraseInput ? passphraseInput.value : '';
+    var confirmation = confirmationInput ? confirmationInput.value : '';
+    if (passphrase !== confirmation) {
+      setSeedForgePassphraseError(errorOutput, 'Passphrases do not match. Nothing will be derived for this workflow until they are identical.');
+      return false;
+    }
+    setSeedForgePassphraseError(errorOutput, '');
+    return true;
+  }
+
+  function generatedPassphrasePairValid() {
+    return seedForgePassphrasePairValid(
+      seedForgeGeneratedPassphrase,
+      seedForgeGeneratedPassphraseConfirm,
+      seedForgeGeneratedPassphraseError
+    );
+  }
+
+  function validationPassphrasePairValid() {
+    return seedForgePassphrasePairValid(
+      seedForgeValidationPassphrase,
+      seedForgeValidationPassphraseConfirm,
+      seedForgeValidationPassphraseError
+    );
+  }
+
+  function seedForgeTargetBits() {
+    var targetBits = Number(seedForgeTarget && seedForgeTarget.value);
+    if (!entropyLab || !entropyLab.isValidTargetBits || !entropyLab.isValidTargetBits(targetBits)) {
+      throw new Error('Seed Forge target size is unavailable; refusing to generate.');
+    }
+    return targetBits;
+  }
+
+  function seedForgeMarginalAcknowledged() {
+    return !entropyHealthPanel
+      || entropyHealthPanel.getAttribute('data-state') !== 'marginal'
+      || Boolean(seedForgeMarginalAck && seedForgeMarginalAck.checked);
+  }
+
+  function updateSeedForgeMarginalControl(ready) {
+    if (!seedForgeMarginalWrap) {
+      return;
+    }
+    var marginal = Boolean(
+      entropyHealthPanel
+      && entropyHealthPanel.getAttribute('data-state') === 'marginal'
+    );
+    seedForgeMarginalWrap.hidden = !marginal;
+    if (seedForgeMarginalAck) {
+      seedForgeMarginalAck.disabled = !ready || !marginal;
+      if (!marginal) {
+        seedForgeMarginalAck.checked = false;
+      }
+    }
+  }
+
+  function updateSeedForgeControls() {
+    if (!seedForge) {
+      return;
+    }
+    var ready = Boolean(seedForgePanel && vaultCryptoReady && entropyLab && entropySession);
+    if (seedForgePanel) {
+      seedForgePanel.setAttribute('data-state', ready ? 'ready' : 'locked');
+    }
+    var controls = [
+      seedForgeLanguage,
+      seedForgeTarget,
+      seedForgeGenerateButton,
+      seedForgeGeneratedPassphrase,
+      seedForgeGeneratedPassphraseConfirm,
+      seedForgeMnemonicInput,
+      seedForgeValidationPassphrase,
+      seedForgeValidationPassphraseConfirm,
+      seedForgeValidateButton
+    ];
+    controls.forEach(function (control) {
+      if (control) {
+        control.disabled = !ready;
+      }
+    });
+    if (seedForgeRevealButton) {
+      seedForgeRevealButton.disabled = !ready || !generatedMnemonic;
+    }
+    if (entropyMixUseSeedForgeButton) {
+      entropyMixUseSeedForgeButton.disabled = !ready || !pendingSeedForgeMix;
+    }
+    if (seedForgeGeneratedSeedReveal) {
+      seedForgeGeneratedSeedReveal.disabled = !ready || !generatedSeedBytes;
+    }
+    if (seedForgeValidationSeedReveal) {
+      seedForgeValidationSeedReveal.disabled = !ready || !validationSeedBytes;
+    }
+    if (seedForgeTarget && entropyTargetSelect && seedForgeTarget.value !== entropyTargetSelect.value) {
+      seedForgeTarget.value = entropyTargetSelect.value;
+    }
+    updateSeedForgeMarginalControl(ready);
+  }
+
+  function setFingerprintOutput(output, value) {
+    if (output) {
+      output.textContent = value || 'Not calculated';
+    }
+  }
+
+  function remaskGeneratedPhrase() {
+    generatedRevealed = false;
+    if (generatedRevealTimer !== null) {
+      window.clearTimeout(generatedRevealTimer);
+      generatedRevealTimer = null;
+    }
+    if (seedForgeGeneratedWords) {
+      var maskedValues = seedForgeGeneratedWords.querySelectorAll('.cold-seed-forge-word-value');
+      for (var index = 0; index < maskedValues.length; index += 1) {
+        maskedValues[index].textContent = '••••••';
+      }
+    }
+    if (seedForgeRevealButton) {
+      seedForgeRevealButton.textContent = 'Reveal for 30 seconds';
+    }
+  }
+
+  function revealGeneratedPhrase() {
+    if (!generatedMnemonic || !seedForge) {
+      return;
+    }
+    if (generatedRevealTimer !== null) {
+      window.clearTimeout(generatedRevealTimer);
+      generatedRevealTimer = null;
+    }
+    var words = seedForge.splitMnemonic(generatedMnemonic);
+    var values = seedForgeGeneratedWords
+      ? seedForgeGeneratedWords.querySelectorAll('.cold-seed-forge-word-value')
+      : [];
+    for (var index = 0; index < values.length; index += 1) {
+      values[index].textContent = words[index] || '••••••';
+    }
+    generatedRevealed = true;
+    if (seedForgeRevealButton) {
+      seedForgeRevealButton.textContent = 'Hide now';
+    }
+    generatedRevealTimer = window.setTimeout(remaskGeneratedPhrase, 30000);
+  }
+
+  function renderGeneratedPhrase(mnemonic) {
+    if (!seedForgeGeneratedWords || !seedForge) {
+      return;
+    }
+    remaskGeneratedPhrase();
+    seedForgeGeneratedWords.textContent = '';
+    var words = seedForge.splitMnemonic(mnemonic);
+    for (var index = 0; index < words.length; index += 1) {
+      var item = document.createElement('li');
+      var value = document.createElement('span');
+      value.className = 'cold-seed-forge-word-value';
+      value.textContent = '••••••';
+      item.appendChild(value);
+      seedForgeGeneratedWords.appendChild(item);
+    }
+    if (seedForgeGenerated) {
+      seedForgeGenerated.hidden = false;
+    }
+  }
+
+  function remaskGeneratedSeed() {
+    generatedSeedRevealed = false;
+    if (generatedSeedRevealTimer !== null) {
+      window.clearTimeout(generatedSeedRevealTimer);
+      generatedSeedRevealTimer = null;
+    }
+    if (seedForgeGeneratedSeed) {
+      seedForgeGeneratedSeed.textContent = generatedSeedBytes ? 'Masked (64 bytes)' : 'Not calculated';
+    }
+    if (seedForgeGeneratedSeedReveal) {
+      seedForgeGeneratedSeedReveal.textContent = 'Reveal raw seed for 30 seconds';
+    }
+  }
+
+  function clearGeneratedSeed() {
+    zeroBytes(generatedSeedBytes);
+    generatedSeedBytes = null;
+    remaskGeneratedSeed();
+    if (seedForgeGeneratedRaw) {
+      seedForgeGeneratedRaw.hidden = true;
+    }
+    if (seedForgeGeneratedSeedReveal) {
+      seedForgeGeneratedSeedReveal.disabled = true;
+    }
+  }
+
+  function replaceGeneratedSeed(bytes) {
+    clearGeneratedSeed();
+    generatedSeedBytes = new Uint8Array(bytes);
+    if (seedForgeGeneratedRaw) {
+      seedForgeGeneratedRaw.hidden = false;
+    }
+    remaskGeneratedSeed();
+  }
+
+  function revealGeneratedSeed() {
+    if (!generatedSeedBytes || !seedForgeGeneratedSeed) {
+      return;
+    }
+    if (generatedSeedRevealTimer !== null) {
+      window.clearTimeout(generatedSeedRevealTimer);
+      generatedSeedRevealTimer = null;
+    }
+    seedForgeGeneratedSeed.textContent = bytesToHex(generatedSeedBytes);
+    generatedSeedRevealed = true;
+    if (seedForgeGeneratedSeedReveal) {
+      seedForgeGeneratedSeedReveal.textContent = 'Hide now';
+    }
+    generatedSeedRevealTimer = window.setTimeout(remaskGeneratedSeed, 30000);
+  }
+
+  function remaskValidationSeed() {
+    validationSeedRevealed = false;
+    if (validationSeedRevealTimer !== null) {
+      window.clearTimeout(validationSeedRevealTimer);
+      validationSeedRevealTimer = null;
+    }
+    if (seedForgeValidationSeed) {
+      seedForgeValidationSeed.textContent = validationSeedBytes ? 'Masked (64 bytes)' : 'Not calculated';
+    }
+    if (seedForgeValidationSeedReveal) {
+      seedForgeValidationSeedReveal.textContent = 'Reveal raw seed for 30 seconds';
+    }
+  }
+
+  function clearValidationSeed() {
+    zeroBytes(validationSeedBytes);
+    validationSeedBytes = null;
+    remaskValidationSeed();
+    if (seedForgeValidationRaw) {
+      seedForgeValidationRaw.hidden = true;
+    }
+    if (seedForgeValidationSeedReveal) {
+      seedForgeValidationSeedReveal.disabled = true;
+    }
+  }
+
+  function replaceValidationSeed(bytes) {
+    clearValidationSeed();
+    validationSeedBytes = new Uint8Array(bytes);
+    if (seedForgeValidationRaw) {
+      seedForgeValidationRaw.hidden = false;
+    }
+    remaskValidationSeed();
+  }
+
+  function revealValidationSeed() {
+    if (!validationSeedBytes || !seedForgeValidationSeed) {
+      return;
+    }
+    if (validationSeedRevealTimer !== null) {
+      window.clearTimeout(validationSeedRevealTimer);
+      validationSeedRevealTimer = null;
+    }
+    seedForgeValidationSeed.textContent = bytesToHex(validationSeedBytes);
+    validationSeedRevealed = true;
+    if (seedForgeValidationSeedReveal) {
+      seedForgeValidationSeedReveal.textContent = 'Hide now';
+    }
+    validationSeedRevealTimer = window.setTimeout(remaskValidationSeed, 30000);
+  }
+
+  function refreshGeneratedDerivation() {
+    if (!seedForge) {
+      return false;
+    }
+    if (!generatedMnemonic) {
+      clearGeneratedSeed();
+      setFingerprintOutput(seedForgeGeneratedFingerprint, 'Not calculated');
+      return true;
+    }
+    if (!generatedPassphrasePairValid()) {
+      clearGeneratedSeed();
+      setFingerprintOutput(seedForgeGeneratedFingerprint, 'Not calculated');
+      return false;
+    }
+
+    var passphrase = seedForgeGeneratedPassphrase ? seedForgeGeneratedPassphrase.value : '';
+    try {
+      var generatedDerived = seedForge.deriveMnemonic(generatedMnemonic, passphrase, generatedLanguage);
+      try {
+        replaceGeneratedSeed(generatedDerived.seed);
+      } finally {
+        zeroBytes(generatedDerived.seed);
+      }
+      setFingerprintOutput(seedForgeGeneratedFingerprint, generatedDerived.fingerprint);
+      return true;
+    } catch (error) {
+      clearGeneratedSeed();
+      setFingerprintOutput(seedForgeGeneratedFingerprint, 'Not calculated');
+      setSeedForgeStatus('error', 'Generated seed derivation failed closed: ' + error.message);
+      return false;
+    } finally {
+      passphrase = '';
+    }
+  }
+
+  function refreshValidationDerivation() {
+    if (!seedForge) {
+      return false;
+    }
+    var language = seedForgeLanguage ? seedForgeLanguage.value : 'english';
+    var phrase = validationPhraseText || validationPhraseFromFields();
+    var validation = phrase ? seedForge.validateMnemonic(phrase, language) : null;
+    if (!validation || !validation.valid) {
+      clearValidationSeed();
+      setFingerprintOutput(seedForgeValidationFingerprint, 'Not calculated');
+      return true;
+    }
+    if (!validationPassphrasePairValid()) {
+      clearValidationSeed();
+      setFingerprintOutput(seedForgeValidationFingerprint, 'Not calculated');
+      return false;
+    }
+
+    var passphrase = seedForgeValidationPassphrase ? seedForgeValidationPassphrase.value : '';
+    try {
+      var validationDerived = seedForge.deriveMnemonic(phrase, passphrase, language);
+      try {
+        replaceValidationSeed(validationDerived.seed);
+      } finally {
+        zeroBytes(validationDerived.seed);
+      }
+      setFingerprintOutput(seedForgeValidationFingerprint, validationDerived.fingerprint);
+      return true;
+    } catch (error) {
+      clearValidationSeed();
+      setFingerprintOutput(seedForgeValidationFingerprint, 'Not calculated');
+      setSeedForgeStatus('error', 'Validation seed derivation failed closed: ' + error.message);
+      return false;
+    } finally {
+      passphrase = '';
+    }
+  }
+
+  function refreshGeneratedDerivationAndControls() {
+    var valid = refreshGeneratedDerivation();
+    updateSeedForgeControls();
+    return valid;
+  }
+
+  function refreshValidationDerivationAndControls() {
+    var valid = refreshValidationDerivation();
+    updateSeedForgeControls();
+    return valid;
+  }
+
+  var validationPhraseText = '';
+
+  function validationPhraseFromFields() {
+    return seedForgeWordInputs.map(function (input) { return input.value; }).join(' ').trim();
+  }
+
+  function populateValidationFields(mnemonic) {
+    if (!seedForge || seedForgeWordInputs.length === 0) {
+      return;
+    }
+    var words = seedForge.splitMnemonic(mnemonic);
+    for (var index = 0; index < seedForgeWordInputs.length; index += 1) {
+      seedForgeWordInputs[index].value = words[index] || '';
+    }
+  }
+
+  function setValidationWordState(index, state, text) {
+    var input = seedForgeWordInputs[index];
+    if (!input || !input.parentElement) {
+      return;
+    }
+    input.parentElement.setAttribute('data-state', state || 'empty');
+    var status = input.parentElement.querySelector('.cold-seed-forge-word-status');
+    if (status) {
+      status.textContent = text;
+    }
+  }
+
+  function updateValidationStatus() {
+    if (!seedForge || !seedForgeValidationStatus) {
+      return false;
+    }
+    var language = seedForgeLanguage ? seedForgeLanguage.value : 'english';
+    var phrase = validationPhraseText || validationPhraseFromFields();
+    validationPhraseText = phrase;
+    if (!phrase) {
+      seedForgeValidationStatus.setAttribute('data-state', 'empty');
+      seedForgeValidationStatus.textContent = 'No phrase entered.';
+      for (var emptyIndex = 0; emptyIndex < seedForgeWordInputs.length; emptyIndex += 1) {
+        setValidationWordState(emptyIndex, 'empty', 'Empty');
+      }
+      refreshValidationDerivationAndControls();
+      return false;
+    }
+
+    var validation;
+    try {
+      validation = seedForge.validateMnemonic(phrase, language);
+    } catch (error) {
+      seedForgeValidationStatus.setAttribute('data-state', 'invalid');
+      seedForgeValidationStatus.textContent = 'Validation failed closed: ' + error.message;
+      refreshValidationDerivationAndControls();
+      return false;
+    }
+
+    for (var index = 0; index < seedForgeWordInputs.length; index += 1) {
+      var entry = validation.words[index];
+      if (!entry) {
+        setValidationWordState(index, 'empty', 'Empty');
+      } else if (entry.state === 'unknown') {
+        setValidationWordState(index, 'unknown', 'Unknown word');
+      } else if (entry.state === 'valid') {
+        setValidationWordState(index, 'valid', 'Word and checksum valid');
+      } else if (validation.reason === 'checksum') {
+        setValidationWordState(index, 'checksum', 'Known word; checksum mismatch');
+      } else {
+        setValidationWordState(index, 'known', 'Known word');
+      }
+    }
+
+    seedForgeValidationStatus.setAttribute('data-state', validation.valid ? 'valid' : 'invalid');
+    if (validation.valid) {
+      seedForgeValidationStatus.textContent = 'Valid ' + validation.words.length + '-word BIP-39 phrase.';
+      refreshValidationDerivationAndControls();
+      return true;
+    }
+
+    if (validation.reason === 'unknown-word') {
+      seedForgeValidationStatus.textContent = 'At least one word is not in the selected ' + language + ' wordlist.';
+    } else if (validation.reason === 'checksum') {
+      seedForgeValidationStatus.textContent = 'All words are known, but the BIP-39 checksum does not match.';
+    } else {
+      seedForgeValidationStatus.textContent = 'BIP-39 needs 12, 15, 18, 21, or 24 words; received ' + validation.words.length + '.';
+    }
+    refreshValidationDerivationAndControls();
+    return false;
+  }
+
+  function clearSeedForgeSession() {
+    clearPendingSeedForgeMix();
+    setEntropyMixOutput(null);
+    generatedMnemonic = '';
+    generatedLanguage = 'english';
+    remaskGeneratedPhrase();
+    if (seedForgeGenerated) {
+      seedForgeGenerated.hidden = true;
+    }
+    clearGeneratedSeed();
+    setFingerprintOutput(seedForgeGeneratedFingerprint, 'Not calculated');
+    validationPhraseText = '';
+    if (seedForgeMnemonicInput) {
+      seedForgeMnemonicInput.value = '';
+    }
+    for (var index = 0; index < seedForgeWordInputs.length; index += 1) {
+      seedForgeWordInputs[index].value = '';
+      setValidationWordState(index, 'empty', 'Empty');
+    }
+    clearValidationSeed();
+    setFingerprintOutput(seedForgeValidationFingerprint, 'Not calculated');
+    if (seedForgeValidationStatus) {
+      seedForgeValidationStatus.setAttribute('data-state', 'empty');
+      seedForgeValidationStatus.textContent = 'No phrase entered.';
+    }
+    if (seedForgeMarginalAck) {
+      seedForgeMarginalAck.checked = false;
+    }
+    setSeedForgePassphraseError(seedForgeGeneratedPassphraseError, '');
+    if (seedForgeGeneratedPassphrase) {
+      seedForgeGeneratedPassphrase.value = '';
+    }
+    if (seedForgeGeneratedPassphraseConfirm) {
+      seedForgeGeneratedPassphraseConfirm.value = '';
+    }
+    setSeedForgePassphraseError(seedForgeValidationPassphraseError, '');
+    if (seedForgeValidationPassphrase) {
+      seedForgeValidationPassphrase.value = '';
+    }
+    if (seedForgeValidationPassphraseConfirm) {
+      seedForgeValidationPassphraseConfirm.value = '';
+    }
+  }
+
+  function ensureSeedForgeCsprng(targetBits) {
+    var targetBytes = targetBits / 8;
+    var sourceBytes = entropyLab.sourceEntropyBytes(entropySession);
+    var needed = sourceBytes.length === 0
+      ? targetBytes
+      : Math.max(targetBytes, sourceBytes.length);
+    var available = entropyLab.availableCsprngBytes(entropySession).length;
+    if (available >= needed) {
+      return;
+    }
+    if (!cryptoLayer || typeof cryptoLayer.randomBytes !== 'function') {
+      throw new Error('crypto.getRandomValues is unavailable; refusing to generate a seed phrase.');
+    }
+    var fresh = cryptoLayer.randomBytes(needed - available);
+    try {
+      entropyLab.addCsprngBytes(entropySession, fresh);
+    } finally {
+      zeroBytes(fresh);
+    }
+  }
+
+  function generateSeedPhrase(explicitMixed, consumePendingMix) {
+    if (!seedForge || !vaultCryptoReady || !entropySession) {
+      setSeedForgeStatus('error', 'Seed Forge is locked because the cold-realm health checks have not passed.');
+      return;
+    }
+    if (!generatedPassphrasePairValid()) {
+      setSeedForgeStatus('error', 'Confirm the Generate passphrase before generating.');
+      return;
+    }
+    if (!seedForgeMarginalAcknowledged()) {
+      setSeedForgeStatus('error', 'Generation paused: review the marginal Entropy Health warning and acknowledge it before continuing.');
+      return;
+    }
+    var targetBits;
+    var mixed = null;
+    var language = seedForgeLanguage ? seedForgeLanguage.value : 'english';
+    var usingPendingMix = Boolean(explicitMixed);
+    try {
+      targetBits = seedForgeTargetBits();
+      if (usingPendingMix) {
+        if (!pendingSeedForgeMix
+          || pendingSeedForgeMixTargetBits !== targetBits
+          || explicitMixed !== pendingSeedForgeMix
+          || explicitMixed.length !== targetBits / 8) {
+          throw new Error('The mixed bytes no longer match the selected Seed Forge size; refusing to reuse them. Mix again.');
+        }
+        setSeedForgeStatus('pending', 'Using the exact mixed bytes from Entropy Lab once inside the sealed realm...');
+        mixed = new Uint8Array(explicitMixed);
+      } else {
+        setSeedForgeStatus('pending', 'Preparing fresh CSPRNG bytes and mixing entropy inside the sealed realm...');
+        ensureSeedForgeCsprng(targetBits);
+        mixed = entropyLab.mix(entropySession, targetBits);
+      }
+      generatedLanguage = language;
+      generatedMnemonic = seedForge.entropyToMnemonic(mixed, language);
+      renderGeneratedPhrase(generatedMnemonic);
+      if (!refreshGeneratedDerivationAndControls()) {
+        throw new Error('Seed derivation did not complete; refusing to finish generation.');
+      }
+      setSeedForgeStatus('ready', 'Generated a ' + seedForge.splitMnemonic(generatedMnemonic).length + '-word BIP-39 phrase. Verify the written backup before trusting it.');
+      if (usingPendingMix && consumePendingMix) {
+        clearPendingSeedForgeMix();
+      }
+      updateEntropyLabControls({ preserveOutput: usingPendingMix && !consumePendingMix });
+    } catch (error) {
+      setSeedForgeStatus('error', 'Seed generation failed closed: ' + error.message);
+      updateEntropyLabControls({ preserveOutput: usingPendingMix });
+    } finally {
+      zeroBytes(mixed);
+    }
+  }
+
+  function wireSeedForge() {
+    if (!seedForge) {
+      return;
+    }
+    if (seedForgeLanguage) {
+      seedForgeLanguage.textContent = '';
+      seedForge.languages.forEach(function (language) {
+        var option = document.createElement('option');
+        option.value = language.id;
+        option.textContent = language.label;
+        seedForgeLanguage.appendChild(option);
+      });
+      seedForgeLanguage.value = 'english';
+    }
+    if (seedForgeWordFields) {
+      seedForgeWordFields.textContent = '';
+      for (var index = 0; index < 24; index += 1) {
+        var field = document.createElement('div');
+        field.className = 'cold-seed-forge-word-field';
+        field.setAttribute('data-state', 'empty');
+        var label = document.createElement('label');
+        label.textContent = 'Word ' + String(index + 1);
+        var input = document.createElement('input');
+        input.type = 'password';
+        input.autocomplete = 'off';
+        input.spellcheck = false;
+        input.setAttribute('autocorrect', 'off');
+        input.setAttribute('autocapitalize', 'off');
+        input.setAttribute('aria-label', 'Seed word ' + String(index + 1));
+        input.disabled = true;
+        var status = document.createElement('span');
+        status.className = 'cold-seed-forge-word-status';
+        status.textContent = 'Empty';
+        field.appendChild(label);
+        field.appendChild(input);
+        field.appendChild(status);
+        seedForgeWordFields.appendChild(field);
+        seedForgeWordInputs.push(input);
+        input.addEventListener('input', function () {
+          validationPhraseText = validationPhraseFromFields();
+          if (seedForgeMnemonicInput) {
+            seedForgeMnemonicInput.value = validationPhraseText;
+          }
+          updateValidationStatus();
+        });
+      }
+    }
+    if (seedForgeTarget) {
+      seedForgeTarget.addEventListener('change', function () {
+        if (entropyTargetSelect) {
+          entropyTargetSelect.value = seedForgeTarget.value;
+        }
+        updateEntropyLabControls();
+      });
+    }
+    if (seedForgeLanguage) {
+      seedForgeLanguage.addEventListener('change', function () {
+        updateValidationStatus();
+      });
+    }
+    if (seedForgeGenerateButton) {
+      seedForgeGenerateButton.addEventListener('click', function () {
+        generateSeedPhrase();
+      });
+    }
+    if (seedForgeRevealButton) {
+      seedForgeRevealButton.addEventListener('click', function () {
+        if (generatedRevealed) {
+          remaskGeneratedPhrase();
+        } else {
+          revealGeneratedPhrase();
+        }
+      });
+    }
+    if (seedForgeGeneratedSeedReveal) {
+      seedForgeGeneratedSeedReveal.addEventListener('click', function () {
+        if (generatedSeedRevealed) {
+          remaskGeneratedSeed();
+        } else {
+          revealGeneratedSeed();
+        }
+      });
+    }
+    if (seedForgeValidationSeedReveal) {
+      seedForgeValidationSeedReveal.addEventListener('click', function () {
+        if (validationSeedRevealed) {
+          remaskValidationSeed();
+        } else {
+          revealValidationSeed();
+        }
+      });
+    }
+    if (seedForgeGeneratedPassphrase) {
+      seedForgeGeneratedPassphrase.addEventListener('input', function () {
+        generatedPassphrasePairValid();
+        refreshGeneratedDerivationAndControls();
+      });
+    }
+    if (seedForgeGeneratedPassphraseConfirm) {
+      seedForgeGeneratedPassphraseConfirm.addEventListener('input', function () {
+        generatedPassphrasePairValid();
+        refreshGeneratedDerivationAndControls();
+      });
+    }
+    if (seedForgeValidationPassphrase) {
+      seedForgeValidationPassphrase.addEventListener('input', function () {
+        validationPassphrasePairValid();
+        refreshValidationDerivationAndControls();
+      });
+    }
+    if (seedForgeValidationPassphraseConfirm) {
+      seedForgeValidationPassphraseConfirm.addEventListener('input', function () {
+        validationPassphrasePairValid();
+        refreshValidationDerivationAndControls();
+      });
+    }
+    if (seedForgeMnemonicInput) {
+      seedForgeMnemonicInput.addEventListener('input', function () {
+        validationPhraseText = seedForgeMnemonicInput.value;
+        populateValidationFields(validationPhraseText);
+        updateValidationStatus();
+      });
+    }
+    if (seedForgeValidateButton) {
+      seedForgeValidateButton.addEventListener('click', function () {
+        updateValidationStatus();
+      });
+    }
+    updateSeedForgeControls();
   }
 
   function setSessionEvidence(state) {
@@ -1469,6 +2270,7 @@ __COLDBOX_CAPABILITIES__
   }
 
   function clearVaultSession(clearPending) {
+    clearSeedForgeSession();
     if (currentVaultSession && typeof currentVaultSession.close === 'function') {
       currentVaultSession.close();
     }
@@ -2140,7 +2942,7 @@ __COLDBOX_CAPABILITIES__
     messagePort.postMessage(readyMessage);
   }
 
-  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer || !vaultLayer) {
+  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer || !vaultLayer || !entropyLab || !seedForge) {
     return;
   }
 
@@ -2329,6 +3131,7 @@ __COLDBOX_CAPABILITIES__
   }
 
   installThrowContract();
+  wireSeedForge();
   wireEntropyLab();
   window.addEventListener('message', handleGlobalMessage);
   document.documentElement.setAttribute('data-cold-state', 'checking');
