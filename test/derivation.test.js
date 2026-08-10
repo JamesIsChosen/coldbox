@@ -355,6 +355,19 @@ test('EVM and arbitrary-path derivation reject unsafe public operations', () => 
   } finally {
     root.wipePrivateData();
   }
+  const nonHardenedAccount = derivation.deriveNode(
+    BIP32_VECTOR_1_SEED,
+    "m/44'/60'/0",
+    { network: 'mainnet', scriptType: 'p2pkh' }
+  );
+  try {
+    assert.throws(
+      () => derivation.deriveEvmFromXpub(nonHardenedAccount.publicExtendedKey, { count: 1 }),
+      /depth-3 hardened account-level/i
+    );
+  } finally {
+    nonHardenedAccount.wipePrivateData();
+  }
   assert.throws(
     () => derivation.deriveEvmFromXpub('tpub-not-evm', { count: 1 }),
     /mainnet xpub/i

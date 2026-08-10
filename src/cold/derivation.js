@@ -658,8 +658,8 @@
         xpub,
         versionBytes(NETWORKS.mainnet, 'p2pkh')
       );
-      if (accountNode.depth !== EVM_ACCOUNT_DEPTH) {
-        throw new TypeError('EVM watch-only derivation requires an account-level xpub.');
+      if (accountNode.depth !== EVM_ACCOUNT_DEPTH || accountNode.index < HARDENED_OFFSET) {
+        throw new TypeError('EVM watch-only derivation requires a depth-3 hardened account-level xpub.');
       }
       var accountFingerprint = formatFingerprint(accountNode.fingerprint);
       var account = accountNode.index >= HARDENED_OFFSET

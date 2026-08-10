@@ -18,7 +18,7 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 
 - **Cold-only EVM derivation.** The sealed realm now derives the standard `m/44'/60'/account'/change/index` EVM paths, formats Keccak-256 addresses with EIP-55 checksums, and supports account-level xpub watch-only batches.
 - **Generic recovery paths.** Coldbox exposes a strict arbitrary BIP-32 path projection with extended keys, raw keys, and compressed WIF for cold-local recovery tooling, plus non-hardened public derivation from an extended public key.
-- **Independent vector coverage.** Official ERC-55 examples and the ethereumjs HD-key fixture cover checksum and EVM derivation behavior; malformed address, hardened watch-only, account-depth, and batch-limit negatives fail closed. See [ADR-0030](docs/05-development/adr/0030-cold-only-evm-and-arbitrary-path-derivation.md).
+- **Independent vector coverage.** Official ERC-55 examples and the ethereumjs HD-key fixture cover checksum and EVM derivation behavior; malformed address, depth-3 non-hardened watch-only, account-depth, and batch-limit negatives fail closed. See [ADR-0030](docs/05-development/adr/0030-cold-only-evm-and-arbitrary-path-derivation.md).
 
 ### Added — P1.4 Bitcoin derivation engine (2026-08-10)
 
