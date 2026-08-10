@@ -203,6 +203,20 @@
     return output;
   }
 
+  function paddedJsonAtLength(value, length) {
+    var content = jsonBytes(value);
+    if (content.length + 4 > length || length % PADDING_BLOCK !== 0) {
+      throw serializationError();
+    }
+    var output = new Uint8Array(length);
+    writeUint32(output, 0, content.length);
+    output.set(content, 4);
+    if (length > content.length + 4) {
+      output.set(cryptoLayer.randomBytes(length - content.length - 4), content.length + 4);
+    }
+    return output;
+  }
+
   function parsePaddedJson(value) {
     if (!value || value.length === 0 || value.length % PADDING_BLOCK !== 0) {
       throw authenticationError();
@@ -732,6 +746,12 @@
       return closed || !state.publicData ? null : clonePublicData(state.publicData);
     }
 
+    function getSecretData() {
+      return closed || state.mode !== 'offline' || !state.secretData
+        ? null
+        : clonePublicData(state.secretData);
+    }
+
     function replacePublicData(publicData) {
       if (closed || saving || !publicData
         || Object.prototype.toString.call(publicData) !== '[object Object]') {
@@ -757,6 +777,25 @@
       return getPublicData();
     }
 
+    function replaceSecretData(secretData) {
+      if (closed || saving || state.mode !== 'offline' || !state.secretKey
+        || !state.secretPlain || state.secretLength === 0
+        || !secretData || Object.prototype.toString.call(secretData) !== '[object Object]') {
+        throw serializationError();
+      }
+      requireVaultHealth(serializationError);
+      if (networkState() !== state.mode) {
+        close();
+        throw serializationError();
+      }
+      var nextSecretData = clonePublicData(secretData);
+      var nextSecretPlain = paddedJsonAtLength(nextSecretData, state.secretPlain.length);
+      zeroBytes(state.secretPlain);
+      state.secretData = nextSecretData;
+      state.secretPlain = nextSecretPlain;
+      return getSecretData();
+    }
+
     function close() {
       if (closed) {
         return;
@@ -773,6 +812,7 @@
       state.publicKey = null;
       state.secretKey = null;
       state.publicData = null;
+      state.secretData = null;
       state.publicPlain = null;
       state.secretPlain = null;
       state.secretNonce = null;
@@ -863,6 +903,8 @@
       get publicData() { return getPublicData(); },
       getPublicData: getPublicData,
       replacePublicData: replacePublicData,
+      getSecretData: getSecretData,
+      replaceSecretData: replaceSecretData,
       save: save,
       close: close
     });
@@ -879,6 +921,7 @@
     var secretPlain = null;
     var secretNonce = null;
     var secretCiphertext = null;
+    var secretData = null;
     var session = null;
     try {
       var resolvedMode = resolveMode(mode);
@@ -911,7 +954,7 @@
       if (resolvedMode === 'offline' && header.secretLength > 0) {
         secretKey = hkdfSubkey(dek, 'cbx/secret/v1');
         secretPlain = await aesGcm('decrypt', secretKey, secretNonce, secretCiphertext, headerBytes);
-        parsePaddedJson(secretPlain);
+        secretData = parsePaddedJson(secretPlain);
       }
 
       requireVaultHealth(authenticationError);
@@ -925,6 +968,7 @@
         headerBytes: headerBytes,
         wrappedBlock: wrappedBlock,
         publicData: publicData,
+        secretData: secretData,
         publicPlain: publicPlain,
         publicKey: publicKey,
         secretLength: header.secretLength,
@@ -940,6 +984,7 @@
       publicPlain = null;
       secretKey = null;
       secretPlain = null;
+      secretData = null;
       secretNonce = null;
       secretCiphertext = null;
       return session;

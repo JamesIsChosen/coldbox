@@ -204,7 +204,8 @@ Nothing above this phase is safe to build until the container is trustworthy.
 - [~] P1.4 Derivation engine: BIP-32 core plus Bitcoin script types
 - [~] P1.5 Derivation: EVM and generic arbitrary-path mode
 - [~] P1.6 Registry CRUD: wallets, accounts, addresses
-- [ ] P1.7 Notes, tags, and concealment levels
+- [~] P1.7 Notes, tags, and concealment levels
+  **Current state (recorded 2026-08-10):** public Markdown notes, canonical shared tags, registry search, reversible hidden flags, persisted privacy blur, and session-scoped hidden-record reveal are implemented. Public projection validation rejects secret notes; the re-authentication phrase stays inside the cold realm. Evidence is in `packets/p1.7-notes-tags-concealment.md`; the marker remains `[~]` for independent review.
 - [ ] P1.8 Device registry
 - [ ] P1.9 Verification workflows: fingerprint, receive address, xpub, backup, passphrase ⚠️ *implementable by agent; final validation needs real hardware wallets*
 - [ ] P1.10 QR generation: addresses, SeedQR, Compact SeedQR, printable cards

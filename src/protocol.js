@@ -341,6 +341,16 @@
     })
   });
 
+  var NOTE_FIELD_RULES = Object.freeze({
+    id: 'uuid',
+    title: 'text:256',
+    body: 'markdown:20000',
+    visibility: 'public-visibility',
+    linkedIds: 'uuids:64',
+    tags: 'tags',
+    hidden: 'boolean'
+  });
+
   var REGISTRY_REQUIRED_FIELDS = Object.freeze({
     wallets: Object.freeze(['id']),
     accounts: Object.freeze(['id', 'walletId']),
@@ -356,7 +366,24 @@
   }
 
   function cleanPublicTags(value) {
-    return cleanStringArray(value, 32, 64);
+    if (!Array.isArray(value) || value.length > 32) {
+      return null;
+    }
+    var result = [];
+    for (var index = 0; index < value.length; index += 1) {
+      if (typeof value[index] !== 'string') {
+        return null;
+      }
+      var tag = value[index].trim().replace(/^#+/, '').toLowerCase();
+      if (!tag || tag.length > 64 || isSecretContent(tag)
+        || !/^[\p{L}\p{N}_:-]+$/u.test(tag)) {
+        return null;
+      }
+      if (result.indexOf(tag) === -1) {
+        result.push(tag);
+      }
+    }
+    return result;
   }
 
   function cleanPublicXpubs(value) {
@@ -387,6 +414,13 @@
       result.push(uuid);
     }
     return result;
+  }
+
+  function cleanLimitedPublicUuids(value, maximumItems) {
+    if (!Array.isArray(value) || value.length > maximumItems) {
+      return null;
+    }
+    return cleanPublicUuids(value);
   }
 
   function cleanBalanceSnapshot(value) {
@@ -444,6 +478,15 @@
     if (rule === 'tags') {
       return cleanPublicTags(value);
     }
+    if (rule === 'markdown:20000') {
+      return cleanText(value, 20000);
+    }
+    if (rule === 'public-visibility') {
+      return cleanEnum(value, makeSet(['public']), 16);
+    }
+    if (rule.indexOf('uuids:') === 0) {
+      return cleanLimitedPublicUuids(value, Number(rule.slice(6)));
+    }
     if (rule === 'balanceSnapshot') {
       return cleanBalanceSnapshot(value);
     }
@@ -451,6 +494,53 @@
       return cleanText(value, Number(rule.slice(5)));
     }
     return null;
+  }
+
+  function cleanNoteRecord(value) {
+    if (!isRecord(value)) {
+      return null;
+    }
+    var required = ['id', 'title', 'body', 'visibility'];
+    for (var requiredIndex = 0; requiredIndex < required.length; requiredIndex += 1) {
+      if (!hasOwn(value, required[requiredIndex])) {
+        return null;
+      }
+    }
+    var result = {};
+    var keys = Object.keys(value);
+    for (var index = 0; index < keys.length; index += 1) {
+      var key = keys[index];
+      if (hasOwn(SECRET_KEYS, key)) {
+        return null;
+      }
+      if (!hasOwn(NOTE_FIELD_RULES, key)) {
+        if (containsText(value[key])) {
+          return null;
+        }
+        continue;
+      }
+      var cleaned = cleanRegistryField(value[key], NOTE_FIELD_RULES[key]);
+      if (cleaned === null) {
+        return null;
+      }
+      result[key] = cleaned;
+    }
+    return result;
+  }
+
+  function cleanNoteRecordArray(value) {
+    if (!Array.isArray(value) || value.length > 10000) {
+      return null;
+    }
+    var result = [];
+    for (var index = 0; index < value.length; index += 1) {
+      var note = cleanNoteRecord(value[index]);
+      if (note === null) {
+        return null;
+      }
+      result.push(note);
+    }
+    return result;
   }
 
   function cleanRegistryRecord(value, collection) {
@@ -605,7 +695,9 @@
       }
       var cleaned = hasOwn(REGISTRY_FIELD_RULES, collection)
         ? cleanRegistryRecordArray(value[collection], collection)
-        : cleanPublicRecordArray(value[collection]);
+        : (collection === 'notes'
+          ? cleanNoteRecordArray(value[collection])
+          : cleanPublicRecordArray(value[collection]));
       if (cleaned === null) {
         return null;
       }
@@ -680,6 +772,20 @@
     }
     var publicCompartment = cleanPublicCompartment(value.publicCompartment);
     return publicCompartment === null ? null : { publicCompartment: publicCompartment };
+  }
+
+  function cleanConcealmentRevealed(value) {
+    if (!isRecord(value) || typeof value.revealed !== 'boolean') {
+      return null;
+    }
+    return { revealed: value.revealed };
+  }
+
+  function cleanSecretDataUpdated(value) {
+    if (!isRecord(value) || value.dirty !== true) {
+      return null;
+    }
+    return { dirty: true };
   }
 
   function utf8Length(value) {
@@ -789,6 +895,7 @@
     'derive.request': cleanDeriveRequest,
     'publicData.request': cleanPublicDataRequest,
     'publicData.replace': cleanPublicDataReplace,
+    'concealment.reveal': cleanStrictEmptyPayload,
     'ui.navigate': cleanUiNavigate
   });
   var COLD_TO_WARM = Object.freeze({
@@ -798,6 +905,8 @@
     'vault.lockRequest': cleanStrictEmptyPayload,
     'derive.result': cleanDeriveResult,
     'publicData.updated': cleanVaultOpened,
+    'concealment.revealed': cleanConcealmentRevealed,
+    'secretData.updated': cleanSecretDataUpdated,
     status: cleanStatus,
     error: cleanError,
     'panic.hide': cleanEmptyPayload

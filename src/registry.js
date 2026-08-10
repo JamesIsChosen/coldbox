@@ -2,11 +2,12 @@
   'use strict';
 
   var protocol = global.__coldboxProtocol;
-  var COLLECTIONS = Object.freeze(['wallets', 'accounts', 'addresses']);
+  var COLLECTIONS = Object.freeze(['wallets', 'accounts', 'addresses', 'notes']);
   var REQUIRED_FIELDS = Object.freeze({
     wallets: Object.freeze(['id']),
     accounts: Object.freeze(['id', 'walletId']),
-    addresses: Object.freeze(['id', 'accountId', 'index', 'address'])
+    addresses: Object.freeze(['id', 'accountId', 'index', 'address']),
+    notes: Object.freeze(['id', 'title', 'body', 'visibility'])
   });
   var ALLOWED_FIELDS = Object.freeze({
     wallets: Object.freeze([
@@ -19,6 +20,9 @@
     addresses: Object.freeze([
       'id', 'accountId', 'index', 'address', 'label', 'isChange', 'used',
       'balanceSnapshot', 'notes', 'tags', 'hidden'
+    ]),
+    notes: Object.freeze([
+      'id', 'title', 'body', 'visibility', 'linkedIds', 'tags', 'hidden'
     ])
   });
   var RELATION_PLACEHOLDER_ID = '550e8400-e29b-41d4-a716-446655440000';
@@ -191,6 +195,20 @@
     }
   }
 
+  function requireLinkedRecords(state, linkedIds) {
+    if (linkedIds === undefined) {
+      return;
+    }
+    linkedIds.forEach(function (id) {
+      var found = COLLECTIONS.some(function (collection) {
+        return collection !== 'notes' && Boolean(findRecord(state, collection, id));
+      });
+      if (!found) {
+        throw new Error('The note relationship does not exist.');
+      }
+    });
+  }
+
   function createStore(publicCompartment) {
     var source = publicCompartment || {};
     validateRelationships(source);
@@ -252,6 +270,9 @@
       if (collection === 'addresses') {
         requireRelation(state, 'accounts', record.accountId);
       }
+      if (collection === 'notes') {
+        requireLinkedRecords(state, record.linkedIds);
+      }
       state[collection].push(record);
       return clone(record);
     }
@@ -270,6 +291,9 @@
       }
       if (collection === 'addresses') {
         requireRelation(state, 'accounts', record.accountId);
+      }
+      if (collection === 'notes') {
+        requireLinkedRecords(state, record.linkedIds);
       }
       state[collection][state[collection].indexOf(existing)] = record;
       return clone(record);
@@ -293,7 +317,39 @@
       deleteAccount: function (id) { return softDelete('accounts', id); },
       createAddress: function (value) { return insert('addresses', value); },
       updateAddress: function (id, value, options) { return update('addresses', id, value, options); },
-      deleteAddress: function (id) { return softDelete('addresses', id); }
+      deleteAddress: function (id) { return softDelete('addresses', id); },
+      createNote: function (value) { return insert('notes', value); },
+      updateNote: function (id, value, options) { return update('notes', id, value, options); },
+      deleteNote: function (id) { return softDelete('notes', id); },
+      search: function (query, includeHidden) {
+        var needle = typeof query === 'string' ? query.trim().toLowerCase() : '';
+        if (!needle) {
+          return [];
+        }
+        var result = [];
+        COLLECTIONS.forEach(function (collection) {
+          list(collection, includeHidden).forEach(function (record) {
+            var haystack = JSON.stringify(record).toLowerCase();
+            if (haystack.indexOf(needle) !== -1) {
+              result.push({ collection: collection, record: record });
+            }
+          });
+        });
+        return result;
+      },
+      tags: function (includeHidden) {
+        var result = [];
+        COLLECTIONS.forEach(function (collection) {
+          list(collection, includeHidden).forEach(function (record) {
+            (record.tags || []).forEach(function (tag) {
+              if (result.indexOf(tag) === -1) {
+                result.push(tag);
+              }
+            });
+          });
+        });
+        return result.sort();
+      }
     });
   }
 

@@ -165,6 +165,34 @@ Registry records are public vault metadata. A Wallet links to Accounts, and an A
 P1.6 persists Wallet, Account, and Address CRUD through the typed `publicData.replace` / `publicData.updated` channel pair. The protocol applies collection-specific schemas, bounds text, rejects secret-shaped values, and the cold session refuses a public replacement that changes the authenticated Vault ID. See [architecture.md](../01-spec/architecture.md) and [ADR-0031](../05-development/adr/0031-public-registry-mutation-boundary.md).
 :::
 
+P1.7 adds public Markdown notes and shared tags to those records. The Registry
+form says **public note** deliberately: a note marked `secret` belongs in the
+sealed realm and is rejected by the public projection rather than being hidden
+with CSS. Hidden records are soft-hidden from lists, search, and future totals;
+revealing them for the current session asks you to re-enter the vault phrase in
+the sealed realm. Privacy blur is a screen-privacy aid, not a cryptographic
+boundary, and Panic hide still locks the vault immediately.
+
+::: plain
+Add a note when a label is not enough. Public notes stay visible with your
+wallet records; tags help you find related records. If a note would reveal a
+passphrase hint or another secret, keep it in the sealed realm instead.
+:::
+
+::: working
+Tags are shared across wallets, accounts, addresses, and notes. Search the
+Registry to filter them. Hiding a record is reversible, but it keeps the record
+out of the normal view until you re-enter the vault phrase inside the sealed
+realm for this session.
+:::
+
+::: technical
+The public protocol accepts bounded `visibility: public` Note records only.
+`concealment.reveal` carries an empty request; the cold realm re-authenticates
+against the encrypted session and returns only `concealment.revealed { revealed
+}`. See [ADR-0032](../05-development/adr/0032-notes-tags-and-concealment.md).
+:::
+
 Do **not** store the seed itself unless you've decided that's right for this wallet — it's off by default for good reason.
 
 Then Backup Lab → record where your metal backup lives, and set a verification reminder.

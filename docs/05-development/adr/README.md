@@ -39,6 +39,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0029](0029-cold-only-bitcoin-derivation-engine.md) | Cold-only Bitcoin BIP-32 derivation engine and script encodings | Accepted |
 | [0030](0030-cold-only-evm-and-arbitrary-path-derivation.md) | Cold-only EVM and generic arbitrary-path derivation | Accepted |
 | [0031](0031-public-registry-mutation-boundary.md) | Public registry mutations use a typed warm-to-cold replacement | Accepted |
+| [0032](0032-notes-tags-and-concealment.md) | Public notes stay public-only; secret notes stay cold-local; concealment is session-scoped | Accepted |
 
 ## When to write one
 
