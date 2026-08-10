@@ -14,6 +14,11 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
+### Added — P1.8 device registry (2026-08-10)
+
+- **Public device inventory.** The Devices workspace records bounded hardware-wallet metadata, lifecycle status, purchase/tamper/PIN context, public seed fingerprints, location, notes, and a passphrase-use boolean without connecting to or signing with hardware.
+- **Typed public persistence.** Device CRUD, search, reversible hiding, secure UUID generation, lock teardown, and invalid-field/secret-shaped rejection use the existing public registry mutation boundary. See [ADR-0033](docs/05-development/adr/0033-device-registry.md).
+
 ### Added — P1.7 notes, tags, and concealment (2026-08-10)
 
 - **Public notes and shared tags.** Wallets, accounts, addresses, and standalone public Note records now carry bounded Markdown notes, canonical shared tags, and reversible hidden flags. Search filters the public registry without sending text outside the validated projection.
