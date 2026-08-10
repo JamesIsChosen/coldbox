@@ -31,6 +31,11 @@ __COLDBOX_COLD_STYLES__
       <p id="cold-vault-status" data-state="locked" role="status" aria-live="polite">Vault is locked. Unlocking stays in this sealed realm.</p>
       <label id="cold-vault-passphrase-label" for="cold-vault-passphrase">Unlock phrase (never leaves this realm)</label>
       <input id="cold-vault-passphrase" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+      <section id="cold-vault-passphrase-health" data-mode="unlock" data-state="not-estimated" hidden aria-labelledby="cold-vault-passphrase-health-title">
+        <p class="eyebrow" id="cold-vault-passphrase-health-title">Entropy Health / vault creation</p>
+        <div class="cold-entropy-strength-row"><span>Human-chosen phrase strength</span><strong id="cold-vault-passphrase-health-state">Not estimated</strong></div>
+        <p id="cold-vault-passphrase-health-copy">Human-chosen text has an unknown entropy range; the sealed realm does not invent a numeric score from spelling or length. Use six Diceware words or more for a new vault.</p>
+      </section>
       <div id="cold-vault-create-confirmation" hidden>
         <label id="cold-vault-passphrase-confirm-label" for="cold-vault-passphrase-confirm">Confirm new unlock phrase (creation only)</label>
         <input id="cold-vault-passphrase-confirm" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" aria-describedby="cold-vault-create-confirm-help cold-vault-create-error" disabled>
@@ -70,9 +75,9 @@ __COLDBOX_COLD_STYLES__
         <div class="cold-entropy-strength-row cold-entropy-strength-secondary"><span>Fresh CSPRNG available</span><strong id="cold-entropy-csprng-strength">0 bits</strong></div>
         <p id="cold-entropy-strength-help">Your device RNG can provide the full normal output strength. Independent physical/manual entropy determines how much protection remains if the device RNG is completely compromised. Full two-source protection appears only when the independent contribution reaches the selected output size.</p>
       </div>
-      <section id="cold-entropy-health" aria-labelledby="cold-entropy-health-title" data-state="insufficient" data-source="dice-base6">
+      <section id="cold-entropy-health" aria-labelledby="cold-entropy-health-title" data-state="insufficient" data-source="dice-base6" data-enforcement="advisory">
         <h2 id="cold-entropy-health-title">Entropy Health / Bias Analyzer</h2>
-        <p id="cold-entropy-health-help">This diagnostic uses physical/manual observations only. It reports frequency, chi-square, runs, serial correlation, and suspicious patterns; device-RNG simulations are excluded from the evidence. A passing test cannot prove that a platform RNG is sound.</p>
+        <p id="cold-entropy-health-help">This advisory diagnostic uses physical/manual observations only. It reports frequency, chi-square, runs, serial correlation, and suspicious patterns; device-RNG simulations are excluded from the evidence. A passing test cannot prove that a platform RNG is sound, and P1.2 does not block Entropy Lab mixing.</p>
         <label id="cold-entropy-health-source-label" for="cold-entropy-health-source">Source to analyze</label>
         <select id="cold-entropy-health-source" disabled>
           <option value="dice-base6">Dice — base-6</option>
@@ -96,7 +101,7 @@ __COLDBOX_COLD_STYLES__
           <tbody id="cold-entropy-health-frequency-body"><tr><td colspan="3">No physical/manual samples yet.</td></tr></tbody>
         </table>
         <p id="cold-entropy-health-patterns" aria-live="polite">No pattern warnings yet.</p>
-        <p id="cold-entropy-health-disclosure">Warnings are prompts to inspect the recording, not proof of a broken source. Insufficient sample size leaves a test unavailable. The analyzer never replaces the CSPRNG or the integer independent-source accounting.</p>
+        <p id="cold-entropy-health-disclosure">Warnings are prompts to inspect the recording, not proof of a broken source. Insufficient sample size leaves a test unavailable. P1.2 is advisory: it does not block Entropy Lab mixing or ask for acknowledgement. Seed Forge (P1.3) owns any future generation gate.</p>
       </section>
       <div id="cold-entropy-lab-inputs">
         <fieldset id="cold-entropy-dice">
@@ -188,7 +193,7 @@ __COLDBOX_COLD_STYLES__
         <p id="cold-entropy-mix-output-label" hidden>Mixed entropy (hex). This is raw key material — treat it like a seed.</p>
         <output id="cold-entropy-mix-output" hidden></output>
       </div>
-      <p id="cold-entropy-lab-note">Seed Forge (P1.3), which turns this into a BIP-39 mnemonic, has not been built yet. The mixed bytes stay in this sealed realm and are not carried anywhere.</p>
+      <p id="cold-entropy-lab-note">Seed Forge (P1.3), which turns this into a BIP-39 mnemonic, has not been built yet. P1.2 diagnostics are advisory; Seed Forge owns any future generation block or acknowledgement. The mixed bytes stay in this sealed realm and are not carried anywhere.</p>
     </section>
   </main>
   <script>

@@ -39,9 +39,7 @@ The meter reports **min-entropy**, and the distinction is not academic.
 **Shannon entropy** measures average information content across all outcomes.
 **Min-entropy** measures the probability of the *single most likely* outcome.
 
-An attacker doesn't guess averagely — they guess the most likely candidate first. For a uniform source the two measures agree. For a biased source, Shannon entropy flatters it and min-entropy tells the truth.
-
-Both are displayed. Min-entropy drives the bar.
+An attacker doesn't guess averagely — they guess the most likely candidate first. For a uniform source the two measures agree. For a biased source, Shannon entropy flatters it and min-entropy tells the truth. Entropy Health displays the claimed source-model bits and measured min-entropy; Shannon entropy is explanatory only and is not a displayed diagnostic.
 
 ### What the Bias Analyzer can and cannot establish
 
@@ -55,12 +53,12 @@ The evidence panel reports Pearson chi-square uniformity with an upper-tail p-va
 
 | State | Meaning | What happens |
 |---|---|---|
-| 🔴 **Insufficient** | Below the target for your seed length | **Generation blocked.** No override |
-| 🟠 **Marginal** | Enough quantity, but bias detected | Warns; requires explicit acknowledgement |
-| 🟡 **Adequate** | ≥ the selected target measured | Proceeds |
-| 🟢 **Strong** | ≥ 256 bits measured | Proceeds |
+| 🔴 **Insufficient** | Measured below the selected target | Advisory P1.2 label; future Seed Forge blocks generation below target |
+| 🟠 **Marginal** | Measured reaches the selected target and chi-square flags bias | Advisory P1.2 warning; future Seed Forge owns any acknowledgement |
+| 🟡 **Adequate** | Measured reaches the selected target, no chi-square flag, and is below 256 bits | Advisory P1.2 label |
+| 🟢 **Strong** | Measured reaches 256 bits | Advisory P1.2 label |
 
-**Insufficient cannot be overridden.** There is no legitimate reason to generate a seed from too little entropy, so the app doesn't offer a way to. The override exists only for detected bias, where you may have a reason to accept it — a slightly uneven die across a large sample, for instance.
+The thresholds are ordered and non-overlapping. P1.2 does not block Entropy Lab's Mix entropy control or require acknowledgement; it reports evidence while the Seed Forge (P1.3) generation boundary is not yet built. When Seed Forge lands, below-target generation remains a hard block and any marginal-state acknowledgement belongs there.
 
 ---
 
@@ -159,6 +157,8 @@ Entropy estimation for human-chosen text is fundamentally heuristic. Any tool di
 `Tr0ub4dor&3` looks strong to a naive meter and is weak in practice. `correct horse battery staple` looks weaker and is stronger. Meters routinely get both backwards.
 
 **Use Diceware instead.** Its entropy is exactly computable because the words are chosen by a physical process from a known list. Six EFF Large words gives 77.5 bits and is far easier to remember than a comparable random string.
+
+During vault creation, the sealed realm shows this guidance live as `Unknown range — no numeric estimate`. It is hidden during ordinary unlock. The panel never infers entropy from spelling or character count.
 
 ---
 

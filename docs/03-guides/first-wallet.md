@@ -58,12 +58,12 @@ The exact claimed-bit and observed-estimate definitions, including the finite-sa
 
 | State | Meaning |
 |---|---|
-| 🔴 Insufficient | Blocked. Keep rolling |
-| 🟠 Marginal | Enough rolls, bias detected. Investigate before overriding |
-| 🟡 Adequate | ≥128 bits. Fine |
+| 🔴 Insufficient | Below the selected target. P1.2 advisory; future Seed Forge blocks generation |
+| 🟠 Marginal | Target reached but chi-square flags bias. P1.2 advisory; future Seed Forge owns acknowledgement |
+| 🟡 Adequate | Reaches the selected target without a chi-square flag, below 256 bits |
 | 🟢 Strong | ≥256 bits |
 
-**Insufficient cannot be overridden.** There's no legitimate reason to generate a seed from too little entropy.
+These are P1.2 Entropy Lab labels, not a current Mix entropy gate. Seed Forge (P1.3) is the future generation boundary: it will block below-target generation and decide how a marginal acknowledgement is recorded. There is no Seed Forge path yet.
 
 If you see pattern warnings — long runs, sequences, alternation — check your recording. Real dice do produce runs, so it's a prompt to look, not an accusation. See [entropy and strength](../04-reference/entropy-and-strength.md).
 
@@ -97,7 +97,7 @@ An optional extra secret creating a completely separate wallet.
 The passphrase is used verbatim (after UTF-8 NFKD normalization) as PBKDF2-HMAC-SHA512 salt material alongside the mnemonic — see "Passphrase" in the [glossary](../00-overview/glossary.md) — so there is no checksum or verification step analogous to BIP-39's word-list checksum; a one-character deviation silently derives a different, internally-valid seed.
 :::
 
-**If you use one:** generate it in Passphrase Studio (six Diceware words minimum), back it up as carefully as the seed but stored *separately*, and **verify the fingerprint** before sending anything.
+**If you use one:** generate it in Passphrase Studio (six Diceware words minimum), back it up as carefully as the seed but stored *separately*, and **verify the fingerprint** before sending anything. The vault-creation form repeats the human-chosen guidance live as an unknown range rather than inventing a numeric score; ordinary unlock does not show creation guidance.
 
 ---
 

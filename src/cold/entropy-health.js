@@ -266,6 +266,13 @@
     if (n1 === 0 || n2 === 0) {
       return unavailableRuns('one-symbol-only');
     }
+    // The cited NIST normal approximation is a large-sample treatment. Keep
+    // it unavailable until both projected symbol counts are strictly greater
+    // than 10; smaller samples need a critical-value table that this layer
+    // does not implement.
+    if (n1 <= 10 || n2 <= 10) {
+      return unavailableRuns('symbol-counts-too-small');
+    }
     // NIST's large-sample binary runs test assumes the observed proportion is
     // close enough to 1/2 for the normal approximation to be meaningful.
     var proportion = n1 / sampleCount;
@@ -439,7 +446,14 @@
       for (var start = 0; start + (2 * blockLength) <= values.length; start += 1) {
         // A repeated block warning is intended for copy/paste-like structure,
         // not a constant run already reported by the long-run detector.
-        if (values[start] === values[start + 1]) {
+        var blockIsConstant = true;
+        for (var blockIndex = 1; blockIndex < blockLength; blockIndex += 1) {
+          if (values[start + blockIndex] !== values[start]) {
+            blockIsConstant = false;
+            break;
+          }
+        }
+        if (blockIsConstant) {
           continue;
         }
         var matches = true;

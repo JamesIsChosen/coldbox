@@ -93,10 +93,10 @@ test('chi-square flags a strongly skewed source and refuses small expected count
 
 test('runs test follows the NIST binary formulation and detects extreme clustering', () => {
   const health = createHealth();
-  const alternating = Array.from({ length: 20 }, (_, index) => index % 2);
+  const alternating = Array.from({ length: 22 }, (_, index) => index % 2);
   const grouped = [
-    ...new Array(10).fill(0),
-    ...new Array(10).fill(1)
+    ...new Array(11).fill(0),
+    ...new Array(11).fill(1)
   ];
 
   const alternatingResult = health.analyze(alternating, {
@@ -111,12 +111,19 @@ test('runs test follows the NIST binary formulation and detects extreme clusteri
   });
 
   assert.equal(alternatingResult.runs.available, true);
-  assert.equal(alternatingResult.runs.runs, 20);
+  assert.equal(alternatingResult.runs.runs, 22);
   assert.equal(groupedResult.runs.runs, 2);
   assert.ok(alternatingResult.runs.pValue < 0.001);
   assert.ok(groupedResult.runs.pValue < 0.001);
   assert.equal(alternatingResult.runs.biasDetected, true);
   assert.equal(groupedResult.runs.biasDetected, true);
+
+  const belowLargeSample = health.analyze(
+    Array.from({ length: 20 }, (_, index) => index % 2),
+    { alphabetSize: 2, targetBits: 1, claimedBitsPerSymbol: 1 }
+  );
+  assert.equal(belowLargeSample.runs.available, false);
+  assert.equal(belowLargeSample.runs.reason, 'symbol-counts-too-small');
 });
 
 test('lag-one serial correlation uses the published autocorrelation definition', () => {
@@ -157,6 +164,39 @@ test('pattern warnings identify runs, sequences, alternation, and repeated block
     Array.from(result.patternWarnings, (warning) => warning.code),
     ['long-run', 'ascending-sequence', 'alternation', 'repeated-block']
   );
+
+  const repeatedBlockWithMatchingPrefix = health.analyze([0, 0, 1, 0, 0, 1], {
+    alphabetSize: 2,
+    targetBits: 1,
+    claimedBitsPerSymbol: 1
+  });
+  assert.ok(
+    repeatedBlockWithMatchingPrefix.patternWarnings.some(
+      (warning) => warning.code === 'repeated-block'
+    )
+  );
+});
+
+test('health states use the selected target without overlapping thresholds', () => {
+  const health = createHealth();
+  const balanced = Array.from({ length: 128 }, (_, index) => index % 2);
+  const expectedStates = new Map([
+    [128, 'adequate'],
+    [160, 'insufficient'],
+    [192, 'insufficient'],
+    [224, 'insufficient'],
+    [256, 'insufficient']
+  ]);
+
+  for (const [targetBits, expectedState] of expectedStates) {
+    const result = health.analyze(balanced, {
+      alphabetSize: 2,
+      targetBits,
+      claimedBitsPerSymbol: 1
+    });
+    assert.equal(result.measuredBits, 128);
+    assert.equal(result.state, expectedState, `target ${targetBits} must use the selected-target threshold`);
+  }
 });
 
 test('without-replacement sources do not pretend card frequencies are iid tests', () => {

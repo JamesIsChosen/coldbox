@@ -3,7 +3,7 @@
 **A single-file, portable crypto toolkit, wallet registry, and portfolio manager.**
 **Secrets are cryptographically incapable of reaching the network. Everything else works online.**
 
-Status: Draft for review. Phase 0 in progress.
+Status: Draft for review. Phase 1 is in progress; Phase 0 device-matrix sign-off remains human-required.
 Date: 2026-08-09 · Supersedes v0.4 · *"Coldbox" is a working name — see §22*
 
 ---
@@ -488,7 +488,7 @@ Scope: transaction, address, public key, input, output, and xpub labels. Coldbox
 
 A live strength indicator wherever a secret is created — seed phrases, vault passphrases, BIP-39 passphrases, and Diceware output. Present throughout collection, not as a verdict at the end.
 
-**It measures min-entropy, not Shannon entropy.** Shannon entropy describes average information content; **min-entropy describes the probability of the single most likely outcome**, which is what an attacker actually guesses first. For a biased source the two diverge, and only min-entropy answers "how hard is this to guess." Both are shown; min-entropy drives the bar.
+**It measures min-entropy, not Shannon entropy.** Shannon entropy describes average information content; **min-entropy describes the probability of the single most likely outcome**, which is what an attacker actually guesses first. For a biased source the two diverge, and only min-entropy answers "how hard is this to guess." Entropy Health shows claimed source-model bits and measured min-entropy; Shannon entropy is explanatory only and is not a displayed diagnostic.
 
 **Two numbers, always shown side by side:**
 
@@ -503,12 +503,12 @@ A gap between them is the entire point. Fifty rolls of a loaded die claim 129 bi
 
 | State | Threshold | Behaviour |
 |---|---|---|
-| 🔴 Insufficient | < target | Generation blocked |
-| 🟠 Marginal | ≥ target, bias detected (χ² p < 0.01) | Warns, requires explicit acknowledgement |
-| 🟡 Adequate | ≥ 128 bits measured | Proceeds |
-| 🟢 Strong | ≥ 256 bits measured | Proceeds |
+| 🔴 Insufficient | Measured < selected target | Advisory P1.2 label; the future Seed Forge generation path blocks below target |
+| 🟠 Marginal | Measured ≥ selected target and bias detected (χ² p < 0.01) | Advisory P1.2 warning; the future Seed Forge path owns any acknowledgement |
+| 🟡 Adequate | Measured ≥ selected target, no chi-square flag, and < 256 bits | Advisory P1.2 label |
+| 🟢 Strong | Measured ≥ 256 bits | Advisory P1.2 label |
 
-Targets: 128 bits for a 12-word seed, 256 for 24 words. **Blocking below target is a hard rule** — the override applies to detected *bias*, never to insufficient quantity, because there is no legitimate reason to generate a seed from too little entropy.
+Targets: 128 bits for a 12-word seed, 256 for 24 words. The thresholds are ordered and non-overlapping: the selected target is evaluated before the 256-bit strong threshold. P1.2 is advisory and does not block Entropy Lab's Mix entropy control or require acknowledgement. Seed Forge (P1.3) owns the future generation boundary: below-target generation remains a hard block, while any marginal-state acknowledgement is handled there rather than inferred by P1.2.
 
 **Live pattern warnings during collection**, not after: unusually long runs of one value, ascending or descending sequences, alternating patterns, and repeated blocks. These catch a stuck die, a misread, and the human tendency to unconsciously "balance" results.
 
@@ -517,7 +517,9 @@ Targets: 128 bits for a 12-word seed, 256 for 24 words. **Blocking below target 
 - **Dice, coins, cards** — their source models and claimed bits are exactly computable. The observed diagnostics are evidence about the recording, not proof that the physical source is fair; cards drawn without replacement do not receive iid tests.
 - **CSPRNG** — 256 bits by definition. The bar shows full, with a note that it measures the *source*, not the platform RNG's integrity, which cannot be assessed from output.
 - **Diceware passphrases** — exact: word count × log₂(wordlist size). 6 EFF Large words = 77.5 bits.
-- **Human-chosen passphrases** — **shown as a range, never a single number**, with the limitation stated plainly. Entropy estimation for human-chosen text is heuristic; every meter that displays "84 bits" for a typed passphrase is inventing precision it does not have. The app shows a conservative band and recommends Diceware instead.
+- **Human-chosen passphrases** — **shown as a qualitative range/limitation, never a single number**, with the limitation stated plainly. Entropy estimation for human-chosen text is heuristic; every meter that displays "84 bits" for a typed passphrase is inventing precision it does not have. The vault-creation surface shows `Unknown range — no numeric estimate` and recommends Diceware instead.
+
+The existing vault creation form follows the human-chosen rule live: its creation-only panel says the range is unknown and gives Diceware guidance without assigning a number. That panel is hidden during ordinary unlock. The P1.2 physical-source diagnostics remain in Entropy Lab; neither surface changes P1.1 accounting.
 
 That last distinction matters more than it looks. A false-precision number invites users to trust a weak passphrase because a meter turned green.
 

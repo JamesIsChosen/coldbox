@@ -282,6 +282,34 @@ body {
   outline-offset: 0.1rem;
 }
 
+#cold-vault-passphrase-health {
+  max-width: 48rem;
+  margin-top: 0.55rem;
+  padding: 0.45rem 0.55rem;
+  border: 0.13rem dashed var(--cold-outline);
+  border-radius: 0.3rem;
+  background: var(--cold-bg);
+}
+
+#cold-vault-passphrase-health[hidden] {
+  display: none;
+}
+
+#cold-vault-passphrase-health .eyebrow {
+  margin: 0;
+}
+
+#cold-vault-passphrase-health-state {
+  color: var(--cold-yellow);
+}
+
+#cold-vault-passphrase-health-copy {
+  margin: 0.3rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
 #cold-vault-actions {
   display: flex;
   flex-wrap: wrap;

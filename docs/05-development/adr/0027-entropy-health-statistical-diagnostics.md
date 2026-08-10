@@ -21,7 +21,7 @@ The existing P1.1 integer accounting is the security authority for independent-s
 
 3. **Use Pearson chi-square for uniformity evidence.** For a `k`-symbol alphabet, the expected count is `n/k`, the statistic is `Σ(observed - expected)² / expected`, degrees of freedom are `k - 1`, and the displayed p-value is the upper-tail probability. Use `alpha = 0.01` for the advisory bias flag. Do not report the test until every expected bin has at least five observations; do not apply it to without-replacement card draws.
 
-4. **Use the binary Wald-Wolfowitz runs test.** Binary sources use their two symbols directly. Multi-symbol sources are mapped to below/above the alphabet midpoint solely for this diagnostic. The normal approximation is reported only for at least 20 observations and an observed one-side proportion within `2/√n` of one half. The two-sided p-value uses `alpha = 0.01`; without-replacement card draws are unavailable.
+4. **Use the binary Wald-Wolfowitz runs test.** Binary sources use their two symbols directly. Multi-symbol sources are mapped to below/above the alphabet midpoint solely for this diagnostic. The normal approximation is reported only for at least 20 observations, both projected symbol counts strictly greater than 10, and an observed one-side proportion within `2/√n` of one half. The two-sided p-value uses `alpha = 0.01`; without-replacement card draws are unavailable. Smaller projected counts are unavailable because this ADR does not implement the NIST critical-value tables.
 
 5. **Use lag-one serial correlation.** Report the NIST lag-one autocorrelation over the observed sequence when there are at least three observations with non-zero variance. Compare it with the advisory 95% band `±1.95996/√n`; constant sequences and without-replacement card draws are unavailable. Being outside the band is evidence to inspect, not proof of a defect.
 
@@ -29,11 +29,17 @@ The existing P1.1 integer accounting is the security authority for independent-s
 
 7. **Fail closed on malformed analyzer state.** Invalid alphabets, symbols, option values, or empty observations throw. A valid but underpowered test returns an explicit unavailable reason. P1.2 does not silently substitute a different alphabet, infer missing samples, or turn an unavailable test into a pass.
 
+8. **Keep P1.2 advisory and leave generation gates to P1.3.** The Entropy Lab health state is live evidence about a recording. It does not block the current Mix entropy control and does not require an acknowledgement. Seed Forge (P1.3) owns any future below-target generation block and marginal-state acknowledgement; P1.2 must not infer that boundary before the seed-generation path exists.
+
+### Remediation clarification (2026-08-09)
+
+The independent review of PR #35 found that the specification's earlier state-table behaviour was written as if a generation path already existed. The current contract is now explicit: P1.2 reports the non-overlapping states and remains advisory; P1.3 will implement the generation boundary. This clarification does not alter P1.1's integer accounting or the cold/warm boundary.
+
 ## Rationale
 
 The formulas are simple enough to audit against independent reference material while being honest about what finite samples can establish. The minimum expected-count rule prevents a chi-square p-value from being presented outside its useful approximation. The runs and correlation preconditions make the UI say "not available" instead of manufacturing confidence from a tiny or degenerate sample. Treating cards separately avoids applying iid tests to a permutation.
 
-Keeping this layer advisory preserves the stronger guarantee already implemented by P1.1: the user can inspect evidence about their recording without a statistical result becoming an accidental security gate or a claim that a platform RNG has been verified.
+Keeping this layer advisory preserves the stronger guarantee already implemented by P1.1: the user can inspect evidence about their recording without a statistical result becoming an accidental security gate or a claim that a platform RNG has been verified. Leaving generation policy to P1.3 avoids pretending that the current Mix entropy surface is a seed-generation boundary.
 
 ## Consequences
 

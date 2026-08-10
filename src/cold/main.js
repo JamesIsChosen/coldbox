@@ -33,6 +33,9 @@ __COLDBOX_CAPABILITIES__
   var passphraseConfirmWrap = document.getElementById('cold-vault-create-confirmation');
   var passphraseConfirmInput = document.getElementById('cold-vault-passphrase-confirm');
   var passphraseConfirmError = document.getElementById('cold-vault-create-error');
+  var passphraseHealthPanel = document.getElementById('cold-vault-passphrase-health');
+  var passphraseHealthState = document.getElementById('cold-vault-passphrase-health-state');
+  var passphraseHealthCopy = document.getElementById('cold-vault-passphrase-health-copy');
   var createVaultButton = document.getElementById('cold-vault-create');
   var unlockVaultButton = document.getElementById('cold-vault-unlock');
   var lockVaultButton = document.getElementById('cold-vault-lock');
@@ -471,6 +474,7 @@ __COLDBOX_CAPABILITIES__
       'without-replacement': 'not applicable to cards drawn without replacement',
       'expected-counts-too-small': 'not available until each expected bin has at least 5 samples',
       'sample-too-small': 'not available until at least 20 samples',
+      'symbol-counts-too-small': 'not available until both projected symbol counts are above 10',
       'proportion-too-skewed': 'not available while the observed split is too skewed',
       'one-symbol-only': 'not available with only one observed symbol',
       'zero-variance': 'not available because all values are identical'
@@ -483,15 +487,15 @@ __COLDBOX_CAPABILITIES__
       return 'Not applicable - cards are drawn without replacement';
     }
     if (analysis.state === 'marginal') {
-      return 'Marginal - chi-square p < 0.01; inspect the recording';
+      return 'Marginal (advisory) - chi-square p < 0.01; inspect the recording';
     }
     if (analysis.state === 'strong') {
-      return 'Strong - measured min-entropy is at least 256 bits';
+      return 'Strong (advisory) - measured min-entropy is at least 256 bits';
     }
     if (analysis.state === 'adequate') {
-      return 'Adequate - measured min-entropy reaches ' + targetBits + ' bits';
+      return 'Adequate (advisory) - measured min-entropy reaches ' + targetBits + ' bits';
     }
-    return 'Insufficient - measured min-entropy is below ' + targetBits + ' bits';
+    return 'Insufficient (advisory) - measured min-entropy is below ' + targetBits + ' bits';
   }
 
   function renderHealthFrequency(source, analysis) {
@@ -558,7 +562,7 @@ __COLDBOX_CAPABILITIES__
     entropyHealthPanel.setAttribute('data-source', source.id);
     if (source.values.length === 0) {
       entropyHealthPanel.setAttribute('data-state', 'insufficient');
-      entropyHealthState.textContent = 'Insufficient - collect physical/manual samples first';
+      entropyHealthState.textContent = 'Insufficient (advisory) - collect physical/manual samples first';
       entropyHealthSamples.textContent = source.simulatedCount > 0
         ? '0 physical/manual (' + source.simulatedCount + ' simulations excluded)'
         : '0';
@@ -571,8 +575,8 @@ __COLDBOX_CAPABILITIES__
       entropyHealthCorrelation.textContent = 'Not available yet';
       if (entropyHealthDisclosure) {
         entropyHealthDisclosure.textContent = source.simulatedCount > 0
-          ? 'Device-RNG simulations are excluded from this analysis. Add physical/manual samples; passing tests are not proof that a platform RNG is sound.'
-          : 'Warnings are prompts to inspect the recording, not proof of a broken source. Insufficient sample size leaves a test unavailable. The analyzer never replaces the CSPRNG or the integer independent-source accounting.';
+          ? 'Device-RNG simulations are excluded from this analysis. Add physical/manual samples; passing tests are not proof that a platform RNG is sound. P1.2 is advisory and does not block mixing.'
+          : 'Warnings are prompts to inspect the recording, not proof of a broken source. Insufficient sample size leaves a test unavailable. P1.2 is advisory and does not block mixing; the analyzer never replaces the CSPRNG or the integer independent-source accounting.';
       }
       if (entropyHealthFrequencyBody) {
         entropyHealthFrequencyBody.textContent = '';
@@ -613,7 +617,7 @@ __COLDBOX_CAPABILITIES__
         entropyHealthPatterns.textContent = 'Analysis failed closed: ' + error.message;
       }
       if (entropyHealthDisclosure) {
-        entropyHealthDisclosure.textContent = 'Analysis failed closed. The analyzer never replaces the CSPRNG or the integer independent-source accounting.';
+        entropyHealthDisclosure.textContent = 'Analysis failed closed. P1.2 remains advisory and does not block mixing. The analyzer never replaces the CSPRNG or the integer independent-source accounting.';
       }
       return;
     }
@@ -640,7 +644,7 @@ __COLDBOX_CAPABILITIES__
     if (entropyHealthDisclosure) {
       entropyHealthDisclosure.textContent = source.withoutReplacement
         ? 'Cards are a without-replacement permutation: frequency and iid randomness tests are intentionally not reported. The card order is still shown for review.'
-        : 'Warnings are prompts to inspect the recording, not proof of a broken source. Passing tests are not proof that a platform RNG is sound. The analyzer never replaces the CSPRNG or the integer independent-source accounting.';
+        : 'Warnings are prompts to inspect the recording, not proof of a broken source. Passing tests are not proof that a platform RNG is sound. P1.2 is advisory and does not block mixing or ask for acknowledgement; Seed Forge (P1.3) owns any future generation gate.';
     }
   }
 
@@ -1281,6 +1285,34 @@ __COLDBOX_CAPABILITIES__
     passphraseConfirmError.hidden = !text;
   }
 
+  // Human-chosen text has no trustworthy numeric entropy estimate. This
+  // creation-only surface stays hidden during ordinary unlock and gives the
+  // user the conservative range/limitation guidance from the reference docs.
+  function updateVaultPassphraseHealth() {
+    if (!passphraseHealthPanel) {
+      return;
+    }
+    var creationActive = createPrepared && !vaultUnlocked;
+    passphraseHealthPanel.hidden = !creationActive;
+    passphraseHealthPanel.setAttribute('data-mode', creationActive ? 'creation' : 'unlock');
+    if (!creationActive) {
+      passphraseHealthPanel.setAttribute('data-state', 'not-applicable');
+      return;
+    }
+    var entered = Boolean(passphraseInput && passphraseInput.value.length > 0);
+    passphraseHealthPanel.setAttribute('data-state', entered ? 'entered' : 'empty');
+    if (passphraseHealthState) {
+      passphraseHealthState.textContent = entered
+        ? 'Unknown range — no numeric estimate'
+        : 'Not estimated yet';
+    }
+    if (passphraseHealthCopy) {
+      passphraseHealthCopy.textContent = entered
+        ? 'Human-chosen text has an unknown entropy range; spelling and length cannot establish a numeric score. Use six Diceware words or more for a new vault.'
+        : 'Enter a new phrase to see this guidance. Human-chosen text has an unknown entropy range; the sealed realm does not invent a numeric score from spelling or length. Use six Diceware words or more for a new vault.';
+    }
+  }
+
   function vaultControlsReady() {
     return vaultCryptoReady && handshakeState === 'ready' && messagePort !== null;
   }
@@ -1311,6 +1343,7 @@ __COLDBOX_CAPABILITIES__
     if (keyfileInput) {
       keyfileInput.disabled = !ready || vaultBusy || vaultUnlocked || !(keyfileToggle && keyfileToggle.checked);
     }
+    updateVaultPassphraseHealth();
   }
 
   function zeroKeyfile() {
@@ -1409,6 +1442,11 @@ __COLDBOX_CAPABILITIES__
     setCreateConfirmationError('');
     if (passphraseConfirmWrap) {
       passphraseConfirmWrap.hidden = true;
+    }
+    if (passphraseHealthPanel) {
+      passphraseHealthPanel.hidden = true;
+      passphraseHealthPanel.setAttribute('data-mode', 'unlock');
+      passphraseHealthPanel.setAttribute('data-state', 'not-applicable');
     }
   }
 
@@ -2113,7 +2151,10 @@ __COLDBOX_CAPABILITIES__
     createVaultButton.addEventListener('click', createEmptyVault);
   }
   if (passphraseInput) {
-    passphraseInput.addEventListener('input', function () { setCreateConfirmationError(''); });
+    passphraseInput.addEventListener('input', function () {
+      setCreateConfirmationError('');
+      updateVaultPassphraseHealth();
+    });
   }
   if (passphraseConfirmInput) {
     passphraseConfirmInput.addEventListener('input', function () { setCreateConfirmationError(''); });

@@ -647,7 +647,13 @@ async function verifyBuiltFile(browser, engine) {
     // Creation confirmation is creation-only: a mismatch must create nothing,
     // then the same prepared vault can succeed when confirmation matches.
     await prepareVaultCreation(page, coldFrame, 'Browser Round Trip');
+    const passphraseHealth = coldFrame.locator('#cold-vault-passphrase-health');
+    assert.equal(await passphraseHealth.isVisible(), true, `${engine}: vault creation must show live passphrase guidance`);
+    assert.equal(await passphraseHealth.getAttribute('data-mode'), 'creation');
+    assert.match(await passphraseHealth.textContent(), /unknown entropy range|not estimated/i);
     await coldFrame.locator('#cold-vault-passphrase').fill('browser round-trip phrase');
+    assert.equal(await passphraseHealth.getAttribute('data-state'), 'entered');
+    assert.match(await passphraseHealth.textContent(), /unknown range.*no numeric estimate/i);
     await coldFrame.locator('#cold-vault-passphrase-confirm').fill('browser round-trip typo');
     await coldFrame.locator('#cold-vault-create').click();
     await coldFrame.locator('#cold-vault-status').filter({ hasText: /do not match/ }).waitFor({ state: 'visible', timeout: 5000 });
@@ -661,6 +667,7 @@ async function verifyBuiltFile(browser, engine) {
     await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     assert.equal(await coldFrame.locator('#cold-vault-passphrase').inputValue(), '');
     assert.equal(await coldFrame.locator('#cold-vault-passphrase-confirm').inputValue(), '');
+    assert.equal(await passphraseHealth.isHidden(), true, `${engine}: creation guidance must clear after creation`);
     const activeVaultIdText = (await page.locator('#vault-active-id').textContent()).trim();
     const activeVaultIdMatch = /^Vault ID ([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(activeVaultIdText);
     assert.ok(activeVaultIdMatch, `${engine}: created vault must expose a valid authenticated random UUID as public metadata`);
@@ -799,6 +806,7 @@ async function verifyBuiltFile(browser, engine) {
     await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     await page.locator('#vault-status-label').filter({ hasText: /Not saved/ }).waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await coldFrame.locator('#cold-vault-passphrase-confirm').isVisible(), false, `${engine}: normal unlock must not show creation confirmation`);
+    assert.equal(await coldFrame.locator('#cold-vault-passphrase-health').isHidden(), true, `${engine}: normal unlock must not show creation guidance`);
 
     reachability.setMode('reachable');
     await triggerReachabilityRound(page);
@@ -2081,6 +2089,8 @@ async function verifyEntropyLab(browser, engine) {
     const healthSource = coldFrame.locator('#cold-entropy-health-source');
     assert.equal(await healthPanel.getAttribute('data-state'), 'insufficient');
     assert.equal(await healthPanel.getAttribute('data-source'), 'dice-base6');
+    assert.equal(await healthPanel.getAttribute('data-enforcement'), 'advisory');
+    assert.match(await coldFrame.locator('#cold-entropy-health-disclosure').textContent(), /does not block.*mixing/i);
     assert.match(await coldFrame.locator('#cold-entropy-health-state').textContent(), /Insufficient/i);
     assert.match(await coldFrame.locator('#cold-entropy-dice-random').textContent(), /device RNG/i);
     assert.match(await coldFrame.locator('#cold-entropy-coin-random').textContent(), /device RNG/i);
@@ -2119,17 +2129,17 @@ async function verifyEntropyLab(browser, engine) {
     await coldFrame.locator('#cold-entropy-dice-reset').click();
     assert.equal(await meter.getAttribute('data-fallback-bits'), '0');
 
-    // Twenty alternating manual coin flips exercise the live runs test and
+    // Twenty-two alternating manual coin flips exercise the live runs test and
     // pattern warning. The selected source changes without reloading the
     // cold realm, and the analyzer remains an advisory diagnostic because
     // the selected 128-bit output is still insufficient.
-    for (let flip = 0; flip < 20; flip += 1) {
+    for (let flip = 0; flip < 22; flip += 1) {
       await coldFrame.locator(flip % 2 === 0 ? '#cold-entropy-coin-heads' : '#cold-entropy-coin-tails').click();
     }
     await healthSource.selectOption('coin');
-    assert.equal(await coldFrame.locator('#cold-entropy-health-samples').textContent(), '20');
+    assert.equal(await coldFrame.locator('#cold-entropy-health-samples').textContent(), '22');
     assert.match(await coldFrame.locator('#cold-entropy-health-chi').textContent(), /chi2=/i);
-    assert.match(await coldFrame.locator('#cold-entropy-health-runs').textContent(), /runs=20.*warning/i);
+    assert.match(await coldFrame.locator('#cold-entropy-health-runs').textContent(), /runs=22.*warning/i);
     assert.match(await coldFrame.locator('#cold-entropy-health-patterns').textContent(), /alternating pattern/i);
     await coldFrame.locator('#cold-entropy-coin-reset').click();
     await healthSource.selectOption('dice-base6');
