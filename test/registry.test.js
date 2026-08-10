@@ -64,7 +64,11 @@ test('registry CRUD preserves relationships, clones values, and soft-deletes', (
   store.deleteWallet(secondWallet.id);
   assert.equal(store.list('wallets').some((item) => item.id === secondWallet.id), false);
   assert.equal(store.list('wallets', true).some((item) => item.id === secondWallet.id && item.hidden), true);
+  assert.equal(store.updateWallet(secondWallet.id, { hidden: false }).hidden, false);
   assert.equal(store.deleteAccount(account.id).hidden, true);
+  assert.equal(store.updateAccount(account.id, { hidden: false }).hidden, false);
+  assert.equal(store.deleteAddress(address.id).hidden, true);
+  assert.equal(store.updateAddress(address.id, { hidden: false }).hidden, false);
   assert.equal(store.find('addresses', address.id).address, ADDRESS);
 });
 
@@ -195,6 +199,7 @@ test('registry supports linked public notes, canonical tags, search, and soft hi
   store.deleteNote(note.id);
   assert.equal(store.list('notes').some((item) => item.id === note.id), false);
   assert.equal(store.list('notes', true).some((item) => item.id === note.id && item.hidden), true);
+  assert.equal(store.updateNote(note.id, { hidden: false }).hidden, false);
   assert.throws(
     () => store.createNote({
       title: 'Broken link', body: 'Public', visibility: 'public', linkedIds: [

@@ -46,10 +46,10 @@ __COLDBOX_CAPABILITIES__
   var concealmentRevealButton = document.getElementById('cold-concealment-reveal');
   var concealmentStatus = document.getElementById('cold-concealment-status');
   var secretNotesPanel = document.getElementById('cold-secret-notes');
-  var secretNoteForm = document.getElementById('cold-secret-note-form');
   var secretNoteTitle = document.getElementById('cold-secret-note-title');
   var secretNoteBody = document.getElementById('cold-secret-note-body');
   var secretNoteTags = document.getElementById('cold-secret-note-tags');
+  var secretNoteSaveButton = document.getElementById('cold-secret-note-save');
   var secretNoteSearch = document.getElementById('cold-secret-note-search');
   var secretNoteList = document.getElementById('cold-secret-note-list');
   var keyfileToggle = document.getElementById('cold-vault-keyfile-toggle');
@@ -2631,7 +2631,7 @@ __COLDBOX_CAPABILITIES__
       return;
     }
     if (!onlineMode) {
-      createOptions.secretData = {};
+      createOptions.secretData = { notes: [] };
     }
     if (activeKeyfile) {
       createOptions.keyfile = activeKeyfile;
@@ -3256,8 +3256,8 @@ __COLDBOX_CAPABILITIES__
   if (concealmentRevealButton) {
     concealmentRevealButton.addEventListener('click', completeHiddenRecordReveal);
   }
-  if (secretNoteForm) {
-    secretNoteForm.addEventListener('submit', saveSecretNote);
+  if (secretNoteSaveButton) {
+    secretNoteSaveButton.addEventListener('click', saveSecretNote);
   }
   if (secretNoteSearch) {
     secretNoteSearch.addEventListener('input', renderSecretNotes);

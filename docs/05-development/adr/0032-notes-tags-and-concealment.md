@@ -17,7 +17,9 @@ The public protocol accepts only `visibility: public` Note records. Their title,
 bounded Markdown body, linked UUIDs, canonical tags, and hidden flag pass through
 the same collection-specific public projection validator as registry records.
 Secret notes are rejected at that boundary and have no warm-shell rendering
-path.
+path. An offline-created vault initializes its cold secret compartment with a
+`notes: []` collection so the cold-only editor is available immediately;
+online-created vaults remain public-only.
 
 The warm shell stores privacy-blur preference locally and applies it only to
 display metadata. Panic hide clears reveal markers, hides the app, and locks the
