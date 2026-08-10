@@ -145,43 +145,35 @@ __COLDBOX_CAPABILITIES__
   var seedForgeValidationSeed = document.getElementById('cold-seed-forge-validation-seed');
   var seedForgeValidationSeedReveal = document.getElementById('cold-seed-forge-validation-seed-reveal');
   var verificationPanel = document.getElementById('cold-verification');
+  var verificationWalletNetwork = document.getElementById('cold-verification-wallet-network');
+  var verificationWalletScript = document.getElementById('cold-verification-wallet-script');
+  var verificationWalletUseButton = document.getElementById('cold-verification-wallet-use');
+  var verificationWalletSource = document.getElementById('cold-verification-wallet-source');
+  var verificationWalletStatus = document.getElementById('cold-verification-wallet-status');
+  var verificationWalletFingerprint = document.getElementById('cold-verification-wallet-fingerprint');
+  var verificationWalletPath = document.getElementById('cold-verification-wallet-path');
+  var verificationWalletXpub = document.getElementById('cold-verification-wallet-xpub');
+  var verificationWalletReceiveRange = document.getElementById('cold-verification-wallet-receive-range');
+  var verificationWalletChangeRange = document.getElementById('cold-verification-wallet-change-range');
+  var verificationWalletFamilies = document.getElementById('cold-verification-wallet-families');
   var verificationFingerprintForm = document.getElementById('cold-verification-fingerprint-form');
-  var verificationFingerprintMnemonic = document.getElementById('cold-verification-fingerprint-mnemonic');
-  var verificationFingerprintPassphrase = document.getElementById('cold-verification-fingerprint-passphrase');
   var verificationFingerprintExpected = document.getElementById('cold-verification-fingerprint-expected');
   var verificationFingerprintRun = document.getElementById('cold-verification-fingerprint-run');
   var verificationFingerprintStatus = document.getElementById('cold-verification-fingerprint-status');
   var verificationReceiveForm = document.getElementById('cold-verification-receive-form');
-  var verificationReceiveXpub = document.getElementById('cold-verification-receive-xpub');
-  var verificationReceiveNetwork = document.getElementById('cold-verification-receive-network');
-  var verificationReceiveScript = document.getElementById('cold-verification-receive-script');
   var verificationReceiveChange = document.getElementById('cold-verification-receive-change');
   var verificationReceiveIndex = document.getElementById('cold-verification-receive-index');
   var verificationReceiveExpected = document.getElementById('cold-verification-receive-expected');
   var verificationReceiveRun = document.getElementById('cold-verification-receive-run');
   var verificationReceiveStatus = document.getElementById('cold-verification-receive-status');
   var verificationXpubForm = document.getElementById('cold-verification-xpub-form');
-  var verificationXpubMnemonic = document.getElementById('cold-verification-xpub-mnemonic');
-  var verificationXpubPassphrase = document.getElementById('cold-verification-xpub-passphrase');
-  var verificationXpubNetwork = document.getElementById('cold-verification-xpub-network');
-  var verificationXpubScript = document.getElementById('cold-verification-xpub-script');
-  var verificationXpubAccount = document.getElementById('cold-verification-xpub-account');
   var verificationXpubExpected = document.getElementById('cold-verification-xpub-expected');
   var verificationXpubRun = document.getElementById('cold-verification-xpub-run');
   var verificationXpubStatus = document.getElementById('cold-verification-xpub-status');
   var verificationBackupForm = document.getElementById('cold-verification-backup-form');
-  var verificationBackupMnemonic = document.getElementById('cold-verification-backup-mnemonic');
-  var verificationBackupPassphrase = document.getElementById('cold-verification-backup-passphrase');
   var verificationBackupExpected = document.getElementById('cold-verification-backup-expected');
   var verificationBackupRun = document.getElementById('cold-verification-backup-run');
   var verificationBackupStatus = document.getElementById('cold-verification-backup-status');
-  var verificationPassphraseForm = document.getElementById('cold-verification-passphrase-form');
-  var verificationPassphraseMnemonic = document.getElementById('cold-verification-passphrase-mnemonic');
-  var verificationPassphraseValue = document.getElementById('cold-verification-passphrase-value');
-  var verificationPassphraseConfirm = document.getElementById('cold-verification-passphrase-confirm');
-  var verificationPassphraseExpected = document.getElementById('cold-verification-passphrase-expected');
-  var verificationPassphraseRun = document.getElementById('cold-verification-passphrase-run');
-  var verificationPassphraseStatus = document.getElementById('cold-verification-passphrase-status');
   var entropySession = entropyLab ? entropyLab.createSession() : null;
   var seedForgeWordInputs = [];
   var generatedMnemonic = '';
@@ -194,6 +186,10 @@ __COLDBOX_CAPABILITIES__
   var validationSeedRevealed = false;
   var generatedSeedRevealTimer = null;
   var validationSeedRevealTimer = null;
+  var generatedWalletRevision = 0;
+  var validationWalletRevision = 0;
+  var seedForgeWalletRevision = 0;
+  var linkedVerificationWallet = null;
   var pendingSeedForgeMix = null;
   var pendingSeedForgeMixTargetBits = null;
   var CARD_RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
@@ -1696,11 +1692,15 @@ __COLDBOX_CAPABILITIES__
       return false;
     }
     if (!generatedMnemonic) {
+      generatedWalletRevision = 0;
+      clearLinkedVerificationWallet('No current Seed Forge wallet is linked.');
       clearGeneratedSeed();
       setFingerprintOutput(seedForgeGeneratedFingerprint, 'Not calculated');
       return true;
     }
     if (!generatedPassphrasePairValid()) {
+      generatedWalletRevision = 0;
+      clearLinkedVerificationWallet('Seed Forge changed; link the current wallet again.');
       clearGeneratedSeed();
       setFingerprintOutput(seedForgeGeneratedFingerprint, 'Not calculated');
       return false;
@@ -1715,8 +1715,12 @@ __COLDBOX_CAPABILITIES__
         zeroBytes(generatedDerived.seed);
       }
       setFingerprintOutput(seedForgeGeneratedFingerprint, generatedDerived.fingerprint);
+      generatedWalletRevision = ++seedForgeWalletRevision;
+      clearLinkedVerificationWallet('Seed Forge changed; link the current wallet again.');
       return true;
     } catch (error) {
+      generatedWalletRevision = 0;
+      clearLinkedVerificationWallet('Seed Forge derivation failed; no wallet is linked.');
       clearGeneratedSeed();
       setFingerprintOutput(seedForgeGeneratedFingerprint, 'Not calculated');
       setSeedForgeStatus('error', 'Generated seed derivation failed closed: ' + error.message);
@@ -1734,11 +1738,15 @@ __COLDBOX_CAPABILITIES__
     var phrase = validationPhraseText || validationPhraseFromFields();
     var validation = phrase ? seedForge.validateMnemonic(phrase, language) : null;
     if (!validation || !validation.valid) {
+      validationWalletRevision = 0;
+      clearLinkedVerificationWallet('Seed Forge changed; link the current wallet again.');
       clearValidationSeed();
       setFingerprintOutput(seedForgeValidationFingerprint, 'Not calculated');
       return true;
     }
     if (!validationPassphrasePairValid()) {
+      validationWalletRevision = 0;
+      clearLinkedVerificationWallet('Seed Forge changed; link the current wallet again.');
       clearValidationSeed();
       setFingerprintOutput(seedForgeValidationFingerprint, 'Not calculated');
       return false;
@@ -1753,8 +1761,12 @@ __COLDBOX_CAPABILITIES__
         zeroBytes(validationDerived.seed);
       }
       setFingerprintOutput(seedForgeValidationFingerprint, validationDerived.fingerprint);
+      validationWalletRevision = ++seedForgeWalletRevision;
+      clearLinkedVerificationWallet('Seed Forge changed; link the current wallet again.');
       return true;
     } catch (error) {
+      validationWalletRevision = 0;
+      clearLinkedVerificationWallet('Seed Forge derivation failed; no wallet is linked.');
       clearValidationSeed();
       setFingerprintOutput(seedForgeValidationFingerprint, 'Not calculated');
       setSeedForgeStatus('error', 'Validation seed derivation failed closed: ' + error.message);
@@ -1767,12 +1779,14 @@ __COLDBOX_CAPABILITIES__
   function refreshGeneratedDerivationAndControls() {
     var valid = refreshGeneratedDerivation();
     updateSeedForgeControls();
+    updateVerificationControls();
     return valid;
   }
 
   function refreshValidationDerivationAndControls() {
     var valid = refreshValidationDerivation();
     updateSeedForgeControls();
+    updateVerificationControls();
     return valid;
   }
 
@@ -1867,6 +1881,10 @@ __COLDBOX_CAPABILITIES__
   function clearSeedForgeSession() {
     clearPendingSeedForgeMix();
     setEntropyMixOutput(null);
+    generatedWalletRevision = 0;
+    validationWalletRevision = 0;
+    seedForgeWalletRevision = 0;
+    clearLinkedVerificationWallet('No current Seed Forge wallet is linked.');
     generatedMnemonic = '';
     generatedLanguage = 'english';
     remaskGeneratedPhrase();
@@ -1942,43 +1960,141 @@ __COLDBOX_CAPABILITIES__
     return 'Mismatch: Coldbox derived fingerprint ' + result.fingerprint + ', not the entered device fingerprint.';
   }
 
-  function clearVerificationSecretInputs() {
+  function clearLinkedVerificationWallet(statusText) {
+    linkedVerificationWallet = null;
+    if (verificationWalletSource) {
+      verificationWalletSource.textContent = 'No Seed Forge wallet linked.';
+    }
+    if (verificationWalletStatus) {
+      verificationWalletStatus.setAttribute('data-state', 'empty');
+      verificationWalletStatus.textContent = statusText || 'Choose Use current Seed Forge wallet after generating or validating a phrase.';
+    }
+    if (verificationWalletFingerprint) {
+      verificationWalletFingerprint.textContent = 'Not linked';
+    }
+    if (verificationWalletPath) {
+      verificationWalletPath.textContent = 'Not linked';
+    }
+    if (verificationWalletXpub) {
+      verificationWalletXpub.textContent = 'Not linked';
+    }
+    if (verificationWalletReceiveRange) {
+      verificationWalletReceiveRange.textContent = 'Not linked';
+    }
+    if (verificationWalletChangeRange) {
+      verificationWalletChangeRange.textContent = 'Not linked';
+    }
+    if (verificationWalletFamilies) {
+      verificationWalletFamilies.textContent = '';
+    }
     [
-      verificationFingerprintMnemonic,
-      verificationFingerprintPassphrase,
-      verificationXpubMnemonic,
-      verificationXpubPassphrase,
-      verificationBackupMnemonic,
-      verificationBackupPassphrase,
-      verificationPassphraseMnemonic,
-      verificationPassphraseValue,
-      verificationPassphraseConfirm
-    ].forEach(function (input) {
-      if (input) {
-        input.value = '';
-      }
+      verificationFingerprintStatus,
+      verificationReceiveStatus,
+      verificationXpubStatus,
+      verificationBackupStatus
+    ].forEach(function (output) {
+      setVerificationStatus(output, 'idle', 'No verification check run.');
     });
+    updateVerificationControls();
+  }
+
+  function currentSeedForgeWallet() {
+    if (generatedSeedBytes && generatedWalletRevision > validationWalletRevision) {
+      return { source: 'Generated', bytes: generatedSeedBytes };
+    }
+    if (validationSeedBytes && validationWalletRevision > 0) {
+      return { source: 'Validated', bytes: validationSeedBytes };
+    }
+    if (generatedSeedBytes && generatedWalletRevision > 0) {
+      return { source: 'Generated', bytes: generatedSeedBytes };
+    }
+    return null;
+  }
+
+  function renderLinkedVerificationWallet(wallet) {
+    var family = verification.familyFor(wallet, verificationWalletScript ? verificationWalletScript.value : 'p2wpkh');
+    if (verificationWalletSource) {
+      verificationWalletSource.textContent = wallet.source + ' Seed Forge wallet (cold-local).';
+    }
+    if (verificationWalletFingerprint) {
+      verificationWalletFingerprint.textContent = wallet.fingerprint;
+    }
+    if (verificationWalletPath) {
+      verificationWalletPath.textContent = family.accountPath;
+    }
+    if (verificationWalletXpub) {
+      verificationWalletXpub.textContent = family.xpub;
+    }
+    if (verificationWalletReceiveRange) {
+      verificationWalletReceiveRange.textContent = family.receiveAddresses.map(function (address, index) {
+        return String(index) + ': ' + address;
+      }).join(' | ');
+    }
+    if (verificationWalletChangeRange) {
+      verificationWalletChangeRange.textContent = family.changeAddresses.map(function (address, index) {
+        return String(index) + ': ' + address;
+      }).join(' | ');
+    }
+    if (verificationWalletFamilies) {
+      verificationWalletFamilies.textContent = '';
+      wallet.families.forEach(function (entry) {
+        var item = document.createElement('li');
+        item.textContent = entry.scriptType + ' ' + entry.accountPath + ' xpub: ' + entry.xpub;
+        verificationWalletFamilies.appendChild(item);
+      });
+    }
+  }
+
+  function useCurrentSeedForgeWallet() {
+    if (!vaultCryptoReady || !verification) {
+      setVerificationStatus(verificationWalletStatus, 'error', 'Verification is locked because the cold-realm health checks have not passed.');
+      return;
+    }
+    var current = currentSeedForgeWallet();
+    if (!current) {
+      setVerificationStatus(verificationWalletStatus, 'error', 'Generate or validate a Seed Forge wallet before linking it.');
+      return;
+    }
+    try {
+      var derived = verification.deriveWalletIdentity(current.bytes, {
+        network: verificationWalletNetwork ? verificationWalletNetwork.value : 'mainnet',
+        account: 0,
+        count: 5
+      });
+      linkedVerificationWallet = Object.freeze({
+        source: current.source,
+        network: derived.network,
+        account: derived.account,
+        count: derived.count,
+        fingerprint: derived.fingerprint,
+        families: derived.families
+      });
+      renderLinkedVerificationWallet(linkedVerificationWallet);
+      setVerificationStatus(verificationWalletStatus, 'ready', 'Current Seed Forge wallet linked. Comparison values below remain independent device or backup inputs.');
+    } catch (error) {
+      clearLinkedVerificationWallet('Seed Forge wallet linking failed closed: ' + error.message);
+      setVerificationStatus(verificationWalletStatus, 'error', 'Seed Forge wallet linking failed closed: ' + error.message);
+    }
+    updateVerificationControls();
   }
 
   function clearVerificationSession() {
-    clearVerificationSecretInputs();
+    clearLinkedVerificationWallet('No current Seed Forge wallet is linked.');
     [
       verificationFingerprintExpected,
-      verificationReceiveXpub,
       verificationReceiveExpected,
       verificationXpubExpected,
-      verificationBackupExpected,
-      verificationPassphraseExpected
+      verificationBackupExpected
     ].forEach(function (input) {
       if (input) {
         input.value = '';
       }
     });
-    if (verificationReceiveNetwork) {
-      verificationReceiveNetwork.value = 'mainnet';
+    if (verificationWalletNetwork) {
+      verificationWalletNetwork.value = 'mainnet';
     }
-    if (verificationReceiveScript) {
-      verificationReceiveScript.value = 'p2wpkh';
+    if (verificationWalletScript) {
+      verificationWalletScript.value = 'p2wpkh';
     }
     if (verificationReceiveChange) {
       verificationReceiveChange.value = '0';
@@ -1986,24 +2102,6 @@ __COLDBOX_CAPABILITIES__
     if (verificationReceiveIndex) {
       verificationReceiveIndex.value = '0';
     }
-    if (verificationXpubNetwork) {
-      verificationXpubNetwork.value = 'mainnet';
-    }
-    if (verificationXpubScript) {
-      verificationXpubScript.value = 'p2wpkh';
-    }
-    if (verificationXpubAccount) {
-      verificationXpubAccount.value = '0';
-    }
-    [
-      verificationFingerprintStatus,
-      verificationReceiveStatus,
-      verificationXpubStatus,
-      verificationBackupStatus,
-      verificationPassphraseStatus
-    ].forEach(function (output) {
-      setVerificationStatus(output, 'idle', 'No verification check run.');
-    });
   }
 
   function updateVerificationControls() {
@@ -2011,40 +2109,36 @@ __COLDBOX_CAPABILITIES__
       return;
     }
     var ready = vaultCryptoReady;
+    var linked = ready && Boolean(linkedVerificationWallet);
     verificationPanel.setAttribute('data-state', ready ? 'ready' : 'locked');
+    verificationPanel.setAttribute('data-linked-wallet', linked ? 'ready' : 'empty');
+    if (verificationWalletUseButton) {
+      verificationWalletUseButton.disabled = !ready || !currentSeedForgeWallet();
+    }
     [
-      verificationFingerprintMnemonic,
-      verificationFingerprintPassphrase,
+      verificationWalletNetwork,
+      verificationWalletScript,
       verificationFingerprintExpected,
       verificationFingerprintRun,
-      verificationReceiveXpub,
-      verificationReceiveNetwork,
-      verificationReceiveScript,
       verificationReceiveChange,
       verificationReceiveIndex,
       verificationReceiveExpected,
       verificationReceiveRun,
-      verificationXpubMnemonic,
-      verificationXpubPassphrase,
-      verificationXpubNetwork,
-      verificationXpubScript,
-      verificationXpubAccount,
       verificationXpubExpected,
       verificationXpubRun,
-      verificationBackupMnemonic,
-      verificationBackupPassphrase,
       verificationBackupExpected,
-      verificationBackupRun,
-      verificationPassphraseMnemonic,
-      verificationPassphraseValue,
-      verificationPassphraseConfirm,
-      verificationPassphraseExpected,
-      verificationPassphraseRun
+      verificationBackupRun
     ].forEach(function (control) {
       if (control) {
-        control.disabled = !ready;
+        control.disabled = !linked;
       }
     });
+    if (verificationWalletNetwork) {
+      verificationWalletNetwork.disabled = !ready;
+    }
+    if (verificationWalletScript) {
+      verificationWalletScript.disabled = !ready;
+    }
   }
 
   function runVerificationWorkflow(runButton, statusOutput, work) {
@@ -2062,7 +2156,6 @@ __COLDBOX_CAPABILITIES__
     } catch (error) {
       setVerificationStatus(statusOutput, 'error', 'Verification failed closed: ' + error.message);
     } finally {
-      clearVerificationSecretInputs();
       updateVerificationControls();
     }
   }
@@ -2071,29 +2164,44 @@ __COLDBOX_CAPABILITIES__
     if (!verification) {
       return;
     }
+    if (verificationWalletUseButton) {
+      verificationWalletUseButton.addEventListener('click', useCurrentSeedForgeWallet);
+    }
+    if (verificationWalletNetwork) {
+      verificationWalletNetwork.addEventListener('change', function () {
+        clearLinkedVerificationWallet('Network changed; link the current Seed Forge wallet again.');
+      });
+    }
+    if (verificationWalletScript) {
+      verificationWalletScript.addEventListener('change', function () {
+        if (linkedVerificationWallet) {
+          renderLinkedVerificationWallet(linkedVerificationWallet);
+        }
+        updateVerificationControls();
+      });
+    }
     if (verificationFingerprintForm) {
       verificationFingerprintRun.addEventListener('click', function () {
         runVerificationWorkflow(verificationFingerprintRun, verificationFingerprintStatus, function () {
-          return verification.verifyFingerprint({
-            mnemonic: verificationFingerprintMnemonic.value,
-            passphrase: verificationFingerprintPassphrase.value,
-            expectedFingerprint: verificationFingerprintExpected.value,
-            language: 'english'
-          });
+          return verification.compareFingerprint(linkedVerificationWallet.fingerprint, verificationFingerprintExpected.value);
         });
       });
     }
     if (verificationReceiveForm) {
       verificationReceiveRun.addEventListener('click', function () {
         runVerificationWorkflow(verificationReceiveRun, verificationReceiveStatus, function () {
-          return verification.verifyReceiveAddress({
-            xpub: verificationReceiveXpub.value,
-            network: verificationReceiveNetwork.value,
-            scriptType: verificationReceiveScript.value,
-            change: Number(verificationReceiveChange.value),
-            start: Number(verificationReceiveIndex.value),
-            count: 1,
-            expectedAddress: verificationReceiveExpected.value
+          var family = verification.familyFor(linkedVerificationWallet, verificationWalletScript.value);
+          var change = Number(verificationReceiveChange.value);
+          var index = Number(verificationReceiveIndex.value);
+          if (!Number.isInteger(change) || (change !== 0 && change !== 1)
+            || !Number.isInteger(index) || index < 0 || index >= linkedVerificationWallet.count) {
+            throw new RangeError('Address range is outside the linked Seed Forge wallet.');
+          }
+          var addresses = change === 0 ? family.receiveAddresses : family.changeAddresses;
+          return verification.compareAddress(addresses[index], verificationReceiveExpected.value, {
+            network: linkedVerificationWallet.network,
+            scriptType: family.scriptType,
+            path: family.accountPath + '/' + String(change) + '/' + String(index)
           });
         });
       });
@@ -2101,14 +2209,10 @@ __COLDBOX_CAPABILITIES__
     if (verificationXpubForm) {
       verificationXpubRun.addEventListener('click', function () {
         runVerificationWorkflow(verificationXpubRun, verificationXpubStatus, function () {
-          return verification.verifyXpub({
-            mnemonic: verificationXpubMnemonic.value,
-            passphrase: verificationXpubPassphrase.value,
-            network: verificationXpubNetwork.value,
-            scriptType: verificationXpubScript.value,
-            account: Number(verificationXpubAccount.value),
-            expectedXpub: verificationXpubExpected.value,
-            language: 'english'
+          var family = verification.familyFor(linkedVerificationWallet, verificationWalletScript.value);
+          return verification.compareXpub(family.xpub, verificationXpubExpected.value, {
+            network: linkedVerificationWallet.network,
+            scriptType: family.scriptType
           });
         });
       });
@@ -2116,27 +2220,7 @@ __COLDBOX_CAPABILITIES__
     if (verificationBackupForm) {
       verificationBackupRun.addEventListener('click', function () {
         runVerificationWorkflow(verificationBackupRun, verificationBackupStatus, function () {
-          return verification.verifyBackup({
-            mnemonic: verificationBackupMnemonic.value,
-            passphrase: verificationBackupPassphrase.value,
-            expectedFingerprint: verificationBackupExpected.value,
-            language: 'english'
-          });
-        });
-      });
-    }
-    if (verificationPassphraseForm) {
-      verificationPassphraseRun.addEventListener('click', function () {
-        runVerificationWorkflow(verificationPassphraseRun, verificationPassphraseStatus, function () {
-          if (verificationPassphraseValue.value !== verificationPassphraseConfirm.value) {
-            throw new Error('Passphrases do not match. Nothing will be derived for this workflow.');
-          }
-          return verification.verifyPassphrase({
-            mnemonic: verificationPassphraseMnemonic.value,
-            passphrase: verificationPassphraseValue.value,
-            expectedFingerprint: verificationPassphraseExpected.value,
-            language: 'english'
-          });
+          return verification.compareFingerprint(linkedVerificationWallet.fingerprint, verificationBackupExpected.value);
         });
       });
     }

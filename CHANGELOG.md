@@ -16,8 +16,8 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 
 ### Added — P1.9 verification workflows (2026-08-10)
 
-- **Cold-local hardware-wallet checks.** Verify Bench can compare a manually entered device fingerprint, receive address from an account xpub, account xpub derived from a seed, metal-backup fingerprint, or BIP-39 passphrase fingerprint. Comparisons use complete public values; Bech32 receive addresses are case-normalized while Base58 extended keys and addresses remain exact.
-- **Protected inputs and explicit limits.** Seed phrases and passphrases stay inside the opaque cold frame, are cleared after each attempt and on lock/panic teardown, and never enter the message channel. P1.9 has no hardware transport or device-authenticity claim; the manual real-device validation gate remains open. See [ADR-0034](docs/05-development/adr/0034-cold-local-verification-workflows.md).
+- **Cold-local hardware-wallet checks.** Verify Bench links the current public identity from Seed Forge and compares an independently entered device fingerprint, receive address, account xpub, or metal-backup fingerprint. The fifth roadmap check, BIP-39 passphrase verification, uses the exact passphrase selected and confirmed in Seed Forge; no duplicate passphrase panel exists. Comparisons validate complete public values; uniform-case Bech32 is accepted while mixed-case Bech32 and invalid checksums fail closed.
+- **Protected inputs and explicit limits.** Seed phrases and passphrases stay inside the opaque cold frame, the linked public identity is invalidated when Seed Forge changes or the session tears down, external values are cleared on lock/panic teardown, and no secret enters the message channel. P1.9 has no hardware transport or device-authenticity claim; the manual real-device validation gate remains open. See [ADR-0034](docs/05-development/adr/0034-cold-local-verification-workflows.md).
 
 ### Added — P1.8 device registry (2026-08-10)
 

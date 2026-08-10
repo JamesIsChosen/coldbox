@@ -5,48 +5,62 @@
 
 ## Context
 
-P1.9 adds the five verification workflows named by the roadmap: device
+P1.9 adds the five verification checks named by the roadmap: device
 fingerprint, receive address, account xpub, metal backup, and BIP-39
 passphrase. The companion is intentionally not a hardware-wallet replacement
 and has no approved hardware transport or signing surface. A workflow that
 sent a seed phrase or passphrase to the warm shell would violate the central
 realm-boundary invariant, while a workflow that claimed device authenticity
-from a manual comparison would overstate what the evidence proves.
+from a manual comparison would overstate what the evidence proves. The
+passphrase check must use the same exact Seed Forge state as the other checks;
+duplicating the secret-entry surface in Verify Bench would create a second
+identity-selection path.
 
 ## Decision
 
-Implement P1.9 as a cold-local Verification Bench. The sealed frame accepts
-the seed phrase, optional BIP-39 passphrase, account xpub, and manually read
-device comparison value. It reuses the existing cold-only Seed Forge and
+Implement P1.9 as a cold-local Verification Bench. Seed Forge remains the
+sole mnemonic/passphrase entry surface. After a phrase is generated or
+validated, the user explicitly hands its current cold-local state to Verify
+Bench; the bench derives and displays only public identity: fingerprint,
+selected network/script/account path, all four family xpubs, and bounded
+receive/change address ranges. The bench accepts only manually read external
+public comparison values. It reuses the existing cold-only Seed Forge and
 Bitcoin derivation APIs. The result stays in the cold frame and contains only
 public values plus a `match`, `mismatch`, or fail-closed error state; no new
 message type is added.
 
-Secret-bearing fields are cleared after every attempt and by the existing
-lock, idle, panic-hide, and cold-health teardown path. Fingerprints compare
-normalized eight-character hexadecimal values. Receive addresses normalize
-only Bech32 case; Base58 addresses and extended keys remain exact. The UI
-requires the user to compare the complete displayed public value and states
-that P1.9 has no hardware connection or authenticity claim.
+The linked public identity is invalidated when Seed Forge changes or is
+replaced, when the selected network changes, and on lock, idle, panic-hide,
+or cold-health teardown. Fingerprints accept only exact eight-character
+hexadecimal values. Receive addresses validate the selected network, script,
+checksum, witness version, and program length; uniform-case Bech32 is
+accepted, mixed-case Bech32 is rejected, and Base58 addresses and extended
+keys remain exact and checksum-validated. The UI requires the user to
+compare the complete displayed public value and states that P1.9 has no
+hardware connection or authenticity claim.
 
 ## Rationale
 
-Keeping all inputs and verdicts in the opaque frame is the smallest design
-that preserves the existing message-schema guarantee: the warm realm never
-sees a mnemonic, private key, xprv, passphrase, or secret-compartment
-plaintext. It also permits backup and passphrase checks before a vault is
-opened. Manual device entry is honest about the current scope and leaves the
-physical device-screen check visible to the user instead of hiding it behind
-a false integration claim.
+Keeping Seed Forge as the only secret-entry surface and keeping all public
+identity, external values, and verdicts in the opaque frame preserves the
+existing message-schema guarantee: the warm realm never sees a mnemonic,
+private key, xprv, passphrase, or secret-compartment plaintext. It also
+permits backup and passphrase checks before a vault is opened without
+duplicating identity-selection controls. Manual device entry is honest about
+the current scope and leaves the physical device-screen check visible to the
+user instead of hiding it behind a false integration claim.
 
 ## Consequences
 
 ### Positive
 
-- Seed phrases and passphrases have no warm-shell or channel path.
-- The five workflows share tested, cold-only BIP-39/BIP-32 primitives.
+- Seed phrases and passphrases have no warm-shell or channel path, and there is
+  only one secret-entry surface.
+- The five checks share tested, cold-only BIP-39/BIP-32 primitives while the
+  four public comparison panels consume one linked Seed Forge identity.
 - Full public comparisons are visible and auditable in the sealed workspace.
-- A lock or panic teardown clears verification inputs as well as vault state.
+- A Seed Forge replacement or lock/panic teardown clears the linked public
+  identity and external comparison fields as well as vault state.
 
 ### Negative
 
@@ -59,8 +73,9 @@ a false integration claim.
 ### Risks
 
 - A user can still choose the wrong network, script type, account, or path.
-  The workflow labels those choices and the guide requires a complete manual
-  comparison, but real-device validation remains an open human gate.
+  The workflow labels those choices, invalidates a link after a network
+  change, and the guide requires a complete manual comparison, but real-device
+  validation remains an open human gate.
 - The JavaScript UI is not a hardware transport. Adding one would require a
   separate threat-model and architecture decision, not an extension of P1.9.
 
@@ -70,6 +85,13 @@ a false integration claim.
 
 Rejected. The architecture explicitly forbids secret-bearing message
 payloads, and an opaque-origin iframe does not make an unsafe schema safe.
+
+### Duplicate the Seed Forge mnemonic/passphrase controls in Verify Bench
+
+Rejected. A second secret-entry path invites a phrase/passphrase mismatch
+between the identity being verified and the identity selected in Seed Forge.
+Verify Bench links the current cold-local Seed Forge state and accepts only
+independent public comparison values.
 
 ### Add WebHID, WebUSB, or vendor transport in P1.9
 
