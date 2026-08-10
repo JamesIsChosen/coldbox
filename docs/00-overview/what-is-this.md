@@ -72,7 +72,7 @@ You can also mix physical randomness with the computer's, so that a rigged die o
 
 ### 🌱 Seed Forge — making and checking seed phrases
 
-Creates BIP-39 seed phrases (the 12- or 24-word kind) and validates existing ones, catching typos and invalid words. Handles passphrases — an optional extra word that creates an entirely separate wallet — with a check that you typed it the same way twice, because a single wrong character silently produces a different, empty, unrecoverable wallet.
+Creates BIP-39 seed phrases (the 12- or 24-word kind) and validates existing ones, catching typos and invalid words. Generate and Validate Existing Phrase each have their own optional passphrase pair, with a check that each pair was typed the same way twice, because a single wrong character silently produces a different, empty, unrecoverable wallet.
 
 In the cold realm, the recorded flow is Entropy Lab → Mix → Use this mix in Seed Forge → mnemonic → optional passphrase → raw BIP-39 seed and live fingerprint. The raw seed stays masked unless you explicitly reveal it briefly.
 

@@ -18,7 +18,7 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 
 - **Cold-only BIP-39 generation and validation.** Seed Forge supports 12/15/18/21/24 words and all ten vendored official wordlists, validates each word plus the checksum, and keeps the phrase masked until an explicit short reveal.
 - **Exact Mix handoff.** A successful Entropy Lab Mix exposes a one-use **Use this mix in Seed Forge** action. The exact mixed bytes are consumed without a second mix, and entropy/target changes clear the pending copy.
-- **Live passphrase derivation.** A matching passphrase change re-derives the current mnemonic's raw 64-byte BIP-39 seed and eight-hex-character master fingerprint; both remain cold-only, masked by default, and clear on mismatch or teardown. No clipboard or storage action exists.
+- **Live passphrase derivation.** Generate and Validate Existing Phrase each have a separate passphrase/confirmation pair and separate live raw-seed/fingerprint state; a matching change or mismatch affects only its own workflow. Both remain cold-only, masked by default, and clear on teardown. No clipboard or storage action exists.
 - **Fail-closed coverage.** Independent official first PBKDF2 vectors for all ten languages, including Japanese final NFKD handling, an independent Node/OpenSSL master-fingerprint reference, malformed-input negatives, and Chromium/Firefox assertions for the exact handoff and dynamic derivation are included. Structural choices are recorded in [ADR-0028](docs/05-development/adr/0028-cold-only-bip39-seed-forge.md).
 
 ### Added — P1.2 Entropy Health Meter and Bias Analyzer (2026-08-09)

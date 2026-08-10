@@ -81,10 +81,10 @@ Both are beyond brute force. 24 words is margin against future cryptanalysis, no
 Seed Forge keeps the phrase hidden until you reveal it briefly for writing down. It checks an existing phrase word by word, tells you if the checksum is wrong, and shows a short fingerprint so you can recognize the same wallet later. An advanced raw BIP-39 seed is masked by default and has no clipboard or storage action.
 :::
 ::: working
-Seed Forge turns the exact Entropy Lab Mix result into a BIP-39 phrase, or validates one you paste into the sealed realm. If you use a passphrase, enter it twice: one character changed creates a different wallet, so the raw seed and fingerprint are withheld until both entries match. Once they match, both outputs recalculate for the current phrase without generating a new mnemonic.
+Seed Forge turns the exact Entropy Lab Mix result into a BIP-39 phrase, or validates one you paste into the sealed realm. Generate and Validate Existing Phrase each have their own optional passphrase pair. One character changed creates a different wallet, so that workflow's raw seed and fingerprint are withheld until its two entries match; once they match, only that workflow recalculates for its current phrase.
 :::
 ::: technical
-Generation uses the vendored BIP-39 wordlists with NFKD normalization. The optional passphrase is NFKD-normalized as PBKDF2-HMAC-SHA512 salt material with 2,048 rounds; the raw 64-byte BIP-39 seed and master fingerprint are recalculated on confirmed passphrase changes. Japanese's U+3000 display separator is NFKD-normalized in the final PBKDF2 mnemonic text. These values stay inside the cold iframe.
+Generation uses the vendored BIP-39 wordlists with NFKD normalization. Each workflow's optional passphrase is NFKD-normalized as PBKDF2-HMAC-SHA512 salt material with 2,048 rounds; its raw 64-byte BIP-39 seed and master fingerprint are recalculated on confirmed changes to that workflow's pair only. Japanese's U+3000 display separator is NFKD-normalized in the final PBKDF2 mnemonic text. These values stay inside the cold iframe.
 :::
 
 ---

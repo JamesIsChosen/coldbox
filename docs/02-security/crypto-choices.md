@@ -119,8 +119,10 @@ the raw 64-byte BIP-39 seed, and the four-byte HASH160 master fingerprint. An
 explicit Entropy Lab Mix is retained and consumed once by the cold-local Seed
 Forge handoff; it is not remixed. Seed Forge supplies ordinary generation
 entropy from Entropy Lab rather than calling a library-owned random-byte
-helper, and no phrase, passphrase, derived seed, raw seed, or fingerprint
-enters the warm shell.
+helper. Generate and Validate Existing Phrase use separate cold-local
+passphrase/confirmation pairs and separate seed/fingerprint state; a matching
+edit or mismatch affects only its own workflow. No phrase, passphrase, derived
+seed, raw seed, or fingerprint enters the warm shell.
 
 ---
 

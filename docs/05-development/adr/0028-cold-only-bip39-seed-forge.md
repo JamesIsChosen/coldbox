@@ -45,11 +45,11 @@ only exposed the AES/KDF subset needed by earlier roadmap items.
 - Derive the 64-byte BIP-39 seed with PBKDF2-HMAC-SHA512, 2,048 rounds, using
   NFKD mnemonic text and the `mnemonic` + NFKD passphrase salt. Build the
   BIP-32 master key with `@scure/bip32` and display only its first-four-byte
-  HASH160 fingerprint as eight lowercase hexadecimal characters. Keep the
-  derived seed in cold-local memory for the current generated or validated
-  phrase, masked by default with an explicit 30-second reveal; recompute both
-  the seed and fingerprint whenever the confirmed passphrase changes, and
-  clear them on mismatch, invalid phrase, or cold session teardown.
+  HASH160 fingerprint as eight lowercase hexadecimal characters. Keep separate
+  derived seed/fingerprint state and separate optional passphrase/confirmation
+  pairs for Generate and Validate Existing Phrase. Recompute only the owning
+  workflow when its confirmed pair changes, and clear only that workflow on a
+  mismatch or invalid phrase; cold session teardown clears both.
 - Keep the generated phrase masked by default, require duplicate passphrase
   entries before any seed or fingerprint calculation, auto-remask a revealed
   phrase or raw seed after 30 seconds, and provide no clipboard or storage

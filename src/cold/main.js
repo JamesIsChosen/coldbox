@@ -110,9 +110,9 @@ __COLDBOX_CAPABILITIES__
   var seedForgeStatus = document.getElementById('cold-seed-forge-status');
   var seedForgeMarginalWrap = document.getElementById('cold-seed-forge-marginal-wrap');
   var seedForgeMarginalAck = document.getElementById('cold-seed-forge-marginal-ack');
-  var seedForgePassphrase = document.getElementById('cold-seed-forge-passphrase-input');
-  var seedForgePassphraseConfirm = document.getElementById('cold-seed-forge-passphrase-confirm');
-  var seedForgePassphraseError = document.getElementById('cold-seed-forge-passphrase-error');
+  var seedForgeGeneratedPassphrase = document.getElementById('cold-seed-forge-generated-passphrase-input');
+  var seedForgeGeneratedPassphraseConfirm = document.getElementById('cold-seed-forge-generated-passphrase-confirm');
+  var seedForgeGeneratedPassphraseError = document.getElementById('cold-seed-forge-generated-passphrase-error');
   var seedForgeGenerated = document.getElementById('cold-seed-forge-generated');
   var seedForgeGeneratedWords = document.getElementById('cold-seed-forge-generated-words');
   var seedForgeRevealButton = document.getElementById('cold-seed-forge-reveal');
@@ -121,6 +121,9 @@ __COLDBOX_CAPABILITIES__
   var seedForgeGeneratedSeed = document.getElementById('cold-seed-forge-generated-seed');
   var seedForgeGeneratedSeedReveal = document.getElementById('cold-seed-forge-generated-seed-reveal');
   var seedForgeMnemonicInput = document.getElementById('cold-seed-forge-mnemonic-input');
+  var seedForgeValidationPassphrase = document.getElementById('cold-seed-forge-validation-passphrase-input');
+  var seedForgeValidationPassphraseConfirm = document.getElementById('cold-seed-forge-validation-passphrase-confirm');
+  var seedForgeValidationPassphraseError = document.getElementById('cold-seed-forge-validation-passphrase-error');
   var seedForgeWordFields = document.getElementById('cold-seed-forge-word-fields');
   var seedForgeValidateButton = document.getElementById('cold-seed-forge-validate');
   var seedForgeValidationStatus = document.getElementById('cold-seed-forge-validation-status');
@@ -1360,23 +1363,39 @@ __COLDBOX_CAPABILITIES__
     }
   }
 
-  function setSeedForgePassphraseError(text) {
-    if (!seedForgePassphraseError) {
+  function setSeedForgePassphraseError(output, text) {
+    if (!output) {
       return;
     }
-    seedForgePassphraseError.textContent = text || '';
-    seedForgePassphraseError.hidden = !text;
+    output.textContent = text || '';
+    output.hidden = !text;
   }
 
-  function seedForgePassphrasePairValid() {
-    var passphrase = seedForgePassphrase ? seedForgePassphrase.value : '';
-    var confirmation = seedForgePassphraseConfirm ? seedForgePassphraseConfirm.value : '';
+  function seedForgePassphrasePairValid(passphraseInput, confirmationInput, errorOutput) {
+    var passphrase = passphraseInput ? passphraseInput.value : '';
+    var confirmation = confirmationInput ? confirmationInput.value : '';
     if (passphrase !== confirmation) {
-      setSeedForgePassphraseError('Passphrases do not match. Nothing will be derived until they are identical.');
+      setSeedForgePassphraseError(errorOutput, 'Passphrases do not match. Nothing will be derived for this workflow until they are identical.');
       return false;
     }
-    setSeedForgePassphraseError('');
+    setSeedForgePassphraseError(errorOutput, '');
     return true;
+  }
+
+  function generatedPassphrasePairValid() {
+    return seedForgePassphrasePairValid(
+      seedForgeGeneratedPassphrase,
+      seedForgeGeneratedPassphraseConfirm,
+      seedForgeGeneratedPassphraseError
+    );
+  }
+
+  function validationPassphrasePairValid() {
+    return seedForgePassphrasePairValid(
+      seedForgeValidationPassphrase,
+      seedForgeValidationPassphraseConfirm,
+      seedForgeValidationPassphraseError
+    );
   }
 
   function seedForgeTargetBits() {
@@ -1422,9 +1441,11 @@ __COLDBOX_CAPABILITIES__
       seedForgeLanguage,
       seedForgeTarget,
       seedForgeGenerateButton,
-      seedForgePassphrase,
-      seedForgePassphraseConfirm,
+      seedForgeGeneratedPassphrase,
+      seedForgeGeneratedPassphraseConfirm,
       seedForgeMnemonicInput,
+      seedForgeValidationPassphrase,
+      seedForgeValidationPassphraseConfirm,
       seedForgeValidateButton
     ];
     controls.forEach(function (control) {
@@ -1617,62 +1638,89 @@ __COLDBOX_CAPABILITIES__
     validationSeedRevealTimer = window.setTimeout(remaskValidationSeed, 30000);
   }
 
-  function refreshSeedForgeDerivations() {
+  function refreshGeneratedDerivation() {
     if (!seedForge) {
       return false;
     }
-    if (!seedForgePassphrasePairValid()) {
+    if (!generatedMnemonic) {
       clearGeneratedSeed();
-      clearValidationSeed();
       setFingerprintOutput(seedForgeGeneratedFingerprint, 'Not calculated');
-      setFingerprintOutput(seedForgeValidationFingerprint, 'Not calculated');
-      updateSeedForgeControls();
+      return true;
+    }
+    if (!generatedPassphrasePairValid()) {
+      clearGeneratedSeed();
+      setFingerprintOutput(seedForgeGeneratedFingerprint, 'Not calculated');
       return false;
     }
 
-    var passphrase = seedForgePassphrase ? seedForgePassphrase.value : '';
-    var allValid = true;
+    var passphrase = seedForgeGeneratedPassphrase ? seedForgeGeneratedPassphrase.value : '';
     try {
-      if (generatedMnemonic) {
-        var generatedDerived = seedForge.deriveMnemonic(generatedMnemonic, passphrase, generatedLanguage);
-        try {
-          replaceGeneratedSeed(generatedDerived.seed);
-        } finally {
-          zeroBytes(generatedDerived.seed);
-        }
-        setFingerprintOutput(seedForgeGeneratedFingerprint, generatedDerived.fingerprint);
-      } else {
-        clearGeneratedSeed();
-        setFingerprintOutput(seedForgeGeneratedFingerprint, 'Not calculated');
+      var generatedDerived = seedForge.deriveMnemonic(generatedMnemonic, passphrase, generatedLanguage);
+      try {
+        replaceGeneratedSeed(generatedDerived.seed);
+      } finally {
+        zeroBytes(generatedDerived.seed);
       }
-
-      var language = seedForgeLanguage ? seedForgeLanguage.value : 'english';
-      var phrase = validationPhraseText || validationPhraseFromFields();
-      var validation = phrase ? seedForge.validateMnemonic(phrase, language) : null;
-      if (validation && validation.valid) {
-        var validationDerived = seedForge.deriveMnemonic(phrase, passphrase, language);
-        try {
-          replaceValidationSeed(validationDerived.seed);
-        } finally {
-          zeroBytes(validationDerived.seed);
-        }
-        setFingerprintOutput(seedForgeValidationFingerprint, validationDerived.fingerprint);
-      } else {
-        clearValidationSeed();
-        setFingerprintOutput(seedForgeValidationFingerprint, 'Not calculated');
-      }
+      setFingerprintOutput(seedForgeGeneratedFingerprint, generatedDerived.fingerprint);
+      return true;
     } catch (error) {
-      allValid = false;
       clearGeneratedSeed();
-      clearValidationSeed();
       setFingerprintOutput(seedForgeGeneratedFingerprint, 'Not calculated');
-      setFingerprintOutput(seedForgeValidationFingerprint, 'Not calculated');
-      setSeedForgeStatus('error', 'Seed derivation failed closed: ' + error.message);
+      setSeedForgeStatus('error', 'Generated seed derivation failed closed: ' + error.message);
+      return false;
     } finally {
       passphrase = '';
     }
+  }
+
+  function refreshValidationDerivation() {
+    if (!seedForge) {
+      return false;
+    }
+    var language = seedForgeLanguage ? seedForgeLanguage.value : 'english';
+    var phrase = validationPhraseText || validationPhraseFromFields();
+    var validation = phrase ? seedForge.validateMnemonic(phrase, language) : null;
+    if (!validation || !validation.valid) {
+      clearValidationSeed();
+      setFingerprintOutput(seedForgeValidationFingerprint, 'Not calculated');
+      return true;
+    }
+    if (!validationPassphrasePairValid()) {
+      clearValidationSeed();
+      setFingerprintOutput(seedForgeValidationFingerprint, 'Not calculated');
+      return false;
+    }
+
+    var passphrase = seedForgeValidationPassphrase ? seedForgeValidationPassphrase.value : '';
+    try {
+      var validationDerived = seedForge.deriveMnemonic(phrase, passphrase, language);
+      try {
+        replaceValidationSeed(validationDerived.seed);
+      } finally {
+        zeroBytes(validationDerived.seed);
+      }
+      setFingerprintOutput(seedForgeValidationFingerprint, validationDerived.fingerprint);
+      return true;
+    } catch (error) {
+      clearValidationSeed();
+      setFingerprintOutput(seedForgeValidationFingerprint, 'Not calculated');
+      setSeedForgeStatus('error', 'Validation seed derivation failed closed: ' + error.message);
+      return false;
+    } finally {
+      passphrase = '';
+    }
+  }
+
+  function refreshGeneratedDerivationAndControls() {
+    var valid = refreshGeneratedDerivation();
     updateSeedForgeControls();
-    return allValid;
+    return valid;
+  }
+
+  function refreshValidationDerivationAndControls() {
+    var valid = refreshValidationDerivation();
+    updateSeedForgeControls();
+    return valid;
   }
 
   var validationPhraseText = '';
@@ -1716,7 +1764,7 @@ __COLDBOX_CAPABILITIES__
       for (var emptyIndex = 0; emptyIndex < seedForgeWordInputs.length; emptyIndex += 1) {
         setValidationWordState(emptyIndex, 'empty', 'Empty');
       }
-      refreshSeedForgeDerivations();
+      refreshValidationDerivationAndControls();
       return false;
     }
 
@@ -1726,7 +1774,7 @@ __COLDBOX_CAPABILITIES__
     } catch (error) {
       seedForgeValidationStatus.setAttribute('data-state', 'invalid');
       seedForgeValidationStatus.textContent = 'Validation failed closed: ' + error.message;
-      refreshSeedForgeDerivations();
+      refreshValidationDerivationAndControls();
       return false;
     }
 
@@ -1748,7 +1796,7 @@ __COLDBOX_CAPABILITIES__
     seedForgeValidationStatus.setAttribute('data-state', validation.valid ? 'valid' : 'invalid');
     if (validation.valid) {
       seedForgeValidationStatus.textContent = 'Valid ' + validation.words.length + '-word BIP-39 phrase.';
-      refreshSeedForgeDerivations();
+      refreshValidationDerivationAndControls();
       return true;
     }
 
@@ -1759,7 +1807,7 @@ __COLDBOX_CAPABILITIES__
     } else {
       seedForgeValidationStatus.textContent = 'BIP-39 needs 12, 15, 18, 21, or 24 words; received ' + validation.words.length + '.';
     }
-    refreshSeedForgeDerivations();
+    refreshValidationDerivationAndControls();
     return false;
   }
 
@@ -1791,12 +1839,19 @@ __COLDBOX_CAPABILITIES__
     if (seedForgeMarginalAck) {
       seedForgeMarginalAck.checked = false;
     }
-    setSeedForgePassphraseError('');
-    if (seedForgePassphrase) {
-      seedForgePassphrase.value = '';
+    setSeedForgePassphraseError(seedForgeGeneratedPassphraseError, '');
+    if (seedForgeGeneratedPassphrase) {
+      seedForgeGeneratedPassphrase.value = '';
     }
-    if (seedForgePassphraseConfirm) {
-      seedForgePassphraseConfirm.value = '';
+    if (seedForgeGeneratedPassphraseConfirm) {
+      seedForgeGeneratedPassphraseConfirm.value = '';
+    }
+    setSeedForgePassphraseError(seedForgeValidationPassphraseError, '');
+    if (seedForgeValidationPassphrase) {
+      seedForgeValidationPassphrase.value = '';
+    }
+    if (seedForgeValidationPassphraseConfirm) {
+      seedForgeValidationPassphraseConfirm.value = '';
     }
   }
 
@@ -1826,8 +1881,8 @@ __COLDBOX_CAPABILITIES__
       setSeedForgeStatus('error', 'Seed Forge is locked because the cold-realm health checks have not passed.');
       return;
     }
-    if (!seedForgePassphrasePairValid()) {
-      setSeedForgeStatus('error', 'Confirm the optional passphrase before generating.');
+    if (!generatedPassphrasePairValid()) {
+      setSeedForgeStatus('error', 'Confirm the Generate passphrase before generating.');
       return;
     }
     if (!seedForgeMarginalAcknowledged()) {
@@ -1857,7 +1912,7 @@ __COLDBOX_CAPABILITIES__
       generatedLanguage = language;
       generatedMnemonic = seedForge.entropyToMnemonic(mixed, language);
       renderGeneratedPhrase(generatedMnemonic);
-      if (!refreshSeedForgeDerivations()) {
+      if (!refreshGeneratedDerivationAndControls()) {
         throw new Error('Seed derivation did not complete; refusing to finish generation.');
       }
       setSeedForgeStatus('ready', 'Generated a ' + seedForge.splitMnemonic(generatedMnemonic).length + '-word BIP-39 phrase. Verify the written backup before trusting it.');
@@ -1930,8 +1985,6 @@ __COLDBOX_CAPABILITIES__
     }
     if (seedForgeLanguage) {
       seedForgeLanguage.addEventListener('change', function () {
-        setFingerprintOutput(seedForgeGeneratedFingerprint, 'Not calculated');
-        setFingerprintOutput(seedForgeValidationFingerprint, 'Not calculated');
         updateValidationStatus();
       });
     }
@@ -1967,16 +2020,28 @@ __COLDBOX_CAPABILITIES__
         }
       });
     }
-    if (seedForgePassphrase) {
-      seedForgePassphrase.addEventListener('input', function () {
-        seedForgePassphrasePairValid();
-        refreshSeedForgeDerivations();
+    if (seedForgeGeneratedPassphrase) {
+      seedForgeGeneratedPassphrase.addEventListener('input', function () {
+        generatedPassphrasePairValid();
+        refreshGeneratedDerivationAndControls();
       });
     }
-    if (seedForgePassphraseConfirm) {
-      seedForgePassphraseConfirm.addEventListener('input', function () {
-        seedForgePassphrasePairValid();
-        refreshSeedForgeDerivations();
+    if (seedForgeGeneratedPassphraseConfirm) {
+      seedForgeGeneratedPassphraseConfirm.addEventListener('input', function () {
+        generatedPassphrasePairValid();
+        refreshGeneratedDerivationAndControls();
+      });
+    }
+    if (seedForgeValidationPassphrase) {
+      seedForgeValidationPassphrase.addEventListener('input', function () {
+        validationPassphrasePairValid();
+        refreshValidationDerivationAndControls();
+      });
+    }
+    if (seedForgeValidationPassphraseConfirm) {
+      seedForgeValidationPassphraseConfirm.addEventListener('input', function () {
+        validationPassphrasePairValid();
+        refreshValidationDerivationAndControls();
       });
     }
     if (seedForgeMnemonicInput) {

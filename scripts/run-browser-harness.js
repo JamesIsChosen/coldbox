@@ -2293,15 +2293,20 @@ async function verifySeedForge(browser, engine) {
     assert.equal(await coldFrame.locator('#cold-seed-forge-word-fields .cold-seed-forge-word-field').count(), 24);
     assert.equal(await coldFrame.locator('#cold-seed-forge-generated').isHidden(), true);
 
+    const generatedPassphrase = coldFrame.locator('#cold-seed-forge-generated-passphrase-input');
+    const generatedPassphraseConfirm = coldFrame.locator('#cold-seed-forge-generated-passphrase-confirm');
+    const validationPassphrase = coldFrame.locator('#cold-seed-forge-validation-passphrase-input');
+    const validationPassphraseConfirm = coldFrame.locator('#cold-seed-forge-validation-passphrase-confirm');
+
     // Duplicate confirmation is a hard local gate. The phrase and passphrase
     // are test fixtures only; neither enters the parent document.
-    await coldFrame.locator('#cold-seed-forge-passphrase-input').fill('test passphrase');
-    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('different passphrase');
+    await generatedPassphrase.fill('test passphrase');
+    await generatedPassphraseConfirm.fill('different passphrase');
     await coldFrame.locator('#cold-seed-forge-generate').click();
-    assert.match(await coldFrame.locator('#cold-seed-forge-passphrase-error').textContent(), /do not match/i);
+    assert.match(await coldFrame.locator('#cold-seed-forge-generated-passphrase-error').textContent(), /do not match/i);
     assert.equal(await coldFrame.locator('#cold-seed-forge-generated').isHidden(), true);
 
-    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('test passphrase');
+    await generatedPassphraseConfirm.fill('test passphrase');
     await coldFrame.locator('#cold-seed-forge-generate').click();
     await coldFrame.locator('#cold-seed-forge-generated:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await coldFrame.locator('#cold-seed-forge-generated-words li').count(), 12);
@@ -2354,8 +2359,8 @@ async function verifySeedForge(browser, engine) {
     // masked until its separate, time-limited reveal action.
     const generatedFingerprintBeforePassphrase = (await coldFrame.locator('#cold-seed-forge-generated-fingerprint').textContent()).trim();
     assert.equal((await coldFrame.locator('#cold-seed-forge-generated-seed').textContent()).trim(), 'Masked (64 bytes)');
-    await coldFrame.locator('#cold-seed-forge-passphrase-input').fill('dynamic passphrase');
-    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('dynamic passphrase');
+    await generatedPassphrase.fill('dynamic passphrase');
+    await generatedPassphraseConfirm.fill('dynamic passphrase');
     const generatedFingerprintAfterPassphrase = (await coldFrame.locator('#cold-seed-forge-generated-fingerprint').textContent()).trim();
     assert.match(generatedFingerprintAfterPassphrase, /^[0-9a-f]{8}$/);
     assert.notEqual(generatedFingerprintAfterPassphrase, generatedFingerprintBeforePassphrase);
@@ -2364,18 +2369,18 @@ async function verifySeedForge(browser, engine) {
     const generatedSeedAfterPassphrase = (await coldFrame.locator('#cold-seed-forge-generated-seed').textContent()).trim();
     assert.match(generatedSeedAfterPassphrase, /^[0-9a-f]{128}$/);
     await coldFrame.locator('#cold-seed-forge-generated-seed-reveal').click();
-    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('mismatch');
+    await generatedPassphraseConfirm.fill('mismatch');
     assert.equal((await coldFrame.locator('#cold-seed-forge-generated-fingerprint').textContent()).trim(), 'Not calculated');
     assert.equal((await coldFrame.locator('#cold-seed-forge-generated-seed').textContent()).trim(), 'Not calculated');
     assert.equal(await coldFrame.locator('#cold-seed-forge-generated-raw').isHidden(), true);
-    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('dynamic passphrase');
+    await generatedPassphraseConfirm.fill('dynamic passphrase');
 
     // Official public BIP-39 vector: the Trezor/python-mnemonic vector with
     // passphrase TREZOR. This verifies validation, per-word status, NFKD
     // passphrase handling, and the cold-side fingerprint readout in a real
     // browser frame.
-    await coldFrame.locator('#cold-seed-forge-passphrase-input').fill('TREZOR');
-    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('TREZOR');
+    await validationPassphrase.fill('TREZOR');
+    await validationPassphraseConfirm.fill('TREZOR');
     const officialMnemonic = [
       'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
       'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
@@ -2385,27 +2390,85 @@ async function verifySeedForge(browser, engine) {
     await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await coldFrame.locator('#cold-seed-forge-word-fields .cold-seed-forge-word-field[data-state="valid"]').count(), 12);
     assert.equal((await coldFrame.locator('#cold-seed-forge-validation-fingerprint').textContent()).trim(), 'b4e3f5ed');
+    assert.equal(
+      (await coldFrame.locator('#cold-seed-forge-generated-fingerprint').textContent()).trim(),
+      generatedFingerprintAfterPassphrase,
+      `${engine}: validation passphrase setup changed the generated fingerprint`
+    );
     assert.equal((await coldFrame.locator('#cold-seed-forge-validation-seed').textContent()).trim(), 'Masked (64 bytes)');
     await coldFrame.locator('#cold-seed-forge-validation-seed-reveal').click();
     const validationSeedBeforePassphrase = (await coldFrame.locator('#cold-seed-forge-validation-seed').textContent()).trim();
     assert.match(validationSeedBeforePassphrase, /^[0-9a-f]{128}$/);
     await coldFrame.locator('#cold-seed-forge-validation-seed-reveal').click();
-    await coldFrame.locator('#cold-seed-forge-passphrase-input').fill('another passphrase');
-    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('another passphrase');
+    await coldFrame.locator('#cold-seed-forge-generated-seed-reveal').click();
+    assert.equal(
+      (await coldFrame.locator('#cold-seed-forge-generated-seed').textContent()).trim(),
+      generatedSeedAfterPassphrase,
+      `${engine}: validation passphrase setup changed the generated raw seed`
+    );
+    await coldFrame.locator('#cold-seed-forge-generated-seed-reveal').click();
+    await validationPassphrase.fill('another passphrase');
+    await validationPassphraseConfirm.fill('another passphrase');
     const validationFingerprintAfterPassphrase = (await coldFrame.locator('#cold-seed-forge-validation-fingerprint').textContent()).trim();
     assert.match(validationFingerprintAfterPassphrase, /^[0-9a-f]{8}$/);
     assert.notEqual(validationFingerprintAfterPassphrase, 'b4e3f5ed');
+    assert.equal(
+      (await coldFrame.locator('#cold-seed-forge-generated-fingerprint').textContent()).trim(),
+      generatedFingerprintAfterPassphrase,
+      `${engine}: validation passphrase change changed the generated fingerprint`
+    );
     assert.equal((await coldFrame.locator('#cold-seed-forge-validation-seed').textContent()).trim(), 'Masked (64 bytes)');
     await coldFrame.locator('#cold-seed-forge-validation-seed-reveal').click();
     const validationSeedAfterPassphrase = (await coldFrame.locator('#cold-seed-forge-validation-seed').textContent()).trim();
     assert.match(validationSeedAfterPassphrase, /^[0-9a-f]{128}$/);
     assert.notEqual(validationSeedAfterPassphrase, validationSeedBeforePassphrase);
     await coldFrame.locator('#cold-seed-forge-validation-seed-reveal').click();
-    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('mismatch again');
+    await validationPassphraseConfirm.fill('mismatch again');
+    assert.match(await coldFrame.locator('#cold-seed-forge-validation-passphrase-error').textContent(), /for this workflow/i);
     assert.equal((await coldFrame.locator('#cold-seed-forge-validation-fingerprint').textContent()).trim(), 'Not calculated');
     assert.equal((await coldFrame.locator('#cold-seed-forge-validation-seed').textContent()).trim(), 'Not calculated');
     assert.equal(await coldFrame.locator('#cold-seed-forge-validation-raw').isHidden(), true);
-    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('another passphrase');
+    assert.equal(
+      (await coldFrame.locator('#cold-seed-forge-generated-fingerprint').textContent()).trim(),
+      generatedFingerprintAfterPassphrase,
+      `${engine}: validation passphrase mismatch changed the generated fingerprint`
+    );
+    await validationPassphraseConfirm.fill('another passphrase');
+
+    // The inverse direction is isolated too: changing or mismatching the
+    // Generate pair must not touch the validated phrase's seed or fingerprint.
+    const validationFingerprintBeforeGeneratedChange = (await coldFrame.locator('#cold-seed-forge-validation-fingerprint').textContent()).trim();
+    await coldFrame.locator('#cold-seed-forge-validation-seed-reveal').click();
+    const validationSeedBeforeGeneratedChange = (await coldFrame.locator('#cold-seed-forge-validation-seed').textContent()).trim();
+    assert.match(validationSeedBeforeGeneratedChange, /^[0-9a-f]{128}$/);
+    await coldFrame.locator('#cold-seed-forge-validation-seed-reveal').click();
+    await generatedPassphrase.fill('third generated passphrase');
+    await generatedPassphraseConfirm.fill('third generated passphrase');
+    const generatedFingerprintAfterSecondPassphrase = (await coldFrame.locator('#cold-seed-forge-generated-fingerprint').textContent()).trim();
+    assert.match(generatedFingerprintAfterSecondPassphrase, /^[0-9a-f]{8}$/);
+    assert.notEqual(generatedFingerprintAfterSecondPassphrase, generatedFingerprintAfterPassphrase);
+    assert.equal(
+      (await coldFrame.locator('#cold-seed-forge-validation-fingerprint').textContent()).trim(),
+      validationFingerprintBeforeGeneratedChange,
+      `${engine}: generated passphrase change changed the validation fingerprint`
+    );
+    await coldFrame.locator('#cold-seed-forge-validation-seed-reveal').click();
+    assert.equal(
+      (await coldFrame.locator('#cold-seed-forge-validation-seed').textContent()).trim(),
+      validationSeedBeforeGeneratedChange,
+      `${engine}: generated passphrase change changed the validation raw seed`
+    );
+    await coldFrame.locator('#cold-seed-forge-validation-seed-reveal').click();
+    await generatedPassphraseConfirm.fill('generated mismatch only');
+    assert.match(await coldFrame.locator('#cold-seed-forge-generated-passphrase-error').textContent(), /for this workflow/i);
+    assert.equal((await coldFrame.locator('#cold-seed-forge-generated-fingerprint').textContent()).trim(), 'Not calculated');
+    assert.equal((await coldFrame.locator('#cold-seed-forge-generated-seed').textContent()).trim(), 'Not calculated');
+    assert.equal(
+      (await coldFrame.locator('#cold-seed-forge-validation-fingerprint').textContent()).trim(),
+      validationFingerprintBeforeGeneratedChange,
+      `${engine}: generated passphrase mismatch changed the validation fingerprint`
+    );
+    await generatedPassphraseConfirm.fill('third generated passphrase');
 
     // Negative validation: known words with a bad checksum fail closed, and
     // an unknown word is reported inline rather than being silently accepted.
@@ -2422,18 +2485,52 @@ async function verifySeedForge(browser, engine) {
     assert.match(await coldFrame.locator('#cold-seed-forge-validation-status').textContent(), /not in the selected/i);
     assert.equal(await coldFrame.locator('#cold-seed-forge-word-fields .cold-seed-forge-word-field[data-state="unknown"]').count(), 1);
     assert.equal((await coldFrame.locator('#cold-seed-forge-validation-fingerprint').textContent()).trim(), 'Not calculated');
+    assert.equal(
+      (await coldFrame.locator('#cold-seed-forge-generated-fingerprint').textContent()).trim(),
+      generatedFingerprintAfterSecondPassphrase,
+      `${engine}: validation phrase failure changed the generated fingerprint`
+    );
 
     // The 256-bit selection produces the corresponding 24-word shape and
     // stays synchronized with Entropy Lab's target selector.
     await target.selectOption('256');
     assert.equal(await coldFrame.locator('#cold-entropy-target').inputValue(), '256');
-    await coldFrame.locator('#cold-seed-forge-passphrase-input').fill('');
-    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('');
+    await generatedPassphrase.fill('');
+    await generatedPassphraseConfirm.fill('');
     await coldFrame.locator('#cold-seed-forge-generate').click();
     await coldFrame.locator('#cold-seed-forge-generated-words li').nth(23).waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await coldFrame.locator('#cold-seed-forge-generated-words li').count(), 24);
 
-    console.log(`${engine}: Seed Forge language list, CSPRNG generation, passphrase confirmation, masked reveal, official BIP-39 validation, fingerprint, negative cases, and 24-word target passed`);
+    // Teardown is one shared cold-session boundary, but both workflow pairs
+    // and both derived surfaces must be cleared through it.
+    await validationPassphrase.fill('teardown validation passphrase');
+    await validationPassphraseConfirm.fill('teardown validation passphrase');
+    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(officialMnemonic);
+    await coldFrame.locator('#cold-seed-forge-validate').click();
+    await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match((await coldFrame.locator('#cold-seed-forge-validation-fingerprint').textContent()).trim(), /^[0-9a-f]{8}$/);
+    await generatedPassphrase.fill('teardown generated passphrase');
+    await generatedPassphraseConfirm.fill('teardown generated passphrase');
+    assert.match((await coldFrame.locator('#cold-seed-forge-generated-fingerprint').textContent()).trim(), /^[0-9a-f]{8}$/);
+    assert.equal((await coldFrame.locator('#cold-seed-forge-generated-seed').textContent()).trim(), 'Masked (64 bytes)');
+    assert.equal((await coldFrame.locator('#cold-seed-forge-validation-seed').textContent()).trim(), 'Masked (64 bytes)');
+
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-seed-forge-generated').isHidden(), true);
+    assert.equal((await coldFrame.locator('#cold-seed-forge-generated-fingerprint').textContent()).trim(), 'Not calculated');
+    assert.equal((await coldFrame.locator('#cold-seed-forge-validation-fingerprint').textContent()).trim(), 'Not calculated');
+    assert.equal(await coldFrame.locator('#cold-seed-forge-generated-raw').isHidden(), true);
+    assert.equal(await coldFrame.locator('#cold-seed-forge-validation-raw').isHidden(), true);
+    assert.equal(await generatedPassphrase.inputValue(), '');
+    assert.equal(await generatedPassphraseConfirm.inputValue(), '');
+    assert.equal(await validationPassphrase.inputValue(), '');
+    assert.equal(await validationPassphraseConfirm.inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-seed-forge-generated-passphrase-error').isHidden(), true);
+    assert.equal(await coldFrame.locator('#cold-seed-forge-validation-passphrase-error').isHidden(), true);
+
+    console.log(`${engine}: Seed Forge language list, exact mix handoff, independent Generate/Validate passphrases, isolated derivations, official vectors, negative cases, and teardown passed`);
   } finally {
     await closePage(page);
   }

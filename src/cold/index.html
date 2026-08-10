@@ -199,7 +199,7 @@ __COLDBOX_COLD_STYLES__
     </section>
     <section id="cold-seed-forge" aria-label="Seed Forge" data-state="locked">
       <p class="eyebrow">Seed Forge / P1.3</p>
-      <p id="cold-seed-forge-help">Generate or validate a BIP-39 phrase inside this sealed realm. For a recorded Entropy Lab result, choose the language and word count, select “Use this mix in Seed Forge,” and the exact mixed bytes are consumed once without a second mix. Normal CSPRNG-only generation is also available. The phrase, optional passphrase, raw BIP-39 seed, and fingerprint never cross the realm boundary.</p>
+      <p id="cold-seed-forge-help">Generate or validate a BIP-39 phrase inside this sealed realm. For a recorded Entropy Lab result, choose the language and word count, select “Use this mix in Seed Forge,” and the exact mixed bytes are consumed once without a second mix. Normal CSPRNG-only generation is also available. Each workflow has its own optional passphrase pair; phrases, passphrases, raw BIP-39 seeds, and fingerprints never cross the realm boundary.</p>
       <div id="cold-seed-forge-controls">
         <label for="cold-seed-forge-language">BIP-39 language</label>
         <select id="cold-seed-forge-language" disabled></select>
@@ -220,14 +220,14 @@ __COLDBOX_COLD_STYLES__
           I reviewed the advisory bias warning for the selected physical/manual source and want to continue.
         </label>
       </div>
-      <section id="cold-seed-forge-passphrase" aria-labelledby="cold-seed-forge-passphrase-title">
-        <h2 id="cold-seed-forge-passphrase-title">Optional BIP-39 passphrase</h2>
-        <p id="cold-seed-forge-passphrase-help">A passphrase creates a different wallet. An exact duplicate is required before the fingerprint is read. An empty pair means no passphrase.</p>
-        <label for="cold-seed-forge-passphrase-input">Passphrase (never leaves this realm)</label>
-        <input id="cold-seed-forge-passphrase-input" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
-        <label for="cold-seed-forge-passphrase-confirm">Confirm passphrase</label>
-        <input id="cold-seed-forge-passphrase-confirm" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
-        <p id="cold-seed-forge-passphrase-error" class="cold-vault-inline-error" role="alert" aria-live="assertive" hidden></p>
+      <section id="cold-seed-forge-generated-passphrase" class="cold-seed-forge-passphrase" aria-labelledby="cold-seed-forge-generated-passphrase-title">
+        <h2 id="cold-seed-forge-generated-passphrase-title">Generate passphrase (optional)</h2>
+        <p id="cold-seed-forge-generated-passphrase-help">A passphrase creates a different wallet for the generated phrase. An exact duplicate is required before its fingerprint and raw seed are read. An empty pair means no passphrase. This pair affects only Generate.</p>
+        <label for="cold-seed-forge-generated-passphrase-input">Generate passphrase (never leaves this realm)</label>
+        <input id="cold-seed-forge-generated-passphrase-input" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+        <label for="cold-seed-forge-generated-passphrase-confirm">Confirm Generate passphrase</label>
+        <input id="cold-seed-forge-generated-passphrase-confirm" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+        <p id="cold-seed-forge-generated-passphrase-error" class="cold-vault-inline-error" role="alert" aria-live="assertive" hidden></p>
       </section>
       <section id="cold-seed-forge-generated" hidden aria-labelledby="cold-seed-forge-generated-title">
         <h2 id="cold-seed-forge-generated-title">Generated phrase</h2>
@@ -240,16 +240,25 @@ __COLDBOX_COLD_STYLES__
         </div>
         <section id="cold-seed-forge-generated-raw" class="cold-seed-forge-raw" hidden aria-labelledby="cold-seed-forge-generated-raw-title">
           <h2 id="cold-seed-forge-generated-raw-title">Advanced: raw BIP-39 seed</h2>
-          <p class="cold-seed-forge-generated-help">This 64-byte seed is masked by default and remains only in this sealed realm. It is recalculated when the confirmed optional passphrase changes; reveal it briefly only when a controlled offline workflow requires the raw value.</p>
+          <p class="cold-seed-forge-generated-help">This 64-byte seed is masked by default and remains only in this sealed realm. It is recalculated when the confirmed Generate passphrase changes; reveal it briefly only when a controlled offline workflow requires the raw value.</p>
           <output id="cold-seed-forge-generated-seed" aria-label="Generated raw 64-byte BIP-39 seed">Not calculated</output>
           <button id="cold-seed-forge-generated-seed-reveal" type="button" disabled>Reveal raw seed for 30 seconds</button>
         </section>
       </section>
       <section id="cold-seed-forge-validator" aria-labelledby="cold-seed-forge-validator-title">
         <h2 id="cold-seed-forge-validator-title">Validate an existing phrase</h2>
-        <p id="cold-seed-forge-validator-help">Paste or type a phrase into the masked field. The numbered fields show per-word status inside this realm; checksum validation is separate from word spelling.</p>
+        <p id="cold-seed-forge-validator-help">Paste or type a phrase into the masked field. The numbered fields show per-word status inside this realm; checksum validation is separate from word spelling. The validation passphrase pair affects only this existing phrase.</p>
         <label for="cold-seed-forge-mnemonic-input">Phrase to validate (masked)</label>
         <input id="cold-seed-forge-mnemonic-input" type="password" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+        <section id="cold-seed-forge-validation-passphrase" class="cold-seed-forge-passphrase" aria-labelledby="cold-seed-forge-validation-passphrase-title">
+          <h2 id="cold-seed-forge-validation-passphrase-title">Validation passphrase (optional)</h2>
+          <p id="cold-seed-forge-validation-passphrase-help">A passphrase creates a different wallet for the validated phrase. An exact duplicate is required before its fingerprint and raw seed are read. An empty pair means no passphrase. This pair affects only Validate Existing Phrase.</p>
+          <label for="cold-seed-forge-validation-passphrase-input">Validation passphrase (never leaves this realm)</label>
+          <input id="cold-seed-forge-validation-passphrase-input" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <label for="cold-seed-forge-validation-passphrase-confirm">Confirm validation passphrase</label>
+          <input id="cold-seed-forge-validation-passphrase-confirm" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <p id="cold-seed-forge-validation-passphrase-error" class="cold-vault-inline-error" role="alert" aria-live="assertive" hidden></p>
+        </section>
         <div id="cold-seed-forge-word-fields" aria-label="BIP-39 word validation fields"></div>
         <button id="cold-seed-forge-validate" type="button" disabled>Validate phrase</button>
         <p id="cold-seed-forge-validation-status" role="status" aria-live="polite">No phrase entered.</p>
@@ -259,7 +268,7 @@ __COLDBOX_COLD_STYLES__
         </div>
         <section id="cold-seed-forge-validation-raw" class="cold-seed-forge-raw" hidden aria-labelledby="cold-seed-forge-validation-raw-title">
           <h2 id="cold-seed-forge-validation-raw-title">Advanced: raw BIP-39 seed</h2>
-          <p class="cold-seed-forge-generated-help">This 64-byte seed is masked by default and remains only in this sealed realm. It follows the confirmed optional passphrase for the validated phrase and is cleared when the phrase or passphrase is invalid.</p>
+          <p class="cold-seed-forge-generated-help">This 64-byte seed is masked by default and remains only in this sealed realm. It follows the confirmed validation passphrase for the validated phrase and is cleared when the phrase or passphrase is invalid.</p>
           <output id="cold-seed-forge-validation-seed" aria-label="Validated raw 64-byte BIP-39 seed">Not calculated</output>
           <button id="cold-seed-forge-validation-seed-reveal" type="button" disabled>Reveal raw seed for 30 seconds</button>
         </section>

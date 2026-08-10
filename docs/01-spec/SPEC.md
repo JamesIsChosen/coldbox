@@ -495,12 +495,13 @@ through the same Entropy Lab session.
 
 The mnemonic uses one of the ten vendored official BIP-39 wordlists at 128,
 160, 192, 224, or 256 entropy bits. Validation reports word and checksum
-status in the cold realm. The optional passphrase is duplicate-confirmed; a
-matching change re-derives the current mnemonic's 64-byte PBKDF2-HMAC-SHA512
-seed and master fingerprint without generating a new mnemonic, while a
-mismatch clears both derived outputs. The raw seed is an advanced cold-only
-output, masked by default, revealed only by an explicit timed action, and has
-no clipboard or storage action. Japanese U+3000 is retained for canonical
+status in the cold realm. Generate and Validate Existing Phrase each have a
+separate optional passphrase and confirmation pair. A matching edit re-derives
+only that workflow's current mnemonic's 64-byte PBKDF2-HMAC-SHA512 seed and
+master fingerprint without generating a new mnemonic; a mismatch clears only
+that workflow's derived outputs. The raw seed is an advanced cold-only output,
+masked by default, revealed only by an explicit timed action, and has no
+clipboard or storage action. Japanese U+3000 is retained for canonical
 display, then the reconstructed mnemonic sentence is NFKD-normalized before
 PBKDF2 so the separator becomes the required ASCII space. xprv/xpub/ypub/zpub,
 script/path derivation, and child derivation remain later roadmap scope.
@@ -544,7 +545,7 @@ The existing vault creation form follows the human-chosen rule live: its creatio
 
 That last distinction matters more than it looks. A false-precision number invites users to trust a weak passphrase because a meter turned green.
 
-**Seed Forge 🌱** — BIP-39 generate (12/15/18/21/24), validate with per-word inline status, NFKD normalization. Passphrase support with duplicate-confirm and a fingerprint readout, because a typo here creates a silently different and unrecoverable wallet. Master fingerprint (first 4 bytes of HASH160 of the master pubkey) displayed everywhere a seed is referenced — this is the safe public identifier the Registry uses, letting you track a wallet without storing its seed. **BIP-85** child mnemonics, WIF, hex, and password derivation. Split view: seed on the left, fingerprint and first addresses on the right, for verifying a hardware wallet without trusting its screen alone.
+**Seed Forge 🌱** — BIP-39 generate (12/15/18/21/24), validate with per-word inline status, NFKD normalization. Separate duplicate-confirmed passphrase pairs for Generate and Validate Existing Phrase, with each workflow's own fingerprint readout, because a typo creates a silently different and unrecoverable wallet. Master fingerprint (first 4 bytes of HASH160 of the master pubkey) displayed everywhere a seed is referenced — this is the safe public identifier the Registry uses, letting you track a wallet without storing its seed. **BIP-85** child mnemonics, WIF, hex, and password derivation. Split view: seed on the left, fingerprint and first addresses on the right, for verifying a hardware wallet without trusting its screen alone.
 
 **Derivation Engine 🧭** — see §12.
 

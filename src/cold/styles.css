@@ -771,7 +771,8 @@ body {
 #cold-seed-forge-note,
 #cold-seed-forge-generated-help,
 #cold-seed-forge-validator-help,
-#cold-seed-forge-passphrase-help {
+#cold-seed-forge-generated-passphrase-help,
+#cold-seed-forge-validation-passphrase-help {
   max-width: 48rem;
   margin: 0.3rem 0 0;
   color: var(--cold-muted);
@@ -788,7 +789,7 @@ body {
 }
 
 #cold-seed-forge-controls label,
-#cold-seed-forge-passphrase label,
+.cold-seed-forge-passphrase label,
 #cold-seed-forge-validator > label {
   display: block;
   color: var(--cold-text);
@@ -798,7 +799,7 @@ body {
 
 #cold-seed-forge-controls select,
 #cold-seed-forge-controls button,
-#cold-seed-forge-passphrase input,
+.cold-seed-forge-passphrase input,
 #cold-seed-forge-mnemonic-input,
 #cold-seed-forge-validator > button {
   min-height: 2.75rem;
@@ -841,7 +842,7 @@ body {
 
 #cold-seed-forge-controls select:focus-visible,
 #cold-seed-forge-controls button:focus-visible,
-#cold-seed-forge-passphrase input:focus-visible,
+.cold-seed-forge-passphrase input:focus-visible,
 #cold-seed-forge-mnemonic-input:focus-visible,
 #cold-seed-forge-validator > button:focus-visible,
 #cold-seed-forge-reveal:focus-visible,
@@ -904,7 +905,7 @@ body {
   margin: 0.05rem 0 0;
 }
 
-#cold-seed-forge-passphrase,
+.cold-seed-forge-passphrase,
 #cold-seed-forge-generated,
 #cold-seed-forge-validator,
 .cold-seed-forge-raw {
@@ -913,7 +914,7 @@ body {
   border-top: 0.13rem solid var(--cold-outline);
 }
 
-#cold-seed-forge-passphrase h2,
+.cold-seed-forge-passphrase h2,
 #cold-seed-forge-generated h2,
 #cold-seed-forge-validator h2,
 .cold-seed-forge-raw h2 {
@@ -922,7 +923,7 @@ body {
   line-height: 1.2;
 }
 
-#cold-seed-forge-passphrase input,
+.cold-seed-forge-passphrase input,
 #cold-seed-forge-mnemonic-input {
   display: block;
   width: min(100%, 34rem);
@@ -930,11 +931,12 @@ body {
   letter-spacing: 0.06em;
 }
 
-#cold-seed-forge-passphrase input + label {
+.cold-seed-forge-passphrase input + label {
   margin-top: 0.5rem;
 }
 
-#cold-seed-forge-passphrase-error {
+#cold-seed-forge-generated-passphrase-error,
+#cold-seed-forge-validation-passphrase-error {
   max-width: 48rem;
 }
 
