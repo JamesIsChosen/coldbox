@@ -13,6 +13,7 @@ __COLDBOX_CAPABILITIES__
   var entropyHealth = window.__coldboxEntropyHealth;
   var seedForge = window.__coldboxSeedForge;
   var derivation = window.__coldboxDerivation;
+  var verification = window.__coldboxVerification;
   var readyMarker = document.getElementById('cold-ready');
   var protocolWarning = document.getElementById('cold-protocol-warning');
   var details = document.getElementById('cold-realm-details');
@@ -143,6 +144,44 @@ __COLDBOX_CAPABILITIES__
   var seedForgeValidationRaw = document.getElementById('cold-seed-forge-validation-raw');
   var seedForgeValidationSeed = document.getElementById('cold-seed-forge-validation-seed');
   var seedForgeValidationSeedReveal = document.getElementById('cold-seed-forge-validation-seed-reveal');
+  var verificationPanel = document.getElementById('cold-verification');
+  var verificationFingerprintForm = document.getElementById('cold-verification-fingerprint-form');
+  var verificationFingerprintMnemonic = document.getElementById('cold-verification-fingerprint-mnemonic');
+  var verificationFingerprintPassphrase = document.getElementById('cold-verification-fingerprint-passphrase');
+  var verificationFingerprintExpected = document.getElementById('cold-verification-fingerprint-expected');
+  var verificationFingerprintRun = document.getElementById('cold-verification-fingerprint-run');
+  var verificationFingerprintStatus = document.getElementById('cold-verification-fingerprint-status');
+  var verificationReceiveForm = document.getElementById('cold-verification-receive-form');
+  var verificationReceiveXpub = document.getElementById('cold-verification-receive-xpub');
+  var verificationReceiveNetwork = document.getElementById('cold-verification-receive-network');
+  var verificationReceiveScript = document.getElementById('cold-verification-receive-script');
+  var verificationReceiveChange = document.getElementById('cold-verification-receive-change');
+  var verificationReceiveIndex = document.getElementById('cold-verification-receive-index');
+  var verificationReceiveExpected = document.getElementById('cold-verification-receive-expected');
+  var verificationReceiveRun = document.getElementById('cold-verification-receive-run');
+  var verificationReceiveStatus = document.getElementById('cold-verification-receive-status');
+  var verificationXpubForm = document.getElementById('cold-verification-xpub-form');
+  var verificationXpubMnemonic = document.getElementById('cold-verification-xpub-mnemonic');
+  var verificationXpubPassphrase = document.getElementById('cold-verification-xpub-passphrase');
+  var verificationXpubNetwork = document.getElementById('cold-verification-xpub-network');
+  var verificationXpubScript = document.getElementById('cold-verification-xpub-script');
+  var verificationXpubAccount = document.getElementById('cold-verification-xpub-account');
+  var verificationXpubExpected = document.getElementById('cold-verification-xpub-expected');
+  var verificationXpubRun = document.getElementById('cold-verification-xpub-run');
+  var verificationXpubStatus = document.getElementById('cold-verification-xpub-status');
+  var verificationBackupForm = document.getElementById('cold-verification-backup-form');
+  var verificationBackupMnemonic = document.getElementById('cold-verification-backup-mnemonic');
+  var verificationBackupPassphrase = document.getElementById('cold-verification-backup-passphrase');
+  var verificationBackupExpected = document.getElementById('cold-verification-backup-expected');
+  var verificationBackupRun = document.getElementById('cold-verification-backup-run');
+  var verificationBackupStatus = document.getElementById('cold-verification-backup-status');
+  var verificationPassphraseForm = document.getElementById('cold-verification-passphrase-form');
+  var verificationPassphraseMnemonic = document.getElementById('cold-verification-passphrase-mnemonic');
+  var verificationPassphraseValue = document.getElementById('cold-verification-passphrase-value');
+  var verificationPassphraseConfirm = document.getElementById('cold-verification-passphrase-confirm');
+  var verificationPassphraseExpected = document.getElementById('cold-verification-passphrase-expected');
+  var verificationPassphraseRun = document.getElementById('cold-verification-passphrase-run');
+  var verificationPassphraseStatus = document.getElementById('cold-verification-passphrase-status');
   var entropySession = entropyLab ? entropyLab.createSession() : null;
   var seedForgeWordInputs = [];
   var generatedMnemonic = '';
@@ -1869,6 +1908,241 @@ __COLDBOX_CAPABILITIES__
     }
   }
 
+  // --- Verification Bench (P1.9) ------------------------------------------
+  //
+  // These workflows are intentionally cold-local. The only values written to
+  // the DOM after a run are public fingerprints, xpubs, addresses, and an
+  // enum-like match/mismatch state. Secret inputs are cleared after every
+  // attempt and again through clearVaultSession() on lock or panic hide.
+
+  function setVerificationStatus(output, state, text) {
+    if (!output) {
+      return;
+    }
+    output.setAttribute('data-state', state);
+    output.textContent = text;
+  }
+
+  function verificationResultCopy(result) {
+    if (result.verdict === 'match') {
+      if (result.workflow === 'receive-address') {
+        return 'Match: Coldbox derived ' + result.address + ' at ' + result.path + '. Compare the complete device display.';
+      }
+      if (result.workflow === 'xpub') {
+        return 'Match: Coldbox derived the entered account xpub: ' + result.xpub + '.';
+      }
+      return 'Match: Coldbox derived master fingerprint ' + result.fingerprint + '.';
+    }
+    if (result.workflow === 'receive-address') {
+      return 'Mismatch: the full address Coldbox derived (' + result.address + ') differs from the entered device value.';
+    }
+    if (result.workflow === 'xpub') {
+      return 'Mismatch: the full account xpub Coldbox derived differs from the entered device value.';
+    }
+    return 'Mismatch: Coldbox derived fingerprint ' + result.fingerprint + ', not the entered device fingerprint.';
+  }
+
+  function clearVerificationSecretInputs() {
+    [
+      verificationFingerprintMnemonic,
+      verificationFingerprintPassphrase,
+      verificationXpubMnemonic,
+      verificationXpubPassphrase,
+      verificationBackupMnemonic,
+      verificationBackupPassphrase,
+      verificationPassphraseMnemonic,
+      verificationPassphraseValue,
+      verificationPassphraseConfirm
+    ].forEach(function (input) {
+      if (input) {
+        input.value = '';
+      }
+    });
+  }
+
+  function clearVerificationSession() {
+    clearVerificationSecretInputs();
+    [
+      verificationFingerprintExpected,
+      verificationReceiveXpub,
+      verificationReceiveExpected,
+      verificationXpubExpected,
+      verificationBackupExpected,
+      verificationPassphraseExpected
+    ].forEach(function (input) {
+      if (input) {
+        input.value = '';
+      }
+    });
+    if (verificationReceiveNetwork) {
+      verificationReceiveNetwork.value = 'mainnet';
+    }
+    if (verificationReceiveScript) {
+      verificationReceiveScript.value = 'p2wpkh';
+    }
+    if (verificationReceiveChange) {
+      verificationReceiveChange.value = '0';
+    }
+    if (verificationReceiveIndex) {
+      verificationReceiveIndex.value = '0';
+    }
+    if (verificationXpubNetwork) {
+      verificationXpubNetwork.value = 'mainnet';
+    }
+    if (verificationXpubScript) {
+      verificationXpubScript.value = 'p2wpkh';
+    }
+    if (verificationXpubAccount) {
+      verificationXpubAccount.value = '0';
+    }
+    [
+      verificationFingerprintStatus,
+      verificationReceiveStatus,
+      verificationXpubStatus,
+      verificationBackupStatus,
+      verificationPassphraseStatus
+    ].forEach(function (output) {
+      setVerificationStatus(output, 'idle', 'No verification check run.');
+    });
+  }
+
+  function updateVerificationControls() {
+    if (!verification || !verificationPanel) {
+      return;
+    }
+    var ready = vaultCryptoReady;
+    verificationPanel.setAttribute('data-state', ready ? 'ready' : 'locked');
+    [
+      verificationFingerprintMnemonic,
+      verificationFingerprintPassphrase,
+      verificationFingerprintExpected,
+      verificationFingerprintRun,
+      verificationReceiveXpub,
+      verificationReceiveNetwork,
+      verificationReceiveScript,
+      verificationReceiveChange,
+      verificationReceiveIndex,
+      verificationReceiveExpected,
+      verificationReceiveRun,
+      verificationXpubMnemonic,
+      verificationXpubPassphrase,
+      verificationXpubNetwork,
+      verificationXpubScript,
+      verificationXpubAccount,
+      verificationXpubExpected,
+      verificationXpubRun,
+      verificationBackupMnemonic,
+      verificationBackupPassphrase,
+      verificationBackupExpected,
+      verificationBackupRun,
+      verificationPassphraseMnemonic,
+      verificationPassphraseValue,
+      verificationPassphraseConfirm,
+      verificationPassphraseExpected,
+      verificationPassphraseRun
+    ].forEach(function (control) {
+      if (control) {
+        control.disabled = !ready;
+      }
+    });
+  }
+
+  function runVerificationWorkflow(runButton, statusOutput, work) {
+    if (!vaultCryptoReady || !verification) {
+      setVerificationStatus(statusOutput, 'error', 'Verification is locked because the cold-realm health checks have not passed.');
+      return;
+    }
+    if (runButton) {
+      runButton.disabled = true;
+    }
+    setVerificationStatus(statusOutput, 'checking', 'Deriving inside the sealed realm…');
+    try {
+      var result = work();
+      setVerificationStatus(statusOutput, result.verdict, verificationResultCopy(result));
+    } catch (error) {
+      setVerificationStatus(statusOutput, 'error', 'Verification failed closed: ' + error.message);
+    } finally {
+      clearVerificationSecretInputs();
+      updateVerificationControls();
+    }
+  }
+
+  function wireVerification() {
+    if (!verification) {
+      return;
+    }
+    if (verificationFingerprintForm) {
+      verificationFingerprintRun.addEventListener('click', function () {
+        runVerificationWorkflow(verificationFingerprintRun, verificationFingerprintStatus, function () {
+          return verification.verifyFingerprint({
+            mnemonic: verificationFingerprintMnemonic.value,
+            passphrase: verificationFingerprintPassphrase.value,
+            expectedFingerprint: verificationFingerprintExpected.value,
+            language: 'english'
+          });
+        });
+      });
+    }
+    if (verificationReceiveForm) {
+      verificationReceiveRun.addEventListener('click', function () {
+        runVerificationWorkflow(verificationReceiveRun, verificationReceiveStatus, function () {
+          return verification.verifyReceiveAddress({
+            xpub: verificationReceiveXpub.value,
+            network: verificationReceiveNetwork.value,
+            scriptType: verificationReceiveScript.value,
+            change: Number(verificationReceiveChange.value),
+            start: Number(verificationReceiveIndex.value),
+            count: 1,
+            expectedAddress: verificationReceiveExpected.value
+          });
+        });
+      });
+    }
+    if (verificationXpubForm) {
+      verificationXpubRun.addEventListener('click', function () {
+        runVerificationWorkflow(verificationXpubRun, verificationXpubStatus, function () {
+          return verification.verifyXpub({
+            mnemonic: verificationXpubMnemonic.value,
+            passphrase: verificationXpubPassphrase.value,
+            network: verificationXpubNetwork.value,
+            scriptType: verificationXpubScript.value,
+            account: Number(verificationXpubAccount.value),
+            expectedXpub: verificationXpubExpected.value,
+            language: 'english'
+          });
+        });
+      });
+    }
+    if (verificationBackupForm) {
+      verificationBackupRun.addEventListener('click', function () {
+        runVerificationWorkflow(verificationBackupRun, verificationBackupStatus, function () {
+          return verification.verifyBackup({
+            mnemonic: verificationBackupMnemonic.value,
+            passphrase: verificationBackupPassphrase.value,
+            expectedFingerprint: verificationBackupExpected.value,
+            language: 'english'
+          });
+        });
+      });
+    }
+    if (verificationPassphraseForm) {
+      verificationPassphraseRun.addEventListener('click', function () {
+        runVerificationWorkflow(verificationPassphraseRun, verificationPassphraseStatus, function () {
+          if (verificationPassphraseValue.value !== verificationPassphraseConfirm.value) {
+            throw new Error('Passphrases do not match. Nothing will be derived for this workflow.');
+          }
+          return verification.verifyPassphrase({
+            mnemonic: verificationPassphraseMnemonic.value,
+            passphrase: verificationPassphraseValue.value,
+            expectedFingerprint: verificationPassphraseExpected.value,
+            language: 'english'
+          });
+        });
+      });
+    }
+    updateVerificationControls();
+  }
+
   function ensureSeedForgeCsprng(targetBits) {
     var targetBytes = targetBits / 8;
     var sourceBytes = entropyLab.sourceEntropyBytes(entropySession);
@@ -2285,6 +2559,7 @@ __COLDBOX_CAPABILITIES__
 
   function clearVaultSession(clearPending) {
     clearSeedForgeSession();
+    clearVerificationSession();
     if (currentVaultSession && typeof currentVaultSession.close === 'function') {
       currentVaultSession.close();
     }
@@ -3147,6 +3422,7 @@ __COLDBOX_CAPABILITIES__
     updateVaultControls();
     updateBenchmarkAvailability();
     updateEntropyLabControls();
+    updateVerificationControls();
     window.parent.postMessage({ type: 'cold.ready' }, '*');
   }
 
@@ -3217,7 +3493,7 @@ __COLDBOX_CAPABILITIES__
     messagePort.postMessage(readyMessage);
   }
 
-  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer || !vaultLayer || !entropyLab || !seedForge || !derivation) {
+  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer || !vaultLayer || !entropyLab || !seedForge || !derivation || !verification) {
     return;
   }
 
@@ -3417,6 +3693,7 @@ __COLDBOX_CAPABILITIES__
   installThrowContract();
   wireSeedForge();
   wireEntropyLab();
+  wireVerification();
   window.addEventListener('message', handleGlobalMessage);
   document.documentElement.setAttribute('data-cold-state', 'checking');
   document.documentElement.setAttribute('data-airgap-state', 'checking');

@@ -14,6 +14,11 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
+### Added — P1.9 verification workflows (2026-08-10)
+
+- **Cold-local hardware-wallet checks.** Verify Bench can compare a manually entered device fingerprint, receive address from an account xpub, account xpub derived from a seed, metal-backup fingerprint, or BIP-39 passphrase fingerprint. Comparisons use complete public values; Bech32 receive addresses are case-normalized while Base58 extended keys and addresses remain exact.
+- **Protected inputs and explicit limits.** Seed phrases and passphrases stay inside the opaque cold frame, are cleared after each attempt and on lock/panic teardown, and never enter the message channel. P1.9 has no hardware transport or device-authenticity claim; the manual real-device validation gate remains open. See [ADR-0034](docs/05-development/adr/0034-cold-local-verification-workflows.md).
+
 ### Added — P1.8 device registry (2026-08-10)
 
 - **Public device inventory.** The Devices workspace records bounded hardware-wallet metadata, lifecycle status, purchase/tamper/PIN context, public seed fingerprints, location, notes, and a passphrase-use boolean without connecting to or signing with hardware.

@@ -2896,6 +2896,79 @@ async function verifySeedForge(browser, engine) {
   }
 }
 
+async function verifyVerificationWorkflows(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    const coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-verification[data-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
+    assert.equal(await page.evaluate(() => typeof window.__coldboxVerification), 'undefined');
+
+    const mnemonic = [
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
+    ].join(' ');
+    const nativeXpub =
+      'zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs';
+    const receiveAddress = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu';
+
+    await coldFrame.locator('#cold-verification-fingerprint-mnemonic').fill(mnemonic);
+    await coldFrame.locator('#cold-verification-fingerprint-passphrase').fill('TREZOR');
+    await coldFrame.locator('#cold-verification-fingerprint-expected').fill('B4E3F5ED');
+    await coldFrame.locator('#cold-verification-fingerprint-run').click();
+    await coldFrame.locator('#cold-verification-fingerprint-status[data-state="match"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-verification-fingerprint-mnemonic').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-verification-fingerprint-passphrase').inputValue(), '');
+
+    await coldFrame.locator('#cold-verification-receive-xpub').fill(nativeXpub);
+    await coldFrame.locator('#cold-verification-receive-expected').fill(receiveAddress.toUpperCase());
+    await coldFrame.locator('#cold-verification-receive-run').click();
+    await coldFrame.locator('#cold-verification-receive-status[data-state="match"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await coldFrame.locator('#cold-verification-receive-status').textContent(), new RegExp(receiveAddress));
+
+    await coldFrame.locator('#cold-verification-xpub-mnemonic').fill(mnemonic);
+    await coldFrame.locator('#cold-verification-xpub-expected').fill(nativeXpub);
+    await coldFrame.locator('#cold-verification-xpub-run').click();
+    await coldFrame.locator('#cold-verification-xpub-status[data-state="match"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-verification-xpub-mnemonic').inputValue(), '');
+
+    await coldFrame.locator('#cold-verification-backup-mnemonic').fill(mnemonic);
+    await coldFrame.locator('#cold-verification-backup-passphrase').fill('TREZOR');
+    await coldFrame.locator('#cold-verification-backup-expected').fill('b4e3f5ed');
+    await coldFrame.locator('#cold-verification-backup-run').click();
+    await coldFrame.locator('#cold-verification-backup-status[data-state="match"]').waitFor({ state: 'visible', timeout: 5000 });
+
+    await coldFrame.locator('#cold-verification-passphrase-mnemonic').fill(mnemonic);
+    await coldFrame.locator('#cold-verification-passphrase-value').fill('TREZOR');
+    await coldFrame.locator('#cold-verification-passphrase-confirm').fill('different');
+    await coldFrame.locator('#cold-verification-passphrase-expected').fill('b4e3f5ed');
+    await coldFrame.locator('#cold-verification-passphrase-run').click();
+    await coldFrame.locator('#cold-verification-passphrase-status[data-state="error"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-verification-passphrase-mnemonic').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-verification-passphrase-value').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-verification-passphrase-confirm').inputValue(), '');
+
+    await coldFrame.locator('#cold-verification-passphrase-mnemonic').fill(mnemonic);
+    await coldFrame.locator('#cold-verification-passphrase-value').fill('TREZOR');
+    await coldFrame.locator('#cold-verification-passphrase-confirm').fill('TREZOR');
+    await coldFrame.locator('#cold-verification-passphrase-expected').fill('b4e3f5ed');
+    await coldFrame.locator('#cold-verification-passphrase-run').click();
+    await coldFrame.locator('#cold-verification-passphrase-status[data-state="match"]').waitFor({ state: 'visible', timeout: 5000 });
+
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('#cold-verification-fingerprint-status[data-state="idle"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-verification-receive-xpub').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-verification-receive-expected').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-verification-passphrase-expected').inputValue(), '');
+
+    console.log(`${engine}: cold-local fingerprint, receive address, xpub, backup, passphrase, negative, and teardown verification workflows passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyDevOnlyDependency() {
   const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
   assert.equal(packageJson.dependencies?.playwright, undefined);
@@ -2955,6 +3028,7 @@ async function run() {
       await verifyDeviceRegistry(browser, engine);
       await verifyEntropyLab(browser, engine);
       await verifySeedForge(browser, engine);
+      await verifyVerificationWorkflows(browser, engine);
       await verifyUnlockedRuntimeHealthLockdown(browser, engine);
       await verifyProviderNeutering(browser, engine);
       await verifyPreexistingProviderLockdown(browser, engine);

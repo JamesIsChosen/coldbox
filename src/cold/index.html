@@ -299,6 +299,133 @@ __COLDBOX_COLD_STYLES__
       </section>
       <p id="cold-seed-forge-note">Write the words down offline and verify them from paper. A fingerprint is only a public identifier: it cannot recover a phrase. The raw BIP-39 seed is an advanced cold-only output; it is masked by default and has no clipboard or storage action. BIP-85 child phrases, xprv/xpub/ypub/zpub, script/path derivation, WIF, addresses, and password derivation are separate roadmap items.</p>
     </section>
+    <section id="cold-verification" aria-label="Verification Bench" data-state="locked">
+      <p class="eyebrow">Verify Bench / P1.9</p>
+      <h2>Independent hardware-wallet checks</h2>
+      <p id="cold-verification-help">All seed phrases, passphrases, xpubs, and comparison values entered here stay in this sealed realm. Coldbox has no hardware transport in this workflow: read the value from the device's own screen, enter it here offline, and compare the complete public result yourself.</p>
+
+      <details class="cold-verification-workflow" id="cold-verification-fingerprint" open>
+        <summary>Device fingerprint</summary>
+        <div id="cold-verification-fingerprint-form">
+          <label for="cold-verification-fingerprint-mnemonic">Seed phrase (masked)</label>
+          <input id="cold-verification-fingerprint-mnemonic" type="password" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <label for="cold-verification-fingerprint-passphrase">BIP-39 passphrase (optional, masked)</label>
+          <input id="cold-verification-fingerprint-passphrase" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <label for="cold-verification-fingerprint-expected">Device fingerprint / XFP (8 hex characters)</label>
+          <input id="cold-verification-fingerprint-expected" type="text" inputmode="text" maxlength="8" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <button id="cold-verification-fingerprint-run" type="button" disabled>Compare fingerprint</button>
+          <p id="cold-verification-fingerprint-status" class="cold-verification-status" data-state="idle" role="status" aria-live="polite">No fingerprint check run.</p>
+        </div>
+      </details>
+
+      <details class="cold-verification-workflow" id="cold-verification-receive-address">
+        <summary>Receive address</summary>
+        <div id="cold-verification-receive-form">
+          <label for="cold-verification-receive-xpub">Account xpub (public)</label>
+          <input id="cold-verification-receive-xpub" type="text" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <div class="cold-verification-grid">
+            <div>
+              <label for="cold-verification-receive-network">Network</label>
+              <select id="cold-verification-receive-network" disabled>
+                <option value="mainnet">Bitcoin mainnet</option>
+                <option value="testnet">Bitcoin testnet</option>
+              </select>
+            </div>
+            <div>
+              <label for="cold-verification-receive-script">Script type</label>
+              <select id="cold-verification-receive-script" disabled>
+                <option value="p2wpkh">Native SegWit (p2wpkh)</option>
+                <option value="p2pkh">Legacy (p2pkh)</option>
+                <option value="p2sh-p2wpkh">Nested SegWit (p2sh-p2wpkh)</option>
+                <option value="p2tr">Taproot (p2tr)</option>
+              </select>
+            </div>
+            <div>
+              <label for="cold-verification-receive-change">Change chain</label>
+              <select id="cold-verification-receive-change" disabled>
+                <option value="0">Receive (0)</option>
+                <option value="1">Change (1)</option>
+              </select>
+            </div>
+            <div>
+              <label for="cold-verification-receive-index">Address index</label>
+              <input id="cold-verification-receive-index" type="number" min="0" max="2147483647" step="1" value="0" disabled>
+            </div>
+          </div>
+          <label for="cold-verification-receive-expected">Address shown by the device (full string)</label>
+          <input id="cold-verification-receive-expected" type="text" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <button id="cold-verification-receive-run" type="button" disabled>Derive and compare address</button>
+          <p id="cold-verification-receive-status" class="cold-verification-status" data-state="idle" role="status" aria-live="polite">No receive-address check run.</p>
+        </div>
+      </details>
+
+      <details class="cold-verification-workflow" id="cold-verification-xpub">
+        <summary>Account xpub</summary>
+        <div id="cold-verification-xpub-form">
+          <label for="cold-verification-xpub-mnemonic">Seed phrase (masked)</label>
+          <input id="cold-verification-xpub-mnemonic" type="password" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <label for="cold-verification-xpub-passphrase">BIP-39 passphrase (optional, masked)</label>
+          <input id="cold-verification-xpub-passphrase" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <div class="cold-verification-grid">
+            <div>
+              <label for="cold-verification-xpub-network">Network</label>
+              <select id="cold-verification-xpub-network" disabled>
+                <option value="mainnet">Bitcoin mainnet</option>
+                <option value="testnet">Bitcoin testnet</option>
+              </select>
+            </div>
+            <div>
+              <label for="cold-verification-xpub-script">Script type</label>
+              <select id="cold-verification-xpub-script" disabled>
+                <option value="p2wpkh">Native SegWit (p2wpkh)</option>
+                <option value="p2pkh">Legacy (p2pkh)</option>
+                <option value="p2sh-p2wpkh">Nested SegWit (p2sh-p2wpkh)</option>
+                <option value="p2tr">Taproot (p2tr)</option>
+              </select>
+            </div>
+            <div>
+              <label for="cold-verification-xpub-account">Account number</label>
+              <input id="cold-verification-xpub-account" type="number" min="0" max="2147483647" step="1" value="0" disabled>
+            </div>
+          </div>
+          <label for="cold-verification-xpub-expected">Account xpub to compare (full string)</label>
+          <input id="cold-verification-xpub-expected" type="text" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <button id="cold-verification-xpub-run" type="button" disabled>Derive and compare xpub</button>
+          <p id="cold-verification-xpub-status" class="cold-verification-status" data-state="idle" role="status" aria-live="polite">No xpub check run.</p>
+        </div>
+      </details>
+
+      <details class="cold-verification-workflow" id="cold-verification-backup">
+        <summary>Metal backup</summary>
+        <div id="cold-verification-backup-form">
+          <label for="cold-verification-backup-mnemonic">Seed phrase copied from the backup (masked)</label>
+          <input id="cold-verification-backup-mnemonic" type="password" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <label for="cold-verification-backup-passphrase">BIP-39 passphrase (optional, masked)</label>
+          <input id="cold-verification-backup-passphrase" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <label for="cold-verification-backup-expected">Known device fingerprint / XFP (8 hex characters)</label>
+          <input id="cold-verification-backup-expected" type="text" inputmode="text" maxlength="8" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <button id="cold-verification-backup-run" type="button" disabled>Check backup fingerprint</button>
+          <p id="cold-verification-backup-status" class="cold-verification-status" data-state="idle" role="status" aria-live="polite">No backup check run.</p>
+        </div>
+      </details>
+
+      <details class="cold-verification-workflow" id="cold-verification-passphrase">
+        <summary>BIP-39 passphrase</summary>
+        <div id="cold-verification-passphrase-form">
+          <label for="cold-verification-passphrase-mnemonic">Seed phrase (masked)</label>
+          <input id="cold-verification-passphrase-mnemonic" type="password" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <label for="cold-verification-passphrase-value">Passphrase from the device (masked)</label>
+          <input id="cold-verification-passphrase-value" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <label for="cold-verification-passphrase-confirm">Confirm passphrase (masked)</label>
+          <input id="cold-verification-passphrase-confirm" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <label for="cold-verification-passphrase-expected">Device fingerprint / XFP (8 hex characters)</label>
+          <input id="cold-verification-passphrase-expected" type="text" inputmode="text" maxlength="8" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <button id="cold-verification-passphrase-run" type="button" disabled>Compare passphrase wallet</button>
+          <p id="cold-verification-passphrase-status" class="cold-verification-status" data-state="idle" role="status" aria-live="polite">No passphrase check run.</p>
+        </div>
+      </details>
+      <p id="cold-verification-note">A match means the public value you entered agrees with this cold derivation. It does not prove the device is genuine, the display is uncompromised, or that a passphrase was not omitted. Compare every character and keep the device online state and physical network isolation under your control.</p>
+    </section>
   </main>
   <script>
 __COLDBOX_CRYPTO_VENDOR_SOURCE__
@@ -308,6 +435,7 @@ __COLDBOX_ENTROPY_LAB_LAYER__
 __COLDBOX_ENTROPY_HEALTH_LAYER__
 __COLDBOX_SEED_FORGE_LAYER__
 __COLDBOX_DERIVATION_LAYER__
+__COLDBOX_VERIFICATION_LAYER__
 __COLDBOX_COLD_SCRIPT__
   </script>
 </body>
