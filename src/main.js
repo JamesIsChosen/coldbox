@@ -224,7 +224,7 @@ __COLDBOX_CONCEALMENT__
   var deviceTamperNotes = document.getElementById('device-tamper-notes');
   var devicePinSetAt = document.getElementById('device-pin-set-at');
   var devicePinChangedAt = document.getElementById('device-pin-changed-at');
-  var devicePhraseWalletUsed = document.getElementById('device-phrase-wallet-used');
+  var devicePassphraseUsed = document.getElementById('device-phrase-wallet-used');
   var deviceSeedFingerprints = document.getElementById('device-seed-fingerprints');
   var deviceLocation = document.getElementById('device-location');
   var deviceStatusValue = document.getElementById('device-status-value');
@@ -3419,7 +3419,7 @@ __COLDBOX_CONCEALMENT__
     deviceId.value = '';
     deviceStatusValue.value = 'in-use';
     deviceTamperCheck.checked = false;
-    devicePhraseWalletUsed.checked = false;
+    devicePassphraseUsed.checked = false;
     deviceHidden.checked = false;
     deviceCancel.hidden = true;
   }
@@ -3513,7 +3513,7 @@ __COLDBOX_CONCEALMENT__
       deviceTamperNotes.value = record.tamperCheckNotes || '';
       devicePinSetAt.value = isoDateToInput(record.pinSetAt);
       devicePinChangedAt.value = isoDateToInput(record.pinChangedAt);
-      devicePhraseWalletUsed.checked = record['pass' + 'phraseUsed'] === true;
+      devicePassphraseUsed.checked = record.passphraseUsed === true;
       deviceSeedFingerprints.value = (record.seedFingerprints || []).join(', ');
       deviceLocation.value = record.location || '';
       deviceStatusValue.value = record.status || 'in-use';
@@ -3691,7 +3691,7 @@ __COLDBOX_CONCEALMENT__
       status: deviceStatusValue.value,
       hidden: deviceHidden.checked
     };
-    record['pass' + 'phraseUsed'] = devicePhraseWalletUsed.checked;
+    record.passphraseUsed = devicePassphraseUsed.checked;
     addRegistryText(record, 'serial', deviceSerial);
     addDeviceOptionalDate(record, 'firmwareDate', deviceFirmwareDate);
     addRegistryText(record, 'purchasedFrom', devicePurchasedFrom);

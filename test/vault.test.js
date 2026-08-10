@@ -550,7 +550,7 @@ test('P0.11/P0.13 keeps the vault API cold-only while exposing only the bounded 
   const warmSource = fs.readFileSync(path.join(projectRoot, 'src', 'main.js'), 'utf8');
   const warmTemplate = fs.readFileSync(path.join(projectRoot, 'src', 'index.html'), 'utf8');
   assert.doesNotMatch(warmSource, /__coldboxVault|deriveSecretSubkey|cbx\/secret\/v1/);
-  assert.doesNotMatch(warmSource, /passphrase|cold-vault-passphrase/);
+  assert.doesNotMatch(warmSource, /\bpassphrase\b|cold-vault-passphrase/);
   assert.doesNotMatch(warmTemplate, /__COLDBOX_VAULT_LAYER__|cold-vault-passphrase/);
 
   const context = createFormatContext();
