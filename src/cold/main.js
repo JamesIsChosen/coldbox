@@ -2320,6 +2320,18 @@ __COLDBOX_CAPABILITIES__
       concealmentStatus.textContent = '';
     }
     clearSecretNoteReveals();
+    if (secretNoteTitle) {
+      secretNoteTitle.value = '';
+    }
+    if (secretNoteBody) {
+      secretNoteBody.value = '';
+    }
+    if (secretNoteTags) {
+      secretNoteTags.value = '';
+    }
+    if (secretNoteList) {
+      secretNoteList.textContent = '';
+    }
     if (secretNotesPanel) {
       secretNotesPanel.hidden = true;
     }

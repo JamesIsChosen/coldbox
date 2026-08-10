@@ -1401,6 +1401,7 @@ samp {
 
 .registry-record-tags,
 .registry-record-notes,
+.registry-record-body,
 .registry-help {
   margin: 0.35rem 0 0;
   color: var(--muted);
@@ -1415,6 +1416,10 @@ samp {
 }
 
 .registry-record-notes {
+  white-space: pre-wrap;
+}
+
+.registry-record-body {
   white-space: pre-wrap;
 }
 

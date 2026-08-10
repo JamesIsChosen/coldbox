@@ -3055,6 +3055,12 @@ __COLDBOX_CONCEALMENT__
       notesNode.textContent = record.notes.slice(0, 180);
       card.appendChild(notesNode);
     }
+    if (kind === 'note' && record.body) {
+      var bodyNode = document.createElement('p');
+      bodyNode.className = 'registry-record-body';
+      bodyNode.textContent = record.body.slice(0, 400);
+      card.appendChild(bodyNode);
+    }
     var actions = document.createElement('div');
     actions.className = 'registry-record-actions';
     actions.appendChild(registryButton('edit', kind, record.id, 'Edit'));
@@ -3757,6 +3763,7 @@ __COLDBOX_CONCEALMENT__
       resetWalletForm();
       resetAccountForm();
       resetAddressForm();
+      resetNoteForm();
       renderRegistry();
       clearLiveTransferSender('Live transfer stopped because the vault locked.');
       setVaultPersistenceState('none');
