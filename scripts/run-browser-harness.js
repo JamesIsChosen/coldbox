@@ -2322,6 +2322,54 @@ async function verifySeedForge(browser, engine) {
       /••/
     );
 
+    // The explicit handoff consumes the exact bytes displayed by Entropy Lab.
+    // The expected phrase is calculated from the captured mixed bytes through
+    // the cold frame's public Seed Forge API, so a second mix would change the
+    // assertion and fail.
+    await coldFrame.locator('#cold-entropy-hex-input').fill('00112233445566778899aabbccddeeff');
+    await coldFrame.locator('#cold-entropy-hex-add').click();
+    await coldFrame.locator('#cold-entropy-csprng-count').fill('1');
+    await coldFrame.locator('#cold-entropy-csprng-draw').click();
+    await coldFrame.locator('#cold-entropy-mix-run').click();
+    await coldFrame.locator('#cold-entropy-mix-output:not([hidden])').waitFor({ state: 'visible' });
+    const mixedHex = (await coldFrame.locator('#cold-entropy-mix-output').textContent()).trim();
+    assert.match(mixedHex, /^[0-9a-f]{32}$/);
+    const expectedMixedMnemonic = await coldFrame.evaluate((hexValue) => {
+      const bytes = new Uint8Array(hexValue.match(/../g).map((pair) => Number.parseInt(pair, 16)));
+      return window.__coldboxSeedForge.entropyToMnemonic(bytes, 'english');
+    }, mixedHex);
+    const useMixButton = coldFrame.locator('#cold-entropy-mix-use-seed-forge');
+    assert.equal(await useMixButton.isHidden(), false);
+    await useMixButton.click();
+    await coldFrame.locator('#cold-seed-forge-generated:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-seed-forge-reveal').click();
+    const exactGeneratedWords = await coldFrame.locator('#cold-seed-forge-generated-words .cold-seed-forge-word-value').allTextContents();
+    assert.equal(exactGeneratedWords.join(' '), expectedMixedMnemonic, `${engine}: Seed Forge must consume the exact displayed mix`);
+    await coldFrame.locator('#cold-seed-forge-reveal').click();
+    assert.equal(await useMixButton.isHidden(), true);
+    assert.equal(await coldFrame.locator('#cold-entropy-mix-output').isHidden(), true);
+
+    // A confirmed passphrase change re-derives the current generated phrase;
+    // it does not generate new entropy or a new mnemonic. The raw seed stays
+    // masked until its separate, time-limited reveal action.
+    const generatedFingerprintBeforePassphrase = (await coldFrame.locator('#cold-seed-forge-generated-fingerprint').textContent()).trim();
+    assert.equal((await coldFrame.locator('#cold-seed-forge-generated-seed').textContent()).trim(), 'Masked (64 bytes)');
+    await coldFrame.locator('#cold-seed-forge-passphrase-input').fill('dynamic passphrase');
+    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('dynamic passphrase');
+    const generatedFingerprintAfterPassphrase = (await coldFrame.locator('#cold-seed-forge-generated-fingerprint').textContent()).trim();
+    assert.match(generatedFingerprintAfterPassphrase, /^[0-9a-f]{8}$/);
+    assert.notEqual(generatedFingerprintAfterPassphrase, generatedFingerprintBeforePassphrase);
+    assert.equal((await coldFrame.locator('#cold-seed-forge-generated-seed').textContent()).trim(), 'Masked (64 bytes)');
+    await coldFrame.locator('#cold-seed-forge-generated-seed-reveal').click();
+    const generatedSeedAfterPassphrase = (await coldFrame.locator('#cold-seed-forge-generated-seed').textContent()).trim();
+    assert.match(generatedSeedAfterPassphrase, /^[0-9a-f]{128}$/);
+    await coldFrame.locator('#cold-seed-forge-generated-seed-reveal').click();
+    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('mismatch');
+    assert.equal((await coldFrame.locator('#cold-seed-forge-generated-fingerprint').textContent()).trim(), 'Not calculated');
+    assert.equal((await coldFrame.locator('#cold-seed-forge-generated-seed').textContent()).trim(), 'Not calculated');
+    assert.equal(await coldFrame.locator('#cold-seed-forge-generated-raw').isHidden(), true);
+    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('dynamic passphrase');
+
     // Official public BIP-39 vector: the Trezor/python-mnemonic vector with
     // passphrase TREZOR. This verifies validation, per-word status, NFKD
     // passphrase handling, and the cold-side fingerprint readout in a real
@@ -2337,6 +2385,27 @@ async function verifySeedForge(browser, engine) {
     await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await coldFrame.locator('#cold-seed-forge-word-fields .cold-seed-forge-word-field[data-state="valid"]').count(), 12);
     assert.equal((await coldFrame.locator('#cold-seed-forge-validation-fingerprint').textContent()).trim(), 'b4e3f5ed');
+    assert.equal((await coldFrame.locator('#cold-seed-forge-validation-seed').textContent()).trim(), 'Masked (64 bytes)');
+    await coldFrame.locator('#cold-seed-forge-validation-seed-reveal').click();
+    const validationSeedBeforePassphrase = (await coldFrame.locator('#cold-seed-forge-validation-seed').textContent()).trim();
+    assert.match(validationSeedBeforePassphrase, /^[0-9a-f]{128}$/);
+    await coldFrame.locator('#cold-seed-forge-validation-seed-reveal').click();
+    await coldFrame.locator('#cold-seed-forge-passphrase-input').fill('another passphrase');
+    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('another passphrase');
+    const validationFingerprintAfterPassphrase = (await coldFrame.locator('#cold-seed-forge-validation-fingerprint').textContent()).trim();
+    assert.match(validationFingerprintAfterPassphrase, /^[0-9a-f]{8}$/);
+    assert.notEqual(validationFingerprintAfterPassphrase, 'b4e3f5ed');
+    assert.equal((await coldFrame.locator('#cold-seed-forge-validation-seed').textContent()).trim(), 'Masked (64 bytes)');
+    await coldFrame.locator('#cold-seed-forge-validation-seed-reveal').click();
+    const validationSeedAfterPassphrase = (await coldFrame.locator('#cold-seed-forge-validation-seed').textContent()).trim();
+    assert.match(validationSeedAfterPassphrase, /^[0-9a-f]{128}$/);
+    assert.notEqual(validationSeedAfterPassphrase, validationSeedBeforePassphrase);
+    await coldFrame.locator('#cold-seed-forge-validation-seed-reveal').click();
+    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('mismatch again');
+    assert.equal((await coldFrame.locator('#cold-seed-forge-validation-fingerprint').textContent()).trim(), 'Not calculated');
+    assert.equal((await coldFrame.locator('#cold-seed-forge-validation-seed').textContent()).trim(), 'Not calculated');
+    assert.equal(await coldFrame.locator('#cold-seed-forge-validation-raw').isHidden(), true);
+    await coldFrame.locator('#cold-seed-forge-passphrase-confirm').fill('another passphrase');
 
     // Negative validation: known words with a bad checksum fail closed, and
     // an unknown word is reported inline rather than being silently accepted.

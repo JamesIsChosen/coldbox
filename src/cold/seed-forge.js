@@ -170,7 +170,12 @@
     }
 
     requireCrypto();
-    var mnemonicBytes = noble.utf8ToBytes(seedMnemonic(splitMnemonic(mnemonic), language.id));
+    // Japanese keeps U+3000 as its canonical display separator, but BIP-39
+    // applies NFKD to the complete password before PBKDF2. That final
+    // normalization converts the separator to the ASCII space required by
+    // the published Japanese vectors.
+    var mnemonicText = seedMnemonic(splitMnemonic(mnemonic), language.id).normalize('NFKD');
+    var mnemonicBytes = noble.utf8ToBytes(mnemonicText);
     var saltBytes = noble.utf8ToBytes(('mnemonic' + passphrase).normalize('NFKD'));
     try {
       return noble.pbkdf2(noble.sha512, mnemonicBytes, saltBytes, { c: 2048, dkLen: 64 });
@@ -180,19 +185,42 @@
     }
   }
 
-  function masterFingerprint(mnemonic, passphrase, languageId) {
-    var seed = mnemonicToSeed(mnemonic, passphrase, languageId);
+  function masterFingerprintFromSeed(seed) {
+    requireCrypto();
+    if (!(seed instanceof Uint8Array) || seed.length !== 64) {
+      throw new TypeError('BIP-39 seed must be exactly 64 bytes');
+    }
     var root = null;
     try {
       root = bip32.HDKey.fromMasterSeed(seed);
       var fingerprint = root.fingerprint >>> 0;
       return fingerprint.toString(16).padStart(8, '0');
     } finally {
-      zeroBytes(seed);
       if (root) {
         zeroBytes(root.privateKey);
         zeroBytes(root.chainCode);
       }
+    }
+  }
+
+  function deriveMnemonic(mnemonic, passphrase, languageId) {
+    var seed = mnemonicToSeed(mnemonic, passphrase, languageId);
+    try {
+      return {
+        seed: new Uint8Array(seed),
+        fingerprint: masterFingerprintFromSeed(seed)
+      };
+    } finally {
+      zeroBytes(seed);
+    }
+  }
+
+  function masterFingerprint(mnemonic, passphrase, languageId) {
+    var seed = mnemonicToSeed(mnemonic, passphrase, languageId);
+    try {
+      return masterFingerprintFromSeed(seed);
+    } finally {
+      zeroBytes(seed);
     }
   }
 
@@ -204,6 +232,7 @@
     entropyToMnemonic: entropyToMnemonic,
     mnemonicToEntropy: mnemonicToEntropy,
     mnemonicToSeed: mnemonicToSeed,
+    deriveMnemonic: deriveMnemonic,
     masterFingerprint: masterFingerprint
   });
 }(window));

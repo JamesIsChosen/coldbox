@@ -735,6 +735,25 @@ body {
   word-break: break-all;
 }
 
+#cold-entropy-mix-use-seed-forge {
+  margin-top: 0.55rem;
+  border-color: var(--cold-pink);
+  background: var(--cold-yellow);
+}
+
+#cold-entropy-mix-handoff-status {
+  max-width: 48rem;
+  margin: 0.35rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+#cold-entropy-mix-handoff-status[hidden],
+#cold-entropy-mix-use-seed-forge[hidden] {
+  display: none;
+}
+
 /* Seed Forge (P1.3). This surface is deliberately kept beside Entropy Lab
    inside the sealed document. Mnemonic and passphrase controls use password
    inputs or masked output until the user explicitly asks for a brief reveal. */
@@ -799,7 +818,8 @@ body {
 
 #cold-seed-forge-controls button,
 #cold-seed-forge-validator > button,
-#cold-seed-forge-reveal {
+#cold-seed-forge-reveal,
+.cold-seed-forge-raw button {
   border-color: var(--cold-drop);
   background: var(--cold-green);
   box-shadow: 0.15rem 0.15rem 0 var(--cold-drop);
@@ -811,7 +831,8 @@ body {
 
 #cold-seed-forge-controls button:disabled,
 #cold-seed-forge-validator > button:disabled,
-#cold-seed-forge-reveal:disabled {
+#cold-seed-forge-reveal:disabled,
+.cold-seed-forge-raw button:disabled {
   background: var(--cold-disabled-fill);
   box-shadow: none;
   color: var(--cold-ink);
@@ -824,6 +845,8 @@ body {
 #cold-seed-forge-mnemonic-input:focus-visible,
 #cold-seed-forge-validator > button:focus-visible,
 #cold-seed-forge-reveal:focus-visible,
+#cold-seed-forge-generated-seed-reveal:focus-visible,
+#cold-seed-forge-validation-seed-reveal:focus-visible,
 #cold-seed-forge-marginal-ack:focus-visible,
 #cold-seed-forge-word-fields input:focus-visible {
   outline: 0.2rem solid var(--cold-pink);
@@ -883,7 +906,8 @@ body {
 
 #cold-seed-forge-passphrase,
 #cold-seed-forge-generated,
-#cold-seed-forge-validator {
+#cold-seed-forge-validator,
+.cold-seed-forge-raw {
   margin-top: 0.7rem;
   padding-top: 0.6rem;
   border-top: 0.13rem solid var(--cold-outline);
@@ -891,7 +915,8 @@ body {
 
 #cold-seed-forge-passphrase h2,
 #cold-seed-forge-generated h2,
-#cold-seed-forge-validator h2 {
+#cold-seed-forge-validator h2,
+.cold-seed-forge-raw h2 {
   margin: 0;
   font-size: 0.82rem;
   line-height: 1.2;
@@ -946,6 +971,29 @@ body {
 #cold-seed-forge-reveal {
   min-height: 2.75rem;
   margin-top: 0.55rem;
+  padding: 0.35rem 0.7rem;
+}
+
+.cold-seed-forge-raw {
+  max-width: 48rem;
+}
+
+.cold-seed-forge-raw output {
+  display: block;
+  margin-top: 0.45rem;
+  padding: 0.5rem 0.6rem;
+  border: 0.16rem solid var(--cold-red);
+  border-radius: 0.3rem;
+  background: var(--cold-bg);
+  color: var(--cold-text);
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.cold-seed-forge-raw button {
+  min-height: 2.75rem;
+  margin-top: 0.45rem;
   padding: 0.35rem 0.7rem;
 }
 
