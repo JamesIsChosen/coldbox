@@ -101,7 +101,7 @@ and hardware-wallet roadmap items, not this registry item.
 
 ## References
 
-- [Public data model](../../01-spec/data-model.md#device)
+- [Public data model](../../01-spec/data-model.md)
 - [Two-realm architecture](../../01-spec/architecture.md)
 - [Public registry mutation boundary](0031-public-registry-mutation-boundary.md)
 - [Companion-not-replacement decision](0006-companion-not-replacement.md)

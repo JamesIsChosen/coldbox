@@ -217,7 +217,7 @@ place to enter the passphrase.
 
 ::: technical
 The closed `devices` collection uses the canonical fields and enum in
-[data-model.md](../01-spec/data-model.md#device). Writes use the typed
+[data-model.md](../01-spec/data-model.md). Writes use the typed
 `publicData.replace` / `publicData.updated` projection boundary; UUIDs use the
 existing CSPRNG-backed Registry path; unknown fields, invalid ISO dates,
 invalid fingerprints, invalid lifecycle states, and secret-shaped text are
