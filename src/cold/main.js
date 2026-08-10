@@ -2556,6 +2556,28 @@ __COLDBOX_CAPABILITIES__
       });
       return;
     }
+    if (message.type === 'publicData.replace') {
+      if (!vaultUnlocked || !currentVaultSession
+        || typeof currentVaultSession.replacePublicData !== 'function') {
+        sendVaultError(message.id, 'vault-locked');
+        return;
+      }
+      try {
+        var updatedPublicData = currentVaultSession.replacePublicData(
+          message.payload.publicCompartment
+        );
+        if (!postVaultMessage(message.id, 'publicData.updated', {
+          publicCompartment: updatedPublicData
+        })) {
+          lockVaultSession(null, 'Vault locked because the public registry acknowledgement failed.', true);
+          return;
+        }
+        recordVaultActivity();
+      } catch (error) {
+        sendVaultError(message.id, 'operation-failed');
+      }
+      return;
+    }
     if (message.type === 'vault.lock') {
       lockVaultSession(message.id, 'Vault locked on request.', true);
       return;

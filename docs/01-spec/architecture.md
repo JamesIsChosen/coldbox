@@ -86,6 +86,7 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 | `mode.set` | `{ online: bool }` | Conservative warm-shell reachability classification. `true` means reachable **or checking/unknown**; `false` is sent only after the active offline threshold is met |
 | `derive.request` | `{ accountRef, scriptType, range }` | References a wallet by id; never carries key material |
 | `publicData.request` | `{ collections[] }` | Ask for public compartment contents |
+| `publicData.replace` | `{ publicCompartment }` | Replace only the schema-validated public projection after a warm registry mutation; the authenticated Vault ID must remain unchanged |
 | `ui.navigate` | `{ section }` | |
 | `address.verifyRequest` | `{ addressId, accountRef, index, candidate }` | `candidate` is a **validated public address string**, which the existing projection already permits. Asks the cold realm to re-derive and compare |
 
@@ -98,6 +99,7 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 | `vault.lockRequest` | `{}` | Cold UI requests the normal warm-shell lock gate; carries no secret or free-form data |
 | `vault.bytes` | `{ bytes }` | Encrypted blob for the warm shell to save |
 | `derive.result` | `{ addresses[], xpub, fingerprint }` | Public values only |
+| `publicData.updated` | `{ publicCompartment }` | Acknowledges a successful public registry replacement; schema-validated public records only |
 | `status` | `{ locked, mode, warnings[] }` | |
 | `address.verifyResult` | `{ addressId, outcome, divergenceIndex, verificationState, verifiedAt, xpubFingerprint }` | `outcome` and `verificationState` are **enum codes, never prose** — see below. `divergenceIndex` is an integer |
 | `error` | `{ code, message }` | Never includes secret material in the message |
@@ -119,7 +121,7 @@ This is not a style preference. The schema invariant below permits only structur
 
 `different-account` deserves its own code rather than being folded into `match`: an address that matches a record in a *different* account than expected is a real and confusing situation, and collapsing it into a plain match would hide it.
 
-The public projection deliberately contains no free-form text fields. It permits only structurally typed public values: UUIDs, eight-hex-digit fingerprints, validated extended public keys, validated public addresses, and numeric accounting values. The new Vault ID uses the existing UUID-safe `publicCompartment.id` field. **Vault names do not cross cold → warm**: they are explicit public warm-shell/filename metadata, because arbitrary names could contain a passphrase or other secret if a user typed one by mistake. Any string-bearing field outside the closed projection, including labels, notes, names, tags, locations, and unknown nested records, is rejected rather than forwarded. Recognizable extended-private-key forms, WIF forms, mnemonic-shaped phrases, and raw 32-byte private-key hex are also rejected. This is the only honest way to enforce the literal no-passphrase/no-secret-plaintext invariant; arbitrary prose cannot be distinguished from a secret by regex. All non-vault messages have a 4 MiB aggregate sanitized-payload limit, and encrypted `vault.open`/`vault.bytes` payloads have a 64 MiB byte limit.
+The public projection deliberately contains no unbounded free-form text fields. Registry records use a closed, collection-specific schema: bounded labels, paths, notes, tags, and status metadata are accepted only after secret-shaped content and unknown text fields are rejected; UUIDs, fingerprints, extended public keys, addresses, numbers, booleans, and balance timestamps use typed validators. The new Vault ID uses the existing UUID-safe `publicCompartment.id` field. **Vault names do not cross cold → warm**: they are explicit public warm-shell/filename metadata, because arbitrary names could contain a passphrase or other secret if a user typed one by mistake. Recognizable extended-private-key forms, WIF forms, mnemonic-shaped phrases, and raw 32-byte private-key hex are also rejected. This is the only honest way to enforce the literal no-passphrase/no-secret-plaintext invariant; arbitrary prose cannot be distinguished from a secret by regex. All non-vault messages have a 4 MiB aggregate sanitized-payload limit, and encrypted `vault.open`/`vault.bytes` payloads have a 64 MiB byte limit. `publicData.replace` is the only write path: it is accepted on the private channel only while a cold session is unlocked, and the cold session rejects a Vault ID change before re-encrypting the public plaintext.
 
 ---
 

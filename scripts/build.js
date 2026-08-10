@@ -220,8 +220,10 @@ function assemble() {
   );
   const saveIntegritySource = readSource('save-integrity.js');
   const vaultTransferSource = readSource('vault-transfer.js');
+  const registrySource = readSource('registry.js');
   let mainScript = injectOnce(readSource('main.js'), '__COLDBOX_QR_ENCODER__', readQrEncoderSource());
   mainScript = injectOnce(mainScript, '__COLDBOX_PROTOCOL__', protocolSource);
+  mainScript = injectOnce(mainScript, '__COLDBOX_REGISTRY__', registrySource);
   mainScript = injectOnce(mainScript, '__COLDBOX_AIRGAP__', airgapSource);
   mainScript = injectOnce(mainScript, '__COLDBOX_CAPABILITIES__', capabilitiesSource);
   mainScript = injectOnce(mainScript, '__COLDBOX_SAVE_INTEGRITY__', saveIntegritySource);

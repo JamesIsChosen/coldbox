@@ -1,5 +1,6 @@
 
 __COLDBOX_PROTOCOL__
+__COLDBOX_REGISTRY__
 __COLDBOX_AIRGAP__
 __COLDBOX_CAPABILITIES__
 __COLDBOX_SAVE_INTEGRITY__
@@ -11,6 +12,7 @@ __COLDBOX_QR_ENCODER__
 
   var coldRealmDocument = __COLDBOX_COLD_REALM_DOCUMENT__;
   var protocol = window.__coldboxProtocol;
+  var registry = window.__coldboxRegistry;
   var airgap = window.__coldboxAirgap;
   var capabilities = window.__coldboxCapabilities;
   var saveIntegrity = window.__coldboxSaveIntegrity;
@@ -151,6 +153,36 @@ __COLDBOX_QR_ENCODER__
   var vaultPanicHide = document.getElementById('vault-panic-hide');
   var panicScreen = document.getElementById('panic-screen');
   var panicReload = document.getElementById('panic-reload');
+  var registryLocked = document.getElementById('registry-locked');
+  var registryWorkspace = document.getElementById('registry-workspace');
+  var registryStatus = document.getElementById('registry-status');
+  var registryWalletForm = document.getElementById('registry-wallet-form');
+  var registryWalletId = document.getElementById('registry-wallet-id');
+  var registryWalletLabel = document.getElementById('registry-wallet-label');
+  var registryWalletType = document.getElementById('registry-wallet-type');
+  var registryWalletNetwork = document.getElementById('registry-wallet-network');
+  var registryWalletScript = document.getElementById('registry-wallet-script');
+  var registryWalletPath = document.getElementById('registry-wallet-path');
+  var registryWalletFingerprint = document.getElementById('registry-wallet-fingerprint');
+  var registryWalletCancel = document.getElementById('registry-wallet-cancel');
+  var registryAccountForm = document.getElementById('registry-account-form');
+  var registryAccountId = document.getElementById('registry-account-id');
+  var registryAccountWallet = document.getElementById('registry-account-wallet');
+  var registryAccountAsset = document.getElementById('registry-account-asset');
+  var registryAccountPath = document.getElementById('registry-account-path');
+  var registryAccountLabel = document.getElementById('registry-account-label');
+  var registryAccountCancel = document.getElementById('registry-account-cancel');
+  var registryAddressForm = document.getElementById('registry-address-form');
+  var registryAddressId = document.getElementById('registry-address-id');
+  var registryAddressAccount = document.getElementById('registry-address-account');
+  var registryAddressIndex = document.getElementById('registry-address-index');
+  var registryAddressValue = document.getElementById('registry-address-value');
+  var registryAddressLabel = document.getElementById('registry-address-label');
+  var registryAddressChange = document.getElementById('registry-address-change');
+  var registryAddressCancel = document.getElementById('registry-address-cancel');
+  var registryWalletList = document.getElementById('registry-wallet-list');
+  var registryAccountList = document.getElementById('registry-account-list');
+  var registryAddressList = document.getElementById('registry-address-list');
   var coldFrame = null;
   var coldBootTimer = null;
   var coldRealmFailed = false;
@@ -209,6 +241,8 @@ __COLDBOX_QR_ENCODER__
   var liveQrReceiverState = 'checking';
   var pendingReceivedTransfer = null;
   var pendingReceivedTransferMeta = null;
+  var registryStore = null;
+  var pendingRegistryMutation = null;
   var LIVE_TRANSFER_INTERVAL_MS = 250;
   var pages = Array.prototype.slice.call(document.querySelectorAll('[data-page]'));
   var routeLinks = Array.prototype.slice.call(document.querySelectorAll('[data-route]'));
@@ -2936,6 +2970,408 @@ __COLDBOX_QR_ENCODER__
     }, 0);
   }
 
+  function setRegistryStatus(text) {
+    if (registryStatus) {
+      registryStatus.textContent = text;
+    }
+  }
+
+  function clearRegistryNode(node) {
+    if (!node) {
+      return;
+    }
+    while (node.firstChild) {
+      node.removeChild(node.firstChild);
+    }
+  }
+
+  function registryButton(action, kind, id, label) {
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'vault-button';
+    button.textContent = label;
+    button.setAttribute('data-registry-action', action);
+    button.setAttribute('data-registry-kind', kind);
+    button.setAttribute('data-registry-id', id);
+    button.disabled = Boolean(pendingRegistryMutation);
+    return button;
+  }
+
+  function appendRegistryRecord(node, kind, record, title, detail) {
+    var card = document.createElement('article');
+    card.className = 'registry-record';
+    var titleNode = document.createElement('h3');
+    titleNode.className = 'registry-record-title';
+    titleNode.textContent = title;
+    card.appendChild(titleNode);
+    var detailNode = document.createElement('p');
+    detailNode.className = 'registry-record-detail';
+    detailNode.textContent = detail;
+    card.appendChild(detailNode);
+    var actions = document.createElement('div');
+    actions.className = 'registry-record-actions';
+    actions.appendChild(registryButton('edit', kind, record.id, 'Edit'));
+    actions.appendChild(registryButton('delete', kind, record.id, 'Hide'));
+    card.appendChild(actions);
+    node.appendChild(card);
+  }
+
+  function appendRegistryEmpty(node, text) {
+    var empty = document.createElement('p');
+    empty.className = 'registry-list-empty';
+    empty.textContent = text;
+    node.appendChild(empty);
+  }
+
+  function setRegistrySelectOptions(select, records, emptyText, titleForRecord) {
+    if (!select) {
+      return;
+    }
+    clearRegistryNode(select);
+    if (records.length === 0) {
+      var emptyOption = document.createElement('option');
+      emptyOption.value = '';
+      emptyOption.textContent = emptyText;
+      select.appendChild(emptyOption);
+      select.disabled = true;
+      return;
+    }
+    select.disabled = Boolean(pendingRegistryMutation);
+    records.forEach(function (record) {
+      var option = document.createElement('option');
+      option.value = record.id;
+      option.textContent = titleForRecord(record);
+      select.appendChild(option);
+    });
+  }
+
+  function setRegistryFormsDisabled(disabled) {
+    [registryWalletForm, registryAccountForm, registryAddressForm].forEach(function (form) {
+      if (!form) {
+        return;
+      }
+      Array.prototype.forEach.call(form.elements, function (element) {
+        element.disabled = disabled;
+      });
+    });
+    [registryWalletCancel, registryAccountCancel, registryAddressCancel].forEach(function (button) {
+      if (button) {
+        button.disabled = disabled;
+      }
+    });
+  }
+
+  function renderRegistry() {
+    var available = Boolean(registryStore && vaultState === 'unlocked');
+    if (registryLocked) {
+      registryLocked.hidden = available;
+    }
+    if (registryWorkspace) {
+      registryWorkspace.hidden = !available;
+    }
+    if (!available) {
+      return;
+    }
+    var wallets = registryStore.list('wallets');
+    var accounts = registryStore.list('accounts');
+    var addresses = registryStore.list('addresses');
+    clearRegistryNode(registryWalletList);
+    clearRegistryNode(registryAccountList);
+    clearRegistryNode(registryAddressList);
+    if (wallets.length === 0) {
+      appendRegistryEmpty(registryWalletList, 'No wallets recorded yet.');
+    } else {
+      wallets.forEach(function (wallet) {
+        appendRegistryRecord(
+          registryWalletList,
+          'wallet',
+          wallet,
+          wallet.label || 'Unlabeled wallet',
+          [wallet.network, wallet.scriptType, wallet.primaryPath, wallet.fingerprint]
+            .filter(Boolean).join(' Â· ') || 'Public wallet metadata'
+        );
+      });
+    }
+    if (accounts.length === 0) {
+      appendRegistryEmpty(registryAccountList, 'No accounts recorded yet.');
+    } else {
+      accounts.forEach(function (account) {
+        var wallet = registryStore.find('wallets', account.walletId);
+        appendRegistryRecord(
+          registryAccountList,
+          'account',
+          account,
+          account.label || account.asset || 'Unlabeled account',
+          [wallet && wallet.label ? wallet.label : 'Wallet', account.asset, account.path]
+            .filter(Boolean).join(' Â· ')
+        );
+      });
+    }
+    if (addresses.length === 0) {
+      appendRegistryEmpty(registryAddressList, 'No addresses recorded yet.');
+    } else {
+      addresses.forEach(function (address) {
+        var account = registryStore.find('accounts', address.accountId);
+        appendRegistryRecord(
+          registryAddressList,
+          'address',
+          address,
+          address.label || 'Address #' + String(address.index),
+          [account && account.label ? account.label : 'Account', address.address]
+            .filter(Boolean).join(' Â· ')
+        );
+      });
+    }
+    setRegistrySelectOptions(
+      registryAccountWallet,
+      wallets,
+      'Create a wallet first',
+      function (wallet) { return wallet.label || 'Unlabeled wallet'; }
+    );
+    setRegistrySelectOptions(
+      registryAddressAccount,
+      accounts,
+      'Create an account first',
+      function (account) { return account.label || account.asset || 'Unlabeled account'; }
+    );
+    setRegistryFormsDisabled(Boolean(pendingRegistryMutation));
+    if (registryWalletForm) {
+      registryWalletForm.querySelector('button[type="submit"]').disabled = Boolean(pendingRegistryMutation);
+    }
+    if (registryAccountForm) {
+      registryAccountForm.querySelector('button[type="submit"]').disabled = Boolean(pendingRegistryMutation);
+    }
+    if (registryAddressForm) {
+      registryAddressForm.querySelector('button[type="submit"]').disabled = Boolean(pendingRegistryMutation);
+    }
+  }
+
+  function beginRegistryMutation(mutator) {
+    if (!registryStore || vaultState !== 'unlocked') {
+      setRegistryStatus('Unlock the vault before changing public registry records.');
+      return;
+    }
+    if (pendingRegistryMutation) {
+      setRegistryStatus('A registry change is still being written inside the sealed realm.');
+      return;
+    }
+    var before = registryStore.snapshot();
+    var persistenceState = vaultPersistenceState;
+    try {
+      mutator();
+    } catch (error) {
+      setRegistryStatus(error && error.message ? error.message : 'The registry change was rejected.');
+      return;
+    }
+    var id = sendVaultMessage('publicData.replace', {
+      publicCompartment: registryStore.snapshot()
+    });
+    if (!id) {
+      registryStore.replace(before);
+      setRegistryStatus('The registry change was not sent. Nothing was changed.');
+      renderRegistry();
+      return;
+    }
+    pendingRegistryMutation = {
+      id: id,
+      before: before,
+      persistenceState: persistenceState
+    };
+    setVaultPersistenceState('unsaved');
+    setRegistryStatus('Writing public registry change inside the sealed realm...');
+    renderRegistry();
+  }
+
+  function resetWalletForm() {
+    if (!registryWalletForm) {
+      return;
+    }
+    registryWalletForm.reset();
+    registryWalletId.value = '';
+    registryWalletNetwork.value = 'bitcoin';
+    registryWalletScript.value = 'p2wpkh';
+    registryWalletCancel.hidden = true;
+  }
+
+  function resetAccountForm() {
+    if (!registryAccountForm) {
+      return;
+    }
+    registryAccountForm.reset();
+    registryAccountId.value = '';
+    registryAccountAsset.value = 'BTC';
+    registryAccountCancel.hidden = true;
+  }
+
+  function resetAddressForm() {
+    if (!registryAddressForm) {
+      return;
+    }
+    registryAddressForm.reset();
+    registryAddressId.value = '';
+    registryAddressIndex.value = '0';
+    registryAddressCancel.hidden = true;
+  }
+
+  function editRegistryRecord(kind, id) {
+    var collection = kind === 'address' ? 'addresses' : kind + 's';
+    var record = registryStore && registryStore.find(collection, id);
+    if (!record) {
+      setRegistryStatus('That registry record is no longer available.');
+      return;
+    }
+    if (kind === 'wallet') {
+      registryWalletId.value = record.id;
+      registryWalletLabel.value = record.label || '';
+      registryWalletType.value = record.type || 'singlesig';
+      registryWalletNetwork.value = record.network || 'bitcoin';
+      registryWalletScript.value = record.scriptType || 'p2wpkh';
+      registryWalletPath.value = record.primaryPath || '';
+      registryWalletFingerprint.value = record.fingerprint || '';
+      registryWalletCancel.hidden = false;
+      registryWalletLabel.focus();
+    } else if (kind === 'account') {
+      registryAccountId.value = record.id;
+      registryAccountWallet.value = record.walletId;
+      registryAccountAsset.value = record.asset || 'BTC';
+      registryAccountPath.value = record.path || '';
+      registryAccountLabel.value = record.label || '';
+      registryAccountCancel.hidden = false;
+      registryAccountLabel.focus();
+    } else if (kind === 'address') {
+      registryAddressId.value = record.id;
+      registryAddressAccount.value = record.accountId;
+      registryAddressIndex.value = String(record.index);
+      registryAddressValue.value = record.address || '';
+      registryAddressLabel.value = record.label || '';
+      registryAddressChange.checked = record.isChange === true;
+      registryAddressCancel.hidden = false;
+      registryAddressLabel.focus();
+    }
+    setRegistryStatus('Editing a public ' + kind + ' record.');
+  }
+
+  function deleteRegistryRecord(kind, id) {
+    beginRegistryMutation(function () {
+      if (kind === 'wallet') {
+        registryStore.deleteWallet(id);
+      } else if (kind === 'account') {
+        registryStore.deleteAccount(id);
+      } else {
+        registryStore.deleteAddress(id);
+      }
+    });
+  }
+
+  function handleRegistryListAction(event) {
+    var target = event.target;
+    while (target && target !== event.currentTarget
+      && target.getAttribute && !target.getAttribute('data-registry-action')) {
+      target = target.parentNode;
+    }
+    if (!target || !target.getAttribute) {
+      return;
+    }
+    var action = target.getAttribute('data-registry-action');
+    var kind = target.getAttribute('data-registry-kind');
+    var id = target.getAttribute('data-registry-id');
+    if (pendingRegistryMutation || !kind || !id) {
+      return;
+    }
+    if (action === 'edit') {
+      editRegistryRecord(kind, id);
+    } else if (action === 'delete') {
+      deleteRegistryRecord(kind, id);
+    }
+  }
+
+  function addRegistryText(record, key, input) {
+    var value = input.value.trim();
+    if (value) {
+      record[key] = value;
+    }
+  }
+
+  function handleWalletFormSubmit(event) {
+    event.preventDefault();
+    var id = registryWalletId.value;
+    var record = {
+      type: registryWalletType.value,
+      network: registryWalletNetwork.value.trim(),
+      scriptType: registryWalletScript.value.trim()
+    };
+    addRegistryText(record, 'label', registryWalletLabel);
+    addRegistryText(record, 'primaryPath', registryWalletPath);
+    addRegistryText(record, 'fingerprint', registryWalletFingerprint);
+    beginRegistryMutation(function () {
+      if (id) {
+        registryStore.updateWallet(id, record);
+      } else {
+        registryStore.createWallet(record);
+      }
+    });
+    resetWalletForm();
+  }
+
+  function handleAccountFormSubmit(event) {
+    event.preventDefault();
+    var id = registryAccountId.value;
+    var record = {
+      walletId: registryAccountWallet.value
+    };
+    addRegistryText(record, 'asset', registryAccountAsset);
+    addRegistryText(record, 'path', registryAccountPath);
+    addRegistryText(record, 'label', registryAccountLabel);
+    beginRegistryMutation(function () {
+      if (id) {
+        registryStore.updateAccount(id, record);
+      } else {
+        registryStore.createAccount(record);
+      }
+    });
+    resetAccountForm();
+  }
+
+  function handleAddressFormSubmit(event) {
+    event.preventDefault();
+    var id = registryAddressId.value;
+    var existing = id && registryStore ? registryStore.find('addresses', id) : null;
+    var record = {
+      accountId: registryAddressAccount.value,
+      index: Number(registryAddressIndex.value),
+      address: registryAddressValue.value.trim(),
+      isChange: registryAddressChange.checked,
+      used: existing ? existing.used === true : false
+    };
+    addRegistryText(record, 'label', registryAddressLabel);
+    beginRegistryMutation(function () {
+      if (id) {
+        registryStore.updateAddress(id, record);
+      } else {
+        registryStore.createAddress(record);
+      }
+    });
+    resetAddressForm();
+  }
+
+  function handlePublicDataUpdated(message) {
+    if (!pendingRegistryMutation || pendingRegistryMutation.id !== message.id) {
+      recordChannelAnomaly();
+      return;
+    }
+    try {
+      registryStore.replace(message.payload.publicCompartment);
+      pendingRegistryMutation = null;
+      setRegistryStatus('Public registry change written. Save the vault to make it durable.');
+      renderRegistry();
+    } catch (error) {
+      handleVaultError({
+        id: message.id,
+        payload: { code: 'operation-failed', message: 'The registry acknowledgement failed validation.' }
+      });
+    }
+  }
+
   function handleVaultOpened(message) {
     var publicCompartment = message.payload.publicCompartment || {};
     var count = publicRecordCount(publicCompartment);
@@ -2999,6 +3435,23 @@ __COLDBOX_QR_ENCODER__
         : { counter: 0, savedAt: null };
     }
     setActiveVaultMeta(chosenName, vaultId);
+    try {
+      registryStore = registry.createStore(publicCompartment);
+    } catch (error) {
+      registryStore = null;
+      sendVaultMessage('vault.lock', {});
+      setVaultPersistenceState('none');
+      setVaultStatus(
+        'locked',
+        'Registry data rejected',
+        'The public registry could not be validated, so Coldbox locked the vault and discarded the session.',
+        'Rejected'
+      );
+      renderRegistry();
+      return;
+    }
+    pendingRegistryMutation = null;
+    renderRegistry();
     // Persist public-name ownership only when a durable .cbx already exists.
     // A freshly-created or live-transferred vault that is later discarded
     // without saving must not leave a ghost name reservation behind.
@@ -3065,11 +3518,18 @@ __COLDBOX_QR_ENCODER__
       statusCopy + rollbackNotice + identityNotice,
       vaultPersistenceLabel()
     );
+    renderRegistry();
   }
 
   function handleVaultStatus(message) {
     if (message.payload.locked) {
       var lostUnsaved = vaultDirty;
+      registryStore = null;
+      pendingRegistryMutation = null;
+      resetWalletForm();
+      resetAccountForm();
+      resetAddressForm();
+      renderRegistry();
       clearLiveTransferSender('Live transfer stopped because the vault locked.');
       setVaultPersistenceState('none');
       setVaultStatus(
@@ -3102,6 +3562,21 @@ __COLDBOX_QR_ENCODER__
   }
 
   function handleVaultError(message) {
+    if (pendingRegistryMutation && pendingRegistryMutation.id === message.id) {
+      var registryMutation = pendingRegistryMutation;
+      pendingRegistryMutation = null;
+      try {
+        if (registryStore) {
+          registryStore.replace(registryMutation.before);
+        }
+      } catch (error) {
+        registryStore = null;
+      }
+      setVaultPersistenceState(registryMutation.persistenceState);
+      setRegistryStatus('The registry change was rejected. Nothing was changed.');
+      renderRegistry();
+      return;
+    }
     if (pendingVaultRequest && pendingVaultRequest.id === message.id) {
       var request = pendingVaultRequest;
       pendingVaultRequest = null;
@@ -3288,6 +3763,10 @@ __COLDBOX_QR_ENCODER__
     }
     if (handshakeState === 'ready' && message.type === 'vault.bytes') {
       handleVaultBytes(message);
+      return;
+    }
+    if (handshakeState === 'ready' && message.type === 'publicData.updated') {
+      handlePublicDataUpdated(message);
       return;
     }
     if (handshakeState === 'ready' && message.type === 'status') {
@@ -3718,6 +4197,30 @@ __COLDBOX_QR_ENCODER__
   if (vaultPanicHide) {
     vaultPanicHide.addEventListener('click', panicHide);
   }
+  if (registryWalletForm) {
+    registryWalletForm.addEventListener('submit', handleWalletFormSubmit);
+  }
+  if (registryAccountForm) {
+    registryAccountForm.addEventListener('submit', handleAccountFormSubmit);
+  }
+  if (registryAddressForm) {
+    registryAddressForm.addEventListener('submit', handleAddressFormSubmit);
+  }
+  if (registryWalletCancel) {
+    registryWalletCancel.addEventListener('click', resetWalletForm);
+  }
+  if (registryAccountCancel) {
+    registryAccountCancel.addEventListener('click', resetAccountForm);
+  }
+  if (registryAddressCancel) {
+    registryAddressCancel.addEventListener('click', resetAddressForm);
+  }
+  [registryWalletList, registryAccountList, registryAddressList].forEach(function (list) {
+    if (list) {
+      list.addEventListener('click', handleRegistryListAction);
+    }
+  });
+  renderRegistry();
   if (panicReload) {
     panicReload.addEventListener('click', function () {
       window.location.reload();

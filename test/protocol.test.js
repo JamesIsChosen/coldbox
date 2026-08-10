@@ -51,6 +51,7 @@ test('protocol exposes only the documented message whitelist', () => {
     'mode.set',
     'derive.request',
     'publicData.request',
+    'publicData.replace',
     'ui.navigate'
   ]);
   assert.deepEqual(Array.from(protocol.messageTypes('cold-to-warm')), [
@@ -59,6 +60,7 @@ test('protocol exposes only the documented message whitelist', () => {
     'vault.bytes',
     'vault.lockRequest',
     'derive.result',
+    'publicData.updated',
     'status',
     'error',
     'panic.hide'
@@ -261,6 +263,99 @@ test('public collection allowlist matches the documented data model', () => {
     id: 'collections-2',
     type: 'publicData.request',
     payload: { collections: ['settings'] }
+  }), null);
+});
+
+test('registry records use collection-specific public schemas for both write and acknowledgement', () => {
+  const protocol = loadProtocol();
+  const walletId = SAFE_ID;
+  const accountId = '550e8400-e29b-41d4-a716-446655440001';
+  const addressId = '550e8400-e29b-41d4-a716-446655440002';
+  const publicCompartment = {
+    id: SAFE_ID,
+    wallets: [{
+      id: walletId,
+      label: 'Cold wallet',
+      network: 'bitcoin',
+      scriptType: 'p2wpkh',
+      xpubs: [SAFE_XPUB],
+      tags: ['savings'],
+      hidden: false,
+      unknownNumber: 7
+    }],
+    accounts: [{
+      id: accountId,
+      walletId,
+      asset: 'BTC',
+      path: "m/84'/0'/0'",
+      label: 'Savings account'
+    }],
+    addresses: [{
+      id: addressId,
+      accountId,
+      index: 0,
+      address: SAFE_ADDRESS,
+      isChange: false,
+      used: false,
+      balanceSnapshot: {
+        amount: 1.25,
+        asOf: '2026-08-10T12:00:00.000Z',
+        source: 'manual'
+      }
+    }]
+  };
+  const written = protocol.validateMessage('warm-to-cold', {
+    id: 'registry-write-1',
+    type: 'publicData.replace',
+    payload: { publicCompartment }
+  });
+  assert.equal(written.payload.publicCompartment.wallets[0].unknownNumber, undefined);
+  assert.equal(written.payload.publicCompartment.accounts[0].walletId, walletId);
+  assert.equal(written.payload.publicCompartment.addresses[0].balanceSnapshot.source, 'manual');
+  assert.equal(
+    JSON.stringify(protocol.validateMessage('cold-to-warm', {
+      id: 'registry-write-1',
+      type: 'publicData.updated',
+      payload: { publicCompartment: written.payload.publicCompartment }
+    })),
+    JSON.stringify({
+      id: 'registry-write-1',
+      type: 'publicData.updated',
+      payload: { publicCompartment: written.payload.publicCompartment }
+    })
+  );
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'registry-secret-1',
+    type: 'publicData.replace',
+    payload: {
+      publicCompartment: {
+        wallets: [{ id: walletId, label: 'public', xprv: 'must not cross' }]
+      }
+    }
+  }), null);
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'registry-unknown-text',
+    type: 'publicData.replace',
+    payload: {
+      publicCompartment: {
+        wallets: [{ id: walletId, arbitraryText: 'must not cross' }]
+      }
+    }
+  }), null);
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'registry-bad-date',
+    type: 'publicData.replace',
+    payload: {
+      publicCompartment: {
+        addresses: [{
+          id: addressId,
+          accountId,
+          index: 0,
+          address: SAFE_ADDRESS,
+          balanceSnapshot: { amount: 1, asOf: 'not-a-date', source: 'manual' }
+        }]
+      }
+    }
   }), null);
 });
 

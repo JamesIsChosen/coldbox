@@ -298,6 +298,209 @@
     price: 'number'
   });
 
+  var REGISTRY_FIELD_RULES = Object.freeze({
+    wallets: Object.freeze({
+      id: 'uuid',
+      label: 'text:256',
+      seedId: 'uuid',
+      fingerprint: 'fingerprint',
+      type: 'text:64',
+      network: 'text:64',
+      scriptType: 'text:64',
+      primaryPath: 'text:128',
+      xpubs: 'xpubs',
+      deviceIds: 'uuids',
+      status: 'text:32',
+      notes: 'text:10000',
+      tags: 'tags',
+      hidden: 'boolean'
+    }),
+    accounts: Object.freeze({
+      id: 'uuid',
+      walletId: 'uuid',
+      asset: 'text:64',
+      path: 'text:128',
+      xpub: 'xpub',
+      label: 'text:256',
+      notes: 'text:10000',
+      tags: 'tags',
+      hidden: 'boolean'
+    }),
+    addresses: Object.freeze({
+      id: 'uuid',
+      accountId: 'uuid',
+      index: 'integer',
+      address: 'address',
+      label: 'text:256',
+      isChange: 'boolean',
+      used: 'boolean',
+      balanceSnapshot: 'balanceSnapshot',
+      notes: 'text:10000',
+      tags: 'tags',
+      hidden: 'boolean'
+    })
+  });
+
+  var REGISTRY_REQUIRED_FIELDS = Object.freeze({
+    wallets: Object.freeze(['id']),
+    accounts: Object.freeze(['id', 'walletId']),
+    addresses: Object.freeze(['id', 'accountId', 'index', 'address'])
+  });
+
+  function cleanIsoTimestamp(value) {
+    if (typeof value !== 'string' || value.length > 64 || isSecretContent(value)) {
+      return null;
+    }
+    var parsed = Date.parse(value);
+    return Number.isFinite(parsed) && new Date(parsed).toISOString() === value ? value : null;
+  }
+
+  function cleanPublicTags(value) {
+    return cleanStringArray(value, 32, 64);
+  }
+
+  function cleanPublicXpubs(value) {
+    if (!Array.isArray(value) || value.length > 32) {
+      return null;
+    }
+    var result = [];
+    for (var index = 0; index < value.length; index += 1) {
+      var xpub = cleanXpub(value[index]);
+      if (xpub === null) {
+        return null;
+      }
+      result.push(xpub);
+    }
+    return result;
+  }
+
+  function cleanPublicUuids(value) {
+    if (!Array.isArray(value) || value.length > 32) {
+      return null;
+    }
+    var result = [];
+    for (var index = 0; index < value.length; index += 1) {
+      var uuid = cleanUuid(value[index]);
+      if (uuid === null) {
+        return null;
+      }
+      result.push(uuid);
+    }
+    return result;
+  }
+
+  function cleanBalanceSnapshot(value) {
+    if (!isRecord(value)) {
+      return null;
+    }
+    var result = {};
+    var amount = cleanNumber(value.amount);
+    var asOf = cleanIsoTimestamp(value.asOf);
+    var source = cleanText(value.source, 64);
+    if (amount === null || asOf === null || source === null) {
+      return null;
+    }
+    var keys = Object.keys(value);
+    for (var index = 0; index < keys.length; index += 1) {
+      var key = keys[index];
+      if (hasOwn(SECRET_KEYS, key)) {
+        return null;
+      }
+      if (key !== 'amount' && key !== 'asOf' && key !== 'source' && containsText(value[key])) {
+        return null;
+      }
+    }
+    result.amount = amount;
+    result.asOf = asOf;
+    result.source = source;
+    return result;
+  }
+
+  function cleanRegistryField(value, rule) {
+    if (rule === 'uuid') {
+      return cleanUuid(value);
+    }
+    if (rule === 'fingerprint') {
+      return cleanFingerprint(value);
+    }
+    if (rule === 'xpub') {
+      return cleanXpub(value);
+    }
+    if (rule === 'xpubs') {
+      return cleanPublicXpubs(value);
+    }
+    if (rule === 'uuids') {
+      return cleanPublicUuids(value);
+    }
+    if (rule === 'address') {
+      return cleanPublicAddress(value);
+    }
+    if (rule === 'boolean') {
+      return cleanBoolean(value);
+    }
+    if (rule === 'integer') {
+      return cleanInteger(value, 0, 0x7fffffff);
+    }
+    if (rule === 'tags') {
+      return cleanPublicTags(value);
+    }
+    if (rule === 'balanceSnapshot') {
+      return cleanBalanceSnapshot(value);
+    }
+    if (rule.indexOf('text:') === 0) {
+      return cleanText(value, Number(rule.slice(5)));
+    }
+    return null;
+  }
+
+  function cleanRegistryRecord(value, collection) {
+    if (!isRecord(value) || !hasOwn(REGISTRY_FIELD_RULES, collection)) {
+      return null;
+    }
+    var rules = REGISTRY_FIELD_RULES[collection];
+    var required = REGISTRY_REQUIRED_FIELDS[collection];
+    var result = {};
+    var inputKeys = Object.keys(value);
+    for (var requiredIndex = 0; requiredIndex < required.length; requiredIndex += 1) {
+      if (!hasOwn(value, required[requiredIndex])) {
+        return null;
+      }
+    }
+    for (var index = 0; index < inputKeys.length; index += 1) {
+      var key = inputKeys[index];
+      if (hasOwn(SECRET_KEYS, key)) {
+        return null;
+      }
+      if (!hasOwn(rules, key)) {
+        if (containsText(value[key])) {
+          return null;
+        }
+        continue;
+      }
+      var cleaned = cleanRegistryField(value[key], rules[key]);
+      if (cleaned === null) {
+        return null;
+      }
+      result[key] = cleaned;
+    }
+    return result;
+  }
+
+  function cleanRegistryRecordArray(value, collection) {
+    if (!Array.isArray(value) || value.length > 10000) {
+      return null;
+    }
+    var result = [];
+    for (var index = 0; index < value.length; index += 1) {
+      var record = cleanRegistryRecord(value[index], collection);
+      if (record === null) {
+        return null;
+      }
+      result.push(record);
+    }
+    return result;
+  }
+
   function cleanPublicRecord(value) {
     if (!isRecord(value)) {
       return null;
@@ -376,7 +579,9 @@
       if (!hasOwn(value, collection) || hasOwn(SECRET_KEYS, collection)) {
         continue;
       }
-      var cleaned = cleanPublicRecordArray(value[collection]);
+      var cleaned = hasOwn(REGISTRY_FIELD_RULES, collection)
+        ? cleanRegistryRecordArray(value[collection], collection)
+        : cleanPublicRecordArray(value[collection]);
       if (cleaned === null) {
         return null;
       }
@@ -440,6 +645,14 @@
       }
     }
     return { collections: collections };
+  }
+
+  function cleanPublicDataReplace(value) {
+    if (!isRecord(value) || !hasOwn(value, 'publicCompartment')) {
+      return null;
+    }
+    var publicCompartment = cleanPublicCompartment(value.publicCompartment);
+    return publicCompartment === null ? null : { publicCompartment: publicCompartment };
   }
 
   function utf8Length(value) {
@@ -548,6 +761,7 @@
     'mode.set': cleanModeSet,
     'derive.request': cleanDeriveRequest,
     'publicData.request': cleanPublicDataRequest,
+    'publicData.replace': cleanPublicDataReplace,
     'ui.navigate': cleanUiNavigate
   });
   var COLD_TO_WARM = Object.freeze({
@@ -556,6 +770,7 @@
     'vault.bytes': cleanVaultBytes,
     'vault.lockRequest': cleanStrictEmptyPayload,
     'derive.result': cleanDeriveResult,
+    'publicData.updated': cleanVaultOpened,
     status: cleanStatus,
     error: cleanError,
     'panic.hide': cleanEmptyPayload
