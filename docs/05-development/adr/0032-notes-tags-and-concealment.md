@@ -39,6 +39,7 @@ mistakenly hidden records recoverable.
 ### Positive
 
 - Public notes and tags are searchable offline without exposing secret text.
+- Secret notes are searchable by title, body, and tag only inside the cold-local editor.
 - Hidden records are recoverable without hard deletion and cannot appear by
   accident in the normal registry view.
 - Privacy blur survives reload, while panic and lock clear session reveals.

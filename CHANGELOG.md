@@ -17,7 +17,7 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 ### Added — P1.7 notes, tags, and concealment (2026-08-10)
 
 - **Public notes and shared tags.** Wallets, accounts, addresses, and standalone public Note records now carry bounded Markdown notes, canonical shared tags, and reversible hidden flags. Search filters the public registry without sending text outside the validated projection.
-- **Compartment-aware notes.** The public schema accepts `visibility: public` notes only; secret-note-shaped records are rejected instead of being rendered in the warm shell.
+- **Compartment-aware notes.** The public schema accepts `visibility: public` notes only; secret-note-shaped records are rejected instead of being rendered in the warm shell. Secret notes can be searched inside the cold realm while their title, body, and tags remain encrypted.
 - **Concealment controls.** Privacy blur persists locally, Panic hide clears reveal state and locks immediately, and hidden-record reveal requires re-entering the vault phrase inside the cold realm. See [ADR-0032](docs/05-development/adr/0032-notes-tags-and-concealment.md).
 
 ### Added — P1.6 registry CRUD (2026-08-10)

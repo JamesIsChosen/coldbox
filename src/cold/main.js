@@ -50,6 +50,7 @@ __COLDBOX_CAPABILITIES__
   var secretNoteTitle = document.getElementById('cold-secret-note-title');
   var secretNoteBody = document.getElementById('cold-secret-note-body');
   var secretNoteTags = document.getElementById('cold-secret-note-tags');
+  var secretNoteSearch = document.getElementById('cold-secret-note-search');
   var secretNoteList = document.getElementById('cold-secret-note-list');
   var keyfileToggle = document.getElementById('cold-vault-keyfile-toggle');
   var keyfileWarning = document.getElementById('cold-vault-keyfile-warning');
@@ -2329,6 +2330,9 @@ __COLDBOX_CAPABILITIES__
     if (secretNoteTags) {
       secretNoteTags.value = '';
     }
+    if (secretNoteSearch) {
+      secretNoteSearch.value = '';
+    }
     if (secretNoteList) {
       secretNoteList.textContent = '';
     }
@@ -2444,13 +2448,19 @@ __COLDBOX_CAPABILITIES__
     secretNotesPanel.hidden = false;
     clearSecretNoteReveals();
     secretNoteList.textContent = '';
-    if (data.notes.length === 0) {
+    var query = secretNoteSearch ? secretNoteSearch.value.trim().toLowerCase() : '';
+    var notes = data.notes.filter(function (note) {
+      return !query || JSON.stringify(note).toLowerCase().indexOf(query) !== -1;
+    });
+    if (notes.length === 0) {
       var empty = document.createElement('p');
-      empty.textContent = 'No secret notes recorded in this vault.';
+      empty.textContent = query
+        ? 'No secret notes match this search.'
+        : 'No secret notes recorded in this vault.';
       secretNoteList.appendChild(empty);
       return;
     }
-    data.notes.forEach(function (note) {
+    notes.forEach(function (note) {
       var card = document.createElement('article');
       card.className = 'cold-secret-note-card';
       var title = document.createElement('h3');
@@ -3248,6 +3258,9 @@ __COLDBOX_CAPABILITIES__
   }
   if (secretNoteForm) {
     secretNoteForm.addEventListener('submit', saveSecretNote);
+  }
+  if (secretNoteSearch) {
+    secretNoteSearch.addEventListener('input', renderSecretNotes);
   }
   if (keyfileToggle) {
     keyfileToggle.addEventListener('change', function () {
