@@ -3672,16 +3672,19 @@ __COLDBOX_CONCEALMENT__
     resetNoteForm();
   }
 
-  function addDeviceOptionalDate(record, key, input) {
+  function addDeviceOptionalDate(record, key, input, clearFields) {
     var value = dateInputToIso(input);
     if (value) {
       record[key] = value;
+    } else if (clearFields) {
+      clearFields.push(key);
     }
   }
 
   function handleDeviceFormSubmit(event) {
     event.preventDefault();
     var id = deviceId.value;
+    var clearFields = id ? [] : null;
     var record = {
       vendor: deviceVendor.value.trim(),
       model: deviceModel.value.trim(),
@@ -3692,18 +3695,19 @@ __COLDBOX_CONCEALMENT__
       hidden: deviceHidden.checked
     };
     record.passphraseUsed = devicePassphraseUsed.checked;
-    addRegistryText(record, 'serial', deviceSerial);
-    addDeviceOptionalDate(record, 'firmwareDate', deviceFirmwareDate);
-    addRegistryText(record, 'purchasedFrom', devicePurchasedFrom);
-    addDeviceOptionalDate(record, 'purchasedAt', devicePurchasedAt);
-    addRegistryText(record, 'tamperCheckNotes', deviceTamperNotes);
-    addDeviceOptionalDate(record, 'pinSetAt', devicePinSetAt);
-    addDeviceOptionalDate(record, 'pinChangedAt', devicePinChangedAt);
-    addRegistryText(record, 'location', deviceLocation);
-    addRegistryText(record, 'notes', deviceNotes);
+    addRegistryText(record, 'serial', deviceSerial, clearFields);
+    addDeviceOptionalDate(record, 'firmwareDate', deviceFirmwareDate, clearFields);
+    addRegistryText(record, 'purchasedFrom', devicePurchasedFrom, clearFields);
+    addDeviceOptionalDate(record, 'purchasedAt', devicePurchasedAt, clearFields);
+    addRegistryText(record, 'tamperCheckNotes', deviceTamperNotes, clearFields);
+    addDeviceOptionalDate(record, 'pinSetAt', devicePinSetAt, clearFields);
+    addDeviceOptionalDate(record, 'pinChangedAt', devicePinChangedAt, clearFields);
+    addRegistryOptionalList(record, 'seedFingerprints', deviceSeedFingerprints, clearFields);
+    addRegistryText(record, 'location', deviceLocation, clearFields);
+    addRegistryText(record, 'notes', deviceNotes, clearFields);
     beginRegistryMutation(function () {
       if (id) {
-        registryStore.updateDevice(id, record);
+        registryStore.updateDevice(id, record, { clearFields: clearFields });
       } else {
         registryStore.createDevice(record);
       }

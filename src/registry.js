@@ -326,7 +326,7 @@
       updateAddress: function (id, value, options) { return update('addresses', id, value, options); },
       deleteAddress: function (id) { return softDelete('addresses', id); },
       createDevice: function (value) { return insert('devices', value); },
-      updateDevice: function (id, value) { return update('devices', id, value); },
+      updateDevice: function (id, value, options) { return update('devices', id, value, options); },
       deleteDevice: function (id) { return softDelete('devices', id); },
       createNote: function (value) { return insert('notes', value); },
       updateNote: function (id, value, options) { return update('notes', id, value, options); },

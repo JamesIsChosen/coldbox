@@ -238,6 +238,29 @@ test('device registry stores lifecycle metadata, fingerprint links, and soft hid
   store.updateDevice(device.id, { status: 'retired', location: 'Archive safe' });
   assert.equal(store.find('devices', device.id).status, 'retired');
   assert.equal(store.find('devices', device.id).location, 'Archive safe');
+  store.updateDevice(device.id, {}, {
+    clearFields: [
+      'serial', 'firmwareDate', 'purchasedFrom', 'purchasedAt',
+      'tamperCheckNotes', 'pinSetAt', 'pinChangedAt',
+      'seedFingerprints', 'location', 'notes'
+    ]
+  });
+  const clearedDevice = store.find('devices', device.id);
+  assert.equal('serial' in clearedDevice, false);
+  assert.equal('firmwareDate' in clearedDevice, false);
+  assert.equal('purchasedFrom' in clearedDevice, false);
+  assert.equal('purchasedAt' in clearedDevice, false);
+  assert.equal('tamperCheckNotes' in clearedDevice, false);
+  assert.equal('pinSetAt' in clearedDevice, false);
+  assert.equal('pinChangedAt' in clearedDevice, false);
+  assert.equal(clearedDevice.passphraseUsed, true);
+  assert.equal('seedFingerprints' in clearedDevice, false);
+  assert.equal('location' in clearedDevice, false);
+  assert.equal('notes' in clearedDevice, false);
+  assert.throws(
+    () => store.updateDevice(device.id, {}, { clearFields: ['vendor'] }),
+    /cannot be cleared/
+  );
   assert.equal(store.deleteDevice(device.id).hidden, true);
   assert.equal(store.list('devices').some((item) => item.id === device.id), false);
   assert.equal(store.list('devices', true).some((item) => item.id === device.id), true);
