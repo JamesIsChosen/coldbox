@@ -544,7 +544,7 @@ async function verifyBuiltFile(browser, engine) {
     assert.equal(await page.locator('#app').getAttribute('data-lockdown-state'), 'none');
     assert.equal(await page.locator('#app').getAttribute('data-vault-operations'), 'guarded');
     const sandbox = await page.locator('#cold-frame').getAttribute('sandbox');
-    assert.equal(sandbox, 'allow-scripts allow-downloads', `${engine}: cold frame sandbox changed`);
+    assert.equal(sandbox, 'allow-scripts allow-downloads allow-modals', `${engine}: cold frame sandbox changed`);
     assert.equal(
       sandbox.includes('allow-same-origin'),
       false,
@@ -1189,6 +1189,223 @@ async function verifyRegistryCrud(browser, engine) {
     await page.locator('#page-registry:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#registry-locked:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
     console.log(`${engine}: registry wallet/account/address CRUD, explicit clear, durable reopen, and lock state passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
+async function verifyStaleAddressDisplay(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    const coldFrame = await getColdFrame(page, engine);
+    const phrase = 'stale address display harness phrase';
+    const fixtureBytes = await coldFrame.evaluate(async ({ phrase: unlockPhrase }) => {
+      const xpub = `xpub${'1'.repeat(107)}`;
+      const bytes = await window.__coldboxVault.create({
+        passphrase: unlockPhrase,
+        profile: 'fast',
+        publicData: {
+          schema: 2,
+          id: '550e8400-e29b-41d4-a716-446655440010',
+          wallets: [{ id: '550e8400-e29b-41d4-a716-446655440011', label: 'Stale fixture wallet' }],
+          accounts: [{
+            id: '550e8400-e29b-41d4-a716-446655440012',
+            walletId: '550e8400-e29b-41d4-a716-446655440011',
+            xpub
+          }],
+          addresses: [{
+            id: '550e8400-e29b-41d4-a716-446655440013',
+            accountId: '550e8400-e29b-41d4-a716-446655440012',
+            index: 0,
+            address: '1BoatSLRHtKNngkdXEeobR76b53LETtpyT',
+            addressOrigin: 'derived',
+            verificationState: 'cold-verified-stale',
+            lastColdVerifiedAt: '2026-08-11T12:00:00.000Z',
+            verifiedAgainstXpub: xpub
+          }]
+        }
+      });
+      return Array.from(bytes);
+    }, { phrase });
+
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('#vault-file-input').setInputFiles({
+      name: 'stale-address-fixture--550e8400.cbx',
+      mimeType: 'application/octet-stream',
+      buffer: Buffer.from(fixtureBytes)
+    });
+    await page.locator('#vault-library-list [data-vault-library-index="0"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#vault-library-list [data-vault-library-index="0"]').click();
+    await coldFrame.locator('#cold-vault-status[data-state="pending"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-passphrase').fill(phrase);
+    await coldFrame.locator('#cold-vault-unlock').click();
+    try {
+      await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    } catch (error) {
+      throw new Error(`${engine}: stale fixture unlock failed: ${await coldFrame.locator('#cold-vault-status').textContent()}`);
+    }
+    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#page-registry:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('#registry-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    const verification = page.locator('#registry-address-list .registry-record-verification');
+    await verification.waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await verification.textContent(), 'Cold verification stale', `${engine}: stale address must render its stale label`);
+    assert.notEqual(await verification.textContent(), 'Cold verified', `${engine}: stale address must never render as cold verified`);
+    assert.equal(await verification.getAttribute('data-verification-state'), 'cold-verified-stale');
+    console.log(`${engine}: cold-verified-stale persisted state rendered as stale, never as cold verified`);
+  } finally {
+    await closePage(page);
+  }
+}
+
+async function verifyAddressVerification(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    const coldFrame = await getColdFrame(page, engine);
+    const phrase = 'address verification harness phrase';
+    const mnemonic = [
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
+    ].join(' ');
+    const primaryAddressId = '550e8400-e29b-41d4-a716-446655440013';
+    const secondaryAddressId = '550e8400-e29b-41d4-a716-446655440015';
+    const fixtureBytes = await coldFrame.evaluate(async ({ unlockPhrase, seedPhrase }) => {
+      const seed = window.__coldboxSeedForge.mnemonicToSeed(seedPhrase, '', 'english');
+      try {
+        const primary = window.__coldboxDerivation.deriveEvmFromSeed(seed, { account: 0, count: 1 });
+        const secondary = window.__coldboxDerivation.deriveEvmFromSeed(seed, { account: 1, count: 1 });
+        const bytes = await window.__coldboxVault.create({
+          passphrase: unlockPhrase,
+          profile: 'fast',
+          publicData: {
+            schema: 2,
+            id: '550e8400-e29b-41d4-a716-446655440010',
+            wallets: [{
+              id: '550e8400-e29b-41d4-a716-446655440011',
+              label: 'EVM verification wallet',
+              type: 'singlesig',
+              network: 'ethereum',
+              scriptType: 'n/a',
+              primaryPath: "m/44'/60'/0'",
+              xpubs: [primary.xpub]
+            }],
+            accounts: [{
+              id: '550e8400-e29b-41d4-a716-446655440012',
+              walletId: '550e8400-e29b-41d4-a716-446655440011',
+              asset: 'ETH',
+              path: "m/44'/60'/0'",
+              xpub: primary.xpub,
+              label: 'Primary Ethereum'
+            }, {
+              id: '550e8400-e29b-41d4-a716-446655440014',
+              walletId: '550e8400-e29b-41d4-a716-446655440011',
+              asset: 'ETH',
+              path: "m/44'/60'/1'",
+              xpub: secondary.xpub,
+              label: 'Trading Ethereum'
+            }],
+            addresses: [{
+              id: '550e8400-e29b-41d4-a716-446655440013',
+              accountId: '550e8400-e29b-41d4-a716-446655440012',
+              index: 0,
+              address: primary.addresses[0],
+              label: 'Primary receive',
+              isChange: false,
+              used: false,
+              addressOrigin: 'derived',
+              verificationState: 'unverified'
+            }, {
+              id: '550e8400-e29b-41d4-a716-446655440015',
+              accountId: '550e8400-e29b-41d4-a716-446655440014',
+              index: 0,
+              address: secondary.addresses[0],
+              label: 'Trading receive',
+              isChange: false,
+              used: false,
+              addressOrigin: 'derived',
+              verificationState: 'unverified'
+            }]
+          }
+        });
+        return {
+          bytes: Array.from(bytes),
+          primary: primary.addresses[0],
+          secondary: secondary.addresses[0]
+        };
+      } finally {
+        seed.fill(0);
+      }
+    }, { unlockPhrase: phrase, seedPhrase: mnemonic });
+
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('#vault-file-input').setInputFiles({
+      name: 'evm-address-verification--550e8400.cbx',
+      mimeType: 'application/octet-stream',
+      buffer: Buffer.from(fixtureBytes.bytes)
+    });
+    await page.locator('#vault-library-list [data-vault-library-index="0"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#vault-library-list [data-vault-library-index="0"]').click();
+    await coldFrame.locator('#cold-vault-status[data-state="pending"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-passphrase').fill(phrase);
+    await coldFrame.locator('#cold-vault-unlock').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+
+    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(mnemonic);
+    await coldFrame.locator('#cold-seed-forge-validate').click();
+    await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 10000 });
+
+    await page.locator('#nav-rail a[data-route="verify"]').click();
+    await page.locator('#page-verify:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('#address-verify-record').selectOption(primaryAddressId);
+    await page.locator('#address-verify-candidate').fill(fixtureBytes.primary);
+    await page.locator('#address-verify-cold').click();
+    await page.locator('#address-verify-status[data-state="match"]').waitFor({ state: 'visible', timeout: 15000 });
+    assert.match(await page.locator('#address-verify-status').textContent(), /cold-verified/);
+
+    await page.locator('#address-verify-record').selectOption(primaryAddressId);
+    await page.locator('#address-verify-candidate').fill(fixtureBytes.secondary);
+    await page.locator('#address-verify-compare').click();
+    await page.locator('#address-verify-status[data-state="different-account"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await page.locator('#address-verify-status').textContent(), /Trading Ethereum/);
+
+    const lowerPrimary = fixtureBytes.primary.toLowerCase();
+    const changedCharacter = lowerPrimary[22] === '0' ? '1' : '0';
+    const mismatch = lowerPrimary.slice(0, 22) + changedCharacter + lowerPrimary.slice(23);
+    await page.locator('#address-verify-candidate').fill(mismatch);
+    await page.locator('#address-verify-compare').click();
+    await page.locator('#address-verify-status[data-state="mismatch"]').waitFor({ state: 'visible', timeout: 5000 });
+    const comparison = page.locator('#address-verify-comparison:not([hidden])');
+    await comparison.waitFor({ state: 'visible', timeout: 5000 });
+    const comparisonText = await comparison.textContent();
+    assert.match(comparisonText, new RegExp(mismatch));
+    assert.match(comparisonText, new RegExp(fixtureBytes.primary));
+    assert.match(comparisonText, /\^/);
+
+    await page.locator('#address-verify-candidate').fill(` ${fixtureBytes.primary}`);
+    await page.locator('#address-verify-compare').click();
+    await page.locator('#address-verify-status[data-state="unrecognised-format"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await comparison.isHidden(), true);
+
+    const batchDetails = page.locator('details.address-batch-check');
+    if (!(await batchDetails.evaluate((element) => element.open))) {
+      await batchDetails.locator('summary').click();
+    }
+    await page.locator('#address-verify-batch').fill([
+      '0x52908400098527886E0F7030069857D2E4169Ee7',
+      fixtureBytes.primary,
+      ` ${fixtureBytes.primary}`
+    ].join('\n'));
+    await page.locator('#address-verify-batch-run').click();
+    const batchResults = page.locator('#address-verify-batch-results p');
+    await batchResults.nth(2).waitFor({ state: 'visible', timeout: 5000 });
+    const batchText = await page.locator('#address-verify-batch-results').textContent();
+    assert.match(batchText, /1: Checksum-invalid address/);
+    assert.match(batchText, /2: Registry match under account "Primary Ethereum"/);
+    assert.match(batchText, /3: The pasted value is not a recognised address format/);
+    assert.equal(await batchResults.count(), 3);
+    console.log(`${engine}: EVM cold verdict/state transition, named different-account match, aligned mismatch, raw whitespace, and checksum-invalid batch rows passed`);
   } finally {
     await closePage(page);
   }
@@ -2996,6 +3213,151 @@ async function verifyVerificationWorkflows(browser, engine) {
   }
 }
 
+async function verifyQrStudio(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    const coldFrame = await getColdFrame(page, engine);
+
+    await page.locator('#nav-rail a[data-route="qr"]').click();
+    await page.locator('#page-qr:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#qr-public-address').fill('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about');
+    await page.locator('#qr-public-generate').click();
+    assert.match(await page.locator('#qr-public-status').textContent(), /malformed input is rejected/i);
+    assert.equal(await page.locator('#qr-public-download-svg').isDisabled(), true);
+    assert.equal(await page.locator('#qr-public-output').getAttribute('data-payload'), null);
+
+    const evmAddress = '0x000000000000000000000000000000000000dEaD';
+    await page.locator('#qr-public-network').selectOption('ethereum');
+    await page.locator('#qr-public-address').fill(evmAddress);
+    await page.locator('#qr-public-amount').fill('1.234567890123456789');
+    await page.locator('#qr-public-label').fill('');
+    await page.locator('#qr-public-generate').click();
+    await page.locator('#qr-public-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(
+      await page.locator('#qr-public-output').getAttribute('data-payload'),
+      `ethereum:${evmAddress}?value=1234567890123456789`
+    );
+    assert.equal(await page.locator('#qr-public-output svg').count(), 1);
+
+    await page.locator('#qr-public-label').fill('unsupported');
+    await page.locator('#qr-public-generate').click();
+    await page.locator('#qr-public-status[data-state="error"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await page.locator('#qr-public-status').textContent(), /do not support the Bitcoin label/i);
+    assert.equal(await page.locator('#qr-public-output').getAttribute('data-payload'), null);
+
+    await page.locator('#qr-public-label').fill('');
+    await page.locator('#qr-public-amount').fill('0.0000000000000000001');
+    await page.locator('#qr-public-generate').click();
+    assert.match(await page.locator('#qr-public-status').textContent(), /too many decimal places/i);
+
+    await page.locator('#qr-public-network').selectOption('bitcoin');
+    await page.locator('#qr-public-address').fill('bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu');
+    await page.locator('#qr-public-amount').fill('0.001');
+    await page.locator('#qr-public-label').fill('cold storage');
+    await page.locator('#qr-public-generate').click();
+    await page.locator('#qr-public-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(
+      await page.locator('#qr-public-output').getAttribute('data-payload'),
+      'bitcoin:bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu?amount=0.001&label=cold%20storage'
+    );
+    const publicSvgDownload = page.waitForEvent('download');
+    await page.locator('#qr-public-download-svg').click();
+    assert.equal((await publicSvgDownload).suggestedFilename(), 'coldbox-address.svg');
+    const publicPngDownload = page.waitForEvent('download');
+    await page.locator('#qr-public-download-png').click();
+    assert.equal((await publicPngDownload).suggestedFilename(), 'coldbox-address.png');
+
+    assert.equal(await page.locator('#cold-frame').getAttribute('sandbox'), 'allow-scripts allow-downloads allow-modals');
+    await coldFrame.locator('#cold-seed-forge[data-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
+    const englishMnemonic = [
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
+    ].join(' ');
+    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(englishMnemonic);
+    await coldFrame.locator('#cold-seed-forge-validate').click();
+    await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-qr-seed-source').selectOption('validated');
+    assert.equal(await coldFrame.locator('#cold-qr-standard').isDisabled(), true);
+    await coldFrame.locator('#cold-qr-secret-confirm').check();
+    await coldFrame.locator('#cold-qr-standard').click();
+    await coldFrame.locator('#cold-qr-output-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await coldFrame.locator('#cold-qr-output-status').textContent(), /SeedQR generated.*25.*25/i);
+    assert.equal(await coldFrame.locator('#cold-qr-card').getAttribute('data-grid'), 'off');
+
+    const secretSvgDownload = page.waitForEvent('download');
+    await coldFrame.locator('#cold-qr-download-svg').click();
+    assert.equal((await secretSvgDownload).suggestedFilename(), 'coldbox-seedqr.svg');
+    const secretPngDownload = page.waitForEvent('download');
+    await coldFrame.locator('#cold-qr-download-png').click();
+    assert.equal((await secretPngDownload).suggestedFilename(), 'coldbox-seedqr.png');
+
+    await coldFrame.evaluate(() => {
+      window.__coldboxQrPrintCalls = 0;
+      window.print = function () {
+        window.__coldboxQrPrintCalls += 1;
+      };
+    });
+    await coldFrame.locator('#cold-qr-print').click();
+    assert.equal(await coldFrame.evaluate(() => window.__coldboxQrPrintCalls), 1, `${engine}: cold print button did not request printing`);
+
+    await coldFrame.locator('#cold-seed-forge-language').selectOption('spanish');
+    const spanishMnemonic = await coldFrame.evaluate(() => {
+      return window.__coldboxSeedForge.entropyToMnemonic(new Uint8Array(16), 'spanish');
+    });
+    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(spanishMnemonic);
+    await coldFrame.locator('#cold-seed-forge-validate').click();
+    await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-qr-seed-source').selectOption('validated');
+    await coldFrame.locator('#cold-qr-language').selectOption('spanish');
+    await coldFrame.locator('#cold-qr-secret-confirm').check();
+    await coldFrame.locator('#cold-qr-standard').click();
+    await coldFrame.locator('#cold-qr-output-status[data-state="error"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await coldFrame.locator('#cold-qr-output-status').textContent(), /English BIP-39 wordlist/i);
+    await coldFrame.locator('#cold-qr-compact').click();
+    await coldFrame.locator('#cold-qr-output-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await coldFrame.locator('#cold-qr-output-status').textContent(), /Compact SeedQR generated.*21.*21/i);
+
+    await coldFrame.locator('#cold-seed-forge-language').selectOption('english');
+    const englishTwentyFour = await coldFrame.evaluate(() => {
+      return window.__coldboxSeedForge.entropyToMnemonic(new Uint8Array(32), 'english');
+    });
+    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(englishTwentyFour);
+    await coldFrame.locator('#cold-seed-forge-validate').click();
+    await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-qr-language').selectOption('english');
+    await coldFrame.locator('#cold-qr-layout').selectOption('wallet-24');
+    await coldFrame.locator('#cold-qr-grid').check();
+    await coldFrame.locator('#cold-qr-compact').click();
+    await coldFrame.locator('#cold-qr-output-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await coldFrame.locator('#cold-qr-output-status').textContent(), /Compact SeedQR generated.*25.*25/i);
+    assert.equal(await coldFrame.locator('#cold-qr-card').getAttribute('data-layout'), 'wallet-24');
+    assert.equal(await coldFrame.locator('#cold-qr-card').getAttribute('data-grid'), 'on');
+    assert.equal(await coldFrame.locator('#cold-qr-card-grid .cold-qr-card-cell').count(), 24);
+
+    await page.emulateMedia({ media: 'print' });
+    const printCardMetrics = await coldFrame.locator('#cold-qr-card').evaluate((element) => {
+      const styles = window.getComputedStyle(element);
+      return { width: styles.width, maxWidth: styles.maxWidth };
+    });
+    assert.notEqual(printCardMetrics.maxWidth, 'none', `${engine}: wallet print max-width was destroyed`);
+    assert.ok(Number.parseFloat(printCardMetrics.width) <= 330, `${engine}: wallet print card widened unexpectedly`);
+    await page.emulateMedia({ media: null });
+
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-qr-card').isHidden(), true);
+    assert.equal((await coldFrame.locator('#cold-qr-output').textContent()).trim(), '');
+    assert.equal(await coldFrame.locator('#cold-qr-standard').isDisabled(), true);
+    assert.equal(await coldFrame.locator('#cold-qr-download-svg').isDisabled(), true);
+
+    console.log(`${engine}: QR Studio public payloads, ETH wei conversion, SeedQR gating, compact sizing, exports, print request/layout, and teardown passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyDevOnlyDependency() {
   const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
   assert.equal(packageJson.dependencies?.playwright, undefined);
@@ -3052,10 +3414,13 @@ async function run() {
       await verifyNotesAndConcealment(browser, engine);
       await verifyColdSecretNotes(browser, engine);
       await verifyRegistryCrud(browser, engine);
+      await verifyStaleAddressDisplay(browser, engine);
+      await verifyAddressVerification(browser, engine);
       await verifyDeviceRegistry(browser, engine);
       await verifyEntropyLab(browser, engine);
       await verifySeedForge(browser, engine);
       await verifyVerificationWorkflows(browser, engine);
+      await verifyQrStudio(browser, engine);
       await verifyUnlockedRuntimeHealthLockdown(browser, engine);
       await verifyProviderNeutering(browser, engine);
       await verifyPreexistingProviderLockdown(browser, engine);

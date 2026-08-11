@@ -87,7 +87,7 @@ Adequate for reading a backup or checking a fingerprint. Not adequate for genera
 | Typing manually | Small values. Slow but auditable |
 | microSD | Same as USB |
 
-**QR is useful only when the specific tool supports it.** The current P0.19 vault flow can display an already-unlocked vault as a **live animated encrypted QR** for another running Coldbox device to scan. That vault QR is not downloadable and is not a backup format; the receiver still needs the normal vault passphrase and then saves its own `.cbx`. Address/SeedQR/BC-UR tools listed later in the roadmap are separate future features and must not be treated as already implemented.
+**QR is useful only when the specific tool supports it.** QR Studio now generates public receiving-address QRs in the warm shell and standard/Compact SeedQRs inside the sealed workspace; see [Using QR Studio](use-qr-studio.md). A SeedQR is plaintext seed material and must stay on an offline display, camera, printer, and storage path. Separately, the current P0.19 vault flow can display an already-unlocked vault as a **live animated encrypted QR** for another running Coldbox device to scan. That vault QR is not downloadable and is not a backup format; the receiver still needs the normal vault passphrase and then saves its own `.cbx`.
 
 **Rule:** public data may cross outward freely. Secrets should never cross toward a networked machine. A live vault transfer carries encrypted `.cbx` bytes, not plaintext secrets or unlock authority.
 

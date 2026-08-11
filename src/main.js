@@ -219,12 +219,24 @@ __COLDBOX_CONCEALMENT__
   var addressVerifyColdButton = document.getElementById('address-verify-cold');
   var addressVerifyInboundButton = document.getElementById('address-verify-inbound');
   var addressVerifyStatus = document.getElementById('address-verify-status');
+  var addressVerifyComparison = document.getElementById('address-verify-comparison');
   var addressVerifyBatch = document.getElementById('address-verify-batch');
   var addressVerifyBatchRun = document.getElementById('address-verify-batch-run');
   var addressVerifyBatchResults = document.getElementById('address-verify-batch-results');
   var clipboardCanaryToggle = document.getElementById('clipboard-canary-toggle');
   var clipboardCanaryStatus = document.getElementById('clipboard-canary-status');
   var clipboardCanaryRetry = document.getElementById('clipboard-canary-retry');
+  var qrPublicNetwork = document.getElementById('qr-public-network');
+  var qrPublicAddress = document.getElementById('qr-public-address');
+  var qrPublicAmount = document.getElementById('qr-public-amount');
+  var qrPublicLabel = document.getElementById('qr-public-label');
+  var qrPublicUri = document.getElementById('qr-public-uri');
+  var qrPublicGenerate = document.getElementById('qr-public-generate');
+  var qrPublicStatus = document.getElementById('qr-public-status');
+  var qrPublicOutput = document.getElementById('qr-public-output');
+  var qrPublicDownloadSvg = document.getElementById('qr-public-download-svg');
+  var qrPublicDownloadPng = document.getElementById('qr-public-download-png');
+  var qrPublicArtifact = null;
   var deviceLocked = document.getElementById('device-locked');
   var deviceWorkspace = document.getElementById('device-workspace');
   var deviceStatus = document.getElementById('device-status');
@@ -3229,12 +3241,67 @@ __COLDBOX_CONCEALMENT__
     return 'unverified';
   }
 
-  function setAddressVerificationStatus(text, state) {
+  function renderAddressVerificationComparison(result) {
+    if (!addressVerifyComparison) {
+      return;
+    }
+    addressVerifyComparison.textContent = '';
+    if (!result || result.outcome !== 'mismatch'
+      || typeof result.candidate !== 'string' || typeof result.recorded !== 'string') {
+      addressVerifyComparison.hidden = true;
+      return;
+    }
+    var candidateLine = document.createElement('div');
+    candidateLine.className = 'address-verification-comparison-line';
+    var candidateLabel = document.createElement('span');
+    candidateLabel.className = 'address-verification-comparison-label';
+    candidateLabel.textContent = 'Candidate';
+    var candidateCode = document.createElement('code');
+    candidateCode.textContent = result.candidate;
+    candidateLine.appendChild(candidateLabel);
+    candidateLine.appendChild(candidateCode);
+    addressVerifyComparison.appendChild(candidateLine);
+
+    var recordedLine = document.createElement('div');
+    recordedLine.className = 'address-verification-comparison-line';
+    var recordedLabel = document.createElement('span');
+    recordedLabel.className = 'address-verification-comparison-label';
+    recordedLabel.textContent = 'Recorded';
+    var recordedCode = document.createElement('code');
+    recordedCode.textContent = result.recorded;
+    recordedLine.appendChild(recordedLabel);
+    recordedLine.appendChild(recordedCode);
+    addressVerifyComparison.appendChild(recordedLine);
+
+    var markerLine = document.createElement('div');
+    markerLine.className = 'address-verification-comparison-line address-verification-comparison-marker';
+    var markerLabel = document.createElement('span');
+    markerLabel.className = 'address-verification-comparison-label';
+    markerLabel.setAttribute('aria-hidden', 'true');
+    markerLabel.textContent = '';
+    var marker = document.createElement('code');
+    var divergenceIndex = Number.isInteger(result.divergenceIndex) && result.divergenceIndex >= 0
+      ? result.divergenceIndex
+      : 0;
+    marker.textContent = new Array(divergenceIndex + 1).join(' ') + '^';
+    markerLine.appendChild(markerLabel);
+    markerLine.appendChild(marker);
+    addressVerifyComparison.appendChild(markerLine);
+    var explanation = document.createElement('p');
+    explanation.className = 'sr-only';
+    explanation.textContent = 'The caret marks the first differing character at index '
+      + String(divergenceIndex) + '.';
+    addressVerifyComparison.appendChild(explanation);
+    addressVerifyComparison.hidden = false;
+  }
+
+  function setAddressVerificationStatus(text, state, result) {
     if (!addressVerifyStatus) {
       return;
     }
     addressVerifyStatus.textContent = text;
     addressVerifyStatus.setAttribute('data-state', state || 'idle');
+    renderAddressVerificationComparison(result || null);
   }
 
   function setClipboardCanaryStatus(state, text) {
@@ -3304,19 +3371,51 @@ __COLDBOX_CONCEALMENT__
     return registryStore.find('addresses', addressVerifyRecord.value);
   }
 
-  function addressVerificationCopy(result, state) {
-    var stateText = state ? ' Registry state: ' + addressVerificationStateText(state) + '.' : '';
+  function addressVerificationAccountLabel(record) {
+    var account = record && registryStore ? registryStore.find('accounts', record.accountId) : null;
+    if (!account) {
+      return 'Unlabelled account';
+    }
+    return account.label || account.asset || 'Unlabelled account';
+  }
+
+  function addressVerificationCandidateOutcome(candidate) {
+    var info = addressVerification.classify(candidate);
+    if (info.checksumInvalid) {
+      return { outcome: 'checksum-invalid', candidate: candidate };
+    }
+    if (info.kind === 'unknown') {
+      return { outcome: 'unrecognised-format', candidate: candidate };
+    }
+    return { outcome: 'no-record', candidate: candidate };
+  }
+
+  function addressVerificationCopy(result, state, matchingRecord) {
+    var record = matchingRecord || result.matchingRecord || null;
+    var effectiveState = result.matchingState || state;
+    var stateText = effectiveState
+      ? ' Registry state: ' + addressVerificationStateText(effectiveState) + '.'
+      : '';
     if (result.outcome === 'match') {
+      if (result.inbound) {
+        return 'Inbound address matches a recorded address under account "'
+          + addressVerificationAccountLabel(record) + '".' + stateText;
+      }
+      if (result.batch) {
+        return 'Registry match under account "' + addressVerificationAccountLabel(record) + '".' + stateText;
+      }
       return 'Registry match. This proves only that the pasted string matches a recorded address.' + stateText;
     }
     if (result.outcome === 'mismatch') {
-      return 'Mismatch at character ' + String(result.divergenceIndex) + '; the complete strings differ.' + stateText;
+      return 'Mismatch at character ' + String(result.divergenceIndex)
+        + '; both complete strings are shown below.' + stateText;
     }
     if (result.outcome === 'checksum-invalid') {
       return 'Checksum-invalid address; this is distinct from a registry mismatch.' + stateText;
     }
     if (result.outcome === 'different-account') {
-      return 'This address is recorded under a different account.' + stateText;
+      return 'This address is recorded under account "' + addressVerificationAccountLabel(record)
+        + '", not the selected account.' + stateText;
     }
     if (result.outcome === 'vault-locked') {
       return 'Vault locked: the cold authority check was not performed.';
@@ -3340,8 +3439,14 @@ __COLDBOX_CONCEALMENT__
     var matching = addressVerification.findRecord(candidate, registryStore.list('addresses', true));
     if (matching && matching.id !== selected.id) {
       result.outcome = 'different-account';
+      result.matchingRecord = matching;
+      result.matchingState = matching.verificationState;
     }
-    setAddressVerificationStatus(addressVerificationCopy(result, selected.verificationState), result.outcome);
+    setAddressVerificationStatus(
+      addressVerificationCopy(result, selected.verificationState, matching || selected),
+      result.outcome,
+      result
+    );
     return result;
   }
 
@@ -3352,15 +3457,20 @@ __COLDBOX_CONCEALMENT__
     }
     var matching = addressVerification.findRecord(candidate, registryStore.list('addresses', true));
     if (!matching) {
-      var unknown = addressVerification.classify(candidate).checksumInvalid
-        ? { outcome: 'checksum-invalid' }
-        : (addressVerification.classify(candidate).kind === 'unknown' ? { outcome: 'unrecognised-format' } : { outcome: 'no-record' });
-      setAddressVerificationStatus(addressVerificationCopy(unknown), unknown.outcome);
+      var unknown = addressVerificationCandidateOutcome(candidate);
+      setAddressVerificationStatus(addressVerificationCopy(unknown), unknown.outcome, unknown);
       return;
     }
+    var inboundResult = {
+      outcome: 'match',
+      inbound: true,
+      matchingRecord: matching,
+      matchingState: matching.verificationState
+    };
     setAddressVerificationStatus(
-      'Inbound address matches a recorded address. ' + addressVerificationStateText(matching.verificationState) + ' state remains a separate claim.',
-      'match'
+      addressVerificationCopy(inboundResult, matching.verificationState, matching),
+      'match',
+      inboundResult
     );
   }
 
@@ -3370,15 +3480,23 @@ __COLDBOX_CONCEALMENT__
       return;
     }
     addressVerifyBatchResults.textContent = '';
-    var rows = (addressVerifyBatch ? addressVerifyBatch.value : '').split(/\r?\n/).map(function (value) { return value.trim(); }).filter(Boolean);
+    var rows = (addressVerifyBatch ? addressVerifyBatch.value : '').split(/\r?\n/).filter(function (value) {
+      return value.length > 0;
+    });
     var records = registryStore.list('addresses', true);
     rows.forEach(function (candidate, index) {
       var result = addressVerification.findRecord(candidate, records);
+      var rowResult = result
+        ? {
+          outcome: 'match',
+          batch: true,
+          matchingRecord: result,
+          matchingState: result.verificationState
+        }
+        : addressVerificationCandidateOutcome(candidate);
       var item = document.createElement('p');
-      item.textContent = String(index + 1) + ': ' + (result
-        ? 'match — ' + addressVerificationStateText(result.verificationState)
-        : addressVerificationCopy(addressVerification.classify(candidate).kind === 'unknown'
-          ? { outcome: 'unrecognised-format' } : { outcome: 'no-record' }));
+      item.textContent = String(index + 1) + ': '
+        + addressVerificationCopy(rowResult, result ? result.verificationState : undefined, result);
       addressVerifyBatchResults.appendChild(item);
     });
     setAddressVerificationStatus(String(rows.length) + ' address row(s) checked. Registry matching and cold authority remain separate.', 'ready');
@@ -3390,9 +3508,9 @@ __COLDBOX_CONCEALMENT__
       setAddressVerificationStatus('Vault locked or no recorded address selected.', 'locked');
       return;
     }
-    var candidate = addressVerifyCandidate ? addressVerifyCandidate.value.trim() : '';
+    var candidate = addressVerifyCandidate ? addressVerifyCandidate.value : '';
     var account = registryStore.find('accounts', selected.accountId);
-    if (!account || !candidate) {
+    if (!account || typeof candidate !== 'string' || candidate.length === 0) {
       setAddressVerificationStatus('Choose an account record and paste the complete address.', 'error');
       return;
     }
@@ -3403,20 +3521,41 @@ __COLDBOX_CONCEALMENT__
       candidate: candidate
     });
     if (id) {
-      pendingAddressVerification = id;
+      pendingAddressVerification = {
+        id: id,
+        candidate: candidate,
+        recorded: selected.address,
+        selectedId: selected.id
+      };
       setAddressVerificationStatus('Comparing the registry value and requesting cold re-derivation inside the sealed realm…', 'checking');
     }
   }
 
   function handleAddressVerificationResult(message) {
-    if (!pendingAddressVerification || pendingAddressVerification !== message.id) {
+    if (!pendingAddressVerification || pendingAddressVerification.id !== message.id) {
       recordChannelAnomaly();
       return;
     }
+    var pending = pendingAddressVerification;
     pendingAddressVerification = null;
+    var result = {};
+    Object.keys(message.payload).forEach(function (key) {
+      result[key] = message.payload[key];
+    });
+    result.candidate = pending.candidate;
+    result.recorded = pending.recorded;
+    var matching = addressVerification && registryStore
+      ? addressVerification.findRecord(pending.candidate, registryStore.list('addresses', true))
+      : null;
+    if (matching && matching.id !== pending.selectedId) {
+      result.outcome = 'different-account';
+      result.matchingRecord = matching;
+      result.matchingState = matching.verificationState;
+    }
     setAddressVerificationStatus(
-      addressVerificationCopy(message.payload, message.payload.verificationState),
-      message.payload.outcome
+      addressVerificationCopy(result, result.verificationState, matching),
+      result.outcome,
+      result
     );
     renderAddressVerificationOptions();
   }
@@ -4697,6 +4836,159 @@ __COLDBOX_CONCEALMENT__
     beginHandshake();
   }
 
+  function setPublicQrStatus(state, text) {
+    if (!qrPublicStatus) {
+      return;
+    }
+    qrPublicStatus.setAttribute('data-state', state);
+    qrPublicStatus.textContent = text;
+  }
+
+  function publicQrAddressValid(network, address) {
+    if (!address || protocol.isSecretContent(address)) {
+      return false;
+    }
+    if (network === 'ethereum') {
+      return /^0x[0-9a-fA-F]{40}$/.test(address);
+    }
+    return /^(?:bc1|tb1|bcrt1|[13mn2])[A-Za-z0-9]{20,130}$/.test(address);
+  }
+
+  function decimalToAtomicUnits(decimalText, decimals, unitName) {
+    var match = /^(\d+)(?:\.(\d+))?$/.exec(decimalText);
+    if (!match) {
+      throw new Error('Amount must be a non-negative decimal number.');
+    }
+    var whole = match[1].replace(/^0+(?=\d)/, '');
+    var fraction = match[2] || '';
+    if (fraction.length > decimals) {
+      throw new Error(unitName + ' amount has too many decimal places.');
+    }
+    var padded = (whole + fraction.padEnd(decimals, '0')).replace(/^0+(?=\d)/, '');
+    return padded || '0';
+  }
+
+  function publicQrUri(network, address) {
+    if (!qrPublicUri || !qrPublicUri.checked) {
+      return address;
+    }
+    var amount = qrPublicAmount ? qrPublicAmount.value.trim() : '';
+    var label = qrPublicLabel ? qrPublicLabel.value.trim() : '';
+    if (amount && !/^\d+(?:\.\d+)?$/.test(amount)) {
+      throw new Error('Amount must be a non-negative decimal number.');
+    }
+    if (network === 'ethereum') {
+      var ethereumUri = 'ethereum:' + address;
+      var ethereumParams = [];
+      if (amount) {
+        ethereumParams.push('value=' + decimalToAtomicUnits(amount, 18, 'Ethereum'));
+      }
+      if (label) {
+        throw new Error('Ethereum EIP-681 payment requests do not support the Bitcoin label field.');
+      }
+      return ethereumUri + (ethereumParams.length ? '?' + ethereumParams.join('&') : '');
+    }
+    var bitcoinParams = [];
+    if (amount) {
+      bitcoinParams.push('amount=' + encodeURIComponent(amount));
+    }
+    if (label) {
+      bitcoinParams.push('label=' + encodeURIComponent(label));
+    }
+    return 'bitcoin:' + address + (bitcoinParams.length ? '?' + bitcoinParams.join('&') : '');
+  }
+
+  function renderPublicQrPng(code) {
+    var canvas = document.createElement('canvas');
+    var cellSize = 6;
+    var margin = 24;
+    var moduleCount = code.getModuleCount();
+    canvas.width = moduleCount * cellSize + margin * 2;
+    canvas.height = canvas.width;
+    var context = canvas.getContext('2d');
+    if (!context || typeof canvas.toDataURL !== 'function') {
+      throw new Error('PNG export is unavailable in this browser.');
+    }
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = '#000000';
+    for (var row = 0; row < moduleCount; row += 1) {
+      for (var column = 0; column < moduleCount; column += 1) {
+        if (code.isDark(row, column)) {
+          context.fillRect(
+            margin + column * cellSize,
+            margin + row * cellSize,
+            cellSize,
+            cellSize
+          );
+        }
+      }
+    }
+    return canvas.toDataURL('image/png');
+  }
+
+  function downloadPublicQr(dataUrl, filename) {
+    var link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = filename;
+    link.rel = 'noreferrer';
+    link.click();
+  }
+
+  function generatePublicQr() {
+    if (typeof qrcode !== 'function' || !qrPublicAddress) {
+      setPublicQrStatus('error', 'The pinned QR encoder is unavailable.');
+      return;
+    }
+    var network = qrPublicNetwork ? qrPublicNetwork.value : 'bitcoin';
+    var address = qrPublicAddress.value.trim();
+    if (!publicQrAddressValid(network, address)) {
+      qrPublicArtifact = null;
+      if (qrPublicOutput) {
+        qrPublicOutput.textContent = '';
+        qrPublicOutput.removeAttribute('data-payload');
+      }
+      [qrPublicDownloadSvg, qrPublicDownloadPng].forEach(function (button) {
+        if (button) {
+          button.disabled = true;
+        }
+      });
+      setPublicQrStatus('error', 'Enter one complete public receiving address. Seed-shaped and malformed input is rejected.');
+      return;
+    }
+    try {
+      var payload = publicQrUri(network, address);
+      var code = qrcode(0, 'M');
+      code.addData(payload, 'Byte');
+      code.make();
+      var svg = code.createSvgTag({
+        cellSize: 4,
+        margin: 4,
+        scalable: true,
+        title: 'Public receiving address QR',
+        alt: 'Public receiving address QR'
+      });
+      qrPublicArtifact = { code: code, svg: svg, png: null };
+      if (qrPublicOutput) {
+        qrPublicOutput.innerHTML = svg;
+        qrPublicOutput.setAttribute('data-payload', payload);
+      }
+      [qrPublicDownloadSvg, qrPublicDownloadPng].forEach(function (button) {
+        if (button) {
+          button.disabled = false;
+        }
+      });
+      setPublicQrStatus('ready', 'Public address QR generated. Verify the full address independently before sharing or paying.');
+    } catch (error) {
+      qrPublicArtifact = null;
+      if (qrPublicOutput) {
+        qrPublicOutput.textContent = '';
+        qrPublicOutput.removeAttribute('data-payload');
+      }
+      setPublicQrStatus('error', 'QR generation failed closed: ' + error.message);
+    }
+  }
+
   function startColdRealm() {
     if (airgapFailure || !coldRealmHost) {
       setColdRealmFailure();
@@ -4708,7 +5000,7 @@ __COLDBOX_CONCEALMENT__
       coldFrame = document.createElement('iframe');
       coldFrame.id = 'cold-frame';
       coldFrame.className = 'cold-frame';
-      coldFrame.setAttribute('sandbox', 'allow-scripts allow-downloads');
+      coldFrame.setAttribute('sandbox', 'allow-scripts allow-downloads allow-modals');
       coldFrame.setAttribute('title', 'Opaque sealed realm');
       coldFrame.setAttribute('aria-label', 'Opaque sealed realm');
       if (!('srcdoc' in coldFrame)) {
@@ -4884,6 +5176,43 @@ __COLDBOX_CONCEALMENT__
   if (vaultTransferDiscard) {
     vaultTransferDiscard.addEventListener('click', discardReceivedTransfer);
   }
+  if (qrPublicGenerate) {
+    qrPublicGenerate.addEventListener('click', generatePublicQr);
+  }
+  if (qrPublicNetwork) {
+    qrPublicNetwork.addEventListener('change', function () {
+      if (qrPublicAmount) {
+        qrPublicAmount.value = '';
+      }
+      setPublicQrStatus('idle', 'Choose the complete address and generate a fresh public QR.');
+    });
+  }
+  if (qrPublicDownloadSvg) {
+    qrPublicDownloadSvg.addEventListener('click', function () {
+      if (!qrPublicArtifact) {
+        return;
+      }
+      downloadPublicQr(
+        'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(qrPublicArtifact.svg),
+        'coldbox-address.svg'
+      );
+    });
+  }
+  if (qrPublicDownloadPng) {
+    qrPublicDownloadPng.addEventListener('click', function () {
+      if (!qrPublicArtifact) {
+        return;
+      }
+      try {
+        if (!qrPublicArtifact.png) {
+          qrPublicArtifact.png = renderPublicQrPng(qrPublicArtifact.code);
+        }
+        downloadPublicQr(qrPublicArtifact.png, 'coldbox-address.png');
+      } catch (error) {
+        setPublicQrStatus('error', 'PNG export failed closed: ' + error.message);
+      }
+    });
+  }
   if (vaultLoadManual) {
     vaultLoadManual.addEventListener('click', loadManualText);
   }
@@ -4968,7 +5297,7 @@ __COLDBOX_CONCEALMENT__
   if (addressVerifyCompareButton) {
     addressVerifyCompareButton.addEventListener('click', function () {
       compareAddressAgainstRegistry(
-        addressVerifyCandidate ? addressVerifyCandidate.value.trim() : '',
+        addressVerifyCandidate ? addressVerifyCandidate.value : '',
         selectedAddressVerificationRecord()
       );
     });
@@ -4978,7 +5307,7 @@ __COLDBOX_CONCEALMENT__
   }
   if (addressVerifyInboundButton) {
     addressVerifyInboundButton.addEventListener('click', function () {
-      compareInboundAddress(addressVerifyCandidate ? addressVerifyCandidate.value.trim() : '');
+      compareInboundAddress(addressVerifyCandidate ? addressVerifyCandidate.value : '');
     });
   }
   if (addressVerifyBatchRun) {

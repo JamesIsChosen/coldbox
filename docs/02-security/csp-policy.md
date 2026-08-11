@@ -44,12 +44,14 @@ The policy listing includes `frame-ancestors 'self'` for a header-capable deploy
 ### Sandbox attribute
 
 ```html
-<iframe sandbox="allow-scripts allow-downloads" srcdoc="…">
+<iframe sandbox="allow-scripts allow-downloads allow-modals" srcdoc="…">
 ```
 
 **Deliberately absent: `allow-same-origin`.** Without it the iframe gets an **opaque origin** — the parent cannot read its DOM, variables, or keystrokes. This is what protects passphrase entry from network-capable code in the same page.
 
 `allow-downloads` permits saving the vault directly from the cold realm where the platform supports it.
+
+`allow-modals` is the narrowly scoped amendment recorded in [ADR-0035](../05-development/adr/0035-cold-printing-allow-modals.md). It permits the cold-only SeedQR print workflow to request the browser print dialog. It does not grant a same-origin relationship, network capability, navigation, form submission, popups, or any other sandbox permission.
 
 ---
 

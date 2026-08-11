@@ -54,6 +54,7 @@ const coldRealmManifest = Object.freeze([
   Object.freeze({ file: 'index.html', token: '__COLDBOX_DERIVATION_LAYER__', content: 'derivation.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_VERIFICATION_LAYER__', content: 'verification.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_ADDRESS_VERIFICATION_LAYER__', content: 'address-verification.js' }),
+  Object.freeze({ file: 'index.html', token: '__COLDBOX_QR_LAYER__', content: 'qr.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_COLD_STYLES__', content: 'styles.css' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_COLD_SCRIPT__', content: 'main.js' })
 ]);
@@ -309,9 +310,10 @@ function assemble() {
 
 function assembleColdRealm(protocolSource, airgapSource, capabilitiesSource) {
   let document = readSource('cold/index.html');
-  const coldMainScript = injectOnce(
+  let coldMainScript = injectOnce(readSource('cold/main.js'), '__COLDBOX_QR_ENCODER__', readQrEncoderSource());
+  coldMainScript = injectOnce(
     injectOnce(
-      injectOnce(readSource('cold/main.js'), '__COLDBOX_AIRGAP__', airgapSource),
+      injectOnce(coldMainScript, '__COLDBOX_AIRGAP__', airgapSource),
       '__COLDBOX_CAPABILITIES__',
       capabilitiesSource
     ),
@@ -328,6 +330,7 @@ function assembleColdRealm(protocolSource, airgapSource, capabilitiesSource) {
     ['derivation.js', readSource('cold/derivation.js')],
     ['verification.js', readSource('cold/verification.js')],
     ['address-verification.js', readSource('address-verification.js')],
+    ['qr.js', readSource('cold/qr.js')],
     ['styles.css', readSource('cold/styles.css')],
     ['main.js', coldMainScript]
   ]);
@@ -352,6 +355,8 @@ function assembleColdRealm(protocolSource, airgapSource, capabilitiesSource) {
     '__COLDBOX_DERIVATION_LAYER__',
     '__COLDBOX_VERIFICATION_LAYER__',
     '__COLDBOX_ADDRESS_VERIFICATION_LAYER__',
+    '__COLDBOX_QR_LAYER__',
+    '__COLDBOX_QR_ENCODER__',
     '__COLDBOX_PROTOCOL__',
     '__COLDBOX_AIRGAP__',
     '__COLDBOX_CAPABILITIES__'

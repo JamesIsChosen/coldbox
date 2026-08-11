@@ -382,7 +382,7 @@ test('registry records use collection-specific public schemas for both write and
   }), null);
 });
 
-test('public schema migration defaults address verification without inferring it', () => {
+test('public schema projection defaults legacy address verification without inferring it', () => {
   const protocol = loadProtocol();
   const legacy = protocol.validateMessage('warm-to-cold', {
     id: 'legacy-public-schema',
@@ -417,11 +417,11 @@ test('public schema migration defaults address verification without inferring it
   }), null);
 });
 
-test('address verification fields accept only the documented state model', () => {
+test('cold acknowledgements accept only the documented address verification state model', () => {
   const protocol = loadProtocol();
-  const result = protocol.validateMessage('warm-to-cold', {
+  const result = protocol.validateMessage('cold-to-warm', {
     id: 'verified-address-schema',
-    type: 'publicData.replace',
+    type: 'publicData.updated',
     payload: {
       publicCompartment: {
         wallets: [{ id: '550e8400-e29b-41d4-a716-446655440003' }],
@@ -470,6 +470,12 @@ test('address verification messages carry enum fields only', () => {
     payload: { addressId, accountRef: accountId, index: 0, candidate: SAFE_ADDRESS, note: 'discarded prose' }
   });
   assert.equal(JSON.stringify(request.payload), JSON.stringify({ addressId, accountRef: accountId, index: 0, candidate: SAFE_ADDRESS }));
+  const whitespaceRequest = protocol.validateMessage('warm-to-cold', {
+    id: 'address-request-whitespace',
+    type: 'address.verifyRequest',
+    payload: { addressId, accountRef: accountId, index: 0, candidate: ` ${SAFE_ADDRESS} ` }
+  });
+  assert.equal(whitespaceRequest.payload.candidate, ` ${SAFE_ADDRESS} `);
   const result = protocol.validateMessage('cold-to-warm', {
     id: 'address-result-1',
     type: 'address.verifyResult',

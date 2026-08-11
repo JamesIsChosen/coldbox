@@ -265,6 +265,14 @@
     return /^(?:bc1|tb1|bcrt1|0x|[13mn2])[A-Za-z0-9]{20,130}$/.test(value) ? value : null;
   }
 
+  function cleanAddressVerifyCandidate(value) {
+    if (typeof value !== 'string' || value.length === 0 || value.length > 256
+      || isSecretContent(value) || !/^[\x09\x0a\x0d\x20-\x7e]+$/.test(value)) {
+      return null;
+    }
+    return value;
+  }
+
   function cleanPublicAddressArray(value) {
     if (!Array.isArray(value) || value.length > 10000) {
       return null;
@@ -857,7 +865,7 @@
     var addressId = cleanUuid(value.addressId);
     var accountRef = cleanUuid(value.accountRef);
     var index = cleanInteger(value.index, 0, 0x7fffffff);
-    var candidate = cleanPublicAddress(value.candidate);
+    var candidate = cleanAddressVerifyCandidate(value.candidate);
     if (addressId === null || accountRef === null || index === null || candidate === null) {
       return null;
     }
