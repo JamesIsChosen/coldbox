@@ -11,6 +11,7 @@
 
   if (!bip32 || !bip32.HDKey || !noble || typeof noble.sha256 !== 'function'
     || typeof noble.ripemd160 !== 'function' || typeof noble.utf8ToBytes !== 'function'
+    || typeof noble.keccak256 !== 'function'
     || !base || !base.base58check
     || !base.bech32 || !base.bech32m || !secp || !secp.Point) {
     throw new Error('Coldbox derivation engine dependencies are unavailable.');
@@ -19,6 +20,9 @@
   var HARDENED_OFFSET = 0x80000000;
   var MAX_INDEX = HARDENED_OFFSET - 1;
   var MAX_BATCH = 1000;
+  var EVM_COIN_TYPE = 60;
+  var EVM_PURPOSE = 44;
+  var EVM_ACCOUNT_DEPTH = 3;
   var SCRIPT_TYPES = Object.freeze([
     'p2pkh',
     'p2sh-p2wpkh',
@@ -37,14 +41,16 @@
       coinType: 0,
       hrp: 'bc',
       p2pkhVersion: 0x00,
-      p2shVersion: 0x05
+      p2shVersion: 0x05,
+      wifVersion: 0x80
     }),
     testnet: Object.freeze({
       id: 'testnet',
       coinType: 1,
       hrp: 'tb',
       p2pkhVersion: 0x6f,
-      p2shVersion: 0xc4
+      p2shVersion: 0xc4,
+      wifVersion: 0xef
     })
   });
   var PURPOSES = Object.freeze({
@@ -209,6 +215,61 @@
     return noble.ripemd160(noble.sha256(bytes));
   }
 
+  function checksumAddressFromHex(hex) {
+    if (typeof hex !== 'string' || !/^[0-9a-f]{40}$/.test(hex)) {
+      throw new TypeError('EVM addresses must contain exactly 20 bytes of hexadecimal data.');
+    }
+    var hashInput = noble.utf8ToBytes(hex);
+    var checksum = noble.keccak256(hashInput);
+    var result = '';
+    try {
+      for (var index = 0; index < hex.length; index += 1) {
+        var character = hex[index];
+        if (character >= 'a' && character <= 'f') {
+          var nibble = (checksum[Math.floor(index / 2)]
+            >> (index % 2 === 0 ? 4 : 0)) & 0x0f;
+          result += nibble >= 8 ? character.toUpperCase() : character;
+        } else {
+          result += character;
+        }
+      }
+      return '0x' + result;
+    } finally {
+      zeroBytes(hashInput);
+      zeroBytes(checksum);
+    }
+  }
+
+  function eip55Address(publicKey) {
+    if (!isBytes(publicKey) || (publicKey.length !== 33 && publicKey.length !== 65)) {
+      throw new TypeError('EVM public keys must be compressed or uncompressed secp256k1 points.');
+    }
+    var point = secp.Point.fromBytes(publicKey);
+    var uncompressed = point.toBytes(false);
+    var keyBytes = uncompressed.slice(1);
+    var digest = noble.keccak256(keyBytes);
+    var addressBytes = digest.slice(-20);
+    try {
+      return checksumAddressFromHex(bytesToHex(addressBytes));
+    } finally {
+      zeroBytes(uncompressed);
+      zeroBytes(keyBytes);
+      zeroBytes(digest);
+      zeroBytes(addressBytes);
+    }
+  }
+
+  function isEvmAddress(value) {
+    if (typeof value !== 'string' || !/^0x[0-9a-fA-F]{40}$/.test(value)) {
+      return false;
+    }
+    var body = value.slice(2);
+    if (body === body.toLowerCase() || body === body.toUpperCase()) {
+      return true;
+    }
+    return checksumAddressFromHex(body.toLowerCase()) === value;
+  }
+
   function bytesToHex(bytes) {
     var result = '';
     for (var index = 0; index < bytes.length; index += 1) {
@@ -330,6 +391,66 @@
     try {
       return nodeProjection(node, parseFullPath(path).normalized);
     } finally {
+      wipeNode(node);
+    }
+  }
+
+  function wifFromPrivateKey(privateKey, network) {
+    if (!isBytes(privateKey) || privateKey.length !== 32) {
+      throw new TypeError('WIF conversion requires a 32-byte private key.');
+    }
+    var payload = concatBytes(
+      new Uint8Array([network.wifVersion]),
+      privateKey,
+      new Uint8Array([1])
+    );
+    try {
+      return base.base58check.encode(payload);
+    } finally {
+      zeroBytes(payload);
+    }
+  }
+
+  function deriveArbitraryFromSeed(seed, path, options) {
+    var settings = options || {};
+    var network = networkFor(settings.network);
+    var parsed = parseFullPath(path);
+    var node = deriveNode(seed, parsed.normalized, {
+      network: network.id,
+      scriptType: 'p2pkh'
+    });
+    var privateKey = null;
+    var publicKey = null;
+    var succeeded = false;
+    try {
+      if (!node.privateKey || node.privateKey.length !== 32) {
+        throw new Error('Arbitrary derivation did not produce a private key.');
+      }
+      privateKey = new Uint8Array(node.privateKey);
+      publicKey = new Uint8Array(node.publicKey);
+      var result = Object.freeze({
+        network: network.id,
+        path: parsed.normalized,
+        depth: node.depth,
+        index: node.index,
+        fingerprint: formatFingerprint(node.fingerprint),
+        xprv: node.privateExtendedKey,
+        xpub: node.publicExtendedKey,
+        privateKey: privateKey,
+        privateKeyHex: bytesToHex(privateKey),
+        publicKey: publicKey,
+        publicKeyHex: bytesToHex(publicKey),
+        wif: wifFromPrivateKey(privateKey, network)
+      });
+      succeeded = true;
+      return result;
+    } finally {
+      if (!succeeded && privateKey) {
+        zeroBytes(privateKey);
+      }
+      if (!succeeded && publicKey) {
+        zeroBytes(publicKey);
+      }
       wipeNode(node);
     }
   }
@@ -460,6 +581,151 @@
     }
   }
 
+  function evmAccountPath(account) {
+    return 'm/' + String(EVM_PURPOSE) + "'/" + String(EVM_COIN_TYPE) + "'/"
+      + String(account) + "'";
+  }
+
+  function deriveEvmFromSeed(seed, options) {
+    var settings = options || {};
+    var network = NETWORKS.mainnet;
+    var account = integerOption(settings.account, 'account', 0, MAX_INDEX, 0);
+    var change = integerOption(settings.change, 'change', 0, MAX_INDEX, 0);
+    var start = integerOption(settings.start, 'start', 0, MAX_INDEX, 0);
+    var count = integerOption(settings.count, 'count', 1, MAX_BATCH, 20);
+    assertBatchFits(start, count);
+    var accountRootPath = evmAccountPath(account);
+    var root = null;
+    var accountNode = null;
+    var chainNode = null;
+    var addresses = [];
+    var paths = [];
+    try {
+      root = createRoot(seed, network, 'p2pkh');
+      var fingerprint = formatFingerprint(root.fingerprint);
+      accountNode = deriveSegments(root, parseFullPath(accountRootPath).segments);
+      var xpub = accountNode.publicExtendedKey;
+      chainNode = accountNode.deriveChild(change);
+      wipeNode(accountNode);
+      accountNode = null;
+      for (var offset = 0; offset < count; offset += 1) {
+        var index = start + offset;
+        var child = chainNode.deriveChild(index);
+        try {
+          var publicKey = new Uint8Array(child.publicKey);
+          try {
+            addresses.push(eip55Address(publicKey));
+            paths.push(accountRootPath + '/' + String(change) + '/' + String(index));
+          } finally {
+            zeroBytes(publicKey);
+          }
+        } finally {
+          wipeNode(child);
+        }
+      }
+      return Object.freeze({
+        network: 'evm',
+        account: account,
+        change: change,
+        accountPath: accountRootPath,
+        fingerprint: fingerprint,
+        xpub: xpub,
+        addresses: Object.freeze(addresses),
+        paths: Object.freeze(paths)
+      });
+    } finally {
+      wipeNode(chainNode);
+      wipeNode(accountNode);
+      wipeNode(root);
+    }
+  }
+
+  function deriveEvmFromXpub(xpub, options) {
+    var settings = options || {};
+    if (typeof xpub !== 'string' || xpub.slice(0, 4) !== 'xpub') {
+      throw new TypeError('EVM watch-only derivation requires a mainnet xpub.');
+    }
+    var change = integerOption(settings.change, 'change', 0, MAX_INDEX, 0);
+    var start = integerOption(settings.start, 'start', 0, MAX_INDEX, 0);
+    var count = integerOption(settings.count, 'count', 1, MAX_BATCH, 20);
+    assertBatchFits(start, count);
+    var accountNode = null;
+    var chainNode = null;
+    var addresses = [];
+    var paths = [];
+    try {
+      accountNode = bip32.HDKey.fromExtendedKey(
+        xpub,
+        versionBytes(NETWORKS.mainnet, 'p2pkh')
+      );
+      if (accountNode.depth !== EVM_ACCOUNT_DEPTH || accountNode.index < HARDENED_OFFSET) {
+        throw new TypeError('EVM watch-only derivation requires a depth-3 hardened account-level xpub.');
+      }
+      var accountFingerprint = formatFingerprint(accountNode.fingerprint);
+      var account = accountNode.index >= HARDENED_OFFSET
+        ? accountNode.index - HARDENED_OFFSET
+        : accountNode.index;
+      chainNode = accountNode.deriveChild(change);
+      wipeNode(accountNode);
+      accountNode = null;
+      for (var offset = 0; offset < count; offset += 1) {
+        var index = start + offset;
+        var child = chainNode.deriveChild(index);
+        try {
+          var publicKey = new Uint8Array(child.publicKey);
+          try {
+            addresses.push(eip55Address(publicKey));
+            paths.push(evmAccountPath(account) + '/' + String(change) + '/' + String(index));
+          } finally {
+            zeroBytes(publicKey);
+          }
+        } finally {
+          wipeNode(child);
+        }
+      }
+      return Object.freeze({
+        network: 'evm',
+        account: null,
+        change: change,
+        accountPath: null,
+        fingerprint: null,
+        accountFingerprint: accountFingerprint,
+        xpub: xpub,
+        addresses: Object.freeze(addresses),
+        paths: Object.freeze(paths)
+      });
+    } finally {
+      wipeNode(chainNode);
+      wipeNode(accountNode);
+    }
+  }
+
+  function deriveArbitraryFromXpub(xpub, path, options) {
+    var settings = options || {};
+    var detected = publicVersionInfo(xpub);
+    var network = networkFor(settings.network === undefined ? detected.network : settings.network);
+    if (network.id !== detected.network) {
+      throw new RangeError('Extended public-key network does not match the requested network.');
+    }
+    var parsed = parseFullPath(path);
+    if (parsed.segments.some(function (segment) { return segment >= HARDENED_OFFSET; })) {
+      throw new RangeError('Arbitrary watch-only derivation cannot include hardened children.');
+    }
+    var node = null;
+    try {
+      node = bip32.HDKey.fromExtendedKey(xpub, versionBytes(network, detected.scriptType));
+      var result = deriveSegments(node, parsed.segments);
+      node = null;
+      try {
+        return nodeProjection(result, parsed.normalized);
+      } finally {
+        wipeNode(result);
+      }
+    } finally {
+      wipeNode(node);
+    }
+  }
+
   var api = Object.freeze({
     constants: Object.freeze({
       hardenedOffset: HARDENED_OFFSET,
@@ -473,7 +739,14 @@
     addressFromPublicKey: addressFromPublicKey,
     taprootOutputKey: taprootOutputKey,
     deriveBitcoinFromSeed: deriveBitcoinFromSeed,
-    deriveBitcoinFromXpub: deriveBitcoinFromXpub
+    deriveBitcoinFromXpub: deriveBitcoinFromXpub,
+    deriveArbitraryFromSeed: deriveArbitraryFromSeed,
+    deriveArbitraryFromXpub: deriveArbitraryFromXpub,
+    checksumEvmAddress: checksumAddressFromHex,
+    eip55Address: eip55Address,
+    isEvmAddress: isEvmAddress,
+    deriveEvmFromSeed: deriveEvmFromSeed,
+    deriveEvmFromXpub: deriveEvmFromXpub
   });
 
   Object.defineProperty(global, '__coldboxDerivation', {
