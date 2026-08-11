@@ -208,6 +208,17 @@ __COLDBOX_CONCEALMENT__
   var registryWalletList = document.getElementById('registry-wallet-list');
   var registryAccountList = document.getElementById('registry-account-list');
   var registryAddressList = document.getElementById('registry-address-list');
+  var qrPublicNetwork = document.getElementById('qr-public-network');
+  var qrPublicAddress = document.getElementById('qr-public-address');
+  var qrPublicAmount = document.getElementById('qr-public-amount');
+  var qrPublicLabel = document.getElementById('qr-public-label');
+  var qrPublicUri = document.getElementById('qr-public-uri');
+  var qrPublicGenerate = document.getElementById('qr-public-generate');
+  var qrPublicStatus = document.getElementById('qr-public-status');
+  var qrPublicOutput = document.getElementById('qr-public-output');
+  var qrPublicDownloadSvg = document.getElementById('qr-public-download-svg');
+  var qrPublicDownloadPng = document.getElementById('qr-public-download-png');
+  var qrPublicArtifact = null;
   var deviceLocked = document.getElementById('device-locked');
   var deviceWorkspace = document.getElementById('device-workspace');
   var deviceStatus = document.getElementById('device-status');
@@ -4427,6 +4438,159 @@ __COLDBOX_CONCEALMENT__
     beginHandshake();
   }
 
+  function setPublicQrStatus(state, text) {
+    if (!qrPublicStatus) {
+      return;
+    }
+    qrPublicStatus.setAttribute('data-state', state);
+    qrPublicStatus.textContent = text;
+  }
+
+  function publicQrAddressValid(network, address) {
+    if (!address || protocol.isSecretContent(address)) {
+      return false;
+    }
+    if (network === 'ethereum') {
+      return /^0x[0-9a-fA-F]{40}$/.test(address);
+    }
+    return /^(?:bc1|tb1|bcrt1|[13mn2])[A-Za-z0-9]{20,130}$/.test(address);
+  }
+
+  function decimalToAtomicUnits(decimalText, decimals, unitName) {
+    var match = /^(\d+)(?:\.(\d+))?$/.exec(decimalText);
+    if (!match) {
+      throw new Error('Amount must be a non-negative decimal number.');
+    }
+    var whole = match[1].replace(/^0+(?=\d)/, '');
+    var fraction = match[2] || '';
+    if (fraction.length > decimals) {
+      throw new Error(unitName + ' amount has too many decimal places.');
+    }
+    var padded = (whole + fraction.padEnd(decimals, '0')).replace(/^0+(?=\d)/, '');
+    return padded || '0';
+  }
+
+  function publicQrUri(network, address) {
+    if (!qrPublicUri || !qrPublicUri.checked) {
+      return address;
+    }
+    var amount = qrPublicAmount ? qrPublicAmount.value.trim() : '';
+    var label = qrPublicLabel ? qrPublicLabel.value.trim() : '';
+    if (amount && !/^\d+(?:\.\d+)?$/.test(amount)) {
+      throw new Error('Amount must be a non-negative decimal number.');
+    }
+    if (network === 'ethereum') {
+      var ethereumUri = 'ethereum:' + address;
+      var ethereumParams = [];
+      if (amount) {
+        ethereumParams.push('value=' + decimalToAtomicUnits(amount, 18, 'Ethereum'));
+      }
+      if (label) {
+        throw new Error('Ethereum EIP-681 payment requests do not support the Bitcoin label field.');
+      }
+      return ethereumUri + (ethereumParams.length ? '?' + ethereumParams.join('&') : '');
+    }
+    var bitcoinParams = [];
+    if (amount) {
+      bitcoinParams.push('amount=' + encodeURIComponent(amount));
+    }
+    if (label) {
+      bitcoinParams.push('label=' + encodeURIComponent(label));
+    }
+    return 'bitcoin:' + address + (bitcoinParams.length ? '?' + bitcoinParams.join('&') : '');
+  }
+
+  function renderPublicQrPng(code) {
+    var canvas = document.createElement('canvas');
+    var cellSize = 6;
+    var margin = 24;
+    var moduleCount = code.getModuleCount();
+    canvas.width = moduleCount * cellSize + margin * 2;
+    canvas.height = canvas.width;
+    var context = canvas.getContext('2d');
+    if (!context || typeof canvas.toDataURL !== 'function') {
+      throw new Error('PNG export is unavailable in this browser.');
+    }
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = '#000000';
+    for (var row = 0; row < moduleCount; row += 1) {
+      for (var column = 0; column < moduleCount; column += 1) {
+        if (code.isDark(row, column)) {
+          context.fillRect(
+            margin + column * cellSize,
+            margin + row * cellSize,
+            cellSize,
+            cellSize
+          );
+        }
+      }
+    }
+    return canvas.toDataURL('image/png');
+  }
+
+  function downloadPublicQr(dataUrl, filename) {
+    var link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = filename;
+    link.rel = 'noreferrer';
+    link.click();
+  }
+
+  function generatePublicQr() {
+    if (typeof qrcode !== 'function' || !qrPublicAddress) {
+      setPublicQrStatus('error', 'The pinned QR encoder is unavailable.');
+      return;
+    }
+    var network = qrPublicNetwork ? qrPublicNetwork.value : 'bitcoin';
+    var address = qrPublicAddress.value.trim();
+    if (!publicQrAddressValid(network, address)) {
+      qrPublicArtifact = null;
+      if (qrPublicOutput) {
+        qrPublicOutput.textContent = '';
+        qrPublicOutput.removeAttribute('data-payload');
+      }
+      [qrPublicDownloadSvg, qrPublicDownloadPng].forEach(function (button) {
+        if (button) {
+          button.disabled = true;
+        }
+      });
+      setPublicQrStatus('error', 'Enter one complete public receiving address. Seed-shaped and malformed input is rejected.');
+      return;
+    }
+    try {
+      var payload = publicQrUri(network, address);
+      var code = qrcode(0, 'M');
+      code.addData(payload, 'Byte');
+      code.make();
+      var svg = code.createSvgTag({
+        cellSize: 4,
+        margin: 4,
+        scalable: true,
+        title: 'Public receiving address QR',
+        alt: 'Public receiving address QR'
+      });
+      qrPublicArtifact = { code: code, svg: svg, png: null };
+      if (qrPublicOutput) {
+        qrPublicOutput.innerHTML = svg;
+        qrPublicOutput.setAttribute('data-payload', payload);
+      }
+      [qrPublicDownloadSvg, qrPublicDownloadPng].forEach(function (button) {
+        if (button) {
+          button.disabled = false;
+        }
+      });
+      setPublicQrStatus('ready', 'Public address QR generated. Verify the full address independently before sharing or paying.');
+    } catch (error) {
+      qrPublicArtifact = null;
+      if (qrPublicOutput) {
+        qrPublicOutput.textContent = '';
+        qrPublicOutput.removeAttribute('data-payload');
+      }
+      setPublicQrStatus('error', 'QR generation failed closed: ' + error.message);
+    }
+  }
+
   function startColdRealm() {
     if (airgapFailure || !coldRealmHost) {
       setColdRealmFailure();
@@ -4438,7 +4602,7 @@ __COLDBOX_CONCEALMENT__
       coldFrame = document.createElement('iframe');
       coldFrame.id = 'cold-frame';
       coldFrame.className = 'cold-frame';
-      coldFrame.setAttribute('sandbox', 'allow-scripts allow-downloads');
+      coldFrame.setAttribute('sandbox', 'allow-scripts allow-downloads allow-modals');
       coldFrame.setAttribute('title', 'Opaque sealed realm');
       coldFrame.setAttribute('aria-label', 'Opaque sealed realm');
       if (!('srcdoc' in coldFrame)) {
@@ -4613,6 +4777,43 @@ __COLDBOX_CONCEALMENT__
   }
   if (vaultTransferDiscard) {
     vaultTransferDiscard.addEventListener('click', discardReceivedTransfer);
+  }
+  if (qrPublicGenerate) {
+    qrPublicGenerate.addEventListener('click', generatePublicQr);
+  }
+  if (qrPublicNetwork) {
+    qrPublicNetwork.addEventListener('change', function () {
+      if (qrPublicAmount) {
+        qrPublicAmount.value = '';
+      }
+      setPublicQrStatus('idle', 'Choose the complete address and generate a fresh public QR.');
+    });
+  }
+  if (qrPublicDownloadSvg) {
+    qrPublicDownloadSvg.addEventListener('click', function () {
+      if (!qrPublicArtifact) {
+        return;
+      }
+      downloadPublicQr(
+        'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(qrPublicArtifact.svg),
+        'coldbox-address.svg'
+      );
+    });
+  }
+  if (qrPublicDownloadPng) {
+    qrPublicDownloadPng.addEventListener('click', function () {
+      if (!qrPublicArtifact) {
+        return;
+      }
+      try {
+        if (!qrPublicArtifact.png) {
+          qrPublicArtifact.png = renderPublicQrPng(qrPublicArtifact.code);
+        }
+        downloadPublicQr(qrPublicArtifact.png, 'coldbox-address.png');
+      } catch (error) {
+        setPublicQrStatus('error', 'PNG export failed closed: ' + error.message);
+      }
+    });
   }
   if (vaultLoadManual) {
     vaultLoadManual.addEventListener('click', loadManualText);

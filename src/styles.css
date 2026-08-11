@@ -2477,3 +2477,111 @@ samp {
 .vault-library-item span { font-size: 0.8rem; opacity: 0.78; margin-top: 0.15rem; }
 .vault-lock-warning { margin-top: 1rem; }
 #vault-create-name { width: 100%; box-sizing: border-box; }
+
+/* P1.10 public address QR studio. Seed QR controls remain inside the cold
+   frame; this panel accepts only public address payloads. */
+.qr-public-panel {
+  display: grid;
+  gap: 1rem;
+  padding: 1.2rem;
+  border: var(--outline-width) solid var(--drop);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  box-shadow: var(--shadow-md);
+}
+
+.qr-public-panel h2,
+.qr-public-panel p {
+  margin-top: 0;
+}
+
+.qr-public-help,
+.qr-public-warning {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.qr-public-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.qr-public-form > div {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.qr-public-form label {
+  font-weight: 700;
+}
+
+.qr-public-form input,
+.qr-public-form select {
+  min-height: 2.5rem;
+  box-sizing: border-box;
+  padding: 0.45rem 0.6rem;
+  border: var(--outline-width-thin) solid var(--drop);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.qr-public-options {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.qr-public-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.5rem;
+}
+
+.qr-public-status {
+  margin-bottom: 0;
+  padding: 0.65rem;
+  border-left: 0.3rem solid var(--drop);
+  background: var(--surface-soft);
+}
+
+.qr-public-status[data-state="ready"] {
+  border-color: var(--fill-green);
+  background: color-mix(in srgb, var(--success) 20%, var(--surface));
+}
+
+.qr-public-status[data-state="error"] {
+  border-color: var(--fill-red);
+  background: color-mix(in srgb, var(--danger) 20%, var(--surface));
+}
+
+.qr-public-output {
+  display: grid;
+  place-items: center;
+  min-height: 10rem;
+  padding: 1rem;
+  background: #ffffff;
+  color: #000000;
+}
+
+.qr-public-output svg {
+  display: block;
+  width: min(100%, 24rem);
+  height: auto;
+}
+
+.qr-public-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+@media (max-width: 48rem) {
+  .qr-public-form {
+    grid-template-columns: 1fr;
+  }
+}

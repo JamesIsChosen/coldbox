@@ -24,7 +24,7 @@ Split the application into two documents within one file.
 
 **Warm shell** — the outer document. CSP allows `connect-src` to a pinned allowlist. Owns UI chrome, prices, balances, portfolio, and public registry views. Never receives a secret.
 
-**Cold realm** — a sandboxed iframe (`sandbox="allow-scripts allow-downloads"`, `srcdoc`) with its own CSP setting `connect-src 'none'`. Owns vault crypto, passphrase entry, seeds, private keys, all derivation, and every Shamir scheme.
+**Cold realm** — a sandboxed iframe (`sandbox="allow-scripts allow-downloads"`, `srcdoc`) with its own CSP setting `connect-src 'none'`. Owns vault crypto, passphrase entry, seeds, private keys, all derivation, and every Shamir scheme. `allow-same-origin` remains absent. The later printing amendment is recorded separately in [ADR-0035](0035-cold-printing-allow-modals.md).
 
 Communication is a `MessageChannel` established at handshake, carrying a strictly-typed whitelist schema with no secret-bearing message type.
 

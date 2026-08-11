@@ -91,6 +91,21 @@
     return wordlist.indexOf(word);
   }
 
+  function mnemonicToWordIndices(mnemonic, languageId) {
+    var validation = validateMnemonic(mnemonic, languageId);
+    if (!validation.valid) {
+      throw new Error('Cannot encode an invalid BIP-39 mnemonic (' + validation.reason + ').');
+    }
+    var wordlist = wordlistFor(languageId);
+    return Object.freeze(splitMnemonic(mnemonic).map(function (word) {
+      var index = wordIndex(wordlist, word);
+      if (index < 0) {
+        throw new Error('The selected BIP-39 wordlist changed while encoding.');
+      }
+      return index;
+    }));
+  }
+
   function validateMnemonic(mnemonic, languageId) {
     var wordlist = wordlistFor(languageId);
     var words = splitMnemonic(mnemonic);
@@ -229,6 +244,7 @@
     validWordCounts: validWordCounts,
     splitMnemonic: splitMnemonic,
     validateMnemonic: validateMnemonic,
+    mnemonicToWordIndices: mnemonicToWordIndices,
     entropyToMnemonic: entropyToMnemonic,
     mnemonicToEntropy: mnemonicToEntropy,
     mnemonicToSeed: mnemonicToSeed,
