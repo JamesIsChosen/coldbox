@@ -8,7 +8,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 
 | # | Title | Status |
 |---|---|---|
-| [0001](0001-two-realm-architecture.md) | Two-realm architecture | Accepted |
+| [0001](0001-two-realm-architecture.md) | Two-realm architecture | Accepted · amended by 0035 |
 | [0002](0002-separate-vault-file.md) | Vault data lives in a separate file | Accepted |
 | [0003](0003-argon2id-parameters.md) | Argon2id at 64 MiB as the default KDF | Accepted |
 | [0004](0004-median-not-mean-prices.md) | Aggregate prices by median, not mean | Accepted |
