@@ -23,7 +23,7 @@ The pinned `@noble/*`, `@scure/*`, and Argon2 artifacts below are recorded in [v
 | `qrcode-generator` | 1.4.4 | Ephemeral SVG/data-URL rendering for live encrypted `CBX-VT/1` transfer frames; never durable QR export | `ab6ed47d378877441deae95972e07b2716c26545a735a23aa6b9d442b33026ed` |
 | `jsQR` | TBD | Camera decoding (optional) | `TBD` |
 
-P0.2 verifies and stores release artifacts. P1.3 bundles the BIP-39 encoder/decoder, all ten official wordlists, and the BIP-32 master-key helper into the cold realm alongside the selected `@noble` modules and embedded `argon2-browser` WASM bundle; the remaining TBD libraries are still not runtime-ready.
+P0.2 verifies and stores release artifacts. P1.3 bundles the BIP-39 encoder/decoder and all ten official wordlists; P1.4 adds the BIP-32 Bitcoin derivation engine and the `@scure/base` encodings to the cold realm alongside the selected `@noble` modules and embedded `argon2-browser` WASM bundle. The remaining TBD libraries are still not runtime-ready.
 
 ## Fonts (vendored; inlined as `data:` URIs by the build)
 

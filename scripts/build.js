@@ -51,6 +51,7 @@ const coldRealmManifest = Object.freeze([
   Object.freeze({ file: 'index.html', token: '__COLDBOX_ENTROPY_LAB_LAYER__', content: 'entropy-lab.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_ENTROPY_HEALTH_LAYER__', content: 'entropy-health.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_SEED_FORGE_LAYER__', content: 'seed-forge.js' }),
+  Object.freeze({ file: 'index.html', token: '__COLDBOX_DERIVATION_LAYER__', content: 'derivation.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_COLD_STYLES__', content: 'styles.css' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_COLD_SCRIPT__', content: 'main.js' })
 ]);
@@ -314,6 +315,7 @@ function assembleColdRealm(protocolSource, airgapSource, capabilitiesSource) {
     ['entropy-lab.js', readSource('cold/entropy-lab.js')],
     ['entropy-health.js', readSource('cold/entropy-health.js')],
     ['seed-forge.js', readSource('cold/seed-forge.js')],
+    ['derivation.js', readSource('cold/derivation.js')],
     ['styles.css', readSource('cold/styles.css')],
     ['main.js', coldMainScript]
   ]);
@@ -335,6 +337,7 @@ function assembleColdRealm(protocolSource, airgapSource, capabilitiesSource) {
     '__COLDBOX_ENTROPY_LAB_LAYER__',
     '__COLDBOX_ENTROPY_HEALTH_LAYER__',
     '__COLDBOX_SEED_FORGE_LAYER__',
+    '__COLDBOX_DERIVATION_LAYER__',
     '__COLDBOX_PROTOCOL__',
     '__COLDBOX_AIRGAP__',
     '__COLDBOX_CAPABILITIES__'

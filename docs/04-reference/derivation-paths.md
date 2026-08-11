@@ -35,6 +35,14 @@ The first three levels are hardened; the last two are not. That's what lets an x
 
 **Same seed, different purpose, completely different addresses.** This is the single most common source of confusion — and of panic.
 
+## Coldbox derivation engine
+
+The P1.4 engine runs inside the sealed cold realm. It accepts a copied raw seed of 16–64 bytes or an account-level extended public key, derives only Bitcoin's four Tier 1 single-key script types, and returns public addresses plus extended public metadata. No seed, private key, or extended private key is part of the public result, and no derivation operation needs network access.
+
+Seed derivation uses the path `m / purpose' / coin_type' / account' / change / index`, with account and purpose levels hardened. A batch defaults to 20 addresses and is capped at 1,000; the engine refuses a batch that would enter the hardened index range. Watch-only derivation accepts only a depth-3 account-level xpub/ypub/zpub/tpub/upub/vpub whose account child number is hardened, then derives non-hardened children below it. An xpub cannot prove the master fingerprint, so watch-only results expose only the account fingerprint. Every Bitcoin script family validates that the compressed public key is an actual secp256k1 point before hashing it into an address.
+
+Taproot uses the BIP-86 key-path construction: the internal key is normalized to even-Y x-only form, the tagged `TapTweak` is applied with no script tree, and the result is encoded as Bech32m. Legacy and nested SegWit use Base58Check; native SegWit uses Bech32. The authoritative primitive choices remain in [crypto-choices.md](../02-security/crypto-choices.md), and the structural cold-only decision is [ADR-0029](../05-development/adr/0029-cold-only-bitcoin-derivation-engine.md).
+
 ---
 
 ## Common paths
