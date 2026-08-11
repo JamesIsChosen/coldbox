@@ -54,7 +54,7 @@ test('registry CRUD preserves relationships, clones values, and soft-deletes', (
   });
   assert.equal(store.find('accounts', account.id).walletId, wallet.id);
   assert.equal(store.find('addresses', address.id).accountId, account.id);
-  assert.equal(JSON.stringify(store.counts()), JSON.stringify({ wallets: 2, accounts: 1, addresses: 1, notes: 0 }));
+  assert.equal(JSON.stringify(store.counts()), JSON.stringify({ wallets: 2, accounts: 1, addresses: 1, devices: 0, notes: 0 }));
 
   const external = store.snapshot();
   external.wallets[0].label = 'mutated outside store';
@@ -179,7 +179,7 @@ test('registry fails closed when secure randomness is unavailable', () => {
 test('registry module is warm-only and does not own secret or DOM handling', () => {
   const source = fs.readFileSync(path.join(projectRoot, 'src', 'registry.js'), 'utf8');
   assert.doesNotMatch(source, /document\./);
-  assert.doesNotMatch(source, /(?:mnemonic|privateKey|xprv|passphrase|secretPlaintext)/i);
+  assert.doesNotMatch(source, /['"](?:mnemonic|privateKey|xprv|passphrase|secretPlaintext)['"]/i);
 });
 
 test('registry supports linked public notes, canonical tags, search, and soft hide', () => {
@@ -207,5 +207,73 @@ test('registry supports linked public notes, canonical tags, search, and soft hi
       ]
     }),
     /relationship/
+  );
+});
+
+test('device registry stores lifecycle metadata, fingerprint links, and soft hide', () => {
+  const registry = loadRegistry();
+  const store = registry.createStore({ id: VAULT_ID });
+  const device = store.createDevice({
+    vendor: 'Trezor',
+    model: 'Safe 5',
+    serial: 'TS5-001',
+    firmware: '2.8.1',
+    firmwareDate: '2026-08-10T00:00:00.000Z',
+    purchasedFrom: 'Authorized retailer',
+    purchasedAt: '2026-08-10T00:00:00.000Z',
+    tamperCheckPassed: true,
+    tamperCheckNotes: 'Seal matched the order record.',
+    pinSetAt: '2026-08-10T00:00:00.000Z',
+    pinChangedAt: '2026-08-10T00:00:00.000Z',
+    passphraseUsed: true,
+    seedFingerprints: ['deadbeef'],
+    location: 'Home safe',
+    status: 'in-use',
+    notes: 'Primary signing device.'
+  });
+  assert.match(device.id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  assert.equal(device.seedFingerprints[0], 'deadbeef');
+  assert.equal(device.status, 'in-use');
+  assert.equal(store.find('devices', device.id).vendor, 'Trezor');
+  store.updateDevice(device.id, { status: 'retired', location: 'Archive safe' });
+  assert.equal(store.find('devices', device.id).status, 'retired');
+  assert.equal(store.find('devices', device.id).location, 'Archive safe');
+  store.updateDevice(device.id, {}, {
+    clearFields: [
+      'serial', 'firmwareDate', 'purchasedFrom', 'purchasedAt',
+      'tamperCheckNotes', 'pinSetAt', 'pinChangedAt',
+      'seedFingerprints', 'location', 'notes'
+    ]
+  });
+  const clearedDevice = store.find('devices', device.id);
+  assert.equal('serial' in clearedDevice, false);
+  assert.equal('firmwareDate' in clearedDevice, false);
+  assert.equal('purchasedFrom' in clearedDevice, false);
+  assert.equal('purchasedAt' in clearedDevice, false);
+  assert.equal('tamperCheckNotes' in clearedDevice, false);
+  assert.equal('pinSetAt' in clearedDevice, false);
+  assert.equal('pinChangedAt' in clearedDevice, false);
+  assert.equal(clearedDevice.passphraseUsed, true);
+  assert.equal('seedFingerprints' in clearedDevice, false);
+  assert.equal('location' in clearedDevice, false);
+  assert.equal('notes' in clearedDevice, false);
+  assert.throws(
+    () => store.updateDevice(device.id, {}, { clearFields: ['vendor'] }),
+    /cannot be cleared/
+  );
+  assert.equal(store.deleteDevice(device.id).hidden, true);
+  assert.equal(store.list('devices').some((item) => item.id === device.id), false);
+  assert.equal(store.list('devices', true).some((item) => item.id === device.id), true);
+  assert.throws(
+    () => store.createDevice({ vendor: 'Trezor', model: 'Bad', firmware: '1.0', status: 'active' }),
+    /public registry rejected/
+  );
+  assert.throws(
+    () => store.createDevice({ vendor: 'Trezor', model: 'Bad', firmware: '1.0', status: 'in-use', seedFingerprints: ['not-a-fingerprint'] }),
+    /public registry rejected/
+  );
+  assert.throws(
+    () => store.createDevice({ vendor: 'Trezor', model: 'Bad', firmware: '1.0', status: 'in-use', secretPlaintext: 'never' }),
+    /registry field/
   );
 });

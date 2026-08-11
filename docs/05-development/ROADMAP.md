@@ -206,7 +206,8 @@ Nothing above this phase is safe to build until the container is trustworthy.
 - [~] P1.6 Registry CRUD: wallets, accounts, addresses
 - [~] P1.7 Notes, tags, and concealment levels
   **Current state (recorded 2026-08-10):** public Markdown notes, canonical shared tags, registry search, reversible hidden flags, persisted privacy blur, and session-scoped hidden-record reveal are implemented. Public projection validation rejects secret notes; the re-authentication phrase stays inside the cold realm. Evidence is in `packets/p1.7-notes-tags-concealment.md`; the marker remains `[~]` for independent review.
-- [ ] P1.8 Device registry
+- [~] P1.8 Device registry
+  **Current state (recorded 2026-08-10):** the public Devices workspace records the canonical Device metadata fields, bounded seed fingerprints, tamper/PIN/purchase context, passphrase-use boolean, lifecycle state, location, notes, and reversible hidden flag. Warm CRUD/search uses the typed public registry mutation boundary; device records never connect to hardware or carry secret material. Evidence is in `packets/p1.8-device-registry.md`; the marker remains `[~]` for independent review.
 - [ ] P1.9 Verification workflows: fingerprint, receive address, xpub, backup, passphrase ⚠️ *implementable by agent; final validation needs real hardware wallets*
 - [ ] P1.10 QR generation: addresses, SeedQR, Compact SeedQR, printable cards
 - [ ] **P1.11 Address verification state in the data model**

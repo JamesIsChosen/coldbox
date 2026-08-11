@@ -1194,6 +1194,138 @@ async function verifyRegistryCrud(browser, engine) {
   }
 }
 
+async function verifyDeviceRegistry(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    const phrase = 'device registry harness phrase';
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    const coldFrame = await getColdFrame(page, engine);
+    await createPreparedVault(page, coldFrame, phrase, 'Device Registry Harness Vault');
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#nav-rail a[data-route="devices"]').click();
+    await page.locator('#page-devices:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('#device-workspace:not([hidden])').waitFor({ state: 'visible' });
+
+    await page.locator('#device-vendor').fill('Trezor');
+    await page.locator('#device-model').fill('Safe 5');
+    await page.locator('#device-serial').fill('TS5-001');
+    await page.locator('#device-firmware').fill('2.8.1');
+    await page.locator('#device-firmware-date').fill('2026-08-10');
+    await page.locator('#device-purchased-from').fill('Authorized retailer');
+    await page.locator('#device-purchased-at').fill('2026-08-10');
+    await page.locator('#device-tamper-notes').fill('Seal matched the order record.');
+    await page.locator('#device-pin-set-at').fill('2026-08-10');
+    await page.locator('#device-pin-changed-at').fill('2026-08-10');
+    await page.locator('#device-phrase-wallet-used').check();
+    await page.locator('#device-location').fill('Home safe');
+    await page.locator('#device-seed-fingerprints').fill('deadbeef');
+    await page.locator('#device-notes').fill('Primary signing device.');
+    await page.locator('#device-tamper-check').check();
+    await page.locator('#device-form button[type="submit"]').click();
+    await page.locator('#device-status').filter({ hasText: /written/i }).waitFor({ state: 'visible', timeout: 5000 });
+    const deviceCard = page.locator('#device-list .registry-record').filter({ hasText: 'Trezor Safe 5' });
+    await deviceCard.waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await deviceCard.textContent(), /in-use/i, `${engine}: new device did not show its lifecycle status`);
+
+    await page.locator('#device-search').fill('home safe');
+    await deviceCard.waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#device-search').fill('');
+
+    // P1.8 F6: every optional Device field is cleared explicitly on edit,
+    // rather than being omitted and preserved by merge-on-update semantics.
+    await deviceCard.locator('[data-registry-action="edit"]').click();
+    await page.locator('#device-serial').fill('');
+    await page.locator('#device-firmware-date').fill('');
+    await page.locator('#device-purchased-from').fill('');
+    await page.locator('#device-purchased-at').fill('');
+    await page.locator('#device-tamper-notes').fill('');
+    await page.locator('#device-pin-set-at').fill('');
+    await page.locator('#device-pin-changed-at').fill('');
+    await page.locator('#device-seed-fingerprints').fill('');
+    await page.locator('#device-location').fill('');
+    await page.locator('#device-notes').fill('');
+    await page.locator('#device-form button[type="submit"]').click();
+    await page.locator('#device-status').filter({ hasText: /written/i }).waitFor({ state: 'visible', timeout: 5000 });
+
+    await deviceCard.locator('[data-registry-action="edit"]').click();
+    for (const selector of [
+      '#device-serial', '#device-firmware-date', '#device-purchased-from',
+      '#device-purchased-at', '#device-tamper-notes', '#device-pin-set-at',
+      '#device-pin-changed-at', '#device-seed-fingerprints', '#device-location',
+      '#device-notes'
+    ]) {
+      assert.equal(await page.locator(selector).inputValue(), '', `${engine}: ${selector} was not cleared in the Device editor`);
+    }
+    await page.locator('#device-cancel').click();
+
+    // Save the cleared record, reload its durable .cbx bytes, and prove the
+    // absence of each optional field survives the cold persistence boundary.
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator('#vault-save-download').click();
+    const download = await downloadPromise;
+    await page.locator('#vault-status-label').filter({ hasText: /Saved · unverified/ }).waitFor({ state: 'visible', timeout: 5000 });
+    const downloadedVaultPath = await download.path();
+    assert.ok(downloadedVaultPath, `${engine}: Device clear workflow needs saved vault bytes for reopen coverage`);
+    const canonicalFilename = download.suggestedFilename();
+
+    await lockVaultDiscardingUnsaved(page);
+    await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#vault-file-input').setInputFiles({
+      name: canonicalFilename,
+      mimeType: 'application/octet-stream',
+      buffer: fs.readFileSync(downloadedVaultPath)
+    });
+    await page.locator('#vault-library-list [data-vault-library-index="0"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#vault-library-list [data-vault-library-index="0"]').click();
+    await coldFrame.locator('#cold-vault-status[data-state="pending"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-passphrase').fill(phrase);
+    await coldFrame.locator('#cold-vault-unlock').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#nav-rail a[data-route="devices"]').click();
+    await page.locator('#page-devices:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('#device-workspace:not([hidden])').waitFor({ state: 'visible' });
+    await deviceCard.waitFor({ state: 'visible', timeout: 5000 });
+    await deviceCard.locator('[data-registry-action="edit"]').click();
+    for (const selector of [
+      '#device-serial', '#device-firmware-date', '#device-purchased-from',
+      '#device-purchased-at', '#device-tamper-notes', '#device-pin-set-at',
+      '#device-pin-changed-at', '#device-seed-fingerprints', '#device-location',
+      '#device-notes'
+    ]) {
+      assert.equal(await page.locator(selector).inputValue(), '', `${engine}: ${selector} was restored after Device reopen`);
+    }
+    await page.locator('#device-status-value').selectOption('retired');
+    await page.locator('#device-form button[type="submit"]').click();
+    await page.locator('#device-status').filter({ hasText: /written/i }).waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await deviceCard.textContent(), /retired/i, `${engine}: device update did not show the new lifecycle status`);
+
+    await deviceCard.locator('[data-registry-action="delete"]').click();
+    await page.locator('#device-status').filter({ hasText: /written/i }).waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#device-list').filter({ hasText: /No devices recorded yet/i }).waitFor({ state: 'visible', timeout: 5000 });
+
+    await page.locator('#device-show-hidden').check();
+    await coldFrame.locator('#cold-concealment-controls').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-concealment-passphrase').fill(phrase);
+    await coldFrame.locator('#cold-concealment-reveal').click();
+    await deviceCard.waitFor({ state: 'visible', timeout: 5000 });
+
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    await lockVaultDiscardingUnsaved(page);
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await page.locator('#device-workspace').getAttribute('hidden'), '', `${engine}: device workspace remained visible after lock`);
+    console.log(`${engine}: device registry optional clear, durable reopen, lifecycle status, search, hidden reveal, and lock teardown passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyNotesAndConcealment(browser, engine) {
   const { page } = await openPage(browser, buildPath, 'reachable', { suspendReachabilityInterval: true });
   try {
@@ -2820,6 +2952,7 @@ async function run() {
       await verifyNotesAndConcealment(browser, engine);
       await verifyColdSecretNotes(browser, engine);
       await verifyRegistryCrud(browser, engine);
+      await verifyDeviceRegistry(browser, engine);
       await verifyEntropyLab(browser, engine);
       await verifySeedForge(browser, engine);
       await verifyUnlockedRuntimeHealthLockdown(browser, engine);

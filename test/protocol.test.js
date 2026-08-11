@@ -428,6 +428,109 @@ test('public notes are bounded, public-only records with canonical tags', () => 
   }).payload.revealed, true);
 });
 
+test('device records accept bounded lifecycle fields and reject unsafe shapes', () => {
+  const protocol = loadProtocol();
+  const deviceId = '550e8400-e29b-41d4-a716-446655440004';
+  const device = protocol.validateMessage('warm-to-cold', {
+    id: 'device-write-1',
+    type: 'publicData.replace',
+    payload: {
+      publicCompartment: {
+        devices: [{
+          id: deviceId,
+          vendor: 'Trezor',
+          model: 'Safe 5',
+          serial: 'TS5-001',
+          firmware: '2.8.1',
+          firmwareDate: '2026-08-10T00:00:00.000Z',
+          purchasedFrom: 'Authorized retailer',
+          purchasedAt: '2026-08-10T00:00:00.000Z',
+          tamperCheckPassed: true,
+          tamperCheckNotes: 'Seal matched.',
+          pinSetAt: '2026-08-10T00:00:00.000Z',
+          pinChangedAt: '2026-08-10T00:00:00.000Z',
+          passphraseUsed: true,
+          seedFingerprints: [SAFE_FINGERPRINT],
+          location: 'Home safe',
+          status: 'in-use',
+          notes: 'Primary device.',
+          hidden: false,
+          unknownNumber: 7
+        }]
+      }
+    }
+  });
+  assert.ok(device);
+  assert.equal(device.payload.publicCompartment.devices[0].unknownNumber, undefined);
+  assert.equal(device.payload.publicCompartment.devices[0].seedFingerprints[0], SAFE_FINGERPRINT);
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'device-bad-status',
+    type: 'publicData.replace',
+    payload: {
+      publicCompartment: {
+        devices: [{ id: deviceId, vendor: 'Trezor', model: 'Safe 5', firmware: '2.8.1', status: 'active' }]
+      }
+    }
+  }), null);
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'device-bad-date',
+    type: 'publicData.replace',
+    payload: {
+      publicCompartment: {
+        devices: [{ id: deviceId, vendor: 'Trezor', model: 'Safe 5', firmware: '2.8.1', firmwareDate: 'not-a-date', status: 'in-use' }]
+      }
+    }
+  }), null);
+});
+
+test('public notes are bounded, public-only records with canonical tags', () => {
+  const protocol = loadProtocol();
+  const noteId = '550e8400-e29b-41d4-a716-446655440003';
+  const result = protocol.validateMessage('warm-to-cold', {
+    id: 'public-note-1',
+    type: 'publicData.replace',
+    payload: {
+      publicCompartment: {
+        notes: [{
+          id: noteId,
+          title: 'Exchange receive note',
+          body: 'This account receives withdrawals.',
+          visibility: 'public',
+          tags: ['#Coinbase', 'taxlot-2024', 'coinbase'],
+          linkedIds: []
+        }]
+      }
+    }
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(result.payload.publicCompartment.notes[0])), {
+    id: noteId,
+    title: 'Exchange receive note',
+    body: 'This account receives withdrawals.',
+    visibility: 'public',
+    tags: ['coinbase', 'taxlot-2024'],
+    linkedIds: []
+  });
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'secret-note-1',
+    type: 'publicData.replace',
+    payload: {
+      publicCompartment: {
+        notes: [{
+          id: noteId,
+          title: 'Secret',
+          body: 'passphrase hint is the street we grew up on',
+          visibility: 'secret'
+        }]
+      }
+    }
+  }), null);
+  assert.equal(protocol.validateMessage('cold-to-warm', {
+    id: 'reveal-1',
+    type: 'concealment.revealed',
+    payload: { revealed: true, phrase: 'discarded' }
+  }).payload.revealed, true);
+});
+
 test('recognizable secret content is rejected from allowed public fields', () => {
   const protocol = loadProtocol();
   const xprv = `xprv${'1'.repeat(107)}`;

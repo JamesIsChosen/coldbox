@@ -2,11 +2,12 @@
   'use strict';
 
   var protocol = global.__coldboxProtocol;
-  var COLLECTIONS = Object.freeze(['wallets', 'accounts', 'addresses', 'notes']);
+  var COLLECTIONS = Object.freeze(['wallets', 'accounts', 'addresses', 'devices', 'notes']);
   var REQUIRED_FIELDS = Object.freeze({
     wallets: Object.freeze(['id']),
     accounts: Object.freeze(['id', 'walletId']),
     addresses: Object.freeze(['id', 'accountId', 'index', 'address']),
+    devices: Object.freeze(['id', 'vendor', 'model', 'firmware', 'status']),
     notes: Object.freeze(['id', 'title', 'body', 'visibility'])
   });
   var ALLOWED_FIELDS = Object.freeze({
@@ -20,6 +21,12 @@
     addresses: Object.freeze([
       'id', 'accountId', 'index', 'address', 'label', 'isChange', 'used',
       'balanceSnapshot', 'notes', 'tags', 'hidden'
+    ]),
+    devices: Object.freeze([
+      'id', 'vendor', 'model', 'serial', 'firmware', 'firmwareDate',
+      'purchasedFrom', 'purchasedAt', 'tamperCheckPassed', 'tamperCheckNotes',
+      'pinSetAt', 'pinChangedAt', 'passphraseUsed', 'seedFingerprints',
+      'location', 'status', 'notes', 'hidden'
     ]),
     notes: Object.freeze([
       'id', 'title', 'body', 'visibility', 'linkedIds', 'tags', 'hidden'
@@ -318,6 +325,9 @@
       createAddress: function (value) { return insert('addresses', value); },
       updateAddress: function (id, value, options) { return update('addresses', id, value, options); },
       deleteAddress: function (id) { return softDelete('addresses', id); },
+      createDevice: function (value) { return insert('devices', value); },
+      updateDevice: function (id, value, options) { return update('devices', id, value, options); },
+      deleteDevice: function (id) { return softDelete('devices', id); },
       createNote: function (value) { return insert('notes', value); },
       updateNote: function (id, value, options) { return update('notes', id, value, options); },
       deleteNote: function (id) { return softDelete('notes', id); },

@@ -193,6 +193,37 @@ against the encrypted session and returns only `concealment.revealed { revealed
 }`. See [ADR-0032](../05-development/adr/0032-notes-tags-and-concealment.md).
 :::
 
+P1.8 adds a Devices page for the hardware wallets and backup context around
+your public registry. It is an inventory and reminder surface, not a hardware
+connection: Coldbox does not read, unlock, derive from, or sign with a device
+from this page. Everything recorded there is public vault metadata.
+
+::: plain
+Use Devices to record the vendor, model, firmware, location, lifecycle status,
+and public seed fingerprints associated with a hardware wallet. You can hide a
+retired or sensitive-to-display record and reveal it again for the current
+unlocked session. Never type a seed phrase, passphrase, private key, or xprv
+into a device record.
+:::
+
+::: working
+Device records are stored in the public compartment and are edited only while
+the vault is unlocked. The form includes tamper-check notes, PIN dates,
+purchase context, optional seed fingerprints, a boolean that records whether a
+BIP-39 passphrase wallet is used, physical location, notes, and one of the
+documented lifecycle states. That boolean is only yes/no metadata; it is not a
+place to enter the passphrase.
+:::
+
+::: technical
+The closed `devices` collection uses the canonical fields and enum in
+[data-model.md](../01-spec/data-model.md). Writes use the typed
+`publicData.replace` / `publicData.updated` projection boundary; UUIDs use the
+existing CSPRNG-backed Registry path; unknown fields, invalid ISO dates,
+invalid fingerprints, invalid lifecycle states, and secret-shaped text are
+rejected. See [ADR-0033](../05-development/adr/0033-device-registry.md).
+:::
+
 Do **not** store the seed itself unless you've decided that's right for this wallet — it's off by default for good reason.
 
 Then Backup Lab → record where your metal backup lives, and set a verification reminder.
