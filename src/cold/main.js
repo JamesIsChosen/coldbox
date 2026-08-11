@@ -1,6 +1,7 @@
 __COLDBOX_PROTOCOL__
 __COLDBOX_AIRGAP__
 __COLDBOX_CAPABILITIES__
+__COLDBOX_QR_ENCODER__
 (function () {
   'use strict';
 
@@ -15,6 +16,7 @@ __COLDBOX_CAPABILITIES__
   var derivation = window.__coldboxDerivation;
   var addressVerification = window.__coldboxAddressVerification;
   var verification = window.__coldboxVerification;
+  var qr = window.__coldboxQr;
   var readyMarker = document.getElementById('cold-ready');
   var protocolWarning = document.getElementById('cold-protocol-warning');
   var details = document.getElementById('cold-realm-details');
@@ -175,6 +177,23 @@ __COLDBOX_CAPABILITIES__
   var verificationBackupExpected = document.getElementById('cold-verification-backup-expected');
   var verificationBackupRun = document.getElementById('cold-verification-backup-run');
   var verificationBackupStatus = document.getElementById('cold-verification-backup-status');
+  var qrStudio = document.getElementById('cold-qr-studio');
+  var qrSeedSource = document.getElementById('cold-qr-seed-source');
+  var qrLanguage = document.getElementById('cold-qr-language');
+  var qrFormat = document.getElementById('cold-qr-format');
+  var qrLayout = document.getElementById('cold-qr-layout');
+  var qrGrid = document.getElementById('cold-qr-grid');
+  var qrSecretConfirm = document.getElementById('cold-qr-secret-confirm');
+  var qrStandardButton = document.getElementById('cold-qr-standard');
+  var qrCompactButton = document.getElementById('cold-qr-compact');
+  var qrOutput = document.getElementById('cold-qr-output');
+  var qrOutputStatus = document.getElementById('cold-qr-output-status');
+  var qrDownloadSvg = document.getElementById('cold-qr-download-svg');
+  var qrDownloadPng = document.getElementById('cold-qr-download-png');
+  var qrPrint = document.getElementById('cold-qr-print');
+  var qrCard = document.getElementById('cold-qr-card');
+  var qrCardCode = document.getElementById('cold-qr-card-code');
+  var qrCardGrid = document.getElementById('cold-qr-card-grid');
   var entropySession = entropyLab ? entropyLab.createSession() : null;
   var seedForgeWordInputs = [];
   var generatedMnemonic = '';
@@ -191,6 +210,7 @@ __COLDBOX_CAPABILITIES__
   var validationWalletRevision = 0;
   var seedForgeWalletRevision = 0;
   var linkedVerificationWallet = null;
+  var qrArtifact = null;
   var pendingSeedForgeMix = null;
   var pendingSeedForgeMixTargetBits = null;
   var CARD_RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
@@ -2105,6 +2125,320 @@ __COLDBOX_CAPABILITIES__
     }
   }
 
+  function currentQrSeed() {
+    if (qrSeedSource && qrSeedSource.value === 'validated') {
+      if (!validationSeedBytes || !validationPhraseText) {
+        return null;
+      }
+      return {
+        mnemonic: validationPhraseText,
+        language: qrLanguage ? qrLanguage.value : (seedForgeLanguage ? seedForgeLanguage.value : 'english')
+      };
+    }
+    if (!generatedMnemonic || !generatedSeedBytes) {
+      return null;
+    }
+    return { mnemonic: generatedMnemonic, language: qrLanguage ? qrLanguage.value : generatedLanguage };
+  }
+
+  function clearQrArtifact() {
+    qrArtifact = null;
+    if (qrOutput) {
+      qrOutput.textContent = '';
+    }
+    if (qrCardCode) {
+      qrCardCode.textContent = '';
+    }
+    if (qrCardGrid) {
+      qrCardGrid.textContent = '';
+    }
+    if (qrCard) {
+      qrCard.hidden = true;
+    }
+    if (qrOutputStatus) {
+      qrOutputStatus.setAttribute('data-state', 'idle');
+      qrOutputStatus.textContent = 'No secret QR generated in this session.';
+    }
+    [qrDownloadSvg, qrDownloadPng, qrPrint].forEach(function (button) {
+      if (button) {
+        button.disabled = true;
+      }
+    });
+  }
+
+  function renderQrCardGrid(wordCount) {
+    if (!qrCardGrid) {
+      return;
+    }
+    qrCardGrid.textContent = '';
+    for (var index = 0; index < wordCount; index += 1) {
+      var cell = document.createElement('span');
+      cell.className = 'cold-qr-card-cell';
+      cell.textContent = String(index + 1);
+      qrCardGrid.appendChild(cell);
+    }
+  }
+
+  function renderQrPng(code) {
+    if (!code || typeof document.createElement !== 'function') {
+      throw new Error('PNG export is unavailable in this sealed browser.');
+    }
+    var canvas = document.createElement('canvas');
+    var cellSize = 6;
+    var margin = 24;
+    var moduleCount = code.getModuleCount();
+    canvas.width = moduleCount * cellSize + margin * 2;
+    canvas.height = canvas.width;
+    var context = canvas.getContext('2d');
+    if (!context || typeof canvas.toDataURL !== 'function') {
+      throw new Error('PNG export is unavailable in this sealed browser.');
+    }
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = '#000000';
+    for (var row = 0; row < moduleCount; row += 1) {
+      for (var column = 0; column < moduleCount; column += 1) {
+        if (code.isDark(row, column)) {
+          context.fillRect(
+            margin + column * cellSize,
+            margin + row * cellSize,
+            cellSize,
+            cellSize
+          );
+        }
+      }
+    }
+    return canvas.toDataURL('image/png');
+  }
+
+  function downloadDataUrl(dataUrl, filename) {
+    if (typeof dataUrl !== 'string' || dataUrl.indexOf('data:') !== 0) {
+      throw new Error('The QR export was not created.');
+    }
+    if (!window.Blob || !window.URL || typeof window.URL.createObjectURL !== 'function') {
+      throw new Error('QR export downloads are unavailable in this sealed browser.');
+    }
+    var comma = dataUrl.indexOf(',');
+    if (comma < 0) {
+      throw new Error('The QR export data is malformed.');
+    }
+    var metadata = dataUrl.slice(5, comma);
+    var payload = dataUrl.slice(comma + 1);
+    var mimeType = metadata.split(';')[0] || 'application/octet-stream';
+    var blob;
+    if (metadata.indexOf(';base64') >= 0) {
+      if (typeof window.atob !== 'function') {
+        throw new Error('QR export downloads are unavailable in this sealed browser.');
+      }
+      var binary = window.atob(payload);
+      var bytes = new Uint8Array(binary.length);
+      for (var index = 0; index < binary.length; index += 1) {
+        bytes[index] = binary.charCodeAt(index);
+      }
+      blob = new window.Blob([bytes], { type: mimeType });
+    } else {
+      blob = new window.Blob([decodeURIComponent(payload)], { type: mimeType });
+    }
+    var url = window.URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.rel = 'noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(function () { window.URL.revokeObjectURL(url); }, 0);
+  }
+
+  function updateQrControls() {
+    if (!qrStudio || !qr) {
+      return;
+    }
+    var seed = currentQrSeed();
+    var ready = vaultCryptoReady && Boolean(seed) && Boolean(qrSecretConfirm && qrSecretConfirm.checked);
+    qrStudio.setAttribute('data-state', vaultCryptoReady ? 'ready' : 'locked');
+    [qrSeedSource, qrLanguage, qrFormat, qrLayout, qrGrid, qrSecretConfirm].forEach(function (control) {
+      if (control) {
+        control.disabled = !vaultCryptoReady;
+      }
+    });
+    [qrStandardButton, qrCompactButton].forEach(function (button) {
+      if (button) {
+        button.disabled = !ready;
+      }
+    });
+  }
+
+  function renderQrArtifact(format, code, wordCount) {
+    var layout = qrLayout ? qrLayout.value : 'a4-letter';
+    var gridEnabled = Boolean(qrGrid && qrGrid.checked);
+    var svg = qr.renderSvg(code, {
+      cellSize: 4,
+      margin: 4,
+      title: format + ' SeedQR (secret; cold-only)',
+      alt: format + ' SeedQR; plaintext seed payload'
+    });
+    qrArtifact = {
+      format: format,
+      code: code,
+      svg: svg,
+      png: null,
+      layout: layout,
+      wordCount: wordCount
+    };
+    if (qrOutput) {
+      qrOutput.innerHTML = svg;
+    }
+    if (qrCardCode) {
+      qrCardCode.innerHTML = svg;
+    }
+    if (qrCard) {
+      qrCard.setAttribute('data-layout', layout);
+      qrCard.setAttribute('data-grid', gridEnabled ? 'on' : 'off');
+      qrCard.hidden = false;
+    }
+    renderQrCardGrid(wordCount);
+    if (qrOutputStatus) {
+      qrOutputStatus.setAttribute('data-state', 'ready');
+      qrOutputStatus.textContent = format + ' generated in the sealed realm ('
+        + String(qr.payloadLength(code)) + '×' + String(qr.payloadLength(code))
+        + ' modules). It is plaintext seed material: keep cameras and networked devices away.';
+    }
+    [qrDownloadSvg, qrDownloadPng, qrPrint].forEach(function (button) {
+      if (button) {
+        button.disabled = false;
+      }
+    });
+  }
+
+  function generateSeedQr(format) {
+    if (!qr || !qrSecretConfirm || !qrSecretConfirm.checked) {
+      return;
+    }
+    var seed = currentQrSeed();
+    if (!seed || !seedForge) {
+      if (qrOutputStatus) {
+        qrOutputStatus.setAttribute('data-state', 'error');
+        qrOutputStatus.textContent = 'Generate or validate a complete phrase in Seed Forge first.';
+      }
+      return;
+    }
+    try {
+      var indices = seedForge.mnemonicToWordIndices(seed.mnemonic, seed.language);
+      var code;
+      if (format === 'Compact SeedQR') {
+        var entropy = seedForge.mnemonicToEntropy(seed.mnemonic, seed.language);
+        try {
+          code = qr.createCompactSeedQr(entropy);
+        } finally {
+          if (entropy && typeof entropy.fill === 'function') {
+            entropy.fill(0);
+          }
+        }
+      } else {
+        if (seed.language !== 'english') {
+          throw new Error('Standard SeedQR is defined only for the English BIP-39 wordlist; use Compact SeedQR for non-English phrases.');
+        }
+        code = qr.createSeedQr(indices, { errorCorrection: 'M' });
+      }
+      renderQrArtifact(format, code, indices.length);
+    } catch (error) {
+      clearQrArtifact();
+      if (qrOutputStatus) {
+        qrOutputStatus.setAttribute('data-state', 'error');
+        qrOutputStatus.textContent = 'QR generation failed closed: ' + error.message;
+      }
+    }
+    updateQrControls();
+  }
+
+  function wireQrStudio() {
+    if (!qrStudio || !qr) {
+      return;
+    }
+    if (qrLanguage && seedForge && Array.isArray(seedForge.languages)) {
+      qrLanguage.textContent = '';
+      seedForge.languages.forEach(function (language) {
+        var option = document.createElement('option');
+        option.value = language.id;
+        option.textContent = language.label;
+        qrLanguage.appendChild(option);
+      });
+      qrLanguage.value = 'english';
+    }
+    if (qrSeedSource) {
+      qrSeedSource.addEventListener('change', function () {
+        if (qrLanguage) {
+          qrLanguage.value = qrSeedSource.value === 'generated'
+            ? generatedLanguage
+            : (seedForgeLanguage ? seedForgeLanguage.value : 'english');
+        }
+        clearQrArtifact();
+        updateQrControls();
+      });
+    }
+    if (qrLanguage) {
+      qrLanguage.addEventListener('change', function () {
+        clearQrArtifact();
+        updateQrControls();
+      });
+    }
+    if (qrSecretConfirm) {
+      qrSecretConfirm.addEventListener('change', function () {
+        if (!qrSecretConfirm.checked) {
+          clearQrArtifact();
+        }
+        updateQrControls();
+      });
+    }
+    if (qrStandardButton) {
+      qrStandardButton.addEventListener('click', function () {
+        generateSeedQr('SeedQR');
+      });
+    }
+    if (qrCompactButton) {
+      qrCompactButton.addEventListener('click', function () {
+        generateSeedQr('Compact SeedQR');
+      });
+    }
+    if (qrDownloadSvg) {
+      qrDownloadSvg.addEventListener('click', function () {
+        if (!qrArtifact) {
+          return;
+        }
+        var dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(qrArtifact.svg);
+        downloadDataUrl(dataUrl, 'coldbox-seedqr.svg');
+      });
+    }
+    if (qrDownloadPng) {
+      qrDownloadPng.addEventListener('click', function () {
+        if (!qrArtifact) {
+          return;
+        }
+        try {
+          if (!qrArtifact.png) {
+            qrArtifact.png = renderQrPng(qrArtifact.code);
+          }
+          downloadDataUrl(qrArtifact.png, 'coldbox-seedqr.png');
+        } catch (error) {
+          if (qrOutputStatus) {
+            qrOutputStatus.setAttribute('data-state', 'error');
+            qrOutputStatus.textContent = 'PNG export failed closed: ' + error.message;
+          }
+        }
+      });
+    }
+    if (qrPrint) {
+      qrPrint.addEventListener('click', function () {
+        if (qrArtifact && typeof window.print === 'function') {
+          window.print();
+        }
+      });
+    }
+    clearQrArtifact();
+    updateQrControls();
+  }
+
   function updateVerificationControls() {
     if (!verification || !verificationPanel) {
       return;
@@ -2722,6 +3056,13 @@ __COLDBOX_CAPABILITIES__
   function clearVaultSession(clearPending) {
     clearSeedForgeSession();
     clearVerificationSession();
+    clearQrArtifact();
+    if (qrSecretConfirm) {
+      qrSecretConfirm.checked = false;
+    }
+    updateSeedForgeControls();
+    updateVerificationControls();
+    updateQrControls();
     if (currentVaultSession && typeof currentVaultSession.close === 'function') {
       currentVaultSession.close();
     }
@@ -3589,6 +3930,7 @@ __COLDBOX_CAPABILITIES__
     updateBenchmarkAvailability();
     updateEntropyLabControls();
     updateVerificationControls();
+    updateQrControls();
     window.parent.postMessage({ type: 'cold.ready' }, '*');
   }
 
@@ -3659,7 +4001,7 @@ __COLDBOX_CAPABILITIES__
     messagePort.postMessage(readyMessage);
   }
 
-  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer || !vaultLayer || !entropyLab || !seedForge || !derivation || !verification) {
+  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer || !vaultLayer || !entropyLab || !seedForge || !derivation || !verification || !qr) {
     return;
   }
 
@@ -3858,6 +4200,7 @@ __COLDBOX_CAPABILITIES__
 
   installThrowContract();
   wireSeedForge();
+  wireQrStudio();
   wireEntropyLab();
   wireVerification();
   window.addEventListener('message', handleGlobalMessage);

@@ -1,7 +1,6 @@
 # Architecture — the two realms
 
-Detail on the split introduced in [SPEC.md §2](SPEC.md). Decision rationale in [ADR-0001](../05-development/adr/0001-two-realm-architecture.md).
-
+Detail on the split introduced in [SPEC.md §2](SPEC.md). Original decision rationale is in [ADR-0001](../05-development/adr/0001-two-realm-architecture.md); the later cold-printing permission amendment is in [ADR-0035](../05-development/adr/0035-cold-printing-allow-modals.md).
 ---
 
 ## The constraint that forces this design
@@ -27,7 +26,7 @@ Owns: UI chrome and routing, **active external-reachability monitoring**, live p
 ### Cold realm — sandboxed iframe
 
 ```html
-<iframe sandbox="allow-scripts allow-downloads" srcdoc="…">
+<iframe sandbox="allow-scripts allow-downloads allow-modals" srcdoc="…">
 ```
 
 Its own CSP: `default-src 'none'; connect-src 'none'; script-src 'sha256-…' 'wasm-unsafe-eval'`.
@@ -43,6 +42,8 @@ Even if its code were malicious, its `connect-src 'none'` policy blocks network 
 
 **2. CSP inheritance works in our favour.**
 A `srcdoc` iframe inherits its parent's CSP, and multiple policies combine **restrictively**: a request must satisfy every applicable policy. The cold realm's `connect-src 'none'` applies on top of the warm shell's allowlist, and the intersection is `'none'`. **The child cannot be loosened by the parent.**
+
+`allow-modals` is granted only so the cold-only print workflow can request the browser print dialog for SeedQR cards.
 
 **3. `sandbox` without `allow-same-origin` yields an opaque origin.**
 The warm shell cannot read the cold realm's DOM, variables, or keystrokes. A passphrase typed into the cold realm is not reachable by the network-capable code around it.
@@ -125,6 +126,8 @@ This is not a style preference. The schema invariant below permits only structur
 `different-account` deserves its own code rather than being folded into `match`: an address that matches a record in a *different* account than expected is a real and confusing situation, and collapsing it into a plain match would hide it.
 
 The public projection deliberately contains no unbounded free-form text fields. Registry records use a closed, collection-specific schema: bounded labels, paths, notes, tags, and status metadata are accepted only after secret-shaped content and unknown text fields are rejected; UUIDs, fingerprints, extended public keys, addresses, numbers, booleans, and balance timestamps use typed validators. The new Vault ID uses the existing UUID-safe `publicCompartment.id` field. **Vault names do not cross cold → warm**: they are explicit public warm-shell/filename metadata, because arbitrary names could contain a passphrase or other secret if a user typed one by mistake. Recognizable extended-private-key forms, WIF forms, mnemonic-shaped phrases, and raw 32-byte private-key hex are also rejected. This is the only honest way to enforce the literal no-passphrase/no-secret-plaintext invariant; arbitrary prose cannot be distinguished from a secret by regex. All non-vault messages have a 4 MiB aggregate sanitized-payload limit, and encrypted `vault.open`/`vault.bytes` payloads have a 64 MiB byte limit. `publicData.replace` is the only write path: it is accepted on the private channel only while a cold session is unlocked, and the cold session rejects a Vault ID change before re-encrypting the public plaintext.
+
+`publicData.replace` remains a warm-origin write even while the vault is unlocked. Its address provenance fields are reconciled against the cold session's existing authenticated projection: a warm replacement may carry forward an existing `cold-verified` or `cold-verified-stale` record, and may record the xpub-change staleness transition, but it cannot elevate an unverified, unverifiable, or stale record to `cold-verified`, or rewrite the timestamp/xpub evidence. Only a future cold-owned re-derivation transition may create a new `cold-verified` state.
 
 ---
 
