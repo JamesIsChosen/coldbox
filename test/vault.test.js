@@ -795,12 +795,16 @@ test('P1.11 warm public replacement cannot manufacture or rewrite cold verificat
 
   const authenticated = {
     ...publicData,
+    accounts: [{
+      ...publicData.accounts[0],
+      xpub: 'xpub' + '1'.repeat(107)
+    }],
     addresses: [{
       ...publicData.addresses[0],
       addressOrigin: 'derived',
       verificationState: 'cold-verified',
       lastColdVerifiedAt: '2026-08-11T12:00:00.000Z',
-      verifiedAgainstXpub: 'authenticated-xpub'
+      verifiedAgainstXpub: 'xpub' + '1'.repeat(107)
     }]
   };
   const authenticatedVault = await context.__coldboxVault.create({
@@ -821,7 +825,51 @@ test('P1.11 warm public replacement cannot manufacture or rewrite cold verificat
   const preserved = authenticatedSession.replacePublicData(rewritten);
   assert.equal(preserved.addresses[0].verificationState, 'cold-verified');
   assert.equal(preserved.addresses[0].lastColdVerifiedAt, '2026-08-11T12:00:00.000Z');
-  assert.equal(preserved.addresses[0].verifiedAgainstXpub, 'authenticated-xpub');
+  assert.equal(preserved.addresses[0].verifiedAgainstXpub, 'xpub' + '1'.repeat(107));
+});
+
+test('P1.11 cold replacement stales authenticated evidence when the account xpub changes', async () => {
+  const context = createRealContext();
+  const passphrase = 'xpub staleness authority passphrase';
+  const authenticatedXpub = 'xpub' + '1'.repeat(107);
+  const replacementXpub = 'xpub' + '1'.repeat(106) + '2';
+  const publicData = {
+    schema: 2,
+    id: 'xpub-staleness-vault',
+    wallets: [{ id: 'xpub-staleness-wallet' }],
+    accounts: [{
+      id: 'xpub-staleness-account',
+      walletId: 'xpub-staleness-wallet',
+      xpub: authenticatedXpub
+    }],
+    addresses: [{
+      id: 'xpub-staleness-address',
+      accountId: 'xpub-staleness-account',
+      index: 0,
+      address: '1BoatSLRHtKNngkdXEeobR76b53LETtpyT',
+      addressOrigin: 'derived',
+      verificationState: 'cold-verified',
+      lastColdVerifiedAt: '2026-08-11T12:00:00.000Z',
+      verifiedAgainstXpub: authenticatedXpub
+    }]
+  };
+  const vault = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fast',
+    publicData,
+    secretData: {}
+  });
+  const session = await context.__coldboxVault.openSession(vault, passphrase, 'offline');
+  const replacement = session.publicData;
+  replacement.accounts[0].xpub = replacementXpub;
+  // The warm caller incorrectly leaves the state at cold-verified; the cold
+  // authority must derive staleness from the changed account evidence itself.
+  replacement.addresses[0].verificationState = 'cold-verified';
+  const reconciled = session.replacePublicData(replacement);
+
+  assert.equal(reconciled.addresses[0].verificationState, 'cold-verified-stale');
+  assert.equal(reconciled.addresses[0].lastColdVerifiedAt, '2026-08-11T12:00:00.000Z');
+  assert.equal(reconciled.addresses[0].verifiedAgainstXpub, authenticatedXpub);
 });
 
 test('P1.11 cold open migrates schema 1, persists schema 2, and preserves failed input', async () => {

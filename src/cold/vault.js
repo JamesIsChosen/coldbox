@@ -807,6 +807,18 @@
       return null;
     }
 
+    function findRecord(records, id) {
+      if (!Array.isArray(records)) {
+        return null;
+      }
+      for (var index = 0; index < records.length; index += 1) {
+        if (isRecord(records[index]) && records[index].id === id) {
+          return records[index];
+        }
+      }
+      return null;
+    }
+
     function resetVerification(address, stateName) {
       address.verificationState = stateName === 'unverifiable' ? 'unverifiable' : 'unverified';
       delete address.lastColdVerifiedAt;
@@ -839,6 +851,21 @@
           if (requestedState === 'cold-verified' || requestedState === 'cold-verified-stale') {
             resetVerification(address);
           }
+          return;
+        }
+        var previousAccount = findRecord(current && current.accounts, previous.accountId);
+        var nextAccount = findRecord(next.accounts, address.accountId);
+        var verifiedAgainstXpub = previous.verifiedAgainstXpub;
+        var xpubEvidenceChanged = previousState === 'cold-verified'
+          && (typeof verifiedAgainstXpub !== 'string'
+            || !previousAccount
+            || !nextAccount
+            || previousAccount.xpub !== verifiedAgainstXpub
+            || nextAccount.xpub !== verifiedAgainstXpub);
+        if (xpubEvidenceChanged) {
+          address.verificationState = 'cold-verified-stale';
+          address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
+          address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
           return;
         }
         if (requestedState === 'cold-verified' && previousState !== 'cold-verified') {
