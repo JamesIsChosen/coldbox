@@ -5323,6 +5323,9 @@ __COLDBOX_CONCEALMENT__
         if (result.state !== 'armed') {
           clipboardCanaryToggle.checked = false;
         }
+      }, function () {
+        clipboardCanaryToggle.checked = false;
+        setClipboardCanaryStatus('unavailable', 'Clipboard read permission was unavailable for the canary; address comparison still works.');
       });
     });
   }
@@ -5330,6 +5333,9 @@ __COLDBOX_CONCEALMENT__
     clipboardCanaryRetry.addEventListener('click', function () {
       clipboardCanaryController.retry().then(function (result) {
         clipboardCanaryToggle.checked = result.state === 'armed';
+      }, function () {
+        clipboardCanaryToggle.checked = false;
+        setClipboardCanaryStatus('unavailable', 'Clipboard read permission was unavailable for the canary; address comparison still works.');
       });
     });
   }

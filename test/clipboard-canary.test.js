@@ -48,6 +48,77 @@ test('permission denied and absent APIs are visibly unavailable, with retry supp
   assert.equal(absent.state(), 'unavailable');
 });
 
+test('permission-query exceptions stay inside the promise contract', async () => {
+  const canary = loadCanary();
+  let reads = 0;
+  const navigatorObject = {
+    permissions: { query: () => { throw new Error('permission query unavailable'); } },
+    clipboard: { readText: async () => { reads += 1; return 'baseline'; } }
+  };
+  const controller = canary.create({ navigator: navigatorObject });
+  const result = await controller.enable();
+  assert.equal(result.state, 'armed');
+  assert.equal(controller.state(), 'armed');
+  assert.equal(reads, 1);
+  controller.disable();
+});
+
+test('disabling while permission is pending cannot be overwritten by the stale enable', async () => {
+  const canary = loadCanary();
+  let resolvePermission;
+  let reads = 0;
+  const navigatorObject = {
+    permissions: { query: () => new Promise((resolve) => { resolvePermission = resolve; }) },
+    clipboard: { readText: async () => { reads += 1; return 'baseline'; } }
+  };
+  const controller = canary.create({ navigator: navigatorObject });
+  const enabling = controller.enable();
+  for (let attempt = 0; attempt < 20 && typeof resolvePermission !== 'function'; attempt += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  assert.equal(typeof resolvePermission, 'function');
+  controller.disable();
+  resolvePermission({ state: 'granted' });
+  const result = await enabling;
+  assert.equal(result.state, 'off');
+  assert.equal(controller.state(), 'off');
+  assert.equal(reads, 0);
+});
+
+test('a stale read rejection cannot overwrite a newer enable', async () => {
+  const canary = loadCanary();
+  let rejectFirstRead;
+  let reads = 0;
+  const navigatorObject = {
+    permissions: { query: async () => ({ state: 'granted' }) },
+    clipboard: {
+      readText: () => {
+        reads += 1;
+        if (reads === 1) {
+          return new Promise((resolve, reject) => {
+            rejectFirstRead = reject;
+          });
+        }
+        return Promise.resolve('new baseline');
+      }
+    }
+  };
+  const controller = canary.create({ navigator: navigatorObject });
+  const first = controller.enable();
+  for (let attempt = 0; attempt < 20 && reads < 1; attempt += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  assert.equal(reads, 1);
+  const second = controller.enable();
+  const secondResult = await second;
+  assert.equal(secondResult.state, 'armed');
+  rejectFirstRead(new Error('stale read failed'));
+  const firstResult = await first;
+  assert.equal(firstResult.state, 'armed');
+  assert.equal(controller.state(), 'armed');
+  controller.disable();
+});
+
 test('canary treats an unattended clipboard change as affirmative detection', async () => {
   const canary = loadCanary();
   let timerCallback = null;

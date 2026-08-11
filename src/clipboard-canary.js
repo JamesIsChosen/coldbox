@@ -32,11 +32,13 @@
     }
 
     function readText() {
-      if (!navigatorObject || !navigatorObject.clipboard
-        || typeof navigatorObject.clipboard.readText !== 'function') {
-        return Promise.reject(new Error('Clipboard read API is unavailable.'));
-      }
-      return Promise.resolve().then(function () { return navigatorObject.clipboard.readText(); })
+      return Promise.resolve().then(function () {
+        if (!navigatorObject || !navigatorObject.clipboard
+          || typeof navigatorObject.clipboard.readText !== 'function') {
+          throw new Error('Clipboard read API is unavailable.');
+        }
+        return navigatorObject.clipboard.readText();
+      })
         .then(function (value) {
           if (typeof value !== 'string') {
             throw new Error('Clipboard did not return text.');
@@ -46,11 +48,13 @@
     }
 
     function queryPermission() {
-      if (!navigatorObject || !navigatorObject.permissions
-        || typeof navigatorObject.permissions.query !== 'function') {
-        return Promise.resolve('unknown');
-      }
-      return Promise.resolve(navigatorObject.permissions.query({ name: 'clipboard-read' }))
+      return Promise.resolve().then(function () {
+        if (!navigatorObject || !navigatorObject.permissions
+          || typeof navigatorObject.permissions.query !== 'function') {
+          return null;
+        }
+        return navigatorObject.permissions.query({ name: 'clipboard-read' });
+      })
         .then(function (permission) {
           return permission && typeof permission.state === 'string' ? permission.state : 'unknown';
         }, function () {
@@ -88,6 +92,9 @@
       var currentGeneration = generation;
       setState('checking', 'Requesting clipboard-read permission for the opt-in canary.');
       return queryPermission().then(function (permission) {
+        if (currentGeneration !== generation) {
+          return { state: state };
+        }
         if (permission === 'denied') {
           return unavailable('Clipboard read permission was denied. The address comparison still works without the canary.');
         }
@@ -100,6 +107,9 @@
           schedule(currentGeneration);
           return { state: 'armed' };
         }, function () {
+          if (currentGeneration !== generation) {
+            return { state: state };
+          }
           return unavailable('Clipboard read permission was unavailable. The address comparison still works without the canary.');
         });
       });
