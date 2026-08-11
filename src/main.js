@@ -10,6 +10,7 @@ __COLDBOX_VAULT_TRANSFER__
 
 __COLDBOX_QR_ENCODER__
 __COLDBOX_ADDRESS_VERIFICATION__
+__COLDBOX_CLIPBOARD_CANARY__
 __COLDBOX_CONCEALMENT__
 
   var coldRealmDocument = __COLDBOX_COLD_REALM_DOCUMENT__;
@@ -21,6 +22,7 @@ __COLDBOX_CONCEALMENT__
   var saveIntegrity = window.__coldboxSaveIntegrity;
   var vaultTransfer = window.__coldboxLiveTransfer;
   var addressVerification = window.__coldboxAddressVerification;
+  var clipboardCanary = window.__coldboxClipboardCanary;
   var root = document.documentElement;
   var app = document.getElementById('app');
   var main = document.getElementById('main-content');
@@ -220,6 +222,9 @@ __COLDBOX_CONCEALMENT__
   var addressVerifyBatch = document.getElementById('address-verify-batch');
   var addressVerifyBatchRun = document.getElementById('address-verify-batch-run');
   var addressVerifyBatchResults = document.getElementById('address-verify-batch-results');
+  var clipboardCanaryToggle = document.getElementById('clipboard-canary-toggle');
+  var clipboardCanaryStatus = document.getElementById('clipboard-canary-status');
+  var clipboardCanaryRetry = document.getElementById('clipboard-canary-retry');
   var deviceLocked = document.getElementById('device-locked');
   var deviceWorkspace = document.getElementById('device-workspace');
   var deviceStatus = document.getElementById('device-status');
@@ -308,6 +313,7 @@ __COLDBOX_CONCEALMENT__
   var registryStore = null;
   var pendingRegistryMutation = null;
   var pendingAddressVerification = null;
+  var clipboardCanaryController = null;
   var hiddenRegistryVisible = false;
   var pendingHiddenReveal = null;
   var concealmentController = concealment && typeof concealment.createController === 'function'
@@ -322,6 +328,8 @@ __COLDBOX_CONCEALMENT__
   if (!app || !main) {
     return;
   }
+
+  clipboardCanaryController = createClipboardCanary();
 
   var routeDetails = Object.freeze({
     vault: Object.freeze({ label: 'Vault', title: 'Vault', group: 'Workspace' }),
@@ -3229,6 +3237,32 @@ __COLDBOX_CONCEALMENT__
     addressVerifyStatus.setAttribute('data-state', state || 'idle');
   }
 
+  function setClipboardCanaryStatus(state, text) {
+    if (clipboardCanaryStatus) {
+      clipboardCanaryStatus.textContent = text;
+      clipboardCanaryStatus.setAttribute('data-state', state);
+    }
+    if (clipboardCanaryRetry) {
+      clipboardCanaryRetry.hidden = state !== 'unavailable';
+    }
+    if (clipboardCanaryToggle && (state === 'unavailable' || state === 'changed')) {
+      clipboardCanaryToggle.checked = false;
+    }
+  }
+
+  function createClipboardCanary() {
+    if (!clipboardCanary || typeof clipboardCanary.create !== 'function') {
+      setClipboardCanaryStatus('unavailable', 'The clipboard canary is unavailable; address comparison still works.');
+      return null;
+    }
+    return clipboardCanary.create({
+      onState: setClipboardCanaryStatus,
+      onChanged: function () {
+        setClipboardCanaryStatus('changed', 'Clipboard changed on its own. Clipboard managers, sync tools, and remote-desktop clients can cause this before malware.');
+      }
+    });
+  }
+
   function renderAddressVerificationOptions() {
     if (!addressVerifyRecord) {
       return;
@@ -4949,6 +4983,26 @@ __COLDBOX_CONCEALMENT__
   }
   if (addressVerifyBatchRun) {
     addressVerifyBatchRun.addEventListener('click', runAddressBatch);
+  }
+  if (clipboardCanaryToggle && clipboardCanaryController) {
+    clipboardCanaryToggle.addEventListener('change', function () {
+      if (!clipboardCanaryToggle.checked) {
+        clipboardCanaryController.disable();
+        return;
+      }
+      clipboardCanaryController.enable().then(function (result) {
+        if (result.state !== 'armed') {
+          clipboardCanaryToggle.checked = false;
+        }
+      });
+    });
+  }
+  if (clipboardCanaryRetry && clipboardCanaryController) {
+    clipboardCanaryRetry.addEventListener('click', function () {
+      clipboardCanaryController.retry().then(function (result) {
+        clipboardCanaryToggle.checked = result.state === 'armed';
+      });
+    });
   }
   if (privacyBlurToggle && concealmentController) {
     privacyBlurToggle.addEventListener('click', function () {

@@ -24,6 +24,11 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 - **Whole-string address comparison.** Warm round-trip, inbound, and batch checks compare every character, report the first divergence, handle Bech32 case-insensitively, keep Base58 case-sensitive, and report invalid mixed-case EVM checksums separately.
 - **Separate authority claim.** The sealed realm now accepts a typed public verification request, re-derives the selected registry address when the current Seed Forge identity is available, updates its verification evidence, and returns enum-only outcomes. Locked vaults return `vault-locked`, never `no-record`.
 
+### Added — P1.13 clipboard volatility canary (2026-08-10)
+
+- **Explicit opt-in only.** The canary is off by default and is not enabled by paste or by any other verification action. It requests clipboard-read permission only after the user enables it, and provides a retry control when permission is denied or the API is absent.
+- **Affirmative change detection.** It establishes a baseline and re-reads after a delay with no user action. A change is reported as observed clipboard volatility, naming clipboard managers, sync tools, and remote-desktop clients before malware; the ordinary address comparison remains available.
+
 ### Added — P1.9 verification workflows (2026-08-10)
 
 - **Cold-local hardware-wallet checks.** Verify Bench links the current public identity from Seed Forge and compares an independently entered device fingerprint, receive address, account xpub, or metal-backup fingerprint. The fifth roadmap check, BIP-39 passphrase verification, uses the exact passphrase selected and confirmed in Seed Forge; no duplicate passphrase panel exists. Comparisons validate complete public values; uniform-case Bech32 is accepted while mixed-case Bech32 and invalid checksums fail closed.

@@ -226,6 +226,7 @@ function assemble() {
   const concealmentSource = readSource('concealment.js');
   let mainScript = injectOnce(readSource('main.js'), '__COLDBOX_QR_ENCODER__', readQrEncoderSource());
   mainScript = injectOnce(mainScript, '__COLDBOX_ADDRESS_VERIFICATION__', readSource('address-verification.js'));
+  mainScript = injectOnce(mainScript, '__COLDBOX_CLIPBOARD_CANARY__', readSource('clipboard-canary.js'));
   mainScript = injectOnce(mainScript, '__COLDBOX_PROTOCOL__', protocolSource);
   mainScript = injectOnce(mainScript, '__COLDBOX_REGISTRY__', registrySource);
   mainScript = injectOnce(mainScript, '__COLDBOX_CONCEALMENT__', concealmentSource);
@@ -295,7 +296,8 @@ function assemble() {
     '__COLDBOX_FRAME_STYLE_HASHES__',
     '__COLDBOX_HELP_CONTENT__',
     '__COLDBOX_LICENSE_TEXT__',
-    '__COLDBOX_ADDRESS_VERIFICATION__'
+    '__COLDBOX_ADDRESS_VERIFICATION__',
+    '__COLDBOX_CLIPBOARD_CANARY__'
   ]) {
     if (document.includes(placeholder)) {
       throw new Error(`Unresolved source placeholder in assembled document: ${placeholder}`);
