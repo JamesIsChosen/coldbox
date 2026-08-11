@@ -5,16 +5,50 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const test = require('node:test');
+const zlib = require('node:zlib');
 
 const projectRoot = path.resolve(__dirname, '..');
 const qrSource = fs.readFileSync(
   path.join(projectRoot, 'src', 'cold', 'qr.js'),
   'utf8'
 );
+const qrVendorTarball = path.join(
+  projectRoot,
+  'vendor',
+  'npm',
+  'qrcode-generator',
+  '1.4.4',
+  'package.tgz'
+);
 
-function createContext() {
+function readQrEncoderSource() {
+  const archive = zlib.gunzipSync(fs.readFileSync(qrVendorTarball));
+  const target = 'package/qrcode.js';
+  for (let offset = 0; offset + 512 <= archive.length; ) {
+    const name = archive.subarray(offset, offset + 100).toString('utf8').replace(/\0.*$/, '');
+    if (!name) {
+      break;
+    }
+    const sizeText = archive.subarray(offset + 124, offset + 136)
+      .toString('ascii')
+      .replace(/\0.*$/, '')
+      .trim();
+    const size = sizeText ? Number.parseInt(sizeText, 8) : 0;
+    const contentStart = offset + 512;
+    if (name === target) {
+      return archive.subarray(contentStart, contentStart + size).toString('utf8').replace(/\r\n?/g, '\n');
+    }
+    offset = contentStart + Math.ceil(size / 512) * 512;
+  }
+  throw new Error(`Missing ${target} in ${qrVendorTarball}`);
+}
+
+function createContext({ includeEncoder = false } = {}) {
   const context = { Uint8Array, Number };
   context.window = context;
+  if (includeEncoder) {
+    vm.runInNewContext(readQrEncoderSource(), context, { filename: 'vendor/qrcode-generator/qrcode.js' });
+  }
   vm.runInNewContext(qrSource, context, { filename: 'src/cold/qr.js' });
   return context.__coldboxQr;
 }
@@ -37,6 +71,13 @@ test('Compact SeedQR preserves raw entropy bytes in byte mode payload form', () 
     Array.from(payload, (value) => value.charCodeAt(0)),
     Array.from(entropy)
   );
+});
+
+test('Compact SeedQR defaults to low correction for SeedSigner compact template sizes', () => {
+  const qr = createContext({ includeEncoder: true });
+  assert.equal(qr.payloadLength(qr.createCompactSeedQr(new Uint8Array(16))), 21);
+  assert.equal(qr.payloadLength(qr.createCompactSeedQr(new Uint8Array(32))), 25);
+  assert.equal(qr.payloadLength(qr.createCompactSeedQr(new Uint8Array(16), { errorCorrection: 'M' })), 25);
 });
 
 test('SeedQR encoders fail closed for unsupported sizes and out-of-range indices', () => {

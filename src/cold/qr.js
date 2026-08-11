@@ -52,7 +52,7 @@
 
   function createCompactSeedQr(entropy, options) {
     var settings = options || {};
-    return createCode(encodeCompactSeedQr(entropy), 'Byte', settings.errorCorrection || 'M');
+    return createCode(encodeCompactSeedQr(entropy), 'Byte', settings.errorCorrection || 'L');
   }
 
   function renderSvg(code, options) {

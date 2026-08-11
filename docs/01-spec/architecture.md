@@ -27,7 +27,7 @@ Owns: UI chrome and routing, **active external-reachability monitoring**, live p
 ### Cold realm — sandboxed iframe
 
 ```html
-<iframe sandbox="allow-scripts allow-downloads" srcdoc="…">
+<iframe sandbox="allow-scripts allow-downloads allow-modals" srcdoc="…">
 ```
 
 Its own CSP: `default-src 'none'; connect-src 'none'; script-src 'sha256-…' 'wasm-unsafe-eval'`.
@@ -43,6 +43,8 @@ Even if its code were malicious, its `connect-src 'none'` policy blocks network 
 
 **2. CSP inheritance works in our favour.**
 A `srcdoc` iframe inherits its parent's CSP, and multiple policies combine **restrictively**: a request must satisfy every applicable policy. The cold realm's `connect-src 'none'` applies on top of the warm shell's allowlist, and the intersection is `'none'`. **The child cannot be loosened by the parent.**
+
+`allow-modals` is granted only so the cold-only print workflow can request the browser print dialog for SeedQR cards.
 
 **3. `sandbox` without `allow-same-origin` yields an opaque origin.**
 The warm shell cannot read the cold realm's DOM, variables, or keystrokes. A passphrase typed into the cold realm is not reachable by the network-capable code around it.

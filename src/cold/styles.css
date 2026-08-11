@@ -1367,6 +1367,10 @@ body {
   color: #000000;
 }
 
+.cold-qr-card[hidden] {
+  display: none;
+}
+
 .cold-qr-card[data-layout="wallet-12"] {
   max-width: 15rem;
 }
@@ -1434,11 +1438,29 @@ body {
   #cold-qr-studio,
   #cold-qr-card {
     display: grid !important;
-    width: 100%;
-    max-width: none !important;
     margin: 0;
     border-color: #000000;
     box-shadow: none;
+  }
+
+  #cold-qr-studio {
+    width: 100%;
+    max-width: none;
+  }
+
+  #cold-qr-card[data-layout="a4-letter"] {
+    width: 100%;
+    max-width: none;
+  }
+
+  #cold-qr-card[data-layout="wallet-12"] {
+    width: 15rem;
+    max-width: 15rem;
+  }
+
+  #cold-qr-card[data-layout="wallet-24"] {
+    width: 20rem;
+    max-width: 20rem;
   }
 }
 

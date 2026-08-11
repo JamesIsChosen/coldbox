@@ -2151,6 +2151,9 @@ __COLDBOX_QR_ENCODER__
     if (qrCardGrid) {
       qrCardGrid.textContent = '';
     }
+    if (qrCard) {
+      qrCard.hidden = true;
+    }
     if (qrOutputStatus) {
       qrOutputStatus.setAttribute('data-state', 'idle');
       qrOutputStatus.textContent = 'No secret QR generated in this session.';
@@ -2211,11 +2214,39 @@ __COLDBOX_QR_ENCODER__
     if (typeof dataUrl !== 'string' || dataUrl.indexOf('data:') !== 0) {
       throw new Error('The QR export was not created.');
     }
+    if (!window.Blob || !window.URL || typeof window.URL.createObjectURL !== 'function') {
+      throw new Error('QR export downloads are unavailable in this sealed browser.');
+    }
+    var comma = dataUrl.indexOf(',');
+    if (comma < 0) {
+      throw new Error('The QR export data is malformed.');
+    }
+    var metadata = dataUrl.slice(5, comma);
+    var payload = dataUrl.slice(comma + 1);
+    var mimeType = metadata.split(';')[0] || 'application/octet-stream';
+    var blob;
+    if (metadata.indexOf(';base64') >= 0) {
+      if (typeof window.atob !== 'function') {
+        throw new Error('QR export downloads are unavailable in this sealed browser.');
+      }
+      var binary = window.atob(payload);
+      var bytes = new Uint8Array(binary.length);
+      for (var index = 0; index < binary.length; index += 1) {
+        bytes[index] = binary.charCodeAt(index);
+      }
+      blob = new window.Blob([bytes], { type: mimeType });
+    } else {
+      blob = new window.Blob([decodeURIComponent(payload)], { type: mimeType });
+    }
+    var url = window.URL.createObjectURL(blob);
     var link = document.createElement('a');
-    link.href = dataUrl;
+    link.href = url;
     link.download = filename;
     link.rel = 'noreferrer';
+    document.body.appendChild(link);
     link.click();
+    link.remove();
+    window.setTimeout(function () { window.URL.revokeObjectURL(url); }, 0);
   }
 
   function updateQrControls() {
@@ -2297,13 +2328,16 @@ __COLDBOX_QR_ENCODER__
       if (format === 'Compact SeedQR') {
         var entropy = seedForge.mnemonicToEntropy(seed.mnemonic, seed.language);
         try {
-          code = qr.createCompactSeedQr(entropy, { errorCorrection: 'M' });
+          code = qr.createCompactSeedQr(entropy);
         } finally {
           if (entropy && typeof entropy.fill === 'function') {
             entropy.fill(0);
           }
         }
       } else {
+        if (seed.language !== 'english') {
+          throw new Error('Standard SeedQR is defined only for the English BIP-39 wordlist; use Compact SeedQR for non-English phrases.');
+        }
         code = qr.createSeedQr(indices, { errorCorrection: 'M' });
       }
       renderQrArtifact(format, code, indices.length);
@@ -2945,6 +2979,12 @@ __COLDBOX_QR_ENCODER__
     clearSeedForgeSession();
     clearVerificationSession();
     clearQrArtifact();
+    if (qrSecretConfirm) {
+      qrSecretConfirm.checked = false;
+    }
+    updateSeedForgeControls();
+    updateVerificationControls();
+    updateQrControls();
     if (currentVaultSession && typeof currentVaultSession.close === 'function') {
       currentVaultSession.close();
     }

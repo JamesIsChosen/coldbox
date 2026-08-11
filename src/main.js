@@ -4456,6 +4456,20 @@ __COLDBOX_CONCEALMENT__
     return /^(?:bc1|tb1|bcrt1|[13mn2])[A-Za-z0-9]{20,130}$/.test(address);
   }
 
+  function decimalToAtomicUnits(decimalText, decimals, unitName) {
+    var match = /^(\d+)(?:\.(\d+))?$/.exec(decimalText);
+    if (!match) {
+      throw new Error('Amount must be a non-negative decimal number.');
+    }
+    var whole = match[1].replace(/^0+(?=\d)/, '');
+    var fraction = match[2] || '';
+    if (fraction.length > decimals) {
+      throw new Error(unitName + ' amount has too many decimal places.');
+    }
+    var padded = (whole + fraction.padEnd(decimals, '0')).replace(/^0+(?=\d)/, '');
+    return padded || '0';
+  }
+
   function publicQrUri(network, address) {
     if (!qrPublicUri || !qrPublicUri.checked) {
       return address;
@@ -4469,10 +4483,10 @@ __COLDBOX_CONCEALMENT__
       var ethereumUri = 'ethereum:' + address;
       var ethereumParams = [];
       if (amount) {
-        ethereumParams.push('value=' + encodeURIComponent(amount));
+        ethereumParams.push('value=' + decimalToAtomicUnits(amount, 18, 'Ethereum'));
       }
       if (label) {
-        ethereumParams.push('label=' + encodeURIComponent(label));
+        throw new Error('Ethereum EIP-681 payment requests do not support the Bitcoin label field.');
       }
       return ethereumUri + (ethereumParams.length ? '?' + ethereumParams.join('&') : '');
     }
@@ -4534,6 +4548,7 @@ __COLDBOX_CONCEALMENT__
       qrPublicArtifact = null;
       if (qrPublicOutput) {
         qrPublicOutput.textContent = '';
+        qrPublicOutput.removeAttribute('data-payload');
       }
       [qrPublicDownloadSvg, qrPublicDownloadPng].forEach(function (button) {
         if (button) {
@@ -4558,6 +4573,7 @@ __COLDBOX_CONCEALMENT__
       qrPublicArtifact = { code: code, svg: svg, png: null };
       if (qrPublicOutput) {
         qrPublicOutput.innerHTML = svg;
+        qrPublicOutput.setAttribute('data-payload', payload);
       }
       [qrPublicDownloadSvg, qrPublicDownloadPng].forEach(function (button) {
         if (button) {
@@ -4569,6 +4585,7 @@ __COLDBOX_CONCEALMENT__
       qrPublicArtifact = null;
       if (qrPublicOutput) {
         qrPublicOutput.textContent = '';
+        qrPublicOutput.removeAttribute('data-payload');
       }
       setPublicQrStatus('error', 'QR generation failed closed: ' + error.message);
     }
@@ -4585,7 +4602,7 @@ __COLDBOX_CONCEALMENT__
       coldFrame = document.createElement('iframe');
       coldFrame.id = 'cold-frame';
       coldFrame.className = 'cold-frame';
-      coldFrame.setAttribute('sandbox', 'allow-scripts allow-downloads');
+      coldFrame.setAttribute('sandbox', 'allow-scripts allow-downloads allow-modals');
       coldFrame.setAttribute('title', 'Opaque sealed realm');
       coldFrame.setAttribute('aria-label', 'Opaque sealed realm');
       if (!('srcdoc' in coldFrame)) {

@@ -132,7 +132,13 @@ function coldSandboxToken(html) {
 }
 
 function assertExactColdSandbox(html) {
-  assert.equal(coldSandboxToken(html), 'allow-scripts allow-downloads');
+  assert.equal(coldSandboxToken(html), 'allow-scripts allow-downloads allow-modals');
+}
+
+function provenanceBuildDate(html) {
+  const match = html.match(/<p class="provenance-value" id="provenance-build-date">([^<]+)<\/p>/);
+  assert.ok(match, 'built document must expose the provenance build date');
+  return match[1];
 }
 
 function createBuildRoot() {
@@ -338,9 +344,9 @@ test('a build with node_modules absent but .git present matches the real build b
 
     const dependencyFreeBuild = fs.readFileSync(path.join(root, 'build', 'coldbox.html'));
     assert.deepEqual(dependencyFreeBuild, realBuild);
-    assert.doesNotMatch(
-      dependencyFreeBuild.toString('utf8'),
-      /unknown \(no git commit metadata available\)/,
+    assert.notEqual(
+      provenanceBuildDate(dependencyFreeBuild.toString('utf8')),
+      'unknown (no git commit metadata available)',
       'a checkout with .git present must resolve a real build date, not the no-metadata fallback'
     );
   } finally {
@@ -405,7 +411,7 @@ test('cold realm policy is embedded and remains opaque', () => {
   const html = fs.readFileSync(htmlPath, 'utf8');
 
   assertExactColdSandbox(html);
-  assert.doesNotMatch(html, /allow-same-origin/);
+  assert.equal(coldSandboxToken(html).includes('allow-same-origin'), false);
   assert.match(html, /connect-src 'none'/);
   assert.match(html, /form-action 'none'/);
   assert.match(html, /frame-src 'none'/);
@@ -420,8 +426,8 @@ test('cold iframe sandbox rejects an extra permission token in a negative fixtur
     const mainPath = path.join(root, 'src', 'main.js');
     const main = fs.readFileSync(mainPath, 'utf8')
       .replace(
-        "coldFrame.setAttribute('sandbox', 'allow-scripts allow-downloads')",
-        "coldFrame.setAttribute('sandbox', 'allow-scripts allow-downloads allow-top-navigation')"
+        "coldFrame.setAttribute('sandbox', 'allow-scripts allow-downloads allow-modals')",
+        "coldFrame.setAttribute('sandbox', 'allow-scripts allow-downloads allow-modals allow-top-navigation')"
       );
     fs.writeFileSync(mainPath, main, 'utf8');
 

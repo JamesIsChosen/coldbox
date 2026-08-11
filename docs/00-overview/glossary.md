@@ -251,7 +251,7 @@ A QR code containing your whole seed phrase, scannable by devices like SeedSigne
 A QR encoding of an entire BIP-39 mnemonic (standard or "compact" numeric-index form), designed for fast, low-error transfer between airgapped devices via camera.
 :::
 ::: technical
-Standard SeedQR encodes each word as its zero-padded 4-digit index into the BIP-39 wordlist (numeric mode QR, 4 digits/word); Compact SeedQR instead stores the original BIP-39 entropy bytes in a byte-mode QR, trading human-unreadability for a smaller code.
+Standard SeedQR encodes each English BIP-39 word as its zero-padded 4-digit index (numeric mode QR, 4 digits/word); Compact SeedQR instead stores the original BIP-39 entropy bytes in a byte-mode QR, trading human-unreadability for a smaller code and avoiding language-index ambiguity.
 :::
 
 ---
@@ -343,7 +343,7 @@ The two halves Coldbox is built from. The cold realm is sealed off from every ne
 Coldbox's two-realm architecture: an outer warm shell that can reach the network for public data, and an inner cold realm — a sandboxed iframe with its own CSP — that alone can touch secret material and cannot reach any network.
 :::
 ::: technical
-The cold realm is a `sandbox="allow-scripts allow-downloads"` iframe loaded via `srcdoc`, enforcing its own `connect-src 'none'` CSP and a runtime neutering of `fetch`/`XHR`/`WebSocket`/`EventSource`/`WebRTC`. The realms communicate only via a `MessageChannel` handshake against a typed schema that structurally cannot carry a mnemonic, private key, xprv, passphrase, or secret-compartment plaintext. See [architecture.md](../01-spec/architecture.md).
+The cold realm is a `sandbox="allow-scripts allow-downloads allow-modals"` iframe loaded via `srcdoc`, enforcing its own `connect-src 'none'` CSP and a runtime neutering of `fetch`/`XHR`/`WebSocket`/`EventSource`/`WebRTC`; `allow-same-origin` remains absent. The realms communicate only via a `MessageChannel` handshake against a typed schema that structurally cannot carry a mnemonic, private key, xprv, passphrase, or secret-compartment plaintext. See [architecture.md](../01-spec/architecture.md).
 :::
 
 **Argon2id**
