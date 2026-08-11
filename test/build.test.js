@@ -73,6 +73,25 @@ function extractEmbeddedLicenseText(html) {
   return JSON.parse(match[1]);
 }
 
+// The cold document is JSON-encoded inside the warm script. Its source
+// comments contain ordinary JavaScript escape-looking text such as
+// `license:\n`; scanning that encoded representation would mistake the
+// escaped newline for a Windows drive path (`e:\`). Decode it before scanning
+// and scan the decoded document independently, just as the licence text above
+// is scanned independently of the surrounding document.
+function stripEmbeddedColdRealmDocument(html) {
+  return html.replace(
+    /var coldRealmDocument = "(?:[^"\\]|\\.)*";/,
+    'var coldRealmDocument = "";'
+  );
+}
+
+function extractEmbeddedColdRealmDocument(html) {
+  const match = html.match(/var coldRealmDocument = ("(?:[^"\\]|\\.)*");/);
+  assert.ok(match, 'built artifact must embed coldRealmDocument');
+  return JSON.parse(match[1]);
+}
+
 // Mirrors scripts/build.js's jsonScriptLiteral() exactly. Not imported
 // directly because build.js runs its build as top-level side effects on
 // require (it's a CLI script, not a library module) - requiring it here
@@ -175,7 +194,9 @@ test('build assembles one HTML file and emits its SHA-256 sidecar', () => {
     NO_MACHINE_PATHS,
     'embedded licence text leaked a machine-specific path'
   );
-  assert.doesNotMatch(stripEmbeddedLicenseText(html.toString('utf8')), NO_MACHINE_PATHS);
+  const document = html.toString('utf8');
+  assert.doesNotMatch(extractEmbeddedColdRealmDocument(document), NO_MACHINE_PATHS);
+  assert.doesNotMatch(stripEmbeddedColdRealmDocument(stripEmbeddedLicenseText(document)), NO_MACHINE_PATHS);
   assert.equal(html.includes(0x0d), false, 'generated HTML must use LF line endings');
   assert.equal(Buffer.from(sidecar, 'utf8').includes(0x0d), false, 'sidecar must use LF line endings');
 });
