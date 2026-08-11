@@ -87,6 +87,7 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 | `derive.request` | `{ accountRef, scriptType, range }` | References a wallet by id; never carries key material |
 | `publicData.request` | `{ collections[] }` | Ask for public compartment contents |
 | `publicData.replace` | `{ publicCompartment }` | Replace only the schema-validated public projection after a warm registry mutation; the authenticated Vault ID must remain unchanged |
+| `concealment.reveal` | `{}` | Ask the cold realm to show its re-authentication control; no phrase crosses the channel |
 | `ui.navigate` | `{ section }` | |
 | `address.verifyRequest` | `{ addressId, accountRef, index, candidate }` | `candidate` is a **validated public address string**, which the existing projection already permits. Asks the cold realm to re-derive and compare |
 
@@ -100,6 +101,8 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 | `vault.bytes` | `{ bytes }` | Encrypted blob for the warm shell to save |
 | `derive.result` | `{ addresses[], xpub, fingerprint }` | Public values only |
 | `publicData.updated` | `{ publicCompartment }` | Acknowledges a successful public registry replacement; schema-validated public records only |
+| `concealment.revealed` | `{ revealed: bool }` | Reports only whether the cold realm re-authenticated the session; no phrase or note body crosses |
+| `secretData.updated` | `{ dirty: true }` | Signals that cold-local secret notes changed; carries no secret plaintext |
 | `status` | `{ locked, mode, warnings[] }` | |
 | `address.verifyResult` | `{ addressId, outcome, divergenceIndex, verificationState, verifiedAt, xpubFingerprint }` | `outcome` and `verificationState` are **enum codes, never prose** — see below. `divergenceIndex` is an integer |
 | `error` | `{ code, message }` | Never includes secret material in the message |

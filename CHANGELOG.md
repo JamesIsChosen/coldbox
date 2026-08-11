@@ -14,6 +14,12 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
+### Added — P1.7 notes, tags, and concealment (2026-08-10)
+
+- **Public notes and shared tags.** Wallets, accounts, addresses, and standalone public Note records now carry bounded Markdown notes, canonical shared tags, and reversible hidden flags. Search filters the public registry without sending text outside the validated projection.
+- **Compartment-aware notes.** The public schema accepts `visibility: public` notes only; secret-note-shaped records are rejected instead of being rendered in the warm shell. Secret notes can be searched inside the cold realm while their title, body, and tags remain encrypted.
+- **Concealment controls.** Privacy blur persists locally, Panic hide clears reveal state and locks immediately, and hidden-record reveal requires re-entering the vault phrase inside the cold realm. See [ADR-0032](docs/05-development/adr/0032-notes-tags-and-concealment.md).
+
 ### Added — P1.6 registry CRUD (2026-08-10)
 
 - **Warm public registry.** Wallet, account, and address records can be created, edited, and soft-hidden from the warm shell while the vault is unlocked; whole-compartment relationship checks, explicit schema-safe clearing of optional fields, and secure random UUIDs are enforced locally.

@@ -347,6 +347,138 @@ body {
   line-height: 1.45;
 }
 
+#cold-concealment-controls {
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.75rem;
+  border: 0.16rem dashed var(--cold-yellow);
+  border-radius: 0.35rem;
+  background: var(--cold-surface);
+}
+
+#cold-concealment-controls[hidden] {
+  display: none;
+}
+
+#cold-concealment-controls label {
+  display: block;
+  margin-top: 0.55rem;
+  color: var(--cold-text);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+#cold-concealment-passphrase {
+  display: block;
+  width: min(100%, 24rem);
+  margin-top: 0.3rem;
+  padding: 0.45rem 0.55rem;
+  border: 0.13rem solid var(--cold-outline);
+  border-radius: 0.3rem;
+  background: var(--cold-bg);
+  color: var(--cold-text);
+  font: 0.78rem ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
+}
+
+#cold-concealment-controls button {
+  margin-top: 0.55rem;
+  padding: 0.35rem 0.7rem;
+  border: 0.13rem solid var(--cold-drop);
+  border-radius: 0.3rem;
+  background: var(--cold-yellow);
+  box-shadow: 0.15rem 0.15rem 0 var(--cold-drop);
+  color: var(--cold-ink);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+#cold-concealment-status {
+  margin: 0.45rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+#cold-secret-notes {
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.75rem;
+  border: 0.16rem solid var(--cold-pink);
+  border-radius: 0.35rem;
+  background: var(--cold-surface);
+}
+
+#cold-secret-notes[hidden] {
+  display: none;
+}
+
+#cold-secret-notes label {
+  display: block;
+  margin-top: 0.55rem;
+  color: var(--cold-text);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+#cold-secret-notes input,
+#cold-secret-notes textarea {
+  display: block;
+  width: min(100%, 36rem);
+  margin-top: 0.3rem;
+  padding: 0.45rem 0.55rem;
+  border: 0.13rem solid var(--cold-outline);
+  border-radius: 0.3rem;
+  background: var(--cold-bg);
+  color: var(--cold-text);
+  font: 0.78rem ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
+}
+
+#cold-secret-note-save {
+  margin-top: 0.6rem;
+  padding: 0.35rem 0.7rem;
+  border: 0.13rem solid var(--cold-drop);
+  border-radius: 0.3rem;
+  background: var(--cold-pink);
+  box-shadow: 0.15rem 0.15rem 0 var(--cold-drop);
+  color: var(--cold-ink);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cold-secret-note-card {
+  margin-top: 0.6rem;
+  padding: 0.55rem;
+  border: 0.1rem dashed var(--cold-outline);
+  background: var(--cold-bg);
+}
+
+.cold-secret-note-card h3,
+.cold-secret-note-card p {
+  margin: 0;
+}
+
+.cold-secret-note-card p {
+  margin-top: 0.3rem;
+  color: var(--cold-muted);
+  font-size: 0.7rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cold-secret-note-card button {
+  margin-top: 0.45rem;
+  padding: 0.25rem 0.5rem;
+  border: 0.1rem solid var(--cold-drop);
+  background: var(--cold-yellow);
+  color: var(--cold-ink);
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 /* Entropy Lab (P1.1). Same shell language as the KDF and vault surfaces
    above: comic border, drop shadow, no motion, colour paired with text. */
 

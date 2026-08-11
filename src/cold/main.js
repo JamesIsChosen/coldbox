@@ -41,6 +41,17 @@ __COLDBOX_CAPABILITIES__
   var createVaultButton = document.getElementById('cold-vault-create');
   var unlockVaultButton = document.getElementById('cold-vault-unlock');
   var lockVaultButton = document.getElementById('cold-vault-lock');
+  var concealmentControls = document.getElementById('cold-concealment-controls');
+  var concealmentPassphrase = document.getElementById('cold-concealment-passphrase');
+  var concealmentRevealButton = document.getElementById('cold-concealment-reveal');
+  var concealmentStatus = document.getElementById('cold-concealment-status');
+  var secretNotesPanel = document.getElementById('cold-secret-notes');
+  var secretNoteTitle = document.getElementById('cold-secret-note-title');
+  var secretNoteBody = document.getElementById('cold-secret-note-body');
+  var secretNoteTags = document.getElementById('cold-secret-note-tags');
+  var secretNoteSaveButton = document.getElementById('cold-secret-note-save');
+  var secretNoteSearch = document.getElementById('cold-secret-note-search');
+  var secretNoteList = document.getElementById('cold-secret-note-list');
   var keyfileToggle = document.getElementById('cold-vault-keyfile-toggle');
   var keyfileWarning = document.getElementById('cold-vault-keyfile-warning');
   var keyfileInput = document.getElementById('cold-vault-keyfile-input');
@@ -156,6 +167,8 @@ __COLDBOX_CAPABILITIES__
   var currentVaultSession = null;
   var pendingVaultBytes = null;
   var pendingOpenId = null;
+  var pendingConcealmentRevealId = null;
+  var secretNoteRevealTimers = [];
   // Off by default (P0.15). Keyfile bytes and name never leave this document -
   // no message type carries them, and they are never logged. Cleared on lock
   // and whenever the keyfile toggle is switched off.
@@ -2297,8 +2310,241 @@ __COLDBOX_CAPABILITIES__
     // file input value or visible "loaded" status stale relative to the
     // now-zeroed keyfileBytes.
     clearKeyfileSelection();
+    pendingConcealmentRevealId = null;
+    if (concealmentControls) {
+      concealmentControls.hidden = true;
+    }
+    if (concealmentPassphrase) {
+      concealmentPassphrase.value = '';
+    }
+    if (concealmentStatus) {
+      concealmentStatus.textContent = '';
+    }
+    clearSecretNoteReveals();
+    if (secretNoteTitle) {
+      secretNoteTitle.value = '';
+    }
+    if (secretNoteBody) {
+      secretNoteBody.value = '';
+    }
+    if (secretNoteTags) {
+      secretNoteTags.value = '';
+    }
+    if (secretNoteSearch) {
+      secretNoteSearch.value = '';
+    }
+    if (secretNoteList) {
+      secretNoteList.textContent = '';
+    }
+    if (secretNotesPanel) {
+      secretNotesPanel.hidden = true;
+    }
     setSessionEvidence('locked');
     updateVaultControls();
+  }
+
+  function requestHiddenRecordReveal(id) {
+    if (!vaultUnlocked || !currentVaultBytes || !currentVaultSession) {
+      sendVaultError(id, 'vault-locked');
+      return;
+    }
+    pendingConcealmentRevealId = id;
+    if (concealmentControls) {
+      concealmentControls.hidden = false;
+    }
+    if (concealmentStatus) {
+      concealmentStatus.textContent = 'Re-enter the vault phrase to continue.';
+    }
+    if (concealmentPassphrase) {
+      concealmentPassphrase.value = '';
+      concealmentPassphrase.focus();
+    }
+  }
+
+  function completeHiddenRecordReveal() {
+    if (!pendingConcealmentRevealId || !currentVaultBytes || !vaultLayer
+      || typeof vaultLayer.openSession !== 'function') {
+      return;
+    }
+    var id = pendingConcealmentRevealId;
+    var phrase = concealmentPassphrase ? concealmentPassphrase.value : '';
+    if (!phrase) {
+      if (concealmentStatus) {
+        concealmentStatus.textContent = 'Enter the vault phrase first.';
+      }
+      return;
+    }
+    if (concealmentRevealButton) {
+      concealmentRevealButton.disabled = true;
+    }
+    vaultLayer.openSession(
+      currentVaultBytes,
+      phrase,
+      onlineMode ? 'online' : 'offline',
+      keyfileBytes
+    ).then(function (reauthenticatedSession) {
+      if (reauthenticatedSession && typeof reauthenticatedSession.close === 'function') {
+        reauthenticatedSession.close();
+      }
+      phrase = '';
+      if (concealmentPassphrase) {
+        concealmentPassphrase.value = '';
+      }
+      pendingConcealmentRevealId = null;
+      if (concealmentControls) {
+        concealmentControls.hidden = true;
+      }
+      if (!postVaultMessage(id, 'concealment.revealed', { revealed: true })) {
+        lockVaultSession(null, 'Vault locked because the hidden-record reveal acknowledgement failed.', true);
+      }
+    }, function () {
+      phrase = '';
+      if (concealmentPassphrase) {
+        concealmentPassphrase.value = '';
+      }
+      pendingConcealmentRevealId = null;
+      if (concealmentStatus) {
+        concealmentStatus.textContent = 'The vault phrase was not accepted. Hidden records remain concealed.';
+      }
+      postVaultMessage(id, 'concealment.revealed', { revealed: false });
+    }).then(function () {
+      if (concealmentRevealButton) {
+        concealmentRevealButton.disabled = false;
+      }
+    }, function () {
+      if (concealmentRevealButton) {
+        concealmentRevealButton.disabled = false;
+      }
+    });
+  }
+
+  function clearSecretNoteReveals() {
+    secretNoteRevealTimers.forEach(function (entry) {
+      window.clearTimeout(entry.timer);
+      entry.node.textContent = '••••••';
+      entry.button.textContent = 'Reveal for 30 seconds';
+    });
+    secretNoteRevealTimers = [];
+  }
+
+  function renderSecretNotes() {
+    if (!secretNotesPanel || !secretNoteList || !currentVaultSession
+      || !vaultUnlocked || onlineMode || typeof currentVaultSession.getSecretData !== 'function') {
+      if (secretNotesPanel) {
+        secretNotesPanel.hidden = true;
+      }
+      return;
+    }
+    var data;
+    try {
+      data = currentVaultSession.getSecretData();
+    } catch (error) {
+      data = null;
+    }
+    if (!data || !Array.isArray(data.notes)) {
+      secretNotesPanel.hidden = true;
+      return;
+    }
+    secretNotesPanel.hidden = false;
+    clearSecretNoteReveals();
+    secretNoteList.textContent = '';
+    var query = secretNoteSearch ? secretNoteSearch.value.trim().toLowerCase() : '';
+    var notes = data.notes.filter(function (note) {
+      return !query || JSON.stringify(note).toLowerCase().indexOf(query) !== -1;
+    });
+    if (notes.length === 0) {
+      var empty = document.createElement('p');
+      empty.textContent = query
+        ? 'No secret notes match this search.'
+        : 'No secret notes recorded in this vault.';
+      secretNoteList.appendChild(empty);
+      return;
+    }
+    notes.forEach(function (note) {
+      var card = document.createElement('article');
+      card.className = 'cold-secret-note-card';
+      var title = document.createElement('h3');
+      title.textContent = note.title;
+      card.appendChild(title);
+      var body = document.createElement('p');
+      body.textContent = '••••••';
+      card.appendChild(body);
+      var reveal = document.createElement('button');
+      reveal.type = 'button';
+      reveal.textContent = 'Reveal for 30 seconds';
+      reveal.addEventListener('click', function () {
+        body.textContent = note.body;
+        reveal.textContent = 'Secret visible';
+        var timer = window.setTimeout(function () {
+          body.textContent = '••••••';
+          reveal.textContent = 'Reveal for 30 seconds';
+        }, 30000);
+        secretNoteRevealTimers.push({ node: body, button: reveal, timer: timer });
+      });
+      card.appendChild(reveal);
+      if (Array.isArray(note.tags) && note.tags.length > 0) {
+        var tags = document.createElement('p');
+        tags.textContent = note.tags.map(function (tag) { return '#' + tag; }).join(' ');
+        card.appendChild(tags);
+      }
+      secretNoteList.appendChild(card);
+    });
+  }
+
+  function secretNoteTagsFromInput(value) {
+    return value.split(',').map(function (item) {
+      return item.trim().replace(/^#+/, '').toLowerCase();
+    }).filter(function (tag, index, values) {
+      return tag && tag.length <= 64 && /^[a-z0-9_:-]+$/.test(tag) && values.indexOf(tag) === index;
+    });
+  }
+
+  function saveSecretNote(event) {
+    event.preventDefault();
+    if (!currentVaultSession || !vaultUnlocked || onlineMode
+      || typeof currentVaultSession.getSecretData !== 'function'
+      || typeof currentVaultSession.replaceSecretData !== 'function') {
+      if (secretNoteList) {
+        secretNoteList.textContent = 'Secret notes need an offline unlocked vault with a secret compartment.';
+      }
+      return;
+    }
+    var title = secretNoteTitle ? secretNoteTitle.value.trim() : '';
+    var body = secretNoteBody ? secretNoteBody.value : '';
+    if (!title || !body || title.length > 256 || body.length > 20000) {
+      if (secretNoteList) {
+        secretNoteList.textContent = 'Enter a title and body within the displayed limits.';
+      }
+      return;
+    }
+    var data;
+    try {
+      data = currentVaultSession.getSecretData() || {};
+      data.notes = Array.isArray(data.notes) ? data.notes : [];
+      data.notes.push({
+        id: generateVaultUuid(),
+        title: title,
+        body: body,
+        visibility: 'secret',
+        tags: secretNoteTagsFromInput(secretNoteTags ? secretNoteTags.value : ''),
+        hidden: false
+      });
+      currentVaultSession.replaceSecretData(data);
+    } catch (error) {
+      if (secretNoteList) {
+        secretNoteList.textContent = 'The encrypted secret compartment could not be updated; nothing was saved.';
+      }
+      return;
+    }
+    if (secretNoteTitle) { secretNoteTitle.value = ''; }
+    if (secretNoteBody) { secretNoteBody.value = ''; }
+    if (secretNoteTags) { secretNoteTags.value = ''; }
+    renderSecretNotes();
+    if (!postVaultMessage(nextVaultMessageId('secret-note'), 'secretData.updated', { dirty: true })) {
+      lockVaultSession(null, 'Vault locked because the secret-note acknowledgement failed.', true);
+      return;
+    }
+    recordVaultActivity();
   }
 
   function scheduleIdleLock() {
@@ -2385,7 +2631,7 @@ __COLDBOX_CAPABILITIES__
       return;
     }
     if (!onlineMode) {
-      createOptions.secretData = {};
+      createOptions.secretData = { notes: [] };
     }
     if (activeKeyfile) {
       createOptions.keyfile = activeKeyfile;
@@ -2413,6 +2659,7 @@ __COLDBOX_CAPABILITIES__
         );
         sendVaultOpened(nextVaultMessageId('created'), session.publicData);
         sendVaultStatus(false);
+        renderSecretNotes();
         scheduleIdleLock();
       }, function (error) {
         zeroBytes(bytes);
@@ -2483,6 +2730,7 @@ __COLDBOX_CAPABILITIES__
       );
       sendVaultOpened(responseId, session.publicData);
       sendVaultStatus(false);
+      renderSecretNotes();
       scheduleIdleLock();
     }, function () {
       passphrase = '';
@@ -2576,6 +2824,10 @@ __COLDBOX_CAPABILITIES__
       } catch (error) {
         sendVaultError(message.id, 'operation-failed');
       }
+      return;
+    }
+    if (message.type === 'concealment.reveal') {
+      requestHiddenRecordReveal(message.id);
       return;
     }
     if (message.type === 'vault.lock') {
@@ -3000,6 +3252,15 @@ __COLDBOX_CAPABILITIES__
       }
       lockVaultSession(nextVaultMessageId('local-clear'), 'Pending vault bytes cleared locally.', true);
     });
+  }
+  if (concealmentRevealButton) {
+    concealmentRevealButton.addEventListener('click', completeHiddenRecordReveal);
+  }
+  if (secretNoteSaveButton) {
+    secretNoteSaveButton.addEventListener('click', saveSecretNote);
+  }
+  if (secretNoteSearch) {
+    secretNoteSearch.addEventListener('input', renderSecretNotes);
   }
   if (keyfileToggle) {
     keyfileToggle.addEventListener('change', function () {

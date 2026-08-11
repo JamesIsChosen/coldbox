@@ -172,7 +172,10 @@ id, name, role, reachInstructions, notes
 id, title, body (markdown), visibility, linkedIds[], tags[], hidden
 ```
 
-`visibility` determines the compartment. "This account receives Coinbase withdrawals" stays readable online; "the passphrase hint is the street we grew up on" does not.
+`visibility` determines the compartment. `public` notes are safe for the warm
+public projection; `secret` notes are decrypted and searched only in the cold
+realm. "This account receives Coinbase withdrawals" stays readable online;
+"the passphrase hint is the street we grew up on" does not.
 
 ### PriceSnapshot 🔵
 

@@ -760,6 +760,37 @@ test('P1.6 openSession replaces only the public compartment and persists registr
   assert.equal(reopened.secretData.seeds[0].storedSecret.mnemonic, 'test-only-secret');
 });
 
+test('P1.7 cold sessions can update encrypted secret notes without exposing them publicly', async () => {
+  const context = createRealContext();
+  const passphrase = 'secret note session passphrase';
+  const original = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fast',
+    publicData: { wallets: [] },
+    secretData: { notes: [] }
+  });
+  const session = await context.__coldboxVault.openSession(original, passphrase, 'offline');
+  assert.equal(JSON.stringify(session.publicData), JSON.stringify({ wallets: [] }));
+  assert.equal(JSON.stringify(session.getSecretData()), JSON.stringify({ notes: [] }));
+  const nextSecret = session.getSecretData();
+  nextSecret.notes.push({
+    id: 'secret-note-1',
+    title: 'Passphrase hint',
+    body: 'secret note body',
+    visibility: 'secret',
+    tags: ['private']
+  });
+  session.replaceSecretData(nextSecret);
+  assert.equal(JSON.stringify(session.publicData), JSON.stringify({ wallets: [] }));
+  const saved = await session.save();
+  const reopened = await context.__coldboxVault.open(saved, passphrase, 'offline');
+  assert.equal(reopened.secretData.notes[0].body, 'secret note body');
+  context.__setWarmNetworkOnline(true);
+  const online = await context.__coldboxVault.openSession(saved, passphrase, 'online');
+  assert.equal(online.getSecretData(), null);
+  assert.throws(() => online.replaceSecretData({ notes: [] }), /serialization/);
+});
+
 test('P0.15 create() rejects an empty keyfile and an oversized keyfile, failing closed rather than deriving from weak material', async () => {
   const context = createFormatContext();
   await expectSerializationFailure(() => context.__coldboxVault.create({

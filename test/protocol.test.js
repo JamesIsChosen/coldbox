@@ -52,6 +52,7 @@ test('protocol exposes only the documented message whitelist', () => {
     'derive.request',
     'publicData.request',
     'publicData.replace',
+    'concealment.reveal',
     'ui.navigate'
   ]);
   assert.deepEqual(Array.from(protocol.messageTypes('cold-to-warm')), [
@@ -61,6 +62,8 @@ test('protocol exposes only the documented message whitelist', () => {
     'vault.lockRequest',
     'derive.result',
     'publicData.updated',
+    'concealment.revealed',
+    'secretData.updated',
     'status',
     'error',
     'panic.hide'
@@ -375,6 +378,54 @@ test('registry records use collection-specific public schemas for both write and
       }
     }
   }), null);
+});
+
+test('public notes are bounded, public-only records with canonical tags', () => {
+  const protocol = loadProtocol();
+  const noteId = '550e8400-e29b-41d4-a716-446655440003';
+  const result = protocol.validateMessage('warm-to-cold', {
+    id: 'public-note-1',
+    type: 'publicData.replace',
+    payload: {
+      publicCompartment: {
+        notes: [{
+          id: noteId,
+          title: 'Exchange receive note',
+          body: 'This account receives withdrawals.',
+          visibility: 'public',
+          tags: ['#Coinbase', 'taxlot-2024', 'coinbase'],
+          linkedIds: []
+        }]
+      }
+    }
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(result.payload.publicCompartment.notes[0])), {
+    id: noteId,
+    title: 'Exchange receive note',
+    body: 'This account receives withdrawals.',
+    visibility: 'public',
+    tags: ['coinbase', 'taxlot-2024'],
+    linkedIds: []
+  });
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'secret-note-1',
+    type: 'publicData.replace',
+    payload: {
+      publicCompartment: {
+        notes: [{
+          id: noteId,
+          title: 'Secret',
+          body: 'passphrase hint is the street we grew up on',
+          visibility: 'secret'
+        }]
+      }
+    }
+  }), null);
+  assert.equal(protocol.validateMessage('cold-to-warm', {
+    id: 'reveal-1',
+    type: 'concealment.revealed',
+    payload: { revealed: true, phrase: 'discarded' }
+  }).payload.revealed, true);
 });
 
 test('recognizable secret content is rejected from allowed public fields', () => {

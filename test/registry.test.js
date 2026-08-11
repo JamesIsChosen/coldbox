@@ -54,7 +54,7 @@ test('registry CRUD preserves relationships, clones values, and soft-deletes', (
   });
   assert.equal(store.find('accounts', account.id).walletId, wallet.id);
   assert.equal(store.find('addresses', address.id).accountId, account.id);
-  assert.equal(JSON.stringify(store.counts()), JSON.stringify({ wallets: 2, accounts: 1, addresses: 1 }));
+  assert.equal(JSON.stringify(store.counts()), JSON.stringify({ wallets: 2, accounts: 1, addresses: 1, notes: 0 }));
 
   const external = store.snapshot();
   external.wallets[0].label = 'mutated outside store';
@@ -64,7 +64,11 @@ test('registry CRUD preserves relationships, clones values, and soft-deletes', (
   store.deleteWallet(secondWallet.id);
   assert.equal(store.list('wallets').some((item) => item.id === secondWallet.id), false);
   assert.equal(store.list('wallets', true).some((item) => item.id === secondWallet.id && item.hidden), true);
+  assert.equal(store.updateWallet(secondWallet.id, { hidden: false }).hidden, false);
   assert.equal(store.deleteAccount(account.id).hidden, true);
+  assert.equal(store.updateAccount(account.id, { hidden: false }).hidden, false);
+  assert.equal(store.deleteAddress(address.id).hidden, true);
+  assert.equal(store.updateAddress(address.id, { hidden: false }).hidden, false);
   assert.equal(store.find('addresses', address.id).address, ADDRESS);
 });
 
@@ -176,4 +180,32 @@ test('registry module is warm-only and does not own secret or DOM handling', () 
   const source = fs.readFileSync(path.join(projectRoot, 'src', 'registry.js'), 'utf8');
   assert.doesNotMatch(source, /document\./);
   assert.doesNotMatch(source, /(?:mnemonic|privateKey|xprv|passphrase|secretPlaintext)/i);
+});
+
+test('registry supports linked public notes, canonical tags, search, and soft hide', () => {
+  const registry = loadRegistry();
+  const store = registry.createStore({ id: VAULT_ID });
+  const wallet = store.createWallet({ label: 'Long term', tags: ['#LONGTERM'] });
+  const note = store.createNote({
+    title: 'Withdrawal route',
+    body: 'Use this account for exchange withdrawals.',
+    visibility: 'public',
+    linkedIds: [wallet.id],
+    tags: ['#Coinbase', 'taxlot-2024']
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(note.tags)), ['coinbase', 'taxlot-2024']);
+  assert.equal(store.search('coinbase')[0].record.id, note.id);
+  assert.deepEqual(JSON.parse(JSON.stringify(store.tags())), ['coinbase', 'longterm', 'taxlot-2024']);
+  store.deleteNote(note.id);
+  assert.equal(store.list('notes').some((item) => item.id === note.id), false);
+  assert.equal(store.list('notes', true).some((item) => item.id === note.id && item.hidden), true);
+  assert.equal(store.updateNote(note.id, { hidden: false }).hidden, false);
+  assert.throws(
+    () => store.createNote({
+      title: 'Broken link', body: 'Public', visibility: 'public', linkedIds: [
+        '550e8400-e29b-41d4-a716-446655440099'
+      ]
+    }),
+    /relationship/
+  );
 });

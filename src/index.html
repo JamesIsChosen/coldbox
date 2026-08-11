@@ -76,6 +76,9 @@ __COLDBOX_STYLES__
           </div>
           <div class="top-actions">
             <span class="mode-badge"><span class="status-dot" aria-hidden="true"></span> Warm shell</span>
+            <button type="button" class="privacy-blur-toggle" id="privacy-blur-toggle" aria-pressed="false" data-state="off">
+              <span aria-hidden="true">◌</span> <span id="privacy-blur-toggle-label">Privacy blur off</span>
+            </button>
           </div>
         </div>
 
@@ -464,6 +467,11 @@ __COLDBOX_STYLES__
                   <input id="registry-wallet-path" class="registry-input" type="text" maxlength="128" placeholder="m/84'/0'/0'" autocomplete="off">
                   <label class="vault-label" for="registry-wallet-fingerprint">Fingerprint</label>
                   <input id="registry-wallet-fingerprint" class="registry-input" type="text" maxlength="8" pattern="[0-9a-fA-F]{8}" autocomplete="off">
+                  <label class="vault-label" for="registry-wallet-notes">Notes</label>
+                  <textarea id="registry-wallet-notes" class="registry-input" rows="3" maxlength="10000" autocomplete="off"></textarea>
+                  <label class="vault-label" for="registry-wallet-tags">Tags</label>
+                  <input id="registry-wallet-tags" class="registry-input" type="text" maxlength="512" placeholder="longterm, coinbase" autocomplete="off">
+                  <label class="registry-checkbox"><input id="registry-wallet-hidden" type="checkbox"> Hide this record</label>
                   <div class="registry-form-actions">
                     <button class="vault-button vault-button-primary" type="submit">Save wallet</button>
                     <button class="vault-button" id="registry-wallet-cancel" type="button" hidden>Cancel edit</button>
@@ -483,6 +491,11 @@ __COLDBOX_STYLES__
                   <input id="registry-account-path" class="registry-input" type="text" maxlength="128" placeholder="m/84'/0'/0'" autocomplete="off">
                   <label class="vault-label" for="registry-account-label">Label</label>
                   <input id="registry-account-label" class="registry-input" type="text" maxlength="256" autocomplete="off">
+                  <label class="vault-label" for="registry-account-notes">Notes</label>
+                  <textarea id="registry-account-notes" class="registry-input" rows="3" maxlength="10000" autocomplete="off"></textarea>
+                  <label class="vault-label" for="registry-account-tags">Tags</label>
+                  <input id="registry-account-tags" class="registry-input" type="text" maxlength="512" placeholder="savings, longterm" autocomplete="off">
+                  <label class="registry-checkbox"><input id="registry-account-hidden" type="checkbox"> Hide this record</label>
                   <div class="registry-form-actions">
                     <button class="vault-button vault-button-primary" type="submit">Save account</button>
                     <button class="vault-button" id="registry-account-cancel" type="button" hidden>Cancel edit</button>
@@ -503,6 +516,11 @@ __COLDBOX_STYLES__
                   <label class="vault-label" for="registry-address-label">Label</label>
                   <input id="registry-address-label" class="registry-input" type="text" maxlength="256" autocomplete="off">
                   <label class="registry-checkbox"><input id="registry-address-change" type="checkbox"> Change address</label>
+                  <label class="vault-label" for="registry-address-notes">Notes</label>
+                  <textarea id="registry-address-notes" class="registry-input" rows="3" maxlength="10000" autocomplete="off"></textarea>
+                  <label class="vault-label" for="registry-address-tags">Tags</label>
+                  <input id="registry-address-tags" class="registry-input" type="text" maxlength="512" placeholder="coinbase, receive" autocomplete="off">
+                  <label class="registry-checkbox"><input id="registry-address-hidden" type="checkbox"> Hide this record</label>
                   <div class="registry-form-actions">
                     <button class="vault-button vault-button-primary" type="submit">Save address</button>
                     <button class="vault-button" id="registry-address-cancel" type="button" hidden>Cancel edit</button>
@@ -510,10 +528,38 @@ __COLDBOX_STYLES__
                 </form>
               </article>
             </div>
+            <article class="info-card registry-card registry-note-editor">
+              <span class="card-icon" aria-hidden="true">04</span>
+              <h2>Public note</h2>
+              <p class="registry-help">Public notes remain in the public compartment. Secret notes are created only inside the sealed realm and never appear in this form.</p>
+              <form id="registry-note-form" class="registry-form">
+                <input id="registry-note-id" type="hidden">
+                <label class="vault-label" for="registry-note-title">Title</label>
+                <input id="registry-note-title" class="registry-input" type="text" maxlength="256" autocomplete="off" required>
+                <label class="vault-label" for="registry-note-body">Body (Markdown)</label>
+                <textarea id="registry-note-body" class="registry-input" rows="5" maxlength="20000" autocomplete="off" required></textarea>
+                <label class="vault-label" for="registry-note-links">Linked record IDs</label>
+                <input id="registry-note-links" class="registry-input" type="text" maxlength="4096" placeholder="UUIDs separated by commas" autocomplete="off">
+                <label class="vault-label" for="registry-note-tags">Tags</label>
+                <input id="registry-note-tags" class="registry-input" type="text" maxlength="512" placeholder="taxlot-2024, longterm" autocomplete="off">
+                <label class="registry-checkbox"><input id="registry-note-hidden" type="checkbox"> Hide this note</label>
+                <div class="registry-form-actions">
+                  <button class="vault-button vault-button-primary" type="submit">Save note</button>
+                  <button class="vault-button" id="registry-note-cancel" type="button" hidden>Cancel edit</button>
+                </div>
+              </form>
+            </article>
+            <div class="registry-filter-bar">
+              <label class="vault-label" for="registry-search">Search public records and tags</label>
+              <input id="registry-search" class="registry-input" type="search" maxlength="128" autocomplete="off" placeholder="e.g. #coinbase or savings">
+              <label class="registry-checkbox"><input id="registry-show-hidden" type="checkbox"> Reveal hidden records</label>
+              <p class="registry-help" id="registry-hidden-help">Hidden records stay out of views and search until you re-enter the vault phrase inside the sealed realm.</p>
+            </div>
             <div class="registry-lists">
               <article class="info-card registry-list-card"><h2>Wallets</h2><div id="registry-wallet-list" class="registry-list"></div></article>
               <article class="info-card registry-list-card"><h2>Accounts</h2><div id="registry-account-list" class="registry-list"></div></article>
               <article class="info-card registry-list-card"><h2>Addresses</h2><div id="registry-address-list" class="registry-list"></div></article>
+              <article class="info-card registry-list-card"><h2>Notes</h2><div id="registry-note-list" class="registry-list"></div></article>
             </div>
           </section>
         </section>

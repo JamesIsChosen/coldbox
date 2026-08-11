@@ -64,6 +64,30 @@ __COLDBOX_COLD_STYLES__
       </div>
       <p id="cold-vault-help">Choose a public vault name in the warm Vault page first. The warm shell can carry encrypted bytes only; unlock phrases, confirmation, keyfiles, and decrypted compartments remain inside this opaque frame.</p>
     </section>
+    <section id="cold-concealment-controls" aria-label="Concealment controls" hidden>
+      <p class="eyebrow">Concealment / P1.7</p>
+      <p id="cold-concealment-help">The warm shell asked to reveal hidden public records. Re-enter the vault phrase here; it never crosses the realm boundary.</p>
+      <label for="cold-concealment-passphrase">Re-enter vault phrase (never leaves this realm)</label>
+      <input id="cold-concealment-passphrase" type="password" autocomplete="current-password" spellcheck="false" autocorrect="off" autocapitalize="off">
+      <button id="cold-concealment-reveal" type="button">Reveal hidden records for this session</button>
+      <p id="cold-concealment-status" role="status" aria-live="polite"></p>
+    </section>
+    <section id="cold-secret-notes" aria-label="Secret notes" hidden>
+      <p class="eyebrow">Secret notes / P1.7</p>
+      <p id="cold-secret-notes-help">Secret notes are encrypted with the secret compartment and never enter the warm shell. They are available only in offline mode while this vault is unlocked.</p>
+      <label for="cold-secret-note-search">Search secret notes (cold-only)</label>
+      <input id="cold-secret-note-search" type="search" autocomplete="off" placeholder="title, body, or tag">
+      <form id="cold-secret-note-form">
+        <label for="cold-secret-note-title">Title</label>
+        <input id="cold-secret-note-title" type="text" maxlength="256" autocomplete="off">
+        <label for="cold-secret-note-body">Body (Markdown)</label>
+        <textarea id="cold-secret-note-body" rows="4" maxlength="20000" autocomplete="off" spellcheck="false"></textarea>
+        <label for="cold-secret-note-tags">Tags</label>
+        <input id="cold-secret-note-tags" type="text" maxlength="512" placeholder="private, recovery" autocomplete="off">
+        <button id="cold-secret-note-save" type="button">Save encrypted note</button>
+      </form>
+      <div id="cold-secret-note-list" aria-live="polite"></div>
+    </section>
     <section id="cold-entropy-lab" aria-label="Entropy Lab">
       <p class="eyebrow">Entropy Lab / P1.1 + P1.2</p>
       <p id="cold-entropy-lab-help">Collect physical/manual entropy from dice, coin flips, shuffled cards, or genuinely user-supplied hex, then combine it with fresh CSPRNG bytes. A sound device RNG supplies the selected normal output strength; the independently collected physical/manual contribution determines how much fallback protection remains if that RNG is completely compromised. The Generate controls are simulation conveniences powered by the same device RNG as CSPRNG; generated values are labeled and receive zero independent-source credit. Recording no physical/manual entropy is supported, but that is CSPRNG-only security rather than two-source protection.</p>

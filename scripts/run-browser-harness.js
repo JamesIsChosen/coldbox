@@ -443,7 +443,11 @@ async function lockVaultDiscardingUnsaved(page) {
   await page.locator('#vault-lock').click();
   const warning = page.locator('#vault-lock-warning');
   if (await warning.isVisible()) {
-    await page.locator('#vault-lock-without-save').click();
+    // A cold-local update can acknowledge asynchronously while the warm
+    // warning is being displayed. Use the button's own handler once the
+    // warning was observed, so a concurrent status repaint cannot make this
+    // acceptance path depend on Playwright's pointer actionability check.
+    await page.locator('#vault-lock-without-save').evaluate((button) => button.click());
   }
 }
 
@@ -1187,6 +1191,143 @@ async function verifyRegistryCrud(browser, engine) {
     console.log(`${engine}: registry wallet/account/address CRUD, explicit clear, durable reopen, and lock state passed`);
   } finally {
     await closePage(page);
+  }
+}
+
+async function verifyNotesAndConcealment(browser, engine) {
+  const { page } = await openPage(browser, buildPath, 'reachable', { suspendReachabilityInterval: true });
+  try {
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    const phrase = 'notes concealment browser phrase';
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    const coldFrame = await getColdFrame(page, engine);
+    await createPreparedVault(page, coldFrame, phrase, 'Notes Concealment Browser');
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#page-registry:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('#registry-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+
+    const written = page.locator('#registry-status').filter({ hasText: /Public registry change written/ });
+    await page.locator('#registry-wallet-label').fill('Concealment wallet');
+    await page.locator('#registry-wallet-form button[type="submit"]').click();
+    await written.waitFor({ state: 'visible', timeout: 5000 });
+
+    await page.locator('#registry-note-title').fill('Public browser note');
+    await page.locator('#registry-note-body').fill('Public note body for browser acceptance.');
+    await page.locator('#registry-note-tags').fill('#BrowserTag, longterm');
+    await page.locator('#registry-note-form button[type="submit"]').click();
+    await written.waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await page.locator('#registry-note-list .registry-record').count(), 1, `${engine}: public note CRUD did not render the created note`);
+    assert.match(await page.locator('#registry-note-list').textContent(), /#browsertag/);
+    await page.locator('#registry-search').fill('browsertag');
+    assert.equal(await page.locator('#registry-note-list .registry-record').count(), 1, `${engine}: public note/tag search did not return the note`);
+    await page.locator('#registry-search').fill('');
+
+    // A hidden public record stays out of normal views and search until the
+    // cold realm re-authenticates the session. The wrong phrase must not open it.
+    await page.locator('#registry-wallet-list [data-registry-action="edit"]').click();
+    await page.locator('#registry-wallet-hidden').check();
+    await page.locator('#registry-wallet-form button[type="submit"]').click();
+    await written.waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await page.locator('#registry-wallet-list .registry-record').count(), 0, `${engine}: hidden wallet remained visible without reveal`);
+    await page.locator('#registry-show-hidden').check();
+    await coldFrame.locator('#cold-concealment-controls:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-concealment-passphrase').fill('wrong browser phrase');
+    await coldFrame.locator('#cold-concealment-reveal').click();
+    await page.locator('#registry-status').filter({ hasText: /not accepted/ }).waitFor({ state: 'visible', timeout: 10000 });
+    assert.equal(await page.locator('#registry-wallet-list .registry-record').count(), 0, `${engine}: wrong reveal phrase exposed a hidden wallet`);
+
+    // The failed acknowledgement resets the warm checkbox; start a fresh
+    // cold re-authentication request before entering the correct phrase.
+    await page.locator('#registry-show-hidden').check();
+    await coldFrame.locator('#cold-concealment-controls:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.waitForFunction(() => {
+      const input = document.getElementById('cold-concealment-passphrase');
+      return input && input.value === '';
+    });
+    await coldFrame.locator('#cold-concealment-passphrase').fill(phrase);
+    await coldFrame.locator('#cold-concealment-reveal').click();
+    await page.waitForTimeout(1500);
+    const revealedWallets = await page.locator('#registry-wallet-list .registry-record').count();
+    assert.equal(
+      revealedWallets,
+      1,
+      `${engine}: successful reveal did not expose the hidden wallet (warm=${await page.locator('#registry-status').textContent()}, cold=${await coldFrame.locator('#cold-concealment-status').textContent()}, controlsHidden=${await coldFrame.locator('#cold-concealment-controls').isHidden()}, checkbox=${await page.locator('#registry-show-hidden').isChecked()})`
+    );
+    assert.equal(await page.locator('#registry-wallet-list .registry-record[data-concealed="true"]').count(), 1, `${engine}: successful reveal did not mark the hidden wallet as concealed`);
+
+    // P1.7 F8: editing an already-hidden record with the checkbox cleared must
+    // send hidden:false instead of merging the old hidden:true value back in.
+    await page.locator('#registry-wallet-list [data-registry-action="edit"]').click();
+    assert.equal(await page.locator('#registry-wallet-hidden').isChecked(), true, `${engine}: hidden wallet edit did not load its concealment state`);
+    await page.locator('#registry-wallet-hidden').uncheck();
+    await page.locator('#registry-wallet-form button[type="submit"]').click();
+    await written.waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await page.locator('#registry-wallet-list .registry-record[data-concealed="true"]').count(), 0, `${engine}: clearing concealment did not send hidden:false`);
+
+    console.log(`${engine}: P1.7 public notes/tags and reversible concealment passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
+async function verifyColdSecretNotes(browser, engine) {
+  const opened = await openPage(browser, buildPath, 'reachable', { suspendReachabilityInterval: true });
+  try {
+    const { page, reachability } = opened;
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    const coldFrame = await getColdFrame(page, engine);
+
+    // Keep the browser on the Vault route after the offline transition. A
+    // route change from the cold iframe back to the warm shell intentionally
+    // starts an online-safe reachability check; this test therefore exercises
+    // the cold-only secret-note surface without crossing that boundary.
+    reachability.setMode('unreachable');
+    await triggerReachabilityRound(page);
+    await triggerReachabilityRound(page);
+    await page.locator('html[data-reachability-state="unreachable"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('html[data-warm-network-online="false"]').waitFor({ state: 'attached', timeout: 5000 });
+    await createPreparedVault(page, coldFrame, 'cold browser secret phrase', 'Cold Secret Browser');
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.waitForTimeout(1000);
+    assert.equal(
+      await coldFrame.locator('#cold-secret-notes').isHidden(),
+      false,
+      `${engine}: cold secret-note panel did not initialize (cold=${await coldFrame.locator('#cold-vault-status').textContent()}, mode=${await coldFrame.locator('html').getAttribute('data-warm-network-online')}, session=${await coldFrame.locator('html').getAttribute('data-cold-session-state')})`
+    );
+
+    await coldFrame.locator('#cold-secret-note-title').fill('Cold browser secret');
+    await coldFrame.locator('#cold-secret-note-body').fill('Secret browser body');
+    await coldFrame.locator('#cold-secret-note-tags').fill('private, browser');
+    await coldFrame.locator('#cold-secret-note-save').click();
+    await page.waitForTimeout(1000);
+    assert.equal(
+      await coldFrame.locator('#cold-secret-note-list .cold-secret-note-card').count(),
+      1,
+      `${engine}: cold secret-note create did not render (list=${await coldFrame.locator('#cold-secret-note-list').textContent()}, cold=${await coldFrame.locator('#cold-vault-status').textContent()}, mode=${await coldFrame.locator('html').getAttribute('data-warm-network-online')}, title=${await coldFrame.locator('#cold-secret-note-title').inputValue()}, buttonDisabled=${await coldFrame.locator('#cold-secret-note-save').isDisabled()}, form=${await coldFrame.locator('#cold-secret-note-form').count()})`
+    );
+    assert.equal(await page.locator('#cold-secret-note-title').count(), 0, `${engine}: secret-note title leaked into the warm document`);
+    assert.equal(await page.locator('body').textContent().then((text) => text.includes('Secret browser body')), false, `${engine}: secret-note body leaked into warm text`);
+    const secretCard = coldFrame.locator('#cold-secret-note-list .cold-secret-note-card').first();
+    assert.match(await secretCard.locator('h3').textContent(), /Cold browser secret/);
+    assert.equal((await secretCard.locator('p').first().textContent()).trim(), '\u2022\u2022\u2022\u2022\u2022\u2022', `${engine}: secret note body was not masked by default`);
+    await coldFrame.locator('#cold-secret-note-search').fill('private');
+    assert.equal(await coldFrame.locator('#cold-secret-note-list .cold-secret-note-card').count(), 1, `${engine}: cold-local secret-note search did not match its tag`);
+    await secretCard.locator('button').click();
+    assert.equal((await secretCard.locator('p').first().textContent()).trim(), 'Secret browser body', `${engine}: timed secret-note reveal did not stay cold-local`);
+
+    await lockVaultDiscardingUnsaved(page);
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 10000 });
+    assert.equal(await coldFrame.locator('#cold-secret-notes').isHidden(), true, `${engine}: locking did not hide secret notes`);
+    assert.equal(await coldFrame.locator('#cold-secret-note-title').inputValue(), '', `${engine}: locking did not clear the secret-note title`);
+    console.log(`${engine}: P1.7 cold-local secret-note creation, search, masking, reveal, and lock cleanup passed`);
+  } finally {
+    await closePage(opened.page);
   }
 }
 
@@ -2676,6 +2817,8 @@ async function run() {
       await verifyBuiltFile(browser, engine);
       await verifyStaleReachabilityOnlineSafety(browser, engine);
       await verifyVaultLibrary(browser, engine);
+      await verifyNotesAndConcealment(browser, engine);
+      await verifyColdSecretNotes(browser, engine);
       await verifyRegistryCrud(browser, engine);
       await verifyEntropyLab(browser, engine);
       await verifySeedForge(browser, engine);
