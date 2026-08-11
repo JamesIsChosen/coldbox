@@ -657,8 +657,46 @@ __COLDBOX_STYLES__
         </section>
 
         <section class="page" id="page-qr" data-page="qr" aria-labelledby="page-title-qr" hidden>
-          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-qr">QR Studio</h1><p class="page-lede">Local QR generation and airgapped transfer tools will be added to this route.</p></header>
-          <div class="empty-panel"><span class="panel-kicker">Coming in Phase 1</span><h2>Airgapped transfer gets its own workspace.</h2><p>Nothing is scanned, generated, or transferred by the shell skeleton.</p></div>
+          <header class="page-header"><p class="eyebrow">Tools / Public payloads</p><h1 id="page-title-qr">QR Studio</h1><p class="page-lede">Generate receiving-address QRs here. SeedQR and Compact SeedQR stay in the sealed workspace above and never enter this shell.</p></header>
+          <section class="qr-public-panel" aria-labelledby="qr-public-title">
+            <div>
+              <span class="panel-kicker">Public address QR</span>
+              <h2 id="qr-public-title">Make a receiving code</h2>
+              <p class="qr-public-help">The address is public, but compare the complete string before sharing it. An accidental seed phrase, private key, or extended private key is rejected before it can be encoded.</p>
+            </div>
+            <div class="qr-public-form">
+              <div>
+                <label for="qr-public-network">Address family</label>
+                <select id="qr-public-network">
+                  <option value="bitcoin">Bitcoin / BIP-21</option>
+                  <option value="ethereum">Ethereum / EIP-681</option>
+                </select>
+              </div>
+              <div>
+                <label for="qr-public-address">Full receiving address</label>
+                <input id="qr-public-address" type="text" maxlength="256" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" placeholder="bc1… or 0x…">
+              </div>
+              <div>
+                <label for="qr-public-amount">Amount (optional)</label>
+                <input id="qr-public-amount" type="text" inputmode="decimal" maxlength="40" autocomplete="off" placeholder="BTC or ETH amount">
+              </div>
+              <div>
+                <label for="qr-public-label">Label (optional)</label>
+                <input id="qr-public-label" type="text" maxlength="128" autocomplete="off" placeholder="e.g. cold storage">
+              </div>
+              <div class="qr-public-options">
+                <label><input id="qr-public-uri" type="checkbox" checked> Include a payment URI</label>
+                <button id="qr-public-generate" class="comic-btn" type="button">Generate address QR</button>
+              </div>
+            </div>
+            <p id="qr-public-status" class="qr-public-status" data-state="idle" role="status" aria-live="polite">No public address QR generated.</p>
+            <div id="qr-public-output" class="qr-public-output" aria-label="Generated public address QR"></div>
+            <div class="qr-public-actions">
+              <button id="qr-public-download-svg" class="comic-btn" type="button" disabled>Download SVG</button>
+              <button id="qr-public-download-png" class="comic-btn" type="button" disabled>Download PNG</button>
+            </div>
+            <p class="qr-public-warning">A QR code does not prove ownership or correctness. Read the whole destination address from an independent source, then test with a small amount before sending value.</p>
+          </section>
         </section>
 
         <section class="page" id="page-recovery" data-page="recovery" aria-labelledby="page-title-recovery" hidden>

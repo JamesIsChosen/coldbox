@@ -31,6 +31,7 @@ Step-by-step for the flows where mistakes are expensive. These compile into the 
 | [Multisig quorum](multisig-quorum.md) | Which key is where, and whether you could still spend |
 | [Inheritance planning](inheritance-planning.md) | Making sure it reaches your heirs |
 | [Going airgapped](going-airgapped.md) | Setting up a machine that's never online |
+| [Using QR Studio](use-qr-studio.md) | Public address QRs and cold-only SeedQR backups |
 
 ---
 

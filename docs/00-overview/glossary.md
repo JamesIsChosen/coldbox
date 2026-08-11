@@ -251,7 +251,7 @@ A QR code containing your whole seed phrase, scannable by devices like SeedSigne
 A QR encoding of an entire BIP-39 mnemonic (standard or "compact" numeric-index form), designed for fast, low-error transfer between airgapped devices via camera.
 :::
 ::: technical
-Standard SeedQR encodes each word as its zero-padded 4-digit index into the BIP-39 wordlist (numeric mode QR, 4 digits/word); Compact SeedQR instead packs the raw 11-bit indices into a byte-mode QR, trading human-unreadability for a smaller code.
+Standard SeedQR encodes each word as its zero-padded 4-digit index into the BIP-39 wordlist (numeric mode QR, 4 digits/word); Compact SeedQR instead stores the original BIP-39 entropy bytes in a byte-mode QR, trading human-unreadability for a smaller code.
 :::
 
 ---

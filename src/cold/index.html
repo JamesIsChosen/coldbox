@@ -299,6 +299,52 @@ __COLDBOX_COLD_STYLES__
       </section>
       <p id="cold-seed-forge-note">Write the words down offline and verify them from paper. A fingerprint is only a public identifier: it cannot recover a phrase. The raw BIP-39 seed is an advanced cold-only output; it is masked by default and has no clipboard or storage action. BIP-85 child phrases, xprv/xpub/ypub/zpub, script/path derivation, WIF, addresses, and password derivation are separate roadmap items.</p>
     </section>
+    <section id="cold-qr-studio" aria-label="Cold-only SeedQR Studio" data-state="locked">
+      <p class="eyebrow">SeedQR Studio / P1.10</p>
+      <h2>Plaintext seed QR — cold-only</h2>
+      <p id="cold-qr-help">These codes contain the complete seed phrase or its raw entropy. They are generated only in this sealed frame; no QR payload, phrase, or entropy bytes cross the message channel. Use an airgapped camera and treat every printed copy as a spend-authorising secret.</p>
+      <div class="cold-qr-grid-form">
+        <div>
+          <label for="cold-qr-seed-source">Seed source</label>
+          <select id="cold-qr-seed-source" disabled>
+            <option value="generated">Generated Seed Forge phrase</option>
+            <option value="validated">Validated existing phrase</option>
+          </select>
+        </div>
+        <div>
+          <label for="cold-qr-language">BIP-39 wordlist</label>
+          <select id="cold-qr-language" disabled></select>
+        </div>
+        <div>
+          <label for="cold-qr-layout">Printable layout</label>
+          <select id="cold-qr-layout" disabled>
+            <option value="a4-letter">A4 / Letter full-page card</option>
+            <option value="wallet-12">Wallet-sized 12-word card</option>
+            <option value="wallet-24">Wallet-sized 24-word card</option>
+          </select>
+        </div>
+      </div>
+      <label class="cold-qr-confirm"><input id="cold-qr-secret-confirm" type="checkbox" disabled> I understand this is a plaintext seed QR; printers, spoolers, cameras, and anyone who sees it can recover the wallet.</label>
+      <div class="cold-qr-actions">
+        <button id="cold-qr-standard" type="button" disabled>Generate standard SeedQR</button>
+        <button id="cold-qr-compact" type="button" disabled>Generate Compact SeedQR</button>
+      </div>
+      <label class="cold-qr-confirm"><input id="cold-qr-grid" type="checkbox" disabled> Add a numbered hand-transcription grid to the printable card</label>
+      <p id="cold-qr-output-status" class="cold-qr-status" data-state="idle" role="status" aria-live="polite">No secret QR generated in this session.</p>
+      <div id="cold-qr-output" class="cold-qr-output" aria-label="Generated cold-only QR"></div>
+      <div id="cold-qr-card" class="cold-qr-card" data-layout="a4-letter" data-grid="off" hidden>
+        <div class="cold-qr-card-header"><strong>Coldbox SeedQR</strong><span>PLAINTEXT SECRET — DO NOT PHOTOGRAPH</span></div>
+        <div id="cold-qr-card-code" class="cold-qr-card-code"></div>
+        <div id="cold-qr-card-grid" class="cold-qr-card-grid" aria-label="Blank numbered seed transcription cells"></div>
+        <p class="cold-qr-print-warning">Keep this card offline. Printer queues, printer memory, scanners, photographs, cloud sync, and discarded drafts may retain the seed. Verify the printed code before storing it.</p>
+      </div>
+      <div class="cold-qr-actions cold-qr-export-actions">
+        <button id="cold-qr-download-svg" type="button" disabled>Download SVG</button>
+        <button id="cold-qr-download-png" type="button" disabled>Download PNG</button>
+        <button id="cold-qr-print" type="button" disabled>Print card</button>
+      </div>
+      <p id="cold-qr-note">Standard SeedQR uses the selected BIP-39 word indices as zero-padded four-digit numeric groups. Compact SeedQR uses the raw BIP-39 entropy bytes and is smaller but not hand-readable. The current phrase is cleared with Seed Forge when the cold session locks.</p>
+    </section>
     <section id="cold-verification" aria-label="Verification Bench" data-state="locked">
       <p class="eyebrow">Verify Bench / P1.9</p>
       <h2>Independent hardware-wallet checks</h2>
@@ -407,6 +453,7 @@ __COLDBOX_ENTROPY_HEALTH_LAYER__
 __COLDBOX_SEED_FORGE_LAYER__
 __COLDBOX_DERIVATION_LAYER__
 __COLDBOX_VERIFICATION_LAYER__
+__COLDBOX_QR_LAYER__
 __COLDBOX_COLD_SCRIPT__
   </script>
 </body>

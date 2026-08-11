@@ -14,6 +14,11 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
+### Added — P1.10 QR generation (2026-08-10)
+
+- **Public address QRs.** QR Studio creates local BIP-21 Bitcoin or EIP-681 Ethereum receiving payloads with optional amount/label fields and SVG/PNG export. Seed-shaped input is rejected, and the UI keeps the warning that a QR does not prove ownership or correctness.
+- **Cold-only SeedQR.** Standard four-digit word-index and Compact raw-entropy QR formats, explicit plaintext acknowledgement, A4/Letter and wallet-sized printable cards, transcription grid, and SVG/PNG export run inside the sealed frame. The guide documents printer, camera, spooler, and photograph retention risks.
+
 ### Added — P1.9 verification workflows (2026-08-10)
 
 - **Cold-local hardware-wallet checks.** Verify Bench links the current public identity from Seed Forge and compares an independently entered device fingerprint, receive address, account xpub, or metal-backup fingerprint. The fifth roadmap check, BIP-39 passphrase verification, uses the exact passphrase selected and confirmed in Seed Forge; no duplicate passphrase panel exists. Comparisons validate complete public values; uniform-case Bech32 is accepted while mixed-case Bech32 and invalid checksums fail closed.
