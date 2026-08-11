@@ -729,6 +729,37 @@ test('P0.19 repeated saves preserve the authenticated Vault ID', async () => {
   assert.equal(secondReopened.publicData.id, vaultId, 're-saving must never create a new Vault ID');
 });
 
+test('P1.6 openSession replaces only the public compartment and persists registry CRUD', async () => {
+  const context = createRealContext();
+  const passphrase = 'registry public update passphrase';
+  const vaultId = '550e8400-e29b-41d4-a716-446655440000';
+  const original = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fast',
+    publicData: { id: vaultId, wallets: [] },
+    secretData: { seeds: [{ storedSecret: { mnemonic: 'test-only-secret' } }] }
+  });
+  const session = await context.__coldboxVault.openSession(original, passphrase, 'offline');
+  const nextPublicData = {
+    id: vaultId,
+    wallets: [{ id: '550e8400-e29b-41d4-a716-446655440001', label: 'Public record' }],
+    accounts: [],
+    addresses: []
+  };
+  const updated = session.replacePublicData(nextPublicData);
+  assert.equal(JSON.stringify(updated), JSON.stringify(nextPublicData));
+  assert.equal(JSON.stringify(session.publicData), JSON.stringify(nextPublicData));
+  assert.throws(
+    () => session.replacePublicData({ id: '550e8400-e29b-41d4-a716-446655440099', wallets: [] }),
+    /serialization/
+  );
+  const saved = await session.save();
+  const reopened = await context.__coldboxVault.open(saved, passphrase);
+  assert.equal(JSON.stringify(reopened.publicData), JSON.stringify(nextPublicData));
+  assert.equal(Object.prototype.hasOwnProperty.call(reopened.publicData, 'secretData'), false);
+  assert.equal(reopened.secretData.seeds[0].storedSecret.mnemonic, 'test-only-secret');
+});
+
 test('P0.15 create() rejects an empty keyfile and an oversized keyfile, failing closed rather than deriving from weak material', async () => {
   const context = createFormatContext();
   await expectSerializationFailure(() => context.__coldboxVault.create({

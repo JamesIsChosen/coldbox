@@ -38,6 +38,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0028](0028-cold-only-bip39-seed-forge.md) | Cold-only BIP-39 Seed Forge and master fingerprint | Accepted |
 | [0029](0029-cold-only-bitcoin-derivation-engine.md) | Cold-only Bitcoin BIP-32 derivation engine and script encodings | Accepted |
 | [0030](0030-cold-only-evm-and-arbitrary-path-derivation.md) | Cold-only EVM and generic arbitrary-path derivation | Accepted |
+| [0031](0031-public-registry-mutation-boundary.md) | Public registry mutations use a typed warm-to-cold replacement | Accepted |
 
 ## When to write one
 

@@ -720,6 +720,43 @@
     var closed = false;
     var saving = false;
 
+    function clonePublicData(value) {
+      try {
+        return JSON.parse(JSON.stringify(value));
+      } catch (error) {
+        throw serializationError();
+      }
+    }
+
+    function getPublicData() {
+      return closed || !state.publicData ? null : clonePublicData(state.publicData);
+    }
+
+    function replacePublicData(publicData) {
+      if (closed || saving || !publicData
+        || Object.prototype.toString.call(publicData) !== '[object Object]') {
+        throw serializationError();
+      }
+      requireVaultHealth(serializationError);
+      if (networkState() !== state.mode) {
+        close();
+        throw serializationError();
+      }
+      var currentId = state.publicData && state.publicData.id;
+      var nextId = publicData.id;
+      if (currentId !== undefined || nextId !== undefined) {
+        if (currentId !== nextId) {
+          throw serializationError();
+        }
+      }
+      var nextPublicData = clonePublicData(publicData);
+      var nextPublicPlain = paddedJson(nextPublicData);
+      zeroBytes(state.publicPlain);
+      state.publicData = nextPublicData;
+      state.publicPlain = nextPublicPlain;
+      return getPublicData();
+    }
+
     function close() {
       if (closed) {
         return;
@@ -735,6 +772,7 @@
       zeroBytes(state.wrappedBlock);
       state.publicKey = null;
       state.secretKey = null;
+      state.publicData = null;
       state.publicPlain = null;
       state.secretPlain = null;
       state.secretNonce = null;
@@ -822,7 +860,9 @@
     return Object.freeze({
       formatVersion: FORMAT_VERSION,
       header: state.header,
-      publicData: state.publicData,
+      get publicData() { return getPublicData(); },
+      getPublicData: getPublicData,
+      replacePublicData: replacePublicData,
       save: save,
       close: close
     });

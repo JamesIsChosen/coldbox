@@ -151,7 +151,19 @@ For distributing across locations, see [SLIP-39](backup-slip39.md) or [codex32](
 
 ## 7. Record it
 
-Registry → Add wallet. Record the label, **fingerprint**, derivation path, script type, whether a passphrase is used, and which device holds it.
+Open the vault, then choose Registry. Create a wallet record and record the label, **fingerprint**, derivation path, script type, and network. Add an account under that wallet, then add the receiving addresses you want to keep visible. These are public records, so never put a seed phrase, passphrase, or private key in a label or note.
+
+::: plain
+The Registry is your address book. Unlock the vault, add a wallet, then add its account and receiving addresses. The labels help you recognise the record later; they are not a place for secrets.
+:::
+
+::: working
+Registry records are public vault metadata. A Wallet links to Accounts, and an Account links to Addresses. Coldbox generates record IDs with secure randomness, keeps hidden records for history, and marks the vault unsaved until you save the encrypted file.
+:::
+
+::: technical
+P1.6 persists Wallet, Account, and Address CRUD through the typed `publicData.replace` / `publicData.updated` channel pair. The protocol applies collection-specific schemas, bounds text, rejects secret-shaped values, and the cold session refuses a public replacement that changes the authenticated Vault ID. See [architecture.md](../01-spec/architecture.md) and [ADR-0031](../05-development/adr/0031-public-registry-mutation-boundary.md).
+:::
 
 Do **not** store the seed itself unless you've decided that's right for this wallet — it's off by default for good reason.
 

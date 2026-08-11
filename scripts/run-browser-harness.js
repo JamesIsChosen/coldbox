@@ -1103,6 +1103,93 @@ async function verifyVaultLibrary(browser, engine) {
   }
 }
 
+async function verifyRegistryCrud(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    const coldFrame = await getColdFrame(page, engine);
+    const phrase = 'registry browser round-trip phrase';
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    await createPreparedVault(page, coldFrame, phrase, 'Registry Browser');
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#page-registry:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('#registry-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+
+    const written = page.locator('#registry-status').filter({ hasText: /Public registry change written/ });
+    await page.locator('#registry-wallet-label').fill('Browser wallet');
+    await page.locator('#registry-wallet-form button[type="submit"]').click();
+    await written.waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await page.locator('#registry-wallet-list .registry-record').count(), 1, `${engine}: wallet CRUD did not render the created wallet`);
+
+    await page.locator('#registry-account-label').fill('Browser account');
+    await page.locator('#registry-account-form button[type="submit"]').click();
+    await written.waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await page.locator('#registry-account-list .registry-record').count(), 1, `${engine}: account CRUD did not render the created account`);
+
+    await page.locator('#registry-address-value').fill('1BoatSLRHtKNngkdXEeobR76b53LETtpyT');
+    await page.locator('#registry-address-label').fill('Browser address');
+    await page.locator('#registry-address-form button[type="submit"]').click();
+    await written.waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await page.locator('#registry-address-list .registry-record').count(), 1, `${engine}: address CRUD did not render the created address`);
+
+    // Empty optional text on an edit is an explicit clear, not an omitted patch.
+    await page.locator('#registry-wallet-list [data-registry-action="edit"]').click();
+    await page.locator('#registry-wallet-label').fill('');
+    await page.locator('#registry-wallet-form button[type="submit"]').click();
+    await written.waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await page.locator('#registry-wallet-list').textContent(), /Unlabeled wallet/);
+    assert.doesNotMatch(await page.locator('#registry-wallet-list').textContent(), /Browser wallet/);
+
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator('#vault-save-download').click();
+    const download = await downloadPromise;
+    await page.locator('#vault-status-label').filter({ hasText: /Saved · unverified/ }).waitFor({ state: 'visible', timeout: 5000 });
+    const downloadedVaultPath = await download.path();
+    assert.ok(downloadedVaultPath, `${engine}: registry workflow needs the saved vault bytes for reopen coverage`);
+    const canonicalFilename = download.suggestedFilename();
+
+    await lockVaultDiscardingUnsaved(page);
+    await page.locator('#vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.waitForFunction(() => {
+      const locked = document.getElementById('registry-locked');
+      return locked && locked.hidden === false;
+    }, undefined, { timeout: 5000 });
+    assert.equal(await page.locator('#registry-locked').getAttribute('hidden'), null, `${engine}: registry must leave the locked state visible after vault lock`);
+    await page.locator('#vault-file-input').setInputFiles({
+      name: canonicalFilename,
+      mimeType: 'application/octet-stream',
+      buffer: fs.readFileSync(downloadedVaultPath)
+    });
+    await page.locator('#vault-library-list [data-vault-library-index="0"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#vault-library-list [data-vault-library-index="0"]').click();
+    await coldFrame.locator('#cold-vault-status[data-state="pending"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-passphrase').fill(phrase);
+    await coldFrame.locator('#cold-vault-unlock').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#page-registry:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('#registry-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await page.locator('#registry-wallet-list .registry-record').count(), 1, `${engine}: reopened registry lost the wallet`);
+    assert.equal(await page.locator('#registry-account-list .registry-record').count(), 1, `${engine}: reopened registry lost the account`);
+    assert.equal(await page.locator('#registry-address-list .registry-record').count(), 1, `${engine}: reopened registry lost the address`);
+    assert.match(await page.locator('#registry-wallet-list').textContent(), /Unlabeled wallet/);
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    await lockVaultDiscardingUnsaved(page);
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#page-registry:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('#registry-locked:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    console.log(`${engine}: registry wallet/account/address CRUD, explicit clear, durable reopen, and lock state passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyColdRealmFailure(browser, engine) {
   const page = await browser.newPage();
   await installReachabilityRoutes(page);
@@ -2589,6 +2676,7 @@ async function run() {
       await verifyBuiltFile(browser, engine);
       await verifyStaleReachabilityOnlineSafety(browser, engine);
       await verifyVaultLibrary(browser, engine);
+      await verifyRegistryCrud(browser, engine);
       await verifyEntropyLab(browser, engine);
       await verifySeedForge(browser, engine);
       await verifyUnlockedRuntimeHealthLockdown(browser, engine);
