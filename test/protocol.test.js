@@ -470,6 +470,12 @@ test('address verification messages carry enum fields only', () => {
     payload: { addressId, accountRef: accountId, index: 0, candidate: SAFE_ADDRESS, note: 'discarded prose' }
   });
   assert.equal(JSON.stringify(request.payload), JSON.stringify({ addressId, accountRef: accountId, index: 0, candidate: SAFE_ADDRESS }));
+  const whitespaceRequest = protocol.validateMessage('warm-to-cold', {
+    id: 'address-request-whitespace',
+    type: 'address.verifyRequest',
+    payload: { addressId, accountRef: accountId, index: 0, candidate: ` ${SAFE_ADDRESS} ` }
+  });
+  assert.equal(whitespaceRequest.payload.candidate, ` ${SAFE_ADDRESS} `);
   const result = protocol.validateMessage('cold-to-warm', {
     id: 'address-result-1',
     type: 'address.verifyResult',

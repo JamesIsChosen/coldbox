@@ -217,6 +217,7 @@ __COLDBOX_CONCEALMENT__
   var addressVerifyColdButton = document.getElementById('address-verify-cold');
   var addressVerifyInboundButton = document.getElementById('address-verify-inbound');
   var addressVerifyStatus = document.getElementById('address-verify-status');
+  var addressVerifyComparison = document.getElementById('address-verify-comparison');
   var addressVerifyBatch = document.getElementById('address-verify-batch');
   var addressVerifyBatchRun = document.getElementById('address-verify-batch-run');
   var addressVerifyBatchResults = document.getElementById('address-verify-batch-results');
@@ -3232,12 +3233,67 @@ __COLDBOX_CONCEALMENT__
     return 'unverified';
   }
 
-  function setAddressVerificationStatus(text, state) {
+  function renderAddressVerificationComparison(result) {
+    if (!addressVerifyComparison) {
+      return;
+    }
+    addressVerifyComparison.textContent = '';
+    if (!result || result.outcome !== 'mismatch'
+      || typeof result.candidate !== 'string' || typeof result.recorded !== 'string') {
+      addressVerifyComparison.hidden = true;
+      return;
+    }
+    var candidateLine = document.createElement('div');
+    candidateLine.className = 'address-verification-comparison-line';
+    var candidateLabel = document.createElement('span');
+    candidateLabel.className = 'address-verification-comparison-label';
+    candidateLabel.textContent = 'Candidate';
+    var candidateCode = document.createElement('code');
+    candidateCode.textContent = result.candidate;
+    candidateLine.appendChild(candidateLabel);
+    candidateLine.appendChild(candidateCode);
+    addressVerifyComparison.appendChild(candidateLine);
+
+    var recordedLine = document.createElement('div');
+    recordedLine.className = 'address-verification-comparison-line';
+    var recordedLabel = document.createElement('span');
+    recordedLabel.className = 'address-verification-comparison-label';
+    recordedLabel.textContent = 'Recorded';
+    var recordedCode = document.createElement('code');
+    recordedCode.textContent = result.recorded;
+    recordedLine.appendChild(recordedLabel);
+    recordedLine.appendChild(recordedCode);
+    addressVerifyComparison.appendChild(recordedLine);
+
+    var markerLine = document.createElement('div');
+    markerLine.className = 'address-verification-comparison-line address-verification-comparison-marker';
+    var markerLabel = document.createElement('span');
+    markerLabel.className = 'address-verification-comparison-label';
+    markerLabel.setAttribute('aria-hidden', 'true');
+    markerLabel.textContent = '';
+    var marker = document.createElement('code');
+    var divergenceIndex = Number.isInteger(result.divergenceIndex) && result.divergenceIndex >= 0
+      ? result.divergenceIndex
+      : 0;
+    marker.textContent = new Array(divergenceIndex + 1).join(' ') + '^';
+    markerLine.appendChild(markerLabel);
+    markerLine.appendChild(marker);
+    addressVerifyComparison.appendChild(markerLine);
+    var explanation = document.createElement('p');
+    explanation.className = 'sr-only';
+    explanation.textContent = 'The caret marks the first differing character at index '
+      + String(divergenceIndex) + '.';
+    addressVerifyComparison.appendChild(explanation);
+    addressVerifyComparison.hidden = false;
+  }
+
+  function setAddressVerificationStatus(text, state, result) {
     if (!addressVerifyStatus) {
       return;
     }
     addressVerifyStatus.textContent = text;
     addressVerifyStatus.setAttribute('data-state', state || 'idle');
+    renderAddressVerificationComparison(result || null);
   }
 
   function renderAddressVerificationOptions() {
@@ -3281,19 +3337,51 @@ __COLDBOX_CONCEALMENT__
     return registryStore.find('addresses', addressVerifyRecord.value);
   }
 
-  function addressVerificationCopy(result, state) {
-    var stateText = state ? ' Registry state: ' + addressVerificationStateText(state) + '.' : '';
+  function addressVerificationAccountLabel(record) {
+    var account = record && registryStore ? registryStore.find('accounts', record.accountId) : null;
+    if (!account) {
+      return 'Unlabelled account';
+    }
+    return account.label || account.asset || 'Unlabelled account';
+  }
+
+  function addressVerificationCandidateOutcome(candidate) {
+    var info = addressVerification.classify(candidate);
+    if (info.checksumInvalid) {
+      return { outcome: 'checksum-invalid', candidate: candidate };
+    }
+    if (info.kind === 'unknown') {
+      return { outcome: 'unrecognised-format', candidate: candidate };
+    }
+    return { outcome: 'no-record', candidate: candidate };
+  }
+
+  function addressVerificationCopy(result, state, matchingRecord) {
+    var record = matchingRecord || result.matchingRecord || null;
+    var effectiveState = result.matchingState || state;
+    var stateText = effectiveState
+      ? ' Registry state: ' + addressVerificationStateText(effectiveState) + '.'
+      : '';
     if (result.outcome === 'match') {
+      if (result.inbound) {
+        return 'Inbound address matches a recorded address under account "'
+          + addressVerificationAccountLabel(record) + '".' + stateText;
+      }
+      if (result.batch) {
+        return 'Registry match under account "' + addressVerificationAccountLabel(record) + '".' + stateText;
+      }
       return 'Registry match. This proves only that the pasted string matches a recorded address.' + stateText;
     }
     if (result.outcome === 'mismatch') {
-      return 'Mismatch at character ' + String(result.divergenceIndex) + '; the complete strings differ.' + stateText;
+      return 'Mismatch at character ' + String(result.divergenceIndex)
+        + '; both complete strings are shown below.' + stateText;
     }
     if (result.outcome === 'checksum-invalid') {
       return 'Checksum-invalid address; this is distinct from a registry mismatch.' + stateText;
     }
     if (result.outcome === 'different-account') {
-      return 'This address is recorded under a different account.' + stateText;
+      return 'This address is recorded under account "' + addressVerificationAccountLabel(record)
+        + '", not the selected account.' + stateText;
     }
     if (result.outcome === 'vault-locked') {
       return 'Vault locked: the cold authority check was not performed.';
@@ -3317,8 +3405,14 @@ __COLDBOX_CONCEALMENT__
     var matching = addressVerification.findRecord(candidate, registryStore.list('addresses', true));
     if (matching && matching.id !== selected.id) {
       result.outcome = 'different-account';
+      result.matchingRecord = matching;
+      result.matchingState = matching.verificationState;
     }
-    setAddressVerificationStatus(addressVerificationCopy(result, selected.verificationState), result.outcome);
+    setAddressVerificationStatus(
+      addressVerificationCopy(result, selected.verificationState, matching || selected),
+      result.outcome,
+      result
+    );
     return result;
   }
 
@@ -3329,15 +3423,20 @@ __COLDBOX_CONCEALMENT__
     }
     var matching = addressVerification.findRecord(candidate, registryStore.list('addresses', true));
     if (!matching) {
-      var unknown = addressVerification.classify(candidate).checksumInvalid
-        ? { outcome: 'checksum-invalid' }
-        : (addressVerification.classify(candidate).kind === 'unknown' ? { outcome: 'unrecognised-format' } : { outcome: 'no-record' });
-      setAddressVerificationStatus(addressVerificationCopy(unknown), unknown.outcome);
+      var unknown = addressVerificationCandidateOutcome(candidate);
+      setAddressVerificationStatus(addressVerificationCopy(unknown), unknown.outcome, unknown);
       return;
     }
+    var inboundResult = {
+      outcome: 'match',
+      inbound: true,
+      matchingRecord: matching,
+      matchingState: matching.verificationState
+    };
     setAddressVerificationStatus(
-      'Inbound address matches a recorded address. ' + addressVerificationStateText(matching.verificationState) + ' state remains a separate claim.',
-      'match'
+      addressVerificationCopy(inboundResult, matching.verificationState, matching),
+      'match',
+      inboundResult
     );
   }
 
@@ -3347,15 +3446,23 @@ __COLDBOX_CONCEALMENT__
       return;
     }
     addressVerifyBatchResults.textContent = '';
-    var rows = (addressVerifyBatch ? addressVerifyBatch.value : '').split(/\r?\n/).map(function (value) { return value.trim(); }).filter(Boolean);
+    var rows = (addressVerifyBatch ? addressVerifyBatch.value : '').split(/\r?\n/).filter(function (value) {
+      return value.length > 0;
+    });
     var records = registryStore.list('addresses', true);
     rows.forEach(function (candidate, index) {
       var result = addressVerification.findRecord(candidate, records);
+      var rowResult = result
+        ? {
+          outcome: 'match',
+          batch: true,
+          matchingRecord: result,
+          matchingState: result.verificationState
+        }
+        : addressVerificationCandidateOutcome(candidate);
       var item = document.createElement('p');
-      item.textContent = String(index + 1) + ': ' + (result
-        ? 'match — ' + addressVerificationStateText(result.verificationState)
-        : addressVerificationCopy(addressVerification.classify(candidate).kind === 'unknown'
-          ? { outcome: 'unrecognised-format' } : { outcome: 'no-record' }));
+      item.textContent = String(index + 1) + ': '
+        + addressVerificationCopy(rowResult, result ? result.verificationState : undefined, result);
       addressVerifyBatchResults.appendChild(item);
     });
     setAddressVerificationStatus(String(rows.length) + ' address row(s) checked. Registry matching and cold authority remain separate.', 'ready');
@@ -3367,9 +3474,9 @@ __COLDBOX_CONCEALMENT__
       setAddressVerificationStatus('Vault locked or no recorded address selected.', 'locked');
       return;
     }
-    var candidate = addressVerifyCandidate ? addressVerifyCandidate.value.trim() : '';
+    var candidate = addressVerifyCandidate ? addressVerifyCandidate.value : '';
     var account = registryStore.find('accounts', selected.accountId);
-    if (!account || !candidate) {
+    if (!account || typeof candidate !== 'string' || candidate.length === 0) {
       setAddressVerificationStatus('Choose an account record and paste the complete address.', 'error');
       return;
     }
@@ -3380,20 +3487,41 @@ __COLDBOX_CONCEALMENT__
       candidate: candidate
     });
     if (id) {
-      pendingAddressVerification = id;
+      pendingAddressVerification = {
+        id: id,
+        candidate: candidate,
+        recorded: selected.address,
+        selectedId: selected.id
+      };
       setAddressVerificationStatus('Comparing the registry value and requesting cold re-derivation inside the sealed realm…', 'checking');
     }
   }
 
   function handleAddressVerificationResult(message) {
-    if (!pendingAddressVerification || pendingAddressVerification !== message.id) {
+    if (!pendingAddressVerification || pendingAddressVerification.id !== message.id) {
       recordChannelAnomaly();
       return;
     }
+    var pending = pendingAddressVerification;
     pendingAddressVerification = null;
+    var result = {};
+    Object.keys(message.payload).forEach(function (key) {
+      result[key] = message.payload[key];
+    });
+    result.candidate = pending.candidate;
+    result.recorded = pending.recorded;
+    var matching = addressVerification && registryStore
+      ? addressVerification.findRecord(pending.candidate, registryStore.list('addresses', true))
+      : null;
+    if (matching && matching.id !== pending.selectedId) {
+      result.outcome = 'different-account';
+      result.matchingRecord = matching;
+      result.matchingState = matching.verificationState;
+    }
     setAddressVerificationStatus(
-      addressVerificationCopy(message.payload, message.payload.verificationState),
-      message.payload.outcome
+      addressVerificationCopy(result, result.verificationState, matching),
+      result.outcome,
+      result
     );
     renderAddressVerificationOptions();
   }
@@ -5135,7 +5263,7 @@ __COLDBOX_CONCEALMENT__
   if (addressVerifyCompareButton) {
     addressVerifyCompareButton.addEventListener('click', function () {
       compareAddressAgainstRegistry(
-        addressVerifyCandidate ? addressVerifyCandidate.value.trim() : '',
+        addressVerifyCandidate ? addressVerifyCandidate.value : '',
         selectedAddressVerificationRecord()
       );
     });
@@ -5145,7 +5273,7 @@ __COLDBOX_CONCEALMENT__
   }
   if (addressVerifyInboundButton) {
     addressVerifyInboundButton.addEventListener('click', function () {
-      compareInboundAddress(addressVerifyCandidate ? addressVerifyCandidate.value.trim() : '');
+      compareInboundAddress(addressVerifyCandidate ? addressVerifyCandidate.value : '');
     });
   }
   if (addressVerifyBatchRun) {

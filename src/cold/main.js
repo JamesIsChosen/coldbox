@@ -2940,14 +2940,6 @@ __COLDBOX_QR_ENCODER__
     return Array.isArray(records) ? records.filter(function (record) { return record.id === id; })[0] || null : null;
   }
 
-  function verificationAccountIndex(path) {
-    if (typeof path !== 'string') {
-      return 0;
-    }
-    var match = path.match(/\/(\d+)'?$/);
-    return match ? Number(match[1]) : 0;
-  }
-
   function handleAddressVerifyRequest(message) {
     if (!vaultUnlocked || !currentVaultSession || typeof currentVaultSession.getPublicData !== 'function') {
       postVaultMessage(message.id, 'address.verifyResult', {
@@ -2973,27 +2965,19 @@ __COLDBOX_QR_ENCODER__
     }
 
     var current = currentSeedForgeWallet();
-    if (address && account && current && verification && derivation) {
+    if (address && account && current && verification && addressVerification) {
       try {
         var wallet = findPublicRecord(publicData.wallets, account.walletId);
-        var identity = verification.deriveWalletIdentity(current.bytes, {
-          network: wallet && wallet.network === 'testnet' ? 'testnet' : 'mainnet',
-          account: verificationAccountIndex(account.path),
-          count: Math.max(5, address.index + 1)
-        });
-        var family = account.xpub
-          ? identity.families.filter(function (entry) { return entry.xpub === account.xpub; })[0]
-          : verification.familyFor(identity, wallet && wallet.scriptType ? wallet.scriptType : 'p2wpkh');
-        var derived = family && (address.isChange ? family.changeAddresses : family.receiveAddresses)[address.index];
-        if (derived && addressVerification.compare(derived, address.address).outcome === 'match') {
+        var derivationResult = verification.deriveRegistryAddress(current.bytes, account, wallet, address);
+        if (derivationResult && addressVerification.compare(derivationResult.address, address.address).outcome === 'match') {
           verificationState = 'cold-verified';
           var verifiedAt = new Date().toISOString();
-          var nextPublicData = JSON.parse(JSON.stringify(publicData));
-          var nextAddress = findPublicRecord(nextPublicData.addresses, address.id);
-          nextAddress.verificationState = verificationState;
-          nextAddress.addressOrigin = 'derived';
-          nextAddress.lastColdVerifiedAt = verifiedAt;
-          nextAddress.verifiedAgainstXpub = family.xpub;
+          var nextPublicData = verification.markAddressColdVerified(
+            publicData,
+            address.id,
+            verifiedAt,
+            derivationResult.xpub
+          );
           var updated = currentVaultSession.replacePublicData(nextPublicData);
           postVaultMessage(nextVaultMessageId('verify-state'), 'publicData.updated', {
             publicCompartment: updated
