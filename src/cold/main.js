@@ -13,6 +13,7 @@ __COLDBOX_CAPABILITIES__
   var entropyHealth = window.__coldboxEntropyHealth;
   var seedForge = window.__coldboxSeedForge;
   var derivation = window.__coldboxDerivation;
+  var addressVerification = window.__coldboxAddressVerification;
   var verification = window.__coldboxVerification;
   var readyMarker = document.getElementById('cold-ready');
   var protocolWarning = document.getElementById('cold-protocol-warning');
@@ -2601,6 +2602,83 @@ __COLDBOX_CAPABILITIES__
     postVaultMessage(id || nextVaultMessageId('error'), 'error', { code: code });
   }
 
+  function findPublicRecord(records, id) {
+    return Array.isArray(records) ? records.filter(function (record) { return record.id === id; })[0] || null : null;
+  }
+
+  function verificationAccountIndex(path) {
+    if (typeof path !== 'string') {
+      return 0;
+    }
+    var match = path.match(/\/(\d+)'?$/);
+    return match ? Number(match[1]) : 0;
+  }
+
+  function handleAddressVerifyRequest(message) {
+    if (!vaultUnlocked || !currentVaultSession || typeof currentVaultSession.getPublicData !== 'function') {
+      postVaultMessage(message.id, 'address.verifyResult', {
+        addressId: message.payload.addressId,
+        outcome: 'vault-locked',
+        verificationState: 'unverified'
+      });
+      return;
+    }
+    var publicData = currentVaultSession.getPublicData() || {};
+    var address = findPublicRecord(publicData.addresses, message.payload.addressId);
+    var account = address ? findPublicRecord(publicData.accounts, address.accountId) : null;
+    var candidate = message.payload.candidate;
+    var verificationState = address && address.verificationState ? address.verificationState : 'unverified';
+    var comparison = addressVerification && address
+      ? addressVerification.compare(candidate, address.address)
+      : { outcome: 'no-record', divergenceIndex: -1 };
+    var allMatches = addressVerification && address
+      ? addressVerification.findRecord(candidate, publicData.addresses || [])
+      : null;
+    if (address && allMatches && allMatches.id !== address.id) {
+      comparison.outcome = 'different-account';
+    }
+
+    var current = currentSeedForgeWallet();
+    if (address && account && current && verification && derivation) {
+      try {
+        var wallet = findPublicRecord(publicData.wallets, account.walletId);
+        var identity = verification.deriveWalletIdentity(current.bytes, {
+          network: wallet && wallet.network === 'testnet' ? 'testnet' : 'mainnet',
+          account: verificationAccountIndex(account.path),
+          count: Math.max(5, address.index + 1)
+        });
+        var family = account.xpub
+          ? identity.families.filter(function (entry) { return entry.xpub === account.xpub; })[0]
+          : verification.familyFor(identity, wallet && wallet.scriptType ? wallet.scriptType : 'p2wpkh');
+        var derived = family && (address.isChange ? family.changeAddresses : family.receiveAddresses)[address.index];
+        if (derived && addressVerification.compare(derived, address.address).outcome === 'match') {
+          verificationState = 'cold-verified';
+          var verifiedAt = new Date().toISOString();
+          var nextPublicData = JSON.parse(JSON.stringify(publicData));
+          var nextAddress = findPublicRecord(nextPublicData.addresses, address.id);
+          nextAddress.verificationState = verificationState;
+          nextAddress.addressOrigin = 'derived';
+          nextAddress.lastColdVerifiedAt = verifiedAt;
+          nextAddress.verifiedAgainstXpub = family.xpub;
+          var updated = currentVaultSession.replacePublicData(nextPublicData);
+          postVaultMessage(nextVaultMessageId('verify-state'), 'publicData.updated', {
+            publicCompartment: updated
+          });
+        }
+      } catch (error) {
+        // A missing seed linkage, unsupported account, or derivation mismatch
+        // is not permission to claim verification. The comparison result and
+        // existing state remain visible, and the warm shell receives no error prose.
+      }
+    }
+    postVaultMessage(message.id, 'address.verifyResult', {
+      addressId: message.payload.addressId,
+      outcome: comparison.outcome,
+      divergenceIndex: Number.isInteger(comparison.divergenceIndex) ? comparison.divergenceIndex : -1,
+      verificationState: verificationState
+    });
+  }
+
   function sendVaultOpened(id, publicData) {
     postVaultMessage(id || nextVaultMessageId('opened'), 'vault.opened', {
       publicCompartment: publicData && typeof publicData === 'object' ? publicData : {}
@@ -3183,6 +3261,10 @@ __COLDBOX_CAPABILITIES__
       } catch (error) {
         sendVaultError(message.id, 'operation-failed');
       }
+      return;
+    }
+    if (message.type === 'address.verifyRequest') {
+      handleAddressVerifyRequest(message);
       return;
     }
     if (message.type === 'concealment.reveal') {

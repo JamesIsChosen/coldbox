@@ -839,6 +839,70 @@
     return { accountRef: accountRef, scriptType: scriptType, range: range };
   }
 
+  var ADDRESS_VERIFY_OUTCOMES = Object.freeze([
+    'match',
+    'mismatch',
+    'unrecognised-format',
+    'checksum-invalid',
+    'no-record',
+    'different-account',
+    'vault-locked'
+  ]);
+  var ADDRESS_VERIFY_OUTCOME_SET = makeSet(ADDRESS_VERIFY_OUTCOMES);
+
+  function cleanAddressVerifyRequest(value) {
+    if (!isRecord(value)) {
+      return null;
+    }
+    var addressId = cleanUuid(value.addressId);
+    var accountRef = cleanUuid(value.accountRef);
+    var index = cleanInteger(value.index, 0, 0x7fffffff);
+    var candidate = cleanPublicAddress(value.candidate);
+    if (addressId === null || accountRef === null || index === null || candidate === null) {
+      return null;
+    }
+    return { addressId: addressId, accountRef: accountRef, index: index, candidate: candidate };
+  }
+
+  function cleanAddressVerifyResult(value) {
+    if (!isRecord(value)) {
+      return null;
+    }
+    var addressId = cleanUuid(value.addressId);
+    var outcome = cleanEnum(value.outcome, ADDRESS_VERIFY_OUTCOME_SET, 32);
+    var verificationState = cleanEnum(value.verificationState, VERIFICATION_STATE_SET, 32);
+    if (addressId === null || outcome === null || verificationState === null) {
+      return null;
+    }
+    var result = {
+      addressId: addressId,
+      outcome: outcome,
+      verificationState: verificationState
+    };
+    if (value.divergenceIndex !== undefined) {
+      var divergenceIndex = cleanInteger(value.divergenceIndex, -1, 256);
+      if (divergenceIndex === null) {
+        return null;
+      }
+      result.divergenceIndex = divergenceIndex;
+    }
+    if (value.verifiedAt !== undefined) {
+      var verifiedAt = cleanIsoTimestamp(value.verifiedAt);
+      if (verifiedAt === null) {
+        return null;
+      }
+      result.verifiedAt = verifiedAt;
+    }
+    if (value.xpubFingerprint !== undefined) {
+      var xpubFingerprint = cleanFingerprint(value.xpubFingerprint);
+      if (xpubFingerprint === null) {
+        return null;
+      }
+      result.xpubFingerprint = xpubFingerprint;
+    }
+    return result;
+  }
+
   function cleanPublicDataRequest(value) {
     if (!isRecord(value)) {
       return null;
@@ -982,6 +1046,7 @@
     'panic.hide': cleanEmptyPayload,
     'mode.set': cleanModeSet,
     'derive.request': cleanDeriveRequest,
+    'address.verifyRequest': cleanAddressVerifyRequest,
     'publicData.request': cleanPublicDataRequest,
     'publicData.replace': cleanPublicDataReplace,
     'concealment.reveal': cleanStrictEmptyPayload,
@@ -993,6 +1058,7 @@
     'vault.bytes': cleanVaultBytes,
     'vault.lockRequest': cleanStrictEmptyPayload,
     'derive.result': cleanDeriveResult,
+    'address.verifyResult': cleanAddressVerifyResult,
     'publicData.updated': cleanVaultOpened,
     'concealment.revealed': cleanConcealmentRevealed,
     'secretData.updated': cleanSecretDataUpdated,

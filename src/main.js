@@ -9,6 +9,7 @@ __COLDBOX_VAULT_TRANSFER__
   'use strict';
 
 __COLDBOX_QR_ENCODER__
+__COLDBOX_ADDRESS_VERIFICATION__
 __COLDBOX_CONCEALMENT__
 
   var coldRealmDocument = __COLDBOX_COLD_REALM_DOCUMENT__;
@@ -19,6 +20,7 @@ __COLDBOX_CONCEALMENT__
   var capabilities = window.__coldboxCapabilities;
   var saveIntegrity = window.__coldboxSaveIntegrity;
   var vaultTransfer = window.__coldboxLiveTransfer;
+  var addressVerification = window.__coldboxAddressVerification;
   var root = document.documentElement;
   var app = document.getElementById('app');
   var main = document.getElementById('main-content');
@@ -209,6 +211,15 @@ __COLDBOX_CONCEALMENT__
   var registryAccountList = document.getElementById('registry-account-list');
   var registryAddressList = document.getElementById('registry-address-list');
   var registryAddressVerificationSummary = document.getElementById('registry-address-verification-summary');
+  var addressVerifyRecord = document.getElementById('address-verify-record');
+  var addressVerifyCandidate = document.getElementById('address-verify-candidate');
+  var addressVerifyCompareButton = document.getElementById('address-verify-compare');
+  var addressVerifyColdButton = document.getElementById('address-verify-cold');
+  var addressVerifyInboundButton = document.getElementById('address-verify-inbound');
+  var addressVerifyStatus = document.getElementById('address-verify-status');
+  var addressVerifyBatch = document.getElementById('address-verify-batch');
+  var addressVerifyBatchRun = document.getElementById('address-verify-batch-run');
+  var addressVerifyBatchResults = document.getElementById('address-verify-batch-results');
   var deviceLocked = document.getElementById('device-locked');
   var deviceWorkspace = document.getElementById('device-workspace');
   var deviceStatus = document.getElementById('device-status');
@@ -296,6 +307,7 @@ __COLDBOX_CONCEALMENT__
   var pendingReceivedTransferMeta = null;
   var registryStore = null;
   var pendingRegistryMutation = null;
+  var pendingAddressVerification = null;
   var hiddenRegistryVisible = false;
   var pendingHiddenReveal = null;
   var concealmentController = concealment && typeof concealment.createController === 'function'
@@ -3196,6 +3208,185 @@ __COLDBOX_CONCEALMENT__
     return registryStore.list('devices', hiddenRegistryVisible).filter(deviceMatchesSearch);
   }
 
+  function addressVerificationStateText(state) {
+    if (state === 'cold-verified') {
+      return 'cold-verified';
+    }
+    if (state === 'cold-verified-stale') {
+      return 'cold-verified-stale';
+    }
+    if (state === 'unverifiable') {
+      return 'unverifiable';
+    }
+    return 'unverified';
+  }
+
+  function setAddressVerificationStatus(text, state) {
+    if (!addressVerifyStatus) {
+      return;
+    }
+    addressVerifyStatus.textContent = text;
+    addressVerifyStatus.setAttribute('data-state', state || 'idle');
+  }
+
+  function renderAddressVerificationOptions() {
+    if (!addressVerifyRecord) {
+      return;
+    }
+    while (addressVerifyRecord.firstChild) {
+      addressVerifyRecord.removeChild(addressVerifyRecord.firstChild);
+    }
+    var available = Boolean(registryStore && vaultState === 'unlocked');
+    if (!available) {
+      var lockedOption = document.createElement('option');
+      lockedOption.value = '';
+      lockedOption.textContent = 'Unlock a vault to choose an address';
+      addressVerifyRecord.appendChild(lockedOption);
+      addressVerifyRecord.disabled = true;
+      return;
+    }
+    var addresses = registryStore.list('addresses', hiddenRegistryVisible);
+    if (addresses.length === 0) {
+      var emptyOption = document.createElement('option');
+      emptyOption.value = '';
+      emptyOption.textContent = 'No recorded addresses';
+      addressVerifyRecord.appendChild(emptyOption);
+      addressVerifyRecord.disabled = true;
+      return;
+    }
+    addresses.forEach(function (address) {
+      var option = document.createElement('option');
+      option.value = address.id;
+      option.textContent = address.address + ' — ' + addressVerificationStateText(address.verificationState);
+      addressVerifyRecord.appendChild(option);
+    });
+    addressVerifyRecord.disabled = false;
+  }
+
+  function selectedAddressVerificationRecord() {
+    if (!registryStore || !addressVerifyRecord || !addressVerifyRecord.value) {
+      return null;
+    }
+    return registryStore.find('addresses', addressVerifyRecord.value);
+  }
+
+  function addressVerificationCopy(result, state) {
+    var stateText = state ? ' Registry state: ' + addressVerificationStateText(state) + '.' : '';
+    if (result.outcome === 'match') {
+      return 'Registry match. This proves only that the pasted string matches a recorded address.' + stateText;
+    }
+    if (result.outcome === 'mismatch') {
+      return 'Mismatch at character ' + String(result.divergenceIndex) + '; the complete strings differ.' + stateText;
+    }
+    if (result.outcome === 'checksum-invalid') {
+      return 'Checksum-invalid address; this is distinct from a registry mismatch.' + stateText;
+    }
+    if (result.outcome === 'different-account') {
+      return 'This address is recorded under a different account.' + stateText;
+    }
+    if (result.outcome === 'vault-locked') {
+      return 'Vault locked: the cold authority check was not performed.';
+    }
+    if (result.outcome === 'no-record') {
+      return 'No recorded address matched this complete string.' + stateText;
+    }
+    return 'The pasted value is not a recognised address format.' + stateText;
+  }
+
+  function compareAddressAgainstRegistry(candidate, selected) {
+    if (!addressVerification || !registryStore || vaultState !== 'unlocked') {
+      setAddressVerificationStatus('Vault locked: registry comparison is unavailable.', 'locked');
+      return null;
+    }
+    if (!selected) {
+      setAddressVerificationStatus('Choose a recorded address first.', 'error');
+      return null;
+    }
+    var result = addressVerification.compare(candidate, selected.address);
+    var matching = addressVerification.findRecord(candidate, registryStore.list('addresses', true));
+    if (matching && matching.id !== selected.id) {
+      result.outcome = 'different-account';
+    }
+    setAddressVerificationStatus(addressVerificationCopy(result, selected.verificationState), result.outcome);
+    return result;
+  }
+
+  function compareInboundAddress(candidate) {
+    if (!addressVerification || !registryStore || vaultState !== 'unlocked') {
+      setAddressVerificationStatus('Vault locked: registry comparison is unavailable.', 'locked');
+      return;
+    }
+    var matching = addressVerification.findRecord(candidate, registryStore.list('addresses', true));
+    if (!matching) {
+      var unknown = addressVerification.classify(candidate).checksumInvalid
+        ? { outcome: 'checksum-invalid' }
+        : (addressVerification.classify(candidate).kind === 'unknown' ? { outcome: 'unrecognised-format' } : { outcome: 'no-record' });
+      setAddressVerificationStatus(addressVerificationCopy(unknown), unknown.outcome);
+      return;
+    }
+    setAddressVerificationStatus(
+      'Inbound address matches a recorded address. ' + addressVerificationStateText(matching.verificationState) + ' state remains a separate claim.',
+      'match'
+    );
+  }
+
+  function runAddressBatch() {
+    if (!registryStore || vaultState !== 'unlocked' || !addressVerifyBatchResults) {
+      setAddressVerificationStatus('Vault locked: batch registry comparison is unavailable.', 'locked');
+      return;
+    }
+    addressVerifyBatchResults.textContent = '';
+    var rows = (addressVerifyBatch ? addressVerifyBatch.value : '').split(/\r?\n/).map(function (value) { return value.trim(); }).filter(Boolean);
+    var records = registryStore.list('addresses', true);
+    rows.forEach(function (candidate, index) {
+      var result = addressVerification.findRecord(candidate, records);
+      var item = document.createElement('p');
+      item.textContent = String(index + 1) + ': ' + (result
+        ? 'match — ' + addressVerificationStateText(result.verificationState)
+        : addressVerificationCopy(addressVerification.classify(candidate).kind === 'unknown'
+          ? { outcome: 'unrecognised-format' } : { outcome: 'no-record' }));
+      addressVerifyBatchResults.appendChild(item);
+    });
+    setAddressVerificationStatus(String(rows.length) + ' address row(s) checked. Registry matching and cold authority remain separate.', 'ready');
+  }
+
+  function requestColdAddressVerification() {
+    var selected = selectedAddressVerificationRecord();
+    if (!selected || !registryStore || vaultState !== 'unlocked') {
+      setAddressVerificationStatus('Vault locked or no recorded address selected.', 'locked');
+      return;
+    }
+    var candidate = addressVerifyCandidate ? addressVerifyCandidate.value.trim() : '';
+    var account = registryStore.find('accounts', selected.accountId);
+    if (!account || !candidate) {
+      setAddressVerificationStatus('Choose an account record and paste the complete address.', 'error');
+      return;
+    }
+    var id = sendVaultMessage('address.verifyRequest', {
+      addressId: selected.id,
+      accountRef: account.id,
+      index: selected.index,
+      candidate: candidate
+    });
+    if (id) {
+      pendingAddressVerification = id;
+      setAddressVerificationStatus('Comparing the registry value and requesting cold re-derivation inside the sealed realm…', 'checking');
+    }
+  }
+
+  function handleAddressVerificationResult(message) {
+    if (!pendingAddressVerification || pendingAddressVerification !== message.id) {
+      recordChannelAnomaly();
+      return;
+    }
+    pendingAddressVerification = null;
+    setAddressVerificationStatus(
+      addressVerificationCopy(message.payload, message.payload.verificationState),
+      message.payload.outcome
+    );
+    renderAddressVerificationOptions();
+  }
+
   function renderRegistry() {
     var available = Boolean(registryStore && vaultState === 'unlocked');
     if (registryLocked) {
@@ -3210,6 +3401,7 @@ __COLDBOX_CONCEALMENT__
     if (deviceWorkspace) {
       deviceWorkspace.hidden = !available;
     }
+    renderAddressVerificationOptions();
     if (!available) {
       return;
     }
@@ -3795,6 +3987,16 @@ __COLDBOX_CONCEALMENT__
   }
 
   function handlePublicDataUpdated(message) {
+    if (!pendingRegistryMutation && pendingAddressVerification) {
+      try {
+        registryStore.replace(message.payload.publicCompartment);
+        renderRegistry();
+      } catch (error) {
+        registryStore = null;
+        renderRegistry();
+      }
+      return;
+    }
     if (!pendingRegistryMutation || pendingRegistryMutation.id !== message.id) {
       recordChannelAnomaly();
       return;
@@ -3969,6 +4171,7 @@ __COLDBOX_CONCEALMENT__
       var lostUnsaved = vaultDirty;
       registryStore = null;
       pendingRegistryMutation = null;
+      pendingAddressVerification = null;
       hiddenRegistryVisible = false;
       pendingHiddenReveal = null;
       resetWalletForm();
@@ -4227,6 +4430,10 @@ __COLDBOX_CONCEALMENT__
     }
     if (handshakeState === 'ready' && message.type === 'publicData.updated') {
       handlePublicDataUpdated(message);
+      return;
+    }
+    if (handshakeState === 'ready' && message.type === 'address.verifyResult') {
+      handleAddressVerificationResult(message);
       return;
     }
     if (handshakeState === 'ready' && message.type === 'concealment.revealed') {
@@ -4723,6 +4930,25 @@ __COLDBOX_CONCEALMENT__
   }
   if (deviceShowHidden) {
     deviceShowHidden.addEventListener('change', requestHiddenReveal);
+  }
+  if (addressVerifyCompareButton) {
+    addressVerifyCompareButton.addEventListener('click', function () {
+      compareAddressAgainstRegistry(
+        addressVerifyCandidate ? addressVerifyCandidate.value.trim() : '',
+        selectedAddressVerificationRecord()
+      );
+    });
+  }
+  if (addressVerifyColdButton) {
+    addressVerifyColdButton.addEventListener('click', requestColdAddressVerification);
+  }
+  if (addressVerifyInboundButton) {
+    addressVerifyInboundButton.addEventListener('click', function () {
+      compareInboundAddress(addressVerifyCandidate ? addressVerifyCandidate.value.trim() : '');
+    });
+  }
+  if (addressVerifyBatchRun) {
+    addressVerifyBatchRun.addEventListener('click', runAddressBatch);
   }
   if (privacyBlurToggle && concealmentController) {
     privacyBlurToggle.addEventListener('click', function () {
