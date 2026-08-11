@@ -1408,6 +1408,25 @@ samp {
   overflow-wrap: anywhere;
 }
 
+.registry-record-verification {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.registry-record-verification[data-verification-state="unverified"] {
+  color: var(--warning);
+}
+
+.registry-record-verification[data-verification-state="cold-verified"] {
+  color: var(--success);
+}
+
+.registry-record-verification[data-verification-state="cold-verified-stale"] {
+  color: var(--warning);
+}
+
 .registry-record-tags,
 .registry-record-notes,
 .registry-record-body,

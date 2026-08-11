@@ -12,8 +12,18 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
+### Fixed - P1.11 independent-review remediation (2026-08-11)
+
+- Warm public registry replacements can no longer elevate an address to `cold-verified` or rewrite authenticated verification evidence; schema-1 public compartments migrate in the cold vault session and persist as schema 2; and Chromium/Firefox coverage locks the stale Registry label to `Cold verification stale`.
+- Cold-owned public replacements now compare authenticated address evidence with the next account xpub and force `cold-verified-stale` on xpub changes, even when the warm caller requests `cold-verified`.
+- Warm stale-state requests can no longer downgrade an authenticated address or rewrite its timestamp/xpub evidence when the account xpub still matches.
+
 Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
+### Added — P1.11 address verification state (2026-08-10)
+
+- **Explicit public address provenance.** Address records now carry `addressOrigin`, `verificationState`, `lastColdVerifiedAt`, and `verifiedAgainstXpub`. Legacy public data migrates to schema 2 with every address explicitly `manual` and `unverified`; verification is never inferred.
+- **Staleness is automatic.** Changing an account xpub moves its previously `cold-verified` addresses to `cold-verified-stale` while retaining the evidence that is now stale. The Registry visibly labels never-verified and stale addresses.
 ### Added — P1.10 QR generation (2026-08-10)
 
 - **Public address QRs.** QR Studio creates local BIP-21 Bitcoin or EIP-681 Ethereum receiving payloads with chain-appropriate optional amount fields (and Bitcoin labels) plus SVG/PNG export. Seed-shaped input is rejected, and the UI keeps the warning that a QR does not prove ownership or correctness.

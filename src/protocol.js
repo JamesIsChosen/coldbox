@@ -2,6 +2,7 @@
   'use strict';
 
   var PROTOCOL_VERSION = 1;
+  var PUBLIC_SCHEMA_VERSION = 2;
   var MAX_VAULT_BYTES = 64 * 1024 * 1024;
   var MAX_PUBLIC_PAYLOAD_BYTES = 4 * 1024 * 1024;
   var SECRET_KEYS = Object.freeze({
@@ -65,6 +66,13 @@
     'lost',
     'destroyed',
     'rma'
+  ]);
+  var ADDRESS_ORIGIN_SET = makeSet(['derived', 'manual', 'imported']);
+  var VERIFICATION_STATE_SET = makeSet([
+    'unverified',
+    'cold-verified',
+    'cold-verified-stale',
+    'unverifiable'
   ]);
   var KDF_ACTIVE = Object.freeze([
     'argon2id-standard',
@@ -338,6 +346,10 @@
       accountId: 'uuid',
       index: 'integer',
       address: 'address',
+      addressOrigin: 'address-origin',
+      verificationState: 'verification-state',
+      lastColdVerifiedAt: 'iso',
+      verifiedAgainstXpub: 'xpub',
       label: 'text:256',
       isChange: 'boolean',
       used: 'boolean',
@@ -542,6 +554,12 @@
     if (rule === 'device-status') {
       return cleanEnum(value, DEVICE_STATUS_SET, 32);
     }
+    if (rule === 'address-origin') {
+      return cleanEnum(value, ADDRESS_ORIGIN_SET, 16);
+    }
+    if (rule === 'verification-state') {
+      return cleanEnum(value, VERIFICATION_STATE_SET, 32);
+    }
     if (rule.indexOf('text:') === 0) {
       return cleanText(value, Number(rule.slice(5)));
     }
@@ -624,6 +642,20 @@
         return null;
       }
       result[key] = cleaned;
+    }
+    if (collection === 'addresses') {
+      if (!hasOwn(result, 'addressOrigin')) {
+        result.addressOrigin = 'manual';
+      }
+      if (!hasOwn(result, 'verificationState')) {
+        result.verificationState = 'unverified';
+      }
+      if (result.verificationState === 'unverified' || result.verificationState === 'unverifiable') {
+        delete result.lastColdVerifiedAt;
+        delete result.verifiedAgainstXpub;
+      } else if (!hasOwn(result, 'lastColdVerifiedAt') || !hasOwn(result, 'verifiedAgainstXpub')) {
+        return null;
+      }
     }
     return result;
   }
@@ -732,7 +764,12 @@
     if (Object.keys(value).some(function (key) { return hasOwn(SECRET_KEYS, key); })) {
       return null;
     }
+    var schema = hasOwn(value, 'schema') ? cleanInteger(value.schema, 1, PUBLIC_SCHEMA_VERSION) : 1;
+    if (schema === null) {
+      return null;
+    }
     var result = {};
+    result.schema = PUBLIC_SCHEMA_VERSION;
     if (hasOwn(value, 'id')) {
       var vaultId = cleanUuid(value.id);
       if (vaultId === null) {

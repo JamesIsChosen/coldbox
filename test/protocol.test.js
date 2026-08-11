@@ -160,7 +160,7 @@ test('protocol strips unknown fields and preserves only safe values', () => {
   assert.equal(JSON.stringify(publicData), JSON.stringify({
     id: 'opened-1',
     type: 'vault.opened',
-    payload: { publicCompartment: { id: SAFE_ID, wallets: [{ id: SAFE_ID, fingerprint: SAFE_FINGERPRINT }] } }
+    payload: { publicCompartment: { schema: 2, id: SAFE_ID, wallets: [{ id: SAFE_ID, fingerprint: SAFE_FINGERPRINT }] } }
   }));
   assert.equal(containsSensitiveKey(publicData), false);
   assert.equal(protocol.validateMessage('cold-to-warm', {
@@ -375,6 +375,84 @@ test('registry records use collection-specific public schemas for both write and
     payload: {
       publicCompartment: {
         addresses: [{ id: addressId, accountId: '550e8400-e29b-41d4-a716-446655440009', index: 0, address: SAFE_ADDRESS }]
+      }
+    }
+  }), null);
+});
+
+test('public schema projection defaults legacy address verification without inferring it', () => {
+  const protocol = loadProtocol();
+  const legacy = protocol.validateMessage('warm-to-cold', {
+    id: 'legacy-public-schema',
+    type: 'publicData.replace',
+    payload: {
+      publicCompartment: {
+        schema: 1,
+        wallets: [{ id: '550e8400-e29b-41d4-a716-446655440003' }],
+        accounts: [{
+          id: '550e8400-e29b-41d4-a716-446655440001',
+          walletId: '550e8400-e29b-41d4-a716-446655440003'
+        }],
+        addresses: [{
+          id: SAFE_ID,
+          accountId: '550e8400-e29b-41d4-a716-446655440001',
+          index: 0,
+          address: SAFE_ADDRESS
+        }]
+      }
+    }
+  });
+  assert.ok(legacy);
+  assert.equal(legacy.payload.publicCompartment.schema, 2);
+  assert.equal(legacy.payload.publicCompartment.addresses[0].addressOrigin, 'manual');
+  assert.equal(legacy.payload.publicCompartment.addresses[0].verificationState, 'unverified');
+  assert.equal('lastColdVerifiedAt' in legacy.payload.publicCompartment.addresses[0], false);
+  assert.equal('verifiedAgainstXpub' in legacy.payload.publicCompartment.addresses[0], false);
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'future-public-schema',
+    type: 'publicData.replace',
+    payload: { publicCompartment: { schema: 3 } }
+  }), null);
+});
+
+test('cold acknowledgements accept only the documented address verification state model', () => {
+  const protocol = loadProtocol();
+  const result = protocol.validateMessage('cold-to-warm', {
+    id: 'verified-address-schema',
+    type: 'publicData.updated',
+    payload: {
+      publicCompartment: {
+        wallets: [{ id: '550e8400-e29b-41d4-a716-446655440003' }],
+        accounts: [{
+          id: '550e8400-e29b-41d4-a716-446655440001',
+          walletId: '550e8400-e29b-41d4-a716-446655440003'
+        }],
+        addresses: [{
+          id: SAFE_ID,
+          accountId: '550e8400-e29b-41d4-a716-446655440001',
+          index: 0,
+          address: SAFE_ADDRESS,
+          addressOrigin: 'derived',
+          verificationState: 'cold-verified',
+          lastColdVerifiedAt: '2026-08-10T12:00:00.000Z',
+          verifiedAgainstXpub: SAFE_XPUB
+        }]
+      }
+    }
+  });
+  assert.equal(result.payload.publicCompartment.addresses[0].verificationState, 'cold-verified');
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'invalid-address-state',
+    type: 'publicData.replace',
+    payload: {
+      publicCompartment: {
+        addresses: [{
+          id: SAFE_ID,
+          accountId: '550e8400-e29b-41d4-a716-446655440001',
+          index: 0,
+          address: SAFE_ADDRESS,
+          verificationState: 'verified'
+        }]
       }
     }
   }), null);

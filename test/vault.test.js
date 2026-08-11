@@ -279,7 +279,7 @@ test('P0.11 vault round-trip uses real P0.10 crypto and 64 KiB compartments', as
   assert.equal((header.secretLength - 16) % (64 * 1024), 0);
 
   const opened = await context.__coldboxVault.open(vault, 'correct horse battery staple');
-  assert.equal(JSON.stringify(opened.publicData), JSON.stringify(publicData));
+  assert.equal(JSON.stringify(opened.publicData), JSON.stringify({ ...publicData, schema: 2 }));
   assert.equal(JSON.stringify(opened.secretData), JSON.stringify(secretData));
 
   const publicOnly = await context.__coldboxVault.create({
@@ -304,7 +304,7 @@ test('P0.13 public-only unlock never derives the secret subkey', async () => {
   });
   tracked.infos.length = 0;
   const opened = await context.__coldboxVault.openPublic(vault, 'online public passphrase');
-  assert.equal(JSON.stringify(opened.publicData), JSON.stringify({ wallets: [] }));
+  assert.equal(JSON.stringify(opened.publicData), JSON.stringify({ wallets: [], schema: 2 }));
   assert.equal(opened.secretData, null);
   assert.deepEqual(tracked.infos, ['cbx/public/v1']);
 });
@@ -440,11 +440,11 @@ test('P0.11 refuses every vault entry point unless the cold health gate is prove
   context.__setVaultHealth('data-crypto-state', 'fallback');
   assert.equal(context.__coldboxVault.healthReady(), true, 'explicit fallback remains a valid vault-health state');
   const fallbackOpened = await context.__coldboxVault.open(vault, passphrase);
-  assert.equal(JSON.stringify(fallbackOpened.publicData), JSON.stringify({ wallets: [] }));
+  assert.equal(JSON.stringify(fallbackOpened.publicData), JSON.stringify({ wallets: [], schema: 2 }));
 
   context.__resetVaultHealth();
   const opened = await context.__coldboxVault.open(vault, passphrase);
-  assert.equal(JSON.stringify(opened.publicData), JSON.stringify({ wallets: [] }));
+  assert.equal(JSON.stringify(opened.publicData), JSON.stringify({ wallets: [], schema: 2 }));
 });
 
 test('P0.19 vault mode follows validated warm mode.set state, ignores navigator.onLine, and fails closed on unknown', async () => {
@@ -602,7 +602,7 @@ test('P0.15 keyfile unlock: correct passphrase and correct keyfile unlocks; wrap
   assert.equal(header.wrappedDekLength, 4 + 'my-keyfile.bin'.length + 60);
 
   const opened = await context.__coldboxVault.open(vault, 'keyfile vault passphrase', undefined, keyfile);
-  assert.equal(JSON.stringify(opened.publicData), JSON.stringify(publicData));
+  assert.equal(JSON.stringify(opened.publicData), JSON.stringify({ ...publicData, schema: 2 }));
   assert.equal(JSON.stringify(opened.secretData), JSON.stringify(secretData));
 });
 
@@ -633,7 +633,7 @@ test('P0.15 keyfile unlock fails closed on a one-byte-altered keyfile, indisting
 
   // Sanity: the untouched keyfile unlocks.
   const opened = await context.__coldboxVault.open(vault, 'byte altered keyfile test', undefined, keyfile);
-  assert.equal(JSON.stringify(opened.publicData), JSON.stringify({ wallets: [] }));
+  assert.equal(JSON.stringify(opened.publicData), JSON.stringify({ wallets: [], schema: 2 }));
 
   const alteredKeyfile = new Uint8Array(keyfile);
   alteredKeyfile[0] ^= 1;
@@ -674,14 +674,14 @@ test('P0.15 regression: passphrase-only vaults are unaffected by the keyfile fea
 
   // Opens exactly as before - no keyfile argument at all.
   const opened = await context.__coldboxVault.open(vault, passphrase);
-  assert.equal(JSON.stringify(opened.publicData), JSON.stringify(publicData));
+  assert.equal(JSON.stringify(opened.publicData), JSON.stringify({ ...publicData, schema: 2 }));
   assert.equal(JSON.stringify(opened.secretData), JSON.stringify(secretData));
 
   // Erroneously supplying a keyfile to a passphrase-only vault does not break it -
   // there is no method-2 record to consult, so the extra credential is ignored.
   const strayKeyfile = context.__coldboxCrypto.randomBytes(256);
   const openedWithStrayKeyfile = await context.__coldboxVault.open(vault, passphrase, undefined, strayKeyfile);
-  assert.equal(JSON.stringify(openedWithStrayKeyfile.publicData), JSON.stringify(publicData));
+  assert.equal(JSON.stringify(openedWithStrayKeyfile.publicData), JSON.stringify({ ...publicData, schema: 2 }));
 
   await expectAuthenticationFailure(() => context.__coldboxVault.open(vault, 'wrong passphrase'));
 });
@@ -699,12 +699,12 @@ test('P0.15 openSession round-trips a keyfile vault and save() preserves the wra
   });
 
   const session = await context.__coldboxVault.openSession(vault, passphrase, 'offline', keyfile);
-  assert.equal(JSON.stringify(session.publicData), JSON.stringify({ wallets: [{ id: 'session' }] }));
+  assert.equal(JSON.stringify(session.publicData), JSON.stringify({ wallets: [{ id: 'session' }], schema: 2 }));
   const saved = await session.save();
   assert.equal(methodIdOf(saved), 2, 'a re-saved keyfile vault keeps its method-2 wrapped-DEK record');
 
   const reopened = await context.__coldboxVault.open(saved, passphrase, undefined, keyfile);
-  assert.equal(JSON.stringify(reopened.publicData), JSON.stringify({ wallets: [{ id: 'session' }] }));
+  assert.equal(JSON.stringify(reopened.publicData), JSON.stringify({ wallets: [{ id: 'session' }], schema: 2 }));
   await expectAuthenticationFailure(() => context.__coldboxVault.open(saved, passphrase));
 });
 
@@ -747,17 +747,185 @@ test('P1.6 openSession replaces only the public compartment and persists registr
     addresses: []
   };
   const updated = session.replacePublicData(nextPublicData);
-  assert.equal(JSON.stringify(updated), JSON.stringify(nextPublicData));
-  assert.equal(JSON.stringify(session.publicData), JSON.stringify(nextPublicData));
+  assert.equal(JSON.stringify(updated), JSON.stringify({ ...nextPublicData, schema: 2 }));
+  assert.equal(JSON.stringify(session.publicData), JSON.stringify({ ...nextPublicData, schema: 2 }));
   assert.throws(
     () => session.replacePublicData({ id: '550e8400-e29b-41d4-a716-446655440099', wallets: [] }),
     /serialization/
   );
   const saved = await session.save();
   const reopened = await context.__coldboxVault.open(saved, passphrase);
-  assert.equal(JSON.stringify(reopened.publicData), JSON.stringify(nextPublicData));
+  assert.equal(JSON.stringify(reopened.publicData), JSON.stringify({ ...nextPublicData, schema: 2 }));
   assert.equal(Object.prototype.hasOwnProperty.call(reopened.publicData, 'secretData'), false);
   assert.equal(reopened.secretData.seeds[0].storedSecret.mnemonic, 'test-only-secret');
+});
+
+test('P1.11 warm public replacement cannot manufacture or rewrite cold verification authority', async () => {
+  const context = createRealContext();
+  const passphrase = 'verification authority passphrase';
+  const publicData = {
+    schema: 2,
+    id: 'verification-vault',
+    wallets: [{ id: 'verification-wallet' }],
+    accounts: [{ id: 'verification-account', walletId: 'verification-wallet' }],
+    addresses: [{
+      id: 'verification-address',
+      accountId: 'verification-account',
+      index: 0,
+      address: '1BoatSLRHtKNngkdXEeobR76b53LETtpyT',
+      addressOrigin: 'manual',
+      verificationState: 'unverified'
+    }]
+  };
+  const vault = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fast',
+    publicData,
+    secretData: {}
+  });
+  const session = await context.__coldboxVault.openSession(vault, passphrase, 'offline');
+  const forged = session.publicData;
+  forged.addresses[0].verificationState = 'cold-verified';
+  forged.addresses[0].lastColdVerifiedAt = '2026-08-11T12:00:00.000Z';
+  forged.addresses[0].verifiedAgainstXpub = 'forged-xpub';
+  const rejected = session.replacePublicData(forged);
+  assert.equal(rejected.addresses[0].verificationState, 'unverified');
+  assert.equal('lastColdVerifiedAt' in rejected.addresses[0], false);
+  assert.equal('verifiedAgainstXpub' in rejected.addresses[0], false);
+
+  const authenticated = {
+    ...publicData,
+    accounts: [{
+      ...publicData.accounts[0],
+      xpub: 'xpub' + '1'.repeat(107)
+    }],
+    addresses: [{
+      ...publicData.addresses[0],
+      addressOrigin: 'derived',
+      verificationState: 'cold-verified',
+      lastColdVerifiedAt: '2026-08-11T12:00:00.000Z',
+      verifiedAgainstXpub: 'xpub' + '1'.repeat(107)
+    }]
+  };
+  const authenticatedVault = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fast',
+    publicData: authenticated,
+    secretData: {}
+  });
+  const authenticatedSession = await context.__coldboxVault.openSession(
+    authenticatedVault,
+    passphrase,
+    'offline'
+  );
+  const rewritten = authenticatedSession.publicData;
+  rewritten.addresses[0].verificationState = 'cold-verified';
+  rewritten.addresses[0].lastColdVerifiedAt = '2026-08-11T13:00:00.000Z';
+  rewritten.addresses[0].verifiedAgainstXpub = 'attacker-xpub';
+  const preserved = authenticatedSession.replacePublicData(rewritten);
+  assert.equal(preserved.addresses[0].verificationState, 'cold-verified');
+  assert.equal(preserved.addresses[0].lastColdVerifiedAt, '2026-08-11T12:00:00.000Z');
+  assert.equal(preserved.addresses[0].verifiedAgainstXpub, 'xpub' + '1'.repeat(107));
+});
+
+test('P1.11 cold replacement owns stale transitions and preserves authenticated evidence', async () => {
+  const context = createRealContext();
+  const passphrase = 'xpub staleness authority passphrase';
+  const authenticatedXpub = 'xpub' + '1'.repeat(107);
+  const replacementXpub = 'xpub' + '1'.repeat(106) + '2';
+  const publicData = {
+    schema: 2,
+    id: 'xpub-staleness-vault',
+    wallets: [{ id: 'xpub-staleness-wallet' }],
+    accounts: [{
+      id: 'xpub-staleness-account',
+      walletId: 'xpub-staleness-wallet',
+      xpub: authenticatedXpub
+    }],
+    addresses: [{
+      id: 'xpub-staleness-address',
+      accountId: 'xpub-staleness-account',
+      index: 0,
+      address: '1BoatSLRHtKNngkdXEeobR76b53LETtpyT',
+      addressOrigin: 'derived',
+      verificationState: 'cold-verified',
+      lastColdVerifiedAt: '2026-08-11T12:00:00.000Z',
+      verifiedAgainstXpub: authenticatedXpub
+    }]
+  };
+  const vault = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fast',
+    publicData,
+    secretData: {}
+  });
+  const session = await context.__coldboxVault.openSession(vault, passphrase, 'offline');
+  const forgedStale = session.publicData;
+  forgedStale.addresses[0].verificationState = 'cold-verified-stale';
+  forgedStale.addresses[0].lastColdVerifiedAt = '2026-08-11T13:00:00.000Z';
+  forgedStale.addresses[0].verifiedAgainstXpub = replacementXpub;
+  const preserved = session.replacePublicData(forgedStale);
+
+  assert.equal(preserved.addresses[0].verificationState, 'cold-verified');
+  assert.equal(preserved.addresses[0].lastColdVerifiedAt, '2026-08-11T12:00:00.000Z');
+  assert.equal(preserved.addresses[0].verifiedAgainstXpub, authenticatedXpub);
+
+  const replacement = session.publicData;
+  replacement.accounts[0].xpub = replacementXpub;
+  // The warm caller incorrectly leaves the state at cold-verified; the cold
+  // authority must derive staleness from the changed account evidence itself.
+  replacement.addresses[0].verificationState = 'cold-verified';
+  replacement.addresses[0].lastColdVerifiedAt = '2026-08-11T14:00:00.000Z';
+  replacement.addresses[0].verifiedAgainstXpub = 'attacker-xpub';
+  const reconciled = session.replacePublicData(replacement);
+
+  assert.equal(reconciled.addresses[0].verificationState, 'cold-verified-stale');
+  assert.equal(reconciled.addresses[0].lastColdVerifiedAt, '2026-08-11T12:00:00.000Z');
+  assert.equal(reconciled.addresses[0].verifiedAgainstXpub, authenticatedXpub);
+});
+
+test('P1.11 cold open migrates schema 1, persists schema 2, and preserves failed input', async () => {
+  const context = createRealContext();
+  const passphrase = 'public schema migration passphrase';
+  const legacyPublicData = {
+    schema: 1,
+    id: 'legacy-vault',
+    wallets: [{ id: 'legacy-wallet' }],
+    accounts: [{ id: 'legacy-account', walletId: 'legacy-wallet' }],
+    addresses: [{
+      id: 'legacy-address',
+      accountId: 'legacy-account',
+      index: 0,
+      address: '1BoatSLRHtKNngkdXEeobR76b53LETtpyT'
+    }]
+  };
+  const legacyVault = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fast',
+    publicData: legacyPublicData,
+    secretData: {}
+  });
+  const session = await context.__coldboxVault.openSession(legacyVault, passphrase, 'offline');
+  assert.equal(session.publicData.schema, 2);
+  assert.equal(session.publicData.addresses[0].addressOrigin, 'manual');
+  assert.equal(session.publicData.addresses[0].verificationState, 'unverified');
+  const migratedVault = await session.save();
+  const reopened = await context.__coldboxVault.open(migratedVault, passphrase, 'offline');
+  assert.equal(reopened.publicData.schema, 2);
+  assert.equal(reopened.publicData.addresses[0].verificationState, 'unverified');
+
+  const invalidVault = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fast',
+    publicData: { schema: 3, id: 'future-vault' },
+    secretData: {}
+  });
+  const originalBytes = new Uint8Array(invalidVault);
+  await assert.rejects(
+    () => context.__coldboxVault.openSession(invalidVault, passphrase, 'offline'),
+    /Vault authentication failed/
+  );
+  assert.deepEqual(invalidVault, originalBytes, 'a failed migration must leave the source vault bytes untouched');
 });
 
 test('P1.7 cold sessions can update encrypted secret notes without exposing them publicly', async () => {
@@ -770,7 +938,7 @@ test('P1.7 cold sessions can update encrypted secret notes without exposing them
     secretData: { notes: [] }
   });
   const session = await context.__coldboxVault.openSession(original, passphrase, 'offline');
-  assert.equal(JSON.stringify(session.publicData), JSON.stringify({ wallets: [] }));
+  assert.equal(JSON.stringify(session.publicData), JSON.stringify({ wallets: [], schema: 2 }));
   assert.equal(JSON.stringify(session.getSecretData()), JSON.stringify({ notes: [] }));
   const nextSecret = session.getSecretData();
   nextSecret.notes.push({
@@ -781,7 +949,7 @@ test('P1.7 cold sessions can update encrypted secret notes without exposing them
     tags: ['private']
   });
   session.replaceSecretData(nextSecret);
-  assert.equal(JSON.stringify(session.publicData), JSON.stringify({ wallets: [] }));
+  assert.equal(JSON.stringify(session.publicData), JSON.stringify({ wallets: [], schema: 2 }));
   const saved = await session.save();
   const reopened = await context.__coldboxVault.open(saved, passphrase, 'offline');
   assert.equal(reopened.secretData.notes[0].body, 'secret note body');

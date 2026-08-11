@@ -208,6 +208,7 @@ __COLDBOX_CONCEALMENT__
   var registryWalletList = document.getElementById('registry-wallet-list');
   var registryAccountList = document.getElementById('registry-account-list');
   var registryAddressList = document.getElementById('registry-address-list');
+  var registryAddressVerificationSummary = document.getElementById('registry-address-verification-summary');
   var qrPublicNetwork = document.getElementById('qr-public-network');
   var qrPublicAddress = document.getElementById('qr-public-address');
   var qrPublicAmount = document.getElementById('qr-public-amount');
@@ -3089,6 +3090,13 @@ __COLDBOX_CONCEALMENT__
     detailNode.className = 'registry-record-detail';
     detailNode.textContent = detail;
     card.appendChild(detailNode);
+    if (kind === 'address') {
+      var verificationNode = document.createElement('p');
+      verificationNode.className = 'registry-record-verification';
+      verificationNode.textContent = addressVerificationLabel(record.verificationState);
+      verificationNode.setAttribute('data-verification-state', record.verificationState || 'unverified');
+      card.appendChild(verificationNode);
+    }
     card.setAttribute('data-privacy-sensitive', 'true');
     if (record.hidden === true) {
       card.setAttribute('data-concealed', 'true');
@@ -3117,6 +3125,19 @@ __COLDBOX_CONCEALMENT__
     actions.appendChild(registryButton('delete', kind, record.id, 'Hide'));
     card.appendChild(actions);
     node.appendChild(card);
+  }
+
+  function addressVerificationLabel(state) {
+    if (state === 'cold-verified') {
+      return 'Cold verified';
+    }
+    if (state === 'cold-verified-stale') {
+      return 'Cold verification stale';
+    }
+    if (state === 'unverifiable') {
+      return 'Unverifiable: no seed in this vault';
+    }
+    return 'Never verified';
   }
 
   function appendRegistryEmpty(node, text) {
@@ -3206,11 +3227,19 @@ __COLDBOX_CONCEALMENT__
     var wallets = registryVisibleRecords('wallets');
     var accounts = registryVisibleRecords('accounts');
     var addresses = registryVisibleRecords('addresses');
+    var neverVerifiedCount = addresses.filter(function (address) {
+      return address.verificationState === 'unverified';
+    }).length;
     var devices = deviceVisibleRecords();
     var notes = registryVisibleRecords('notes');
     clearRegistryNode(registryWalletList);
     clearRegistryNode(registryAccountList);
     clearRegistryNode(registryAddressList);
+    if (registryAddressVerificationSummary) {
+      registryAddressVerificationSummary.textContent = neverVerifiedCount === 0
+        ? 'Every listed address has a recorded verification state.'
+        : String(neverVerifiedCount) + ' listed address' + (neverVerifiedCount === 1 ? ' is' : 'es are') + ' never verified.';
+    }
     clearRegistryNode(deviceList);
     clearRegistryNode(registryNoteList);
     if (wallets.length === 0) {

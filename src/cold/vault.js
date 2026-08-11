@@ -18,6 +18,7 @@
   var CIPHER_AES_GCM = 1;
   var METHOD_PASSPHRASE = 1;
   var METHOD_PASSPHRASE_KEYFILE = 2;
+  var PUBLIC_SCHEMA_VERSION = 2;
   var ERROR_MESSAGE = 'Vault authentication failed.';
   var SERIALIZE_ERROR = 'Vault serialization failed.';
   var SIZE_LIMIT_ERROR = 'Vault exceeds the 64 MiB size limit.';
@@ -231,6 +232,48 @@
     } catch (error) {
       throw authenticationError();
     }
+  }
+
+  function hasOwn(value, key) {
+    return Object.prototype.hasOwnProperty.call(value, key);
+  }
+
+  function isRecord(value) {
+    return Boolean(value) && Object.prototype.toString.call(value) === '[object Object]';
+  }
+
+  function migratePublicData(value) {
+    if (!isRecord(value)) {
+      throw authenticationError();
+    }
+    var schema = hasOwn(value, 'schema') ? value.schema : 1;
+    if (schema !== 1 && schema !== PUBLIC_SCHEMA_VERSION) {
+      throw authenticationError();
+    }
+    var migrated;
+    try {
+      migrated = JSON.parse(JSON.stringify(value));
+    } catch (error) {
+      throw authenticationError();
+    }
+    if (schema === 1) {
+      migrated.schema = PUBLIC_SCHEMA_VERSION;
+      if (Array.isArray(migrated.addresses)) {
+        migrated.addresses.forEach(function (address) {
+          if (!isRecord(address)) {
+            throw authenticationError();
+          }
+          // Schema 1 had no provenance fields. Every legacy address therefore
+          // starts at the explicit manual/unverified boundary; no old field is
+          // permitted to smuggle in a verification claim during migration.
+          address.addressOrigin = 'manual';
+          address.verificationState = 'unverified';
+          delete address.lastColdVerifiedAt;
+          delete address.verifiedAgainstXpub;
+        });
+      }
+    }
+    return migrated;
   }
 
   function normalizedProfile(value) {
@@ -699,7 +742,7 @@
       dek = await unwrapDek(records, passphrase, header, keyfile);
       publicKey = hkdfSubkey(dek, 'cbx/public/v1');
       publicPlain = await aesGcm('decrypt', publicKey, publicNonce, publicCiphertext, header.bytes);
-      var publicData = parsePaddedJson(publicPlain);
+      var publicData = migratePublicData(parsePaddedJson(publicPlain));
       var secretData = null;
       if (resolvedMode === 'offline' && header.secretLength > 0) {
         secretKey = hkdfSubkey(dek, 'cbx/secret/v1');
@@ -752,6 +795,119 @@
         : clonePublicData(state.secretData);
     }
 
+    function findAddress(addresses, id) {
+      if (!Array.isArray(addresses)) {
+        return null;
+      }
+      for (var index = 0; index < addresses.length; index += 1) {
+        if (isRecord(addresses[index]) && addresses[index].id === id) {
+          return addresses[index];
+        }
+      }
+      return null;
+    }
+
+    function findRecord(records, id) {
+      if (!Array.isArray(records)) {
+        return null;
+      }
+      for (var index = 0; index < records.length; index += 1) {
+        if (isRecord(records[index]) && records[index].id === id) {
+          return records[index];
+        }
+      }
+      return null;
+    }
+
+    function resetVerification(address, stateName) {
+      address.verificationState = stateName === 'unverifiable' ? 'unverifiable' : 'unverified';
+      delete address.lastColdVerifiedAt;
+      delete address.verifiedAgainstXpub;
+    }
+
+    function preserveColdVerificationAuthority(current, next) {
+      if (!isRecord(next) || !Array.isArray(next.addresses)) {
+        return;
+      }
+      var currentAddresses = current && current.addresses;
+      next.addresses.forEach(function (address) {
+        if (!isRecord(address)) {
+          return;
+        }
+        var previous = findAddress(currentAddresses, address.id);
+        var requestedState = address.verificationState || 'unverified';
+        var previousState = previous && previous.verificationState
+          ? previous.verificationState
+          : 'unverified';
+        var samePublicIdentity = previous
+          && previous.address === address.address
+          && previous.accountId === address.accountId
+          && previous.index === address.index;
+
+        // publicData.replace is a warm-origin mutation. It may carry forward
+        // an authenticated state, or record the derived stale transition, but
+        // it can never create either verification claim from public input.
+        if (!previous || !samePublicIdentity) {
+          if (requestedState === 'cold-verified' || requestedState === 'cold-verified-stale') {
+            resetVerification(address);
+          }
+          return;
+        }
+        var previousAccount = findRecord(current && current.accounts, previous.accountId);
+        var nextAccount = findRecord(next.accounts, address.accountId);
+        var verifiedAgainstXpub = previous.verifiedAgainstXpub;
+        var xpubEvidenceChanged = previousState === 'cold-verified'
+          && (typeof verifiedAgainstXpub !== 'string'
+            || !previousAccount
+            || !nextAccount
+            || previousAccount.xpub !== verifiedAgainstXpub
+            || nextAccount.xpub !== verifiedAgainstXpub);
+        if (xpubEvidenceChanged) {
+          address.verificationState = 'cold-verified-stale';
+          address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
+          address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
+          return;
+        }
+        if (previousState === 'cold-verified' && requestedState === 'cold-verified-stale') {
+          address.verificationState = 'cold-verified';
+          address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
+          address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
+          return;
+        }
+        if (requestedState === 'cold-verified' && previousState !== 'cold-verified') {
+          if (previousState === 'cold-verified-stale') {
+            address.verificationState = 'cold-verified-stale';
+            address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
+            address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
+          } else {
+            resetVerification(address, previousState);
+          }
+          return;
+        }
+        if (requestedState === 'cold-verified-stale' && previousState !== 'cold-verified'
+          && previousState !== 'cold-verified-stale') {
+          resetVerification(address, previousState);
+          return;
+        }
+        if ((previousState === 'cold-verified' || previousState === 'cold-verified-stale')
+          && requestedState !== 'cold-verified'
+          && requestedState !== 'cold-verified-stale') {
+          address.verificationState = previousState;
+          address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
+          address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
+          return;
+        }
+        if (previousState === 'cold-verified' && requestedState === 'cold-verified') {
+          address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
+          address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
+        } else if (previousState === 'cold-verified-stale'
+          && requestedState === 'cold-verified-stale') {
+          address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
+          address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
+        }
+      });
+    }
+
     function replacePublicData(publicData) {
       if (closed || saving || !publicData
         || Object.prototype.toString.call(publicData) !== '[object Object]') {
@@ -769,7 +925,8 @@
           throw serializationError();
         }
       }
-      var nextPublicData = clonePublicData(publicData);
+      var nextPublicData = migratePublicData(clonePublicData(publicData));
+      preserveColdVerificationAuthority(state.publicData, nextPublicData);
       var nextPublicPlain = paddedJson(nextPublicData);
       zeroBytes(state.publicPlain);
       state.publicData = nextPublicData;
@@ -950,7 +1107,7 @@
       dek = await unwrapDek(records, passphrase, header, keyfile);
       publicKey = hkdfSubkey(dek, 'cbx/public/v1');
       publicPlain = await aesGcm('decrypt', publicKey, publicNonce, publicCiphertext, headerBytes);
-      var publicData = parsePaddedJson(publicPlain);
+       var publicData = migratePublicData(parsePaddedJson(publicPlain));
       if (resolvedMode === 'offline' && header.secretLength > 0) {
         secretKey = hkdfSubkey(dek, 'cbx/secret/v1');
         secretPlain = await aesGcm('decrypt', secretKey, secretNonce, secretCiphertext, headerBytes);

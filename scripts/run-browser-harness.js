@@ -1194,6 +1194,71 @@ async function verifyRegistryCrud(browser, engine) {
   }
 }
 
+async function verifyStaleAddressDisplay(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    const coldFrame = await getColdFrame(page, engine);
+    const phrase = 'stale address display harness phrase';
+    const fixtureBytes = await coldFrame.evaluate(async ({ phrase: unlockPhrase }) => {
+      const xpub = `xpub${'1'.repeat(107)}`;
+      const bytes = await window.__coldboxVault.create({
+        passphrase: unlockPhrase,
+        profile: 'fast',
+        publicData: {
+          schema: 2,
+          id: '550e8400-e29b-41d4-a716-446655440010',
+          wallets: [{ id: '550e8400-e29b-41d4-a716-446655440011', label: 'Stale fixture wallet' }],
+          accounts: [{
+            id: '550e8400-e29b-41d4-a716-446655440012',
+            walletId: '550e8400-e29b-41d4-a716-446655440011',
+            xpub
+          }],
+          addresses: [{
+            id: '550e8400-e29b-41d4-a716-446655440013',
+            accountId: '550e8400-e29b-41d4-a716-446655440012',
+            index: 0,
+            address: '1BoatSLRHtKNngkdXEeobR76b53LETtpyT',
+            addressOrigin: 'derived',
+            verificationState: 'cold-verified-stale',
+            lastColdVerifiedAt: '2026-08-11T12:00:00.000Z',
+            verifiedAgainstXpub: xpub
+          }]
+        }
+      });
+      return Array.from(bytes);
+    }, { phrase });
+
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('#vault-file-input').setInputFiles({
+      name: 'stale-address-fixture--550e8400.cbx',
+      mimeType: 'application/octet-stream',
+      buffer: Buffer.from(fixtureBytes)
+    });
+    await page.locator('#vault-library-list [data-vault-library-index="0"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#vault-library-list [data-vault-library-index="0"]').click();
+    await coldFrame.locator('#cold-vault-status[data-state="pending"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-passphrase').fill(phrase);
+    await coldFrame.locator('#cold-vault-unlock').click();
+    try {
+      await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    } catch (error) {
+      throw new Error(`${engine}: stale fixture unlock failed: ${await coldFrame.locator('#cold-vault-status').textContent()}`);
+    }
+    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#page-registry:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('#registry-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    const verification = page.locator('#registry-address-list .registry-record-verification');
+    await verification.waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await verification.textContent(), 'Cold verification stale', `${engine}: stale address must render its stale label`);
+    assert.notEqual(await verification.textContent(), 'Cold verified', `${engine}: stale address must never render as cold verified`);
+    assert.equal(await verification.getAttribute('data-verification-state'), 'cold-verified-stale');
+    console.log(`${engine}: cold-verified-stale persisted state rendered as stale, never as cold verified`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyDeviceRegistry(browser, engine) {
   const { page } = await openPage(browser, buildPath);
   try {
@@ -3197,6 +3262,7 @@ async function run() {
       await verifyNotesAndConcealment(browser, engine);
       await verifyColdSecretNotes(browser, engine);
       await verifyRegistryCrud(browser, engine);
+      await verifyStaleAddressDisplay(browser, engine);
       await verifyDeviceRegistry(browser, engine);
       await verifyEntropyLab(browser, engine);
       await verifySeedForge(browser, engine);
