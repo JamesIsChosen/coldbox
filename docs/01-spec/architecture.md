@@ -1,6 +1,6 @@
 # Architecture — the two realms
 
-Detail on the split introduced in [SPEC.md §2](SPEC.md). Decision rationale in [ADR-0001](../05-development/adr/0001-two-realm-architecture.md).
+Detail on the split introduced in [SPEC.md §2](SPEC.md). Original decision rationale is in [ADR-0001](../05-development/adr/0001-two-realm-architecture.md); the later cold-printing permission amendment is in [ADR-0035](../05-development/adr/0035-cold-printing-allow-modals.md).
 
 ---
 

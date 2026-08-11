@@ -42,6 +42,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0032](0032-notes-tags-and-concealment.md) | Public notes stay public-only; secret notes stay cold-local; concealment is session-scoped | Accepted |
 | [0033](0033-device-registry.md) | Device records are public companion metadata | Accepted |
 | [0034](0034-cold-local-verification-workflows.md) | Verification workflows stay cold-local and manual | Accepted |
+| [0035](0035-cold-printing-allow-modals.md) | Cold-only printing adds `allow-modals` without weakening the opaque origin | Accepted |
 
 ## When to write one
 
