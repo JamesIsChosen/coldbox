@@ -71,7 +71,7 @@ The resolution is not to compromise on either. It is to use two documents.
 
 **Warm shell** — the outer document. CSP permits `connect-src` to a pinned allowlist of price and blockchain API hosts. Contains the UI chrome, live prices, balance lookups, the portfolio engine, and public registry views. **Never receives a secret.**
 
-**Cold realm** — a sandboxed iframe: `<iframe sandbox="allow-scripts allow-downloads" srcdoc="…">`, carrying its own CSP with `default-src 'none'; connect-src 'none'`. Contains vault decryption, seeds, private keys, all derivation, SLIP-39/Shamir, BIP-85, recovery search, and future secret QR tooling such as SeedQR. Vault live transfer is different: warm renders only already-encrypted `.cbx` bytes under §8.5/ADR-0026.
+**Cold realm** — a sandboxed iframe: `<iframe sandbox="allow-scripts allow-downloads allow-modals" srcdoc="…">`, carrying its own CSP with `default-src 'none'; connect-src 'none'`. Contains vault decryption, seeds, private keys, all derivation, SLIP-39/Shamir, BIP-85, recovery search, and future secret QR tooling such as SeedQR. `allow-modals` exists so the cold-only printable SeedQR flow can invoke the browser print dialog; `allow-same-origin` remains absent. Vault live transfer is different: warm renders only already-encrypted `.cbx` bytes under §8.5/ADR-0026.
 
 Why this is strong rather than merely tidy:
 
@@ -551,7 +551,7 @@ That last distinction matters more than it looks. A false-precision number invit
 
 **Backup Lab 🧩** — see §13.
 
-**QR Studio 🔳** — address QRs with BIP-21 / EIP-681 URI options; **SeedQR** (SeedSigner format: word indices as zero-padded 4-digit decimals) and **Compact SeedQR** (raw entropy, binary mode) matching the 21×21/25×25/29×29 templates already in this folder; printable A4/Letter card layouts and wallet-sized 12/24-word templates; grid overlay for hand-transcription to metal; SVG and PNG export. Optional camera scanner (`jsQR`) gated behind an extra confirmation for seed payloads, degrading to "unavailable" where `getUserMedia` doesn't work. Print warnings note that spoolers and printer memory retain documents.
+**QR Studio 🔳** — address QRs with BIP-21 / EIP-681 URI options; **SeedQR** (SeedSigner format: English BIP-39 word indices as zero-padded 4-digit decimals) and **Compact SeedQR** (raw entropy, binary mode) matching the 21×21/25×25/29×29 templates already in this folder; printable A4/Letter card layouts and wallet-sized 12/24-word templates; grid overlay for hand-transcription to metal; SVG and PNG export. Optional camera scanner (`jsQR`) gated behind an extra confirmation for seed payloads, degrading to "unavailable" where `getUserMedia` doesn't work. Print warnings note that spoolers and printer memory retain documents.
 
 **Recovery Assistant 🩺** — repairs a damaged BIP-39 phrase, a damaged SLIP-39 share, or a codex32 share, and searches for a forgotten passphrase. Full specification in §11.1b.
 

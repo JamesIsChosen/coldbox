@@ -1229,6 +1229,241 @@ body {
   border-top: 0.13rem solid var(--cold-outline);
 }
 
+/* P1.10: secret QR generation, export, and printing remain in the cold
+   document. The warm shell never receives the payload or generated pixels. */
+#cold-qr-studio {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 2px solid var(--cold-pink);
+  border-radius: 0.5rem;
+  background: var(--cold-surface);
+}
+
+#cold-qr-studio h2,
+#cold-qr-studio p {
+  margin-top: 0;
+}
+
+#cold-qr-help,
+#cold-qr-note,
+.cold-qr-print-warning {
+  color: var(--cold-muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.cold-qr-grid-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.cold-qr-grid-form > div {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.cold-qr-grid-form label,
+.cold-qr-confirm {
+  color: var(--cold-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.cold-qr-grid-form select {
+  min-height: 2.3rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--cold-outline);
+  border-radius: 0.25rem;
+  background: var(--cold-input);
+  color: var(--cold-text);
+  font: inherit;
+}
+
+.cold-qr-confirm {
+  display: flex;
+  gap: 0.45rem;
+  align-items: flex-start;
+}
+
+.cold-qr-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.cold-qr-actions button {
+  min-height: 2.3rem;
+  padding: 0.45rem 0.7rem;
+  border: 2px solid var(--cold-outline);
+  border-radius: 0.25rem;
+  background: var(--cold-yellow);
+  color: var(--cold-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cold-qr-actions button:disabled,
+.cold-qr-grid-form select:disabled,
+.cold-qr-confirm input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.cold-qr-actions button:focus-visible,
+.cold-qr-grid-form select:focus-visible,
+.cold-qr-confirm input:focus-visible {
+  outline: 2px solid var(--cold-pink);
+  outline-offset: 2px;
+}
+
+.cold-qr-status {
+  margin: 0;
+  padding: 0.55rem;
+  border-left: 4px solid var(--cold-outline);
+  background: var(--cold-input);
+  color: var(--cold-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.cold-qr-status[data-state="ready"] {
+  border-color: var(--cold-yellow);
+  color: var(--cold-yellow);
+}
+
+.cold-qr-status[data-state="error"] {
+  border-color: var(--cold-red);
+  color: var(--cold-red);
+}
+
+.cold-qr-output {
+  display: grid;
+  place-items: center;
+  min-height: 8rem;
+  padding: 0.75rem;
+  background: #ffffff;
+  color: #000000;
+}
+
+.cold-qr-output svg,
+.cold-qr-card-code svg {
+  display: block;
+  width: min(100%, 24rem);
+  height: auto;
+}
+
+.cold-qr-card {
+  display: grid;
+  gap: 0.6rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 1rem;
+  border: 0.18rem solid #000000;
+  background: #ffffff;
+  color: #000000;
+}
+
+.cold-qr-card[hidden] {
+  display: none;
+}
+
+.cold-qr-card[data-layout="wallet-12"] {
+  max-width: 15rem;
+}
+
+.cold-qr-card[data-layout="wallet-24"] {
+  max-width: 20rem;
+}
+
+.cold-qr-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+.cold-qr-card-header span {
+  font-weight: 700;
+}
+
+.cold-qr-card-code {
+  display: grid;
+  place-items: center;
+}
+
+.cold-qr-card-grid {
+  display: none;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.cold-qr-card[data-grid="on"] .cold-qr-card-grid {
+  display: grid;
+}
+
+.cold-qr-card-cell {
+  min-height: 1.4rem;
+  padding: 0.15rem;
+  border: 1px solid #000000;
+  font-size: 0.62rem;
+}
+
+.cold-qr-print-warning {
+  margin: 0;
+  color: #000000;
+  font-size: 0.68rem;
+}
+
+@media (max-width: 38rem) {
+  .cold-qr-grid-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  body {
+    background: #ffffff;
+  }
+
+  body > main > *:not(#cold-qr-studio),
+  #cold-qr-studio > :not(#cold-qr-card) {
+    display: none !important;
+  }
+
+  #cold-qr-studio,
+  #cold-qr-card {
+    display: grid !important;
+    margin: 0;
+    border-color: #000000;
+    box-shadow: none;
+  }
+
+  #cold-qr-studio {
+    width: 100%;
+    max-width: none;
+  }
+
+  #cold-qr-card[data-layout="a4-letter"] {
+    width: 100%;
+    max-width: none;
+  }
+
+  #cold-qr-card[data-layout="wallet-12"] {
+    width: 15rem;
+    max-width: 15rem;
+  }
+
+  #cold-qr-card[data-layout="wallet-24"] {
+    width: 20rem;
+    max-width: 20rem;
+  }
+}
+
 /* P1.9: verification inputs and verdicts remain inside the opaque cold
    document. The result treatment is deliberately plain: a match is useful
    evidence, not a claim that the hardware or its display is trustworthy. */

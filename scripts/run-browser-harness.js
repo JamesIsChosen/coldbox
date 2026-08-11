@@ -544,7 +544,7 @@ async function verifyBuiltFile(browser, engine) {
     assert.equal(await page.locator('#app').getAttribute('data-lockdown-state'), 'none');
     assert.equal(await page.locator('#app').getAttribute('data-vault-operations'), 'guarded');
     const sandbox = await page.locator('#cold-frame').getAttribute('sandbox');
-    assert.equal(sandbox, 'allow-scripts allow-downloads', `${engine}: cold frame sandbox changed`);
+    assert.equal(sandbox, 'allow-scripts allow-downloads allow-modals', `${engine}: cold frame sandbox changed`);
     assert.equal(
       sandbox.includes('allow-same-origin'),
       false,
@@ -2996,6 +2996,151 @@ async function verifyVerificationWorkflows(browser, engine) {
   }
 }
 
+async function verifyQrStudio(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    const coldFrame = await getColdFrame(page, engine);
+
+    await page.locator('#nav-rail a[data-route="qr"]').click();
+    await page.locator('#page-qr:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#qr-public-address').fill('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about');
+    await page.locator('#qr-public-generate').click();
+    assert.match(await page.locator('#qr-public-status').textContent(), /malformed input is rejected/i);
+    assert.equal(await page.locator('#qr-public-download-svg').isDisabled(), true);
+    assert.equal(await page.locator('#qr-public-output').getAttribute('data-payload'), null);
+
+    const evmAddress = '0x000000000000000000000000000000000000dEaD';
+    await page.locator('#qr-public-network').selectOption('ethereum');
+    await page.locator('#qr-public-address').fill(evmAddress);
+    await page.locator('#qr-public-amount').fill('1.234567890123456789');
+    await page.locator('#qr-public-label').fill('');
+    await page.locator('#qr-public-generate').click();
+    await page.locator('#qr-public-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(
+      await page.locator('#qr-public-output').getAttribute('data-payload'),
+      `ethereum:${evmAddress}?value=1234567890123456789`
+    );
+    assert.equal(await page.locator('#qr-public-output svg').count(), 1);
+
+    await page.locator('#qr-public-label').fill('unsupported');
+    await page.locator('#qr-public-generate').click();
+    await page.locator('#qr-public-status[data-state="error"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await page.locator('#qr-public-status').textContent(), /do not support the Bitcoin label/i);
+    assert.equal(await page.locator('#qr-public-output').getAttribute('data-payload'), null);
+
+    await page.locator('#qr-public-label').fill('');
+    await page.locator('#qr-public-amount').fill('0.0000000000000000001');
+    await page.locator('#qr-public-generate').click();
+    assert.match(await page.locator('#qr-public-status').textContent(), /too many decimal places/i);
+
+    await page.locator('#qr-public-network').selectOption('bitcoin');
+    await page.locator('#qr-public-address').fill('bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu');
+    await page.locator('#qr-public-amount').fill('0.001');
+    await page.locator('#qr-public-label').fill('cold storage');
+    await page.locator('#qr-public-generate').click();
+    await page.locator('#qr-public-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(
+      await page.locator('#qr-public-output').getAttribute('data-payload'),
+      'bitcoin:bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu?amount=0.001&label=cold%20storage'
+    );
+    const publicSvgDownload = page.waitForEvent('download');
+    await page.locator('#qr-public-download-svg').click();
+    assert.equal((await publicSvgDownload).suggestedFilename(), 'coldbox-address.svg');
+    const publicPngDownload = page.waitForEvent('download');
+    await page.locator('#qr-public-download-png').click();
+    assert.equal((await publicPngDownload).suggestedFilename(), 'coldbox-address.png');
+
+    assert.equal(await page.locator('#cold-frame').getAttribute('sandbox'), 'allow-scripts allow-downloads allow-modals');
+    await coldFrame.locator('#cold-seed-forge[data-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
+    const englishMnemonic = [
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
+    ].join(' ');
+    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(englishMnemonic);
+    await coldFrame.locator('#cold-seed-forge-validate').click();
+    await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-qr-seed-source').selectOption('validated');
+    assert.equal(await coldFrame.locator('#cold-qr-standard').isDisabled(), true);
+    await coldFrame.locator('#cold-qr-secret-confirm').check();
+    await coldFrame.locator('#cold-qr-standard').click();
+    await coldFrame.locator('#cold-qr-output-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await coldFrame.locator('#cold-qr-output-status').textContent(), /SeedQR generated.*25.*25/i);
+    assert.equal(await coldFrame.locator('#cold-qr-card').getAttribute('data-grid'), 'off');
+
+    const secretSvgDownload = page.waitForEvent('download');
+    await coldFrame.locator('#cold-qr-download-svg').click();
+    assert.equal((await secretSvgDownload).suggestedFilename(), 'coldbox-seedqr.svg');
+    const secretPngDownload = page.waitForEvent('download');
+    await coldFrame.locator('#cold-qr-download-png').click();
+    assert.equal((await secretPngDownload).suggestedFilename(), 'coldbox-seedqr.png');
+
+    await coldFrame.evaluate(() => {
+      window.__coldboxQrPrintCalls = 0;
+      window.print = function () {
+        window.__coldboxQrPrintCalls += 1;
+      };
+    });
+    await coldFrame.locator('#cold-qr-print').click();
+    assert.equal(await coldFrame.evaluate(() => window.__coldboxQrPrintCalls), 1, `${engine}: cold print button did not request printing`);
+
+    await coldFrame.locator('#cold-seed-forge-language').selectOption('spanish');
+    const spanishMnemonic = await coldFrame.evaluate(() => {
+      return window.__coldboxSeedForge.entropyToMnemonic(new Uint8Array(16), 'spanish');
+    });
+    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(spanishMnemonic);
+    await coldFrame.locator('#cold-seed-forge-validate').click();
+    await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-qr-seed-source').selectOption('validated');
+    await coldFrame.locator('#cold-qr-language').selectOption('spanish');
+    await coldFrame.locator('#cold-qr-secret-confirm').check();
+    await coldFrame.locator('#cold-qr-standard').click();
+    await coldFrame.locator('#cold-qr-output-status[data-state="error"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await coldFrame.locator('#cold-qr-output-status').textContent(), /English BIP-39 wordlist/i);
+    await coldFrame.locator('#cold-qr-compact').click();
+    await coldFrame.locator('#cold-qr-output-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await coldFrame.locator('#cold-qr-output-status').textContent(), /Compact SeedQR generated.*21.*21/i);
+
+    await coldFrame.locator('#cold-seed-forge-language').selectOption('english');
+    const englishTwentyFour = await coldFrame.evaluate(() => {
+      return window.__coldboxSeedForge.entropyToMnemonic(new Uint8Array(32), 'english');
+    });
+    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(englishTwentyFour);
+    await coldFrame.locator('#cold-seed-forge-validate').click();
+    await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-qr-language').selectOption('english');
+    await coldFrame.locator('#cold-qr-layout').selectOption('wallet-24');
+    await coldFrame.locator('#cold-qr-grid').check();
+    await coldFrame.locator('#cold-qr-compact').click();
+    await coldFrame.locator('#cold-qr-output-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await coldFrame.locator('#cold-qr-output-status').textContent(), /Compact SeedQR generated.*25.*25/i);
+    assert.equal(await coldFrame.locator('#cold-qr-card').getAttribute('data-layout'), 'wallet-24');
+    assert.equal(await coldFrame.locator('#cold-qr-card').getAttribute('data-grid'), 'on');
+    assert.equal(await coldFrame.locator('#cold-qr-card-grid .cold-qr-card-cell').count(), 24);
+
+    await page.emulateMedia({ media: 'print' });
+    const printCardMetrics = await coldFrame.locator('#cold-qr-card').evaluate((element) => {
+      const styles = window.getComputedStyle(element);
+      return { width: styles.width, maxWidth: styles.maxWidth };
+    });
+    assert.notEqual(printCardMetrics.maxWidth, 'none', `${engine}: wallet print max-width was destroyed`);
+    assert.ok(Number.parseFloat(printCardMetrics.width) <= 330, `${engine}: wallet print card widened unexpectedly`);
+    await page.emulateMedia({ media: null });
+
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-qr-card').isHidden(), true);
+    assert.equal((await coldFrame.locator('#cold-qr-output').textContent()).trim(), '');
+    assert.equal(await coldFrame.locator('#cold-qr-standard').isDisabled(), true);
+    assert.equal(await coldFrame.locator('#cold-qr-download-svg').isDisabled(), true);
+
+    console.log(`${engine}: QR Studio public payloads, ETH wei conversion, SeedQR gating, compact sizing, exports, print request/layout, and teardown passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyDevOnlyDependency() {
   const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
   assert.equal(packageJson.dependencies?.playwright, undefined);
@@ -3056,6 +3201,7 @@ async function run() {
       await verifyEntropyLab(browser, engine);
       await verifySeedForge(browser, engine);
       await verifyVerificationWorkflows(browser, engine);
+      await verifyQrStudio(browser, engine);
       await verifyUnlockedRuntimeHealthLockdown(browser, engine);
       await verifyProviderNeutering(browser, engine);
       await verifyPreexistingProviderLockdown(browser, engine);

@@ -73,6 +73,25 @@ function extractEmbeddedLicenseText(html) {
   return JSON.parse(match[1]);
 }
 
+// The cold document is JSON-encoded inside the warm script. Its source
+// comments contain ordinary JavaScript escape-looking text such as
+// `license:\n`; scanning that encoded representation would mistake the
+// escaped newline for a Windows drive path (`e:\`). Decode it before scanning
+// and scan the decoded document independently, just as the licence text above
+// is scanned independently of the surrounding document.
+function stripEmbeddedColdRealmDocument(html) {
+  return html.replace(
+    /var coldRealmDocument = "(?:[^"\\]|\\.)*";/,
+    'var coldRealmDocument = "";'
+  );
+}
+
+function extractEmbeddedColdRealmDocument(html) {
+  const match = html.match(/var coldRealmDocument = ("(?:[^"\\]|\\.)*");/);
+  assert.ok(match, 'built artifact must embed coldRealmDocument');
+  return JSON.parse(match[1]);
+}
+
 // Mirrors scripts/build.js's jsonScriptLiteral() exactly. Not imported
 // directly because build.js runs its build as top-level side effects on
 // require (it's a CLI script, not a library module) - requiring it here
@@ -113,7 +132,13 @@ function coldSandboxToken(html) {
 }
 
 function assertExactColdSandbox(html) {
-  assert.equal(coldSandboxToken(html), 'allow-scripts allow-downloads');
+  assert.equal(coldSandboxToken(html), 'allow-scripts allow-downloads allow-modals');
+}
+
+function provenanceBuildDate(html) {
+  const match = html.match(/<p class="provenance-value" id="provenance-build-date">([^<]+)<\/p>/);
+  assert.ok(match, 'built document must expose the provenance build date');
+  return match[1];
 }
 
 function createBuildRoot() {
@@ -175,7 +200,9 @@ test('build assembles one HTML file and emits its SHA-256 sidecar', () => {
     NO_MACHINE_PATHS,
     'embedded licence text leaked a machine-specific path'
   );
-  assert.doesNotMatch(stripEmbeddedLicenseText(html.toString('utf8')), NO_MACHINE_PATHS);
+  const document = html.toString('utf8');
+  assert.doesNotMatch(extractEmbeddedColdRealmDocument(document), NO_MACHINE_PATHS);
+  assert.doesNotMatch(stripEmbeddedColdRealmDocument(stripEmbeddedLicenseText(document)), NO_MACHINE_PATHS);
   assert.equal(html.includes(0x0d), false, 'generated HTML must use LF line endings');
   assert.equal(Buffer.from(sidecar, 'utf8').includes(0x0d), false, 'sidecar must use LF line endings');
 });
@@ -317,9 +344,9 @@ test('a build with node_modules absent but .git present matches the real build b
 
     const dependencyFreeBuild = fs.readFileSync(path.join(root, 'build', 'coldbox.html'));
     assert.deepEqual(dependencyFreeBuild, realBuild);
-    assert.doesNotMatch(
-      dependencyFreeBuild.toString('utf8'),
-      /unknown \(no git commit metadata available\)/,
+    assert.notEqual(
+      provenanceBuildDate(dependencyFreeBuild.toString('utf8')),
+      'unknown (no git commit metadata available)',
       'a checkout with .git present must resolve a real build date, not the no-metadata fallback'
     );
   } finally {
@@ -384,7 +411,7 @@ test('cold realm policy is embedded and remains opaque', () => {
   const html = fs.readFileSync(htmlPath, 'utf8');
 
   assertExactColdSandbox(html);
-  assert.doesNotMatch(html, /allow-same-origin/);
+  assert.equal(coldSandboxToken(html).includes('allow-same-origin'), false);
   assert.match(html, /connect-src 'none'/);
   assert.match(html, /form-action 'none'/);
   assert.match(html, /frame-src 'none'/);
@@ -399,8 +426,8 @@ test('cold iframe sandbox rejects an extra permission token in a negative fixtur
     const mainPath = path.join(root, 'src', 'main.js');
     const main = fs.readFileSync(mainPath, 'utf8')
       .replace(
-        "coldFrame.setAttribute('sandbox', 'allow-scripts allow-downloads')",
-        "coldFrame.setAttribute('sandbox', 'allow-scripts allow-downloads allow-top-navigation')"
+        "coldFrame.setAttribute('sandbox', 'allow-scripts allow-downloads allow-modals')",
+        "coldFrame.setAttribute('sandbox', 'allow-scripts allow-downloads allow-modals allow-top-navigation')"
       );
     fs.writeFileSync(mainPath, main, 'utf8');
 

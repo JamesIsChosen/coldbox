@@ -18,6 +18,16 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 
 - **Explicit public address provenance.** Address records now carry `addressOrigin`, `verificationState`, `lastColdVerifiedAt`, and `verifiedAgainstXpub`. Legacy public data migrates to schema 2 with every address explicitly `manual` and `unverified`; verification is never inferred.
 - **Staleness is automatic.** Changing an account xpub moves its previously `cold-verified` addresses to `cold-verified-stale` while retaining the evidence that is now stale. The Registry visibly labels never-verified and stale addresses.
+### Added — P1.10 QR generation (2026-08-10)
+
+- **Public address QRs.** QR Studio creates local BIP-21 Bitcoin or EIP-681 Ethereum receiving payloads with chain-appropriate optional amount fields (and Bitcoin labels) plus SVG/PNG export. Seed-shaped input is rejected, and the UI keeps the warning that a QR does not prove ownership or correctness.
+- **Cold-only SeedQR.** Standard four-digit word-index and Compact raw-entropy QR formats, explicit plaintext acknowledgement, A4/Letter and wallet-sized printable cards, transcription grid, and SVG/PNG export run inside the sealed frame. The guide documents printer, camera, spooler, and photograph retention risks.
+
+### Fixed - P1.10 independent-review remediation (2026-08-10)
+
+- Ethereum EIP-681 amounts are converted from human ETH decimals to integer wei, unsupported Ethereum labels fail closed, and the browser harness now exercises the real warm and cold QR Studio flows in Chromium and Firefox.
+- Compact SeedQR defaults to low error correction for the SeedSigner-compatible 21x21/25x25 dimensions; Standard SeedQR rejects non-English wordlists because its numeric indices carry no language identifier.
+- Cold print permission is limited to `allow-modals`, wallet-sized print CSS preserves its physical card dimensions, cold exports use short-lived Blob URLs for Firefox sandbox compatibility, and lock teardown resets the QR acknowledgement and controls.
 
 ### Added — P1.9 verification workflows (2026-08-10)
 
