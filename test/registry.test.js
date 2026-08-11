@@ -8,6 +8,7 @@ const test = require('node:test');
 const projectRoot = path.resolve(__dirname, '..');
 const VAULT_ID = '550e8400-e29b-41d4-a716-446655440000';
 const XPUB = `xpub${'1'.repeat(107)}`;
+const NEXT_XPUB = `xpub${'2'.repeat(107)}`;
 const ADDRESS = `bc1q${'q'.repeat(56)}`;
 
 function loadRegistry(disableRandomness = false) {
@@ -168,6 +169,28 @@ test('registry optional fields can be explicitly cleared with schema-safe update
     () => store.updateWallet(wallet.id, {}, { clearFields: ['unsupported'] }),
     /cannot be cleared/
   );
+});
+
+test('new addresses are never verified by default and account xpub changes stale verified addresses', () => {
+  const registry = loadRegistry();
+  const store = registry.createStore({ id: VAULT_ID });
+  const wallet = store.createWallet({ xpubs: [XPUB] });
+  const account = store.createAccount({ walletId: wallet.id, asset: 'BTC', xpub: XPUB });
+  const address = store.createAddress({ accountId: account.id, index: 0, address: ADDRESS });
+  assert.equal(address.addressOrigin, 'manual');
+  assert.equal(address.verificationState, 'unverified');
+
+  store.updateAddress(address.id, {
+    addressOrigin: 'derived',
+    verificationState: 'cold-verified',
+    lastColdVerifiedAt: '2026-08-10T12:00:00.000Z',
+    verifiedAgainstXpub: XPUB
+  });
+  store.updateAccount(account.id, { xpub: NEXT_XPUB });
+  const stale = store.find('addresses', address.id);
+  assert.equal(stale.verificationState, 'cold-verified-stale');
+  assert.equal(stale.verifiedAgainstXpub, XPUB);
+  assert.equal(stale.lastColdVerifiedAt, '2026-08-10T12:00:00.000Z');
 });
 
 test('registry fails closed when secure randomness is unavailable', () => {

@@ -268,6 +268,6 @@ Coldbox's richer note fields round-trip through the standard's `label` field wit
 
 ## Migration
 
-The payload carries a `schema` integer. Migrations run on open, in sequence, and the app takes a backup copy of the vault file before applying any. A migration that fails leaves the original untouched.
+The public compartment carries a `schema` integer. The current public schema is `2`; a missing schema or schema `1` is migrated on open by adding `addressOrigin: manual` and `verificationState: unverified` to legacy addresses. No verification metadata is inferred. Migrations run on open, in sequence, and the app takes a backup copy of the vault file before applying any. A migration that fails leaves the original untouched.
 
 Any schema change requires a test asserting that a vault written by the previous version still opens.

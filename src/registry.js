@@ -20,7 +20,8 @@
     ]),
     addresses: Object.freeze([
       'id', 'accountId', 'index', 'address', 'label', 'isChange', 'used',
-      'balanceSnapshot', 'notes', 'tags', 'hidden'
+      'balanceSnapshot', 'addressOrigin', 'verificationState',
+      'lastColdVerifiedAt', 'verifiedAgainstXpub', 'notes', 'tags', 'hidden'
     ]),
     devices: Object.freeze([
       'id', 'vendor', 'model', 'serial', 'firmware', 'firmwareDate',
@@ -172,6 +173,14 @@
     if (!hasOwn(candidate, 'id')) {
       candidate.id = secureUuid();
     }
+    if (collection === 'addresses' && !existing) {
+      if (!hasOwn(candidate, 'addressOrigin')) {
+        candidate.addressOrigin = 'manual';
+      }
+      if (!hasOwn(candidate, 'verificationState')) {
+        candidate.verificationState = 'unverified';
+      }
+    }
     var compartment = {};
     compartment[collection] = [candidate];
     if (collection === 'accounts') {
@@ -301,6 +310,13 @@
       }
       if (collection === 'notes') {
         requireLinkedRecords(state, record.linkedIds);
+      }
+      if (collection === 'accounts' && existing.xpub !== record.xpub) {
+        state.addresses.forEach(function (address) {
+          if (address.accountId === id && address.verificationState === 'cold-verified') {
+            address.verificationState = 'cold-verified-stale';
+          }
+        });
       }
       state[collection][state[collection].indexOf(existing)] = record;
       return clone(record);

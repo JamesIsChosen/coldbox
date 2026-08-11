@@ -14,6 +14,11 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
+### Added — P1.11 address verification state (2026-08-10)
+
+- **Explicit public address provenance.** Address records now carry `addressOrigin`, `verificationState`, `lastColdVerifiedAt`, and `verifiedAgainstXpub`. Legacy public data migrates to schema 2 with every address explicitly `manual` and `unverified`; verification is never inferred.
+- **Staleness is automatic.** Changing an account xpub moves its previously `cold-verified` addresses to `cold-verified-stale` while retaining the evidence that is now stale. The Registry visibly labels never-verified and stale addresses.
+
 ### Added — P1.9 verification workflows (2026-08-10)
 
 - **Cold-local hardware-wallet checks.** Verify Bench links the current public identity from Seed Forge and compares an independently entered device fingerprint, receive address, account xpub, or metal-backup fingerprint. The fifth roadmap check, BIP-39 passphrase verification, uses the exact passphrase selected and confirmed in Seed Forge; no duplicate passphrase panel exists. Comparisons validate complete public values; uniform-case Bech32 is accepted while mixed-case Bech32 and invalid checksums fail closed.
