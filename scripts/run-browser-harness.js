@@ -2896,6 +2896,106 @@ async function verifySeedForge(browser, engine) {
   }
 }
 
+async function verifyVerificationWorkflows(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    const coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-verification[data-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
+    assert.equal(await page.evaluate(() => typeof window.__coldboxVerification), 'undefined');
+
+    const mnemonic = [
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
+    ].join(' ');
+    const nativeXpub =
+      'zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs';
+    const receiveAddress = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu';
+    const mixedCaseAddress = receiveAddress.slice(0, 4)
+      + receiveAddress[4].toUpperCase()
+      + receiveAddress.slice(5);
+
+    const openWorkflow = async (selector) => {
+      const details = coldFrame.locator(selector);
+      if (!(await details.evaluate((element) => element.open))) {
+        await details.locator('summary').click();
+      }
+      await details.locator('summary').waitFor({ state: 'visible', timeout: 5000 });
+      return details;
+    };
+
+    // Seed Forge is the only mnemonic/passphrase surface. Verify Bench links
+    // the validated cold-local wallet and exposes public values only.
+    const validationPassphrase = coldFrame.locator('#cold-seed-forge-validation-passphrase-input');
+    const validationPassphraseConfirm = coldFrame.locator('#cold-seed-forge-validation-passphrase-confirm');
+    await validationPassphrase.fill('');
+    await validationPassphraseConfirm.fill('');
+    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(mnemonic);
+    await coldFrame.locator('#cold-seed-forge-validate').click();
+    await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal((await coldFrame.locator('#cold-seed-forge-validation-fingerprint').textContent()).trim(), '73c5da0a');
+    await coldFrame.locator('#cold-verification-wallet-use').click();
+    await coldFrame.locator('#cold-verification-wallet-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    assert.match((await coldFrame.locator('#cold-verification-wallet-source').textContent()).trim(), /Validated Seed Forge wallet/);
+    assert.equal((await coldFrame.locator('#cold-verification-wallet-fingerprint').textContent()).trim(), '73c5da0a');
+    assert.equal((await coldFrame.locator('#cold-verification-wallet-path').textContent()).trim(), "m/84'/0'/0'");
+    assert.equal((await coldFrame.locator('#cold-verification-wallet-xpub').textContent()).trim(), nativeXpub);
+    assert.match((await coldFrame.locator('#cold-verification-wallet-receive-range').textContent()), new RegExp(receiveAddress));
+    assert.equal(await coldFrame.locator('#cold-verification-wallet-families li').count(), 4);
+    assert.equal((await coldFrame.locator('#cold-verification-fingerprint-expected').inputValue()), '');
+
+    await openWorkflow('#cold-verification-fingerprint');
+    await coldFrame.locator('#cold-verification-fingerprint-expected').fill('73C5DA0A');
+    await coldFrame.locator('#cold-verification-fingerprint-run').click();
+    await coldFrame.locator('#cold-verification-fingerprint-status[data-state="match"]').waitFor({ state: 'visible', timeout: 5000 });
+
+    await openWorkflow('#cold-verification-receive-address');
+    assert.equal(await coldFrame.locator('#cold-verification-receive-expected').inputValue(), '');
+    await coldFrame.locator('#cold-verification-receive-expected').fill(mixedCaseAddress);
+    await coldFrame.locator('#cold-verification-receive-run').click();
+    await coldFrame.locator('#cold-verification-receive-status[data-state="error"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-verification-receive-expected').fill(receiveAddress.toUpperCase());
+    await coldFrame.locator('#cold-verification-receive-run').click();
+    await coldFrame.locator('#cold-verification-receive-status[data-state="match"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await coldFrame.locator('#cold-verification-receive-status').textContent(), new RegExp(receiveAddress));
+
+    await openWorkflow('#cold-verification-xpub');
+    assert.equal(await coldFrame.locator('#cold-verification-xpub-expected').inputValue(), '');
+    await coldFrame.locator('#cold-verification-xpub-expected').fill(nativeXpub);
+    await coldFrame.locator('#cold-verification-xpub-run').click();
+    await coldFrame.locator('#cold-verification-xpub-status[data-state="match"]').waitFor({ state: 'visible', timeout: 5000 });
+
+    await openWorkflow('#cold-verification-backup');
+    assert.equal(await coldFrame.locator('#cold-verification-backup-expected').inputValue(), '');
+    await coldFrame.locator('#cold-verification-backup-expected').fill('73c5da0a');
+    await coldFrame.locator('#cold-verification-backup-run').click();
+    await coldFrame.locator('#cold-verification-backup-status[data-state="match"]').waitFor({ state: 'visible', timeout: 5000 });
+
+    assert.equal(await coldFrame.locator('#cold-verification-passphrase').count(), 0);
+    assert.equal(await coldFrame.locator('#cold-verification input[id*="mnemonic"]').count(), 0);
+    assert.equal(await coldFrame.locator('#cold-verification input[id*="passphrase"]').count(), 0);
+
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('#cold-verification-fingerprint-status[data-state="idle"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-verification').getAttribute('data-linked-wallet'), 'empty');
+    assert.equal(await coldFrame.locator('#cold-verification-wallet-status').getAttribute('data-state'), 'empty');
+    assert.equal((await coldFrame.locator('#cold-verification-wallet-fingerprint').textContent()).trim(), 'Not linked');
+    assert.equal(await coldFrame.locator('#cold-verification-fingerprint-run').isDisabled(), true);
+    assert.equal(await coldFrame.locator('#cold-verification-receive-run').isDisabled(), true);
+    assert.equal(await coldFrame.locator('#cold-verification-xpub-run').isDisabled(), true);
+    assert.equal(await coldFrame.locator('#cold-verification-backup-run').isDisabled(), true);
+    assert.equal(await coldFrame.locator('#cold-verification-receive-expected').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-verification-xpub-expected').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-verification-backup-expected').inputValue(), '');
+
+    console.log(`${engine}: cold-local Seed Forge handoff, public fingerprint/xpub/address/backup comparisons, strict external-value negatives, and lock teardown passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyDevOnlyDependency() {
   const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
   assert.equal(packageJson.dependencies?.playwright, undefined);
@@ -2955,6 +3055,7 @@ async function run() {
       await verifyDeviceRegistry(browser, engine);
       await verifyEntropyLab(browser, engine);
       await verifySeedForge(browser, engine);
+      await verifyVerificationWorkflows(browser, engine);
       await verifyUnlockedRuntimeHealthLockdown(browser, engine);
       await verifyProviderNeutering(browser, engine);
       await verifyPreexistingProviderLockdown(browser, engine);

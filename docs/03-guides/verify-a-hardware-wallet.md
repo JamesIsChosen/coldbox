@@ -2,6 +2,16 @@
 
 **The most valuable thing this tool does.** If you use one feature, use this one.
 
+::: plain
+Verify Bench lets you compare the public values on a hardware wallet with an independent cold calculation. You read the device's own screen and type that value into the sealed workspace; seed phrases and passphrases never go into the ordinary app shell.
+:::
+::: working
+P1.9 provides four Verify Bench comparison panels: device fingerprint, receive address, account xpub, and metal backup. The fifth check, a BIP-39 passphrase comparison, uses the exact passphrase selected and confirmed in Seed Forge; Verify Bench has no second passphrase field. A match means the public value agrees with Coldbox's calculation. It does not prove the hardware or its display is genuine, because this version has no hardware connection.
+:::
+::: technical
+Seed Forge is the only mnemonic/passphrase entry surface. After a phrase is generated or validated, Verify Bench derives a public-only identity for all four Bitcoin script families, including the selected account path, xpub, and receive/change ranges. Fingerprints compare eight hexadecimal characters; xpubs and Base58 values are checksum- and case-sensitive; Bech32 accepts one uniform case and rejects mixed case. No verification input or result is sent over the warm/cold message channel.
+:::
+
 ---
 
 ## The attack
@@ -30,17 +40,17 @@ Given an xpub and derivation path, deriving address `i` requires only public-key
 
 ## Verify a receive address
 
-**What you need:** your account xpub, and your hardware wallet.
+**What you need:** the phrase and passphrase selected in Seed Forge, your hardware wallet, and the account path shown by the device.
 
-### 1. Get your xpub
+### 1. Link the current Seed Forge wallet
 
-From your wallet software or the device itself. In Sparrow: Settings → the `xpub` field. On Coldcard: Advanced → Export → Generic JSON. On Ledger Live, Trezor Suite, and BitBoxApp it's in account details.
+In the sealed workspace, generate or validate the phrase in Seed Forge and enter the exact passphrase there, including any leading, trailing, or internal spaces. Confirm the resulting fingerprint, choose the Bitcoin network and script family, then choose **Use current Seed Forge wallet** in Verify Bench. The panel shows the account path, xpub, and receive/change ranges as public derived values.
 
 **Note the derivation path alongside it.** An xpub without its path is ambiguous.
 
 ### 2. Enter it in Coldbox
 
-Devices → Verify → Receive address. Paste the xpub, select the script type matching your path (`84'` → Native SegWit, `86'` → Taproot), and generate the first few addresses.
+Verify Bench → Receive address in the sealed workspace. Select the receive/change chain and index that match the device, then enter the complete address shown by the device. The comparison uses the public address derived from the linked Seed Forge wallet; there is no second seed, passphrase, or xpub field.
 
 ### 3. Compare all three
 
@@ -83,8 +93,8 @@ See "Fingerprint" in the [glossary](../00-overview/glossary.md) for the exact BI
 :::
 
 1. Display the fingerprint on your device (often shown as XFP, in advanced or wallet info screens).
-2. In Coldbox, **offline**, enter the seed phrase you believe it holds. Seed Forge shows the fingerprint immediately.
-3. Compare.
+2. In Coldbox, **offline**, enter or validate the phrase and exact passphrase in Seed Forge, link the current wallet, and open Verify Bench → Device fingerprint.
+3. Enter the device fingerprint as an independent public value and compare.
 
 **Match:** the device holds that seed. **Mismatch:** it doesn't — either a different seed, or a passphrase is active.
 
@@ -99,9 +109,9 @@ The failure everyone dreads: you need your backup, and it's wrong. Usually a tra
 **You do not need to wipe a device to test this.**
 
 1. Go **offline**. Confirm **No external reachability detected** plus **cold realm sealed**, and independently verify the physical network is disconnected.
-2. Seed Forge → enter the seed from your metal plate, exactly as engraved.
-3. Check the validation. An invalid checksum means a transcription error, and the Recovery Assistant can often identify which word.
-4. Compare the fingerprint to your device's.
+2. In Seed Forge, validate the words from your metal plate exactly as engraved and confirm the passphrase, if any. Link that current wallet in Verify Bench.
+3. Enter the independent fingerprint from the device or backup record in Verify Bench → Metal backup.
+4. Compare. An invalid mnemonic checksum means a transcription error, and the Recovery Assistant can often identify which word.
 
 **Match:** your backup is correct and will restore. **Mismatch:** your backup is wrong. Fix it now, while you still have the working device.
 
@@ -116,7 +126,7 @@ A BIP-39 passphrase creates an entirely separate wallet. One different character
 **Always verify before sending anything.**
 
 1. Set the passphrase on your device. Note the resulting fingerprint.
-2. Offline in Coldbox, enter the seed and the passphrase. Compare fingerprints.
+2. Offline in Coldbox, enter and confirm that exact passphrase in Seed Forge, validate or generate the phrase, link the current wallet, and compare the fingerprint in Verify Bench → Device fingerprint or Metal backup. Verify Bench has no separate passphrase shell.
 3. Match: the passphrase is exactly what you think. Fund it.
 4. Mismatch: you typed something different somewhere. Find out which before proceeding.
 
@@ -128,7 +138,9 @@ Then send a small test amount first, and confirm it appears where expected.
 
 Your desktop wallet holds an xpub that generates every address it will ever show you. If that xpub is wrong, every address is wrong.
 
-Export the xpub from the device directly and compare against what your software holds. Long strings — use Coldbox's constant-time compare rather than reading them.
+Open Verify Bench after linking the current Seed Forge wallet. Select the account's network and script family, then enter the complete xpub exported from the device or held by your software. Long strings must be compared character by character; a prefix/suffix check is not a verification.
+
+P1.9 does not connect to, query, or authenticate a hardware wallet. The device value is a manual observation, so the physical device-screen and clean-machine checks in this guide remain essential.
 
 ---
 

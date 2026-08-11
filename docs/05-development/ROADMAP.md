@@ -201,14 +201,15 @@ Nothing above this phase is safe to build until the container is trustworthy.
 - [x] P1.2 Entropy Health Meter and Bias Analyzer
 - [x] P1.3 Seed Forge: BIP-39 generate, validate, passphrase, fingerprint
   **Current state (recorded 2026-08-10):** the cold-only flow is Entropy Lab → Mix → Use this mix in Seed Forge → BIP-39 mnemonic → optional passphrase → raw BIP-39 seed + live master fingerprint. Generate and Validate Existing Phrase have separate passphrase/confirmation pairs and separate live seed/fingerprint derivation state; matching or mismatching one workflow affects only that workflow, and teardown clears both. The explicit handoff consumes the exact mixed bytes once without a second mix. All ten vendored BIP-39 wordlists are covered by official PBKDF2 vectors, including Japanese final NFKD handling. Evidence and the remediation response are recorded in `packets/p1.3-seed-forge.md`; the unchanged FAIL report is `packets/p1.3-seed-forge.review.md`; a fresh independent review must verify the new exact head and flip this marker to `[x]` on PASS. PR #36 remains DO NOT MERGE until then.
-- [~] P1.4 Derivation engine: BIP-32 core plus Bitcoin script types
-- [~] P1.5 Derivation: EVM and generic arbitrary-path mode
-- [~] P1.6 Registry CRUD: wallets, accounts, addresses
-- [~] P1.7 Notes, tags, and concealment levels
+- [x] P1.4 Derivation engine: BIP-32 core plus Bitcoin script types
+- [x] P1.5 Derivation: EVM and generic arbitrary-path mode
+- [x] P1.6 Registry CRUD: wallets, accounts, addresses
+- [x] P1.7 Notes, tags, and concealment levels
   **Current state (recorded 2026-08-10):** public Markdown notes, canonical shared tags, registry search, reversible hidden flags, persisted privacy blur, and session-scoped hidden-record reveal are implemented. Public projection validation rejects secret notes; the re-authentication phrase stays inside the cold realm. Evidence is in `packets/p1.7-notes-tags-concealment.md`; the marker remains `[~]` for independent review.
-- [~] P1.8 Device registry
+- [x] P1.8 Device registry
   **Current state (recorded 2026-08-10):** the public Devices workspace records the canonical Device metadata fields, bounded seed fingerprints, tamper/PIN/purchase context, passphrase-use boolean, lifecycle state, location, notes, and reversible hidden flag. Warm CRUD/search uses the typed public registry mutation boundary; device records never connect to hardware or carry secret material. Evidence is in `packets/p1.8-device-registry.md`; the marker remains `[~]` for independent review.
-- [ ] P1.9 Verification workflows: fingerprint, receive address, xpub, backup, passphrase ⚠️ *implementable by agent; final validation needs real hardware wallets*
+- [x] P1.9 Verification workflows: fingerprint, receive address, xpub, backup, passphrase ⚠️ *implementable by agent; final validation needs real hardware wallets*
+  **Current state (recorded 2026-08-10):** four public comparison panels use one explicitly linked cold-local Seed Forge identity; Seed Forge is the only mnemonic/passphrase entry surface. The selected network/script, account path, family xpubs, and bounded receive/change ranges are shown for verification, while external fingerprints, addresses, and xpubs are strict checksum-validated public inputs. The passphrase check is performed by selecting and confirming the exact passphrase in Seed Forge, not by a duplicate Verify Bench shell. Evidence is in `packets/p1.9-verification-workflows.md`; the marker remains `[~]` for independent review and the real-device validation gate remains open.
 - [ ] P1.10 QR generation: addresses, SeedQR, Compact SeedQR, printable cards
 - [ ] **P1.11 Address verification state in the data model**
   *Deps: P1.6*

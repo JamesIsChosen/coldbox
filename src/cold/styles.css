@@ -1228,3 +1228,226 @@ body {
   padding-top: 0.55rem;
   border-top: 0.13rem solid var(--cold-outline);
 }
+
+/* P1.9: verification inputs and verdicts remain inside the opaque cold
+   document. The result treatment is deliberately plain: a match is useful
+   evidence, not a claim that the hardware or its display is trustworthy. */
+#cold-verification {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 2px solid var(--cold-outline);
+  border-radius: 0.5rem;
+  background: var(--cold-surface);
+}
+
+#cold-verification h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+#cold-verification-help,
+#cold-verification-note {
+  margin: 0;
+  color: var(--cold-muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.cold-verification-wallet {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.8rem;
+  border: 1px solid var(--cold-outline);
+  border-radius: 0.35rem;
+  background: var(--cold-input);
+}
+
+.cold-verification-wallet h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.cold-verification-wallet button {
+  width: fit-content;
+  min-height: 2.3rem;
+  padding: 0.45rem 0.7rem;
+  border: 2px solid var(--cold-outline);
+  border-radius: 0.25rem;
+  background: var(--cold-yellow);
+  color: var(--cold-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cold-verification-wallet button:disabled,
+.cold-verification-wallet select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.cold-verification-wallet button:focus-visible,
+.cold-verification-wallet select:focus {
+  outline: 2px solid var(--cold-yellow);
+  outline-offset: 2px;
+}
+
+.cold-verification-wallet select {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 2.3rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--cold-outline);
+  border-radius: 0.25rem;
+  background: var(--cold-surface);
+  color: var(--cold-text);
+  font: inherit;
+}
+
+.cold-verification-identity {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.cold-verification-identity > div {
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.4fr) minmax(0, 1fr);
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--cold-outline);
+}
+
+.cold-verification-identity dt {
+  color: var(--cold-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.cold-verification-identity dd,
+.cold-verification-public-list li {
+  margin: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.78rem;
+}
+
+.cold-verification-public-help {
+  margin: 0;
+  color: var(--cold-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.cold-verification-public-list {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0 0 0 1.2rem;
+}
+
+.cold-verification-workflow {
+  border: 1px solid var(--cold-outline);
+  border-radius: 0.35rem;
+  background: var(--cold-surface);
+}
+
+.cold-verification-workflow summary {
+  cursor: pointer;
+  padding: 0.75rem;
+  font-weight: 700;
+}
+
+.cold-verification-workflow form,
+.cold-verification-workflow > div {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0 0.75rem 0.85rem;
+}
+
+.cold-verification-workflow label {
+  color: var(--cold-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.cold-verification-workflow input,
+.cold-verification-workflow select {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 2.3rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--cold-outline);
+  border-radius: 0.25rem;
+  background: var(--cold-input);
+  color: var(--cold-text);
+  font: inherit;
+}
+
+.cold-verification-workflow input:focus,
+.cold-verification-workflow select:focus,
+.cold-verification-workflow button:focus-visible {
+  outline: 2px solid var(--cold-yellow);
+  outline-offset: 2px;
+}
+
+.cold-verification-workflow button {
+  width: fit-content;
+  min-height: 2.3rem;
+  padding: 0.45rem 0.7rem;
+  border: 2px solid var(--cold-outline);
+  border-radius: 0.25rem;
+  background: var(--cold-yellow);
+  color: var(--cold-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cold-verification-workflow button:disabled,
+.cold-verification-workflow input:disabled,
+.cold-verification-workflow select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.cold-verification-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.cold-verification-grid > div {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.cold-verification-status {
+  margin: 0;
+  padding: 0.55rem;
+  border-left: 4px solid var(--cold-outline);
+  background: var(--cold-input);
+  color: var(--cold-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.cold-verification-status[data-state="match"] {
+  border-color: var(--cold-green);
+  color: var(--cold-green);
+}
+
+.cold-verification-status[data-state="mismatch"],
+.cold-verification-status[data-state="error"] {
+  border-color: var(--cold-red);
+  color: var(--cold-red);
+}
+
+@media (max-width: 38rem) {
+  .cold-verification-grid {
+    grid-template-columns: 1fr;
+  }
+}
