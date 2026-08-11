@@ -18,6 +18,12 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 - Cold-owned public replacements now compare authenticated address evidence with the next account xpub and force `cold-verified-stale` on xpub changes, even when the warm caller requests `cold-verified`.
 - Warm stale-state requests can no longer downgrade an authenticated address or rewrite its timestamp/xpub evidence when the account xpub still matches.
 
+### Fixed - P1.12 independent-review remediation (2026-08-11)
+
+- Address verification now preserves raw candidates, validates Bech32/Bech32m and Base58Check checksums, retains checksum-invalid batch outcomes, and reports full mismatch evidence with a divergence caret.
+- Cold verification now derives and verifies both Bitcoin and EVM registry accounts before updating public provenance; different-account results name the account.
+- Added focused cold-state coverage and Chromium/Firefox browser coverage for EVM cold verification, account labels, aligned mismatches, raw whitespace, and checksum-invalid batch rows.
+
 Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
 ### Added — P1.11 address verification state (2026-08-10)
