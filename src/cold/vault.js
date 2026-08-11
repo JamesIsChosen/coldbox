@@ -868,6 +868,12 @@
           address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
           return;
         }
+        if (previousState === 'cold-verified' && requestedState === 'cold-verified-stale') {
+          address.verificationState = 'cold-verified';
+          address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
+          address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
+          return;
+        }
         if (requestedState === 'cold-verified' && previousState !== 'cold-verified') {
           if (previousState === 'cold-verified-stale') {
             address.verificationState = 'cold-verified-stale';

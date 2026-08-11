@@ -828,7 +828,7 @@ test('P1.11 warm public replacement cannot manufacture or rewrite cold verificat
   assert.equal(preserved.addresses[0].verifiedAgainstXpub, 'xpub' + '1'.repeat(107));
 });
 
-test('P1.11 cold replacement stales authenticated evidence when the account xpub changes', async () => {
+test('P1.11 cold replacement owns stale transitions and preserves authenticated evidence', async () => {
   const context = createRealContext();
   const passphrase = 'xpub staleness authority passphrase';
   const authenticatedXpub = 'xpub' + '1'.repeat(107);
@@ -860,11 +860,23 @@ test('P1.11 cold replacement stales authenticated evidence when the account xpub
     secretData: {}
   });
   const session = await context.__coldboxVault.openSession(vault, passphrase, 'offline');
+  const forgedStale = session.publicData;
+  forgedStale.addresses[0].verificationState = 'cold-verified-stale';
+  forgedStale.addresses[0].lastColdVerifiedAt = '2026-08-11T13:00:00.000Z';
+  forgedStale.addresses[0].verifiedAgainstXpub = replacementXpub;
+  const preserved = session.replacePublicData(forgedStale);
+
+  assert.equal(preserved.addresses[0].verificationState, 'cold-verified');
+  assert.equal(preserved.addresses[0].lastColdVerifiedAt, '2026-08-11T12:00:00.000Z');
+  assert.equal(preserved.addresses[0].verifiedAgainstXpub, authenticatedXpub);
+
   const replacement = session.publicData;
   replacement.accounts[0].xpub = replacementXpub;
   // The warm caller incorrectly leaves the state at cold-verified; the cold
   // authority must derive staleness from the changed account evidence itself.
   replacement.addresses[0].verificationState = 'cold-verified';
+  replacement.addresses[0].lastColdVerifiedAt = '2026-08-11T14:00:00.000Z';
+  replacement.addresses[0].verifiedAgainstXpub = 'attacker-xpub';
   const reconciled = session.replacePublicData(replacement);
 
   assert.equal(reconciled.addresses[0].verificationState, 'cold-verified-stale');
