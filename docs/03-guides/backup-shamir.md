@@ -8,9 +8,10 @@ specification and the secrets.js reference behavior were reviewed on
 
 ::: plain
 Choose a threshold, such as 2 of 3 or 3 of 5. Any threshold number of shares
-can rebuild the secret; fewer than the threshold reveal nothing useful. Keep
-the shares in separate offline places, and keep the original phrase or raw
-secret protected too.
+can rebuild the secret. The current coefficient-sampling design is under
+cryptographic review, so do not rely on fewer than the threshold revealing
+nothing useful until that review is resolved. Keep the shares in separate
+offline places, and keep the original phrase or raw secret protected too.
 :::
 ::: working
 Shamir39 is a non-standard mnemonic format for splitting a valid BIP-39
@@ -101,8 +102,12 @@ that the output is correct; independent verification is mandatory.
 - Raw SSS shares do not authenticate their contents. A maliciously changed
   share may cause a wrong candidate; verify the reconstructed value
   independently.
-- The threshold property protects the secret below threshold, but it does not
-  identify which shares are genuine or preserve the original passphrase.
+- The current implementation does not claim information-theoretic secrecy
+  below threshold: its nonconstant coefficient sampler excludes zero, which
+  narrows the below-threshold distribution. A maintainer cryptographic
+  decision and new verification are required before relying on that property.
+  The threshold also does not identify which shares are genuine or preserve
+  the original passphrase.
 - Field size limits the maximum share count. Coldbox’s UI exposes up to eight
   shares; the cold API enforces the mathematical field limit.
 - Missing `crypto.getRandomValues` is a hard failure. Coldbox never substitutes
