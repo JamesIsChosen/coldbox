@@ -76,22 +76,22 @@ Checksum schemes provide error *detection* over the encoded payload — bech32's
 
 ## The clipboard alarm
 
-Off by default. Turn it on in settings if you want it.
+Off by default. The toggle is in the Verify panel, beside the address-comparison controls.
 
 ::: plain
-With it on, Coldbox glances at your clipboard again a moment after you copy something. If the contents changed on their own — you didn't touch anything — that's a strong sign something on your computer is rewriting your clipboard.
+If you want this extra check, turn on the clipboard volatility canary in the Verify panel. Coldbox takes a baseline, then re-reads the clipboard once after a short delay without user action. It does not keep watching for copy actions.
 
-It needs permission to read your clipboard, which your browser will ask about. If you'd rather not grant it, everything else still works; Coldbox will just say the alarm is switched off.
+It needs permission to read your clipboard, which your browser will ask about. If access is denied or unavailable, the canary says **unavailable** and the ordinary address comparison still works. You can retry permission without reloading.
 :::
 
 ::: working
-The volatility canary re-reads the clipboard after a delay with no user action. A change with no user input is affirmative detection of an active hijacker — the only positive signal in this feature, since every other check reports the absence of a problem rather than the presence of one.
+The volatility canary is a one-shot check. Enable it, or use Retry in the Verify panel, and Coldbox reads the current clipboard as a baseline and schedules exactly one delayed re-read with no user action. A change with no user input is affirmative detection of an active hijacker — the only positive signal in this feature, since every other check reports the absence of a problem rather than the presence of one. After that read, the canary reports `stable` or `changed`; it does not begin ongoing monitoring.
 
-Requires persistent clipboard-read permission. On denial, the paste comparison continues to work and the UI states the canary is unavailable; it never silently substitutes the weaker check's result.
+Requires persistent clipboard-read permission. On denial or unavailable access, the paste comparison continues to work and the UI states the canary is **unavailable**; it never silently substitutes the weaker check's result. A permission-query failure alone is not treated as a denial: the actual clipboard read determines whether the canary can arm.
 :::
 
 ::: technical
-Implemented against `navigator.clipboard.readText()` under the `clipboard-read` permission, which requires a secure context. Availability varies across the supported execution matrix, particularly under `file://`, so the four states — permitted, denied, write-only, API-absent — are each handled explicitly and verified by the browser harness rather than assumed.
+Implemented against `navigator.clipboard.readText()` under the `clipboard-read` permission, which requires a secure context. Availability varies across the supported execution matrix, particularly under `file://`, so permission/API outcomes are surfaced as `unavailable` rather than treated as a successful canary, while the address comparison remains available. A synchronous `permissions.query()` failure is contained as an unknown permission state; a successful actual read may still arm the one-shot canary.
 :::
 
 **Expect false alarms.** Clipboard managers, cloud sync, and remote-desktop clients all rewrite clipboard contents legitimately. If you run one, this will trip. Coldbox names those causes first, because they're far more likely than malware — but if you don't run anything like that and it trips, take it seriously.
