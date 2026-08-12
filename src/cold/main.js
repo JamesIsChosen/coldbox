@@ -17,6 +17,7 @@ __COLDBOX_QR_ENCODER__
   var addressVerification = window.__coldboxAddressVerification;
   var verification = window.__coldboxVerification;
   var qr = window.__coldboxQr;
+  var slip39 = window.__coldboxSlip39;
   var readyMarker = document.getElementById('cold-ready');
   var protocolWarning = document.getElementById('cold-protocol-warning');
   var details = document.getElementById('cold-realm-details');
@@ -194,6 +195,20 @@ __COLDBOX_QR_ENCODER__
   var qrCard = document.getElementById('cold-qr-card');
   var qrCardCode = document.getElementById('cold-qr-card-code');
   var qrCardGrid = document.getElementById('cold-qr-card-grid');
+  var slip39Panel = document.getElementById('cold-slip39-lab');
+  var slip39SeedSource = document.getElementById('cold-slip39-seed-source');
+  var slip39GroupThreshold = document.getElementById('cold-slip39-group-threshold');
+  var slip39Groups = document.getElementById('cold-slip39-groups');
+  var slip39Passphrase = document.getElementById('cold-slip39-passphrase');
+  var slip39CompatibilityAck = document.getElementById('cold-slip39-compatibility-ack');
+  var slip39GenerateButton = document.getElementById('cold-slip39-generate');
+  var slip39ClearButton = document.getElementById('cold-slip39-clear');
+  var slip39Status = document.getElementById('cold-slip39-status');
+  var slip39Output = document.getElementById('cold-slip39-output');
+  var slip39RevealButton = document.getElementById('cold-slip39-reveal');
+  var slip39RecoveryInput = document.getElementById('cold-slip39-recovery-input');
+  var slip39RecoverButton = document.getElementById('cold-slip39-recover');
+  var slip39RecoveryStatus = document.getElementById('cold-slip39-recovery-status');
   var entropySession = entropyLab ? entropyLab.createSession() : null;
   var seedForgeWordInputs = [];
   var generatedMnemonic = '';
@@ -206,6 +221,9 @@ __COLDBOX_QR_ENCODER__
   var validationSeedRevealed = false;
   var generatedSeedRevealTimer = null;
   var validationSeedRevealTimer = null;
+  var slip39ShareText = '';
+  var slip39SharesRevealed = false;
+  var slip39RevealTimer = null;
   var generatedWalletRevision = 0;
   var validationWalletRevision = 0;
   var seedForgeWalletRevision = 0;
@@ -1539,6 +1557,282 @@ __COLDBOX_QR_ENCODER__
       seedForgeTarget.value = entropyTargetSelect.value;
     }
     updateSeedForgeMarginalControl(ready);
+    updateSlip39Controls();
+  }
+
+  function setSlip39Status(output, state, text) {
+    if (!output) {
+      return;
+    }
+    output.setAttribute('data-state', state);
+    output.textContent = text;
+  }
+
+  function slip39SourceBytes() {
+    if (!slip39 || !seedForge || !slip39SeedSource) {
+      return null;
+    }
+    if (slip39SeedSource.value === 'generated') {
+      if (!generatedMnemonic || !generatedSeedBytes || generatedWalletRevision <= 0) {
+        return null;
+      }
+      return new Uint8Array(seedForge.mnemonicToEntropy(generatedMnemonic, generatedLanguage));
+    }
+    if (slip39SeedSource.value === 'validated') {
+      if (!validationPhraseText || !validationSeedBytes || validationWalletRevision <= 0) {
+        return null;
+      }
+      var language = seedForgeLanguage ? seedForgeLanguage.value : 'english';
+      return new Uint8Array(seedForge.mnemonicToEntropy(validationPhraseText, language));
+    }
+    return null;
+  }
+
+  function slip39SourceAvailable() {
+    var source = null;
+    try {
+      source = slip39SourceBytes();
+      return Boolean(source);
+    } catch (_error) {
+      return false;
+    } finally {
+      zeroBytes(source);
+    }
+  }
+
+  function remaskSlip39Shares() {
+    slip39SharesRevealed = false;
+    if (slip39RevealTimer !== null) {
+      window.clearTimeout(slip39RevealTimer);
+      slip39RevealTimer = null;
+    }
+    if (slip39Output) {
+      slip39Output.value = slip39ShareText
+        ? 'Masked (' + slip39ShareText.split('\n').length + ' shares)'
+        : '';
+    }
+    if (slip39RevealButton) {
+      slip39RevealButton.textContent = 'Reveal shares for 30 seconds';
+      slip39RevealButton.disabled = !vaultCryptoReady || !slip39ShareText;
+    }
+  }
+
+  function clearSlip39Outputs() {
+    slip39ShareText = '';
+    remaskSlip39Shares();
+    if (slip39Output) {
+      slip39Output.value = '';
+    }
+    if (slip39RecoveryInput) {
+      slip39RecoveryInput.value = '';
+    }
+    setSlip39Status(slip39Status, 'idle', 'No SLIP-39 share set generated in this session.');
+    setSlip39Status(slip39RecoveryStatus, 'idle', 'No recovery attempt.');
+    updateSlip39Controls();
+  }
+
+  function revealSlip39Shares() {
+    if (!slip39ShareText || !slip39Output) {
+      return;
+    }
+    if (slip39RevealTimer !== null) {
+      window.clearTimeout(slip39RevealTimer);
+      slip39RevealTimer = null;
+    }
+    slip39Output.value = slip39ShareText;
+    slip39SharesRevealed = true;
+    if (slip39RevealButton) {
+      slip39RevealButton.textContent = 'Hide shares now';
+    }
+    slip39RevealTimer = window.setTimeout(remaskSlip39Shares, 30000);
+  }
+
+  function parseSlip39Options() {
+    var groupThreshold = Number(slip39GroupThreshold && slip39GroupThreshold.value);
+    if (!Number.isInteger(groupThreshold) || groupThreshold < 1 || groupThreshold > 16) {
+      throw new Error('Groups required must be an integer from 1 to 16.');
+    }
+    var groups;
+    try {
+      groups = JSON.parse(slip39Groups ? slip39Groups.value : '');
+    } catch (_error) {
+      throw new Error('Member groups must be valid JSON.');
+    }
+    if (!Array.isArray(groups) || groups.length < 1 || groups.length > 16) {
+      throw new Error('Member groups must contain 1 to 16 group objects.');
+    }
+    return {
+      groups: groups,
+      groupThreshold: groupThreshold,
+      passphrase: slip39Passphrase ? slip39Passphrase.value : ''
+    };
+  }
+
+  function updateSlip39Controls() {
+    if (!slip39Panel) {
+      return;
+    }
+    var ready = Boolean(slip39 && seedForge && vaultCryptoReady);
+    var sourceReady = ready && slip39SourceAvailable();
+    slip39Panel.setAttribute('data-state', ready ? 'ready' : 'locked');
+    [slip39SeedSource, slip39GroupThreshold, slip39Groups, slip39Passphrase, slip39RecoveryInput]
+      .forEach(function (control) {
+        if (control) {
+          control.disabled = !ready;
+        }
+      });
+    if (slip39CompatibilityAck) {
+      slip39CompatibilityAck.disabled = !ready || !sourceReady;
+      if (!sourceReady) {
+        slip39CompatibilityAck.checked = false;
+      }
+    }
+    if (slip39GenerateButton) {
+      slip39GenerateButton.disabled = !ready || !sourceReady
+        || !slip39CompatibilityAck || !slip39CompatibilityAck.checked;
+    }
+    if (slip39ClearButton) {
+      slip39ClearButton.disabled = !ready;
+    }
+    if (slip39RecoverButton) {
+      slip39RecoverButton.disabled = !ready;
+    }
+    if (slip39RevealButton) {
+      slip39RevealButton.disabled = !ready || !slip39ShareText;
+    }
+  }
+
+  function generateSlip39Shares() {
+    if (!slip39 || !vaultCryptoReady) {
+      setSlip39Status(slip39Status, 'error', 'SLIP-39 is unavailable; generation refused.');
+      return;
+    }
+    if (!slip39CompatibilityAck || !slip39CompatibilityAck.checked) {
+      setSlip39Status(slip39Status, 'error', 'Confirm device compatibility and separate distribution before generating.');
+      return;
+    }
+    var source = null;
+    var generated = null;
+    try {
+      source = slip39SourceBytes();
+      if (!source) {
+        throw new Error('A valid generated or validated phrase is required.');
+      }
+      var options = parseSlip39Options();
+      clearSlip39Outputs();
+      generated = slip39.generate(source, options);
+      slip39ShareText = generated.shares.map(function (share) { return share.mnemonic; }).join('\n');
+      remaskSlip39Shares();
+      setSlip39Status(
+        slip39Status,
+        'ready',
+        'Generated ' + generated.shares.length + ' share(s) from ' + (source.length * 8)
+          + '-bit BIP-39 phrase entropy. Write each share separately; the BIP-39 passphrase, if any, is not included.'
+      );
+    } catch (error) {
+      setSlip39Status(slip39Status, 'error', 'SLIP-39 generation failed closed: ' + error.message);
+      slip39ShareText = '';
+      remaskSlip39Shares();
+    } finally {
+      zeroBytes(source);
+      generated = null;
+      updateSlip39Controls();
+    }
+  }
+
+  function recoverSlip39Shares() {
+    if (!slip39 || !vaultCryptoReady) {
+      setSlip39Status(slip39RecoveryStatus, 'error', 'SLIP-39 is unavailable; recovery refused.');
+      return;
+    }
+    var recovered = null;
+    var source = null;
+    var lines = [];
+    try {
+      lines = (slip39RecoveryInput ? slip39RecoveryInput.value : '')
+        .split(/\r?\n/)
+        .map(function (line) { return line.trim(); })
+        .filter(function (line) { return line.length > 0; });
+      if (lines.length === 0) {
+        throw new Error('Enter at least one complete share from the written copies.');
+      }
+      recovered = slip39.recover(lines, slip39Passphrase ? slip39Passphrase.value : '');
+      source = slip39SourceBytes();
+      if (source && slip39.bytesEqual(recovered, source)) {
+        setSlip39Status(
+          slip39RecoveryStatus,
+          'valid',
+          'Recovered ' + recovered.length + '-byte phrase entropy and it matches the selected Seed Forge phrase.'
+        );
+      } else if (source) {
+        setSlip39Status(
+          slip39RecoveryStatus,
+          'error',
+          'Recovered ' + recovered.length + '-byte phrase entropy, but it does not match the selected Seed Forge phrase.'
+        );
+      } else {
+        setSlip39Status(
+          slip39RecoveryStatus,
+          'ready',
+          'Recovered ' + recovered.length + '-byte phrase entropy. Select the source phrase to compare it locally.'
+        );
+      }
+    } catch (error) {
+      setSlip39Status(slip39RecoveryStatus, 'error', 'SLIP-39 recovery failed closed: ' + error.message);
+    } finally {
+      zeroBytes(recovered);
+      zeroBytes(source);
+      lines.length = 0;
+      if (slip39RecoveryInput) {
+        slip39RecoveryInput.value = '';
+      }
+      updateSlip39Controls();
+    }
+  }
+
+  function wireSlip39() {
+    if (!slip39) {
+      return;
+    }
+    if (slip39GenerateButton) {
+      slip39GenerateButton.addEventListener('click', generateSlip39Shares);
+    }
+    if (slip39ClearButton) {
+      slip39ClearButton.addEventListener('click', clearSlip39Outputs);
+    }
+    if (slip39RevealButton) {
+      slip39RevealButton.addEventListener('click', function () {
+        if (slip39SharesRevealed) {
+          remaskSlip39Shares();
+        } else {
+          revealSlip39Shares();
+        }
+      });
+    }
+    if (slip39RecoverButton) {
+      slip39RecoverButton.addEventListener('click', recoverSlip39Shares);
+    }
+    if (slip39SeedSource) {
+      slip39SeedSource.addEventListener('change', function () {
+        clearSlip39Outputs();
+        if (slip39CompatibilityAck) {
+          slip39CompatibilityAck.checked = false;
+        }
+        updateSlip39Controls();
+      });
+    }
+    [slip39GroupThreshold, slip39Groups, slip39Passphrase].forEach(function (control) {
+      if (control) {
+        control.addEventListener('input', function () {
+          clearSlip39Outputs();
+          updateSlip39Controls();
+        });
+      }
+    });
+    if (slip39CompatibilityAck) {
+      slip39CompatibilityAck.addEventListener('change', updateSlip39Controls);
+    }
+    updateSlip39Controls();
   }
 
   function setFingerprintOutput(output, value) {
@@ -1630,6 +1924,11 @@ __COLDBOX_QR_ENCODER__
     if (seedForgeGeneratedSeedReveal) {
       seedForgeGeneratedSeedReveal.disabled = true;
     }
+    if (slip39SeedSource && slip39SeedSource.value === 'generated') {
+      clearSlip39Outputs();
+    } else {
+      updateSlip39Controls();
+    }
   }
 
   function replaceGeneratedSeed(bytes) {
@@ -1680,6 +1979,11 @@ __COLDBOX_QR_ENCODER__
     }
     if (seedForgeValidationSeedReveal) {
       seedForgeValidationSeedReveal.disabled = true;
+    }
+    if (slip39SeedSource && slip39SeedSource.value === 'validated') {
+      clearSlip39Outputs();
+    } else {
+      updateSlip39Controls();
     }
   }
 
@@ -3985,7 +4289,7 @@ __COLDBOX_QR_ENCODER__
     messagePort.postMessage(readyMessage);
   }
 
-  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer || !vaultLayer || !entropyLab || !seedForge || !derivation || !verification || !qr) {
+  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer || !vaultLayer || !entropyLab || !seedForge || !derivation || !verification || !qr || !slip39) {
     return;
   }
 
@@ -4184,6 +4488,7 @@ __COLDBOX_QR_ENCODER__
 
   installThrowContract();
   wireSeedForge();
+  wireSlip39();
   wireQrStudio();
   wireEntropyLab();
   wireVerification();

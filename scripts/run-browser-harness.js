@@ -3270,6 +3270,77 @@ async function verifySeedForge(browser, engine) {
   }
 }
 
+async function verifySlip39(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    const coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-slip39-lab[data-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
+
+    const generate = coldFrame.locator('#cold-slip39-generate');
+    const acknowledge = coldFrame.locator('#cold-slip39-compatibility-ack');
+    const output = coldFrame.locator('#cold-slip39-output');
+    const reveal = coldFrame.locator('#cold-slip39-reveal');
+    const recoveryDetails = coldFrame.locator('#cold-slip39-lab details');
+    const recoveryInput = coldFrame.locator('#cold-slip39-recovery-input');
+    const recovery = coldFrame.locator('#cold-slip39-recover');
+
+    assert.equal(await generate.isDisabled(), true, `${engine}: SLIP-39 generation must stay gated without a valid source phrase`);
+    assert.equal(await reveal.isDisabled(), true, `${engine}: SLIP-39 reveal must stay disabled without generated shares`);
+
+    const mnemonic = [
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
+    ].join(' ');
+    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(mnemonic);
+    await coldFrame.locator('#cold-seed-forge-validate').click();
+    await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-slip39-seed-source').selectOption('validated');
+    await acknowledge.check();
+    assert.equal(await generate.isDisabled(), false, `${engine}: SLIP-39 generation should enable after source and compatibility acknowledgement`);
+
+    await generate.click();
+    await coldFrame.locator('#cold-slip39-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    assert.equal((await output.inputValue()).trim(), 'Masked (3 shares)', `${engine}: SLIP-39 shares must be masked by default`);
+    assert.equal(await reveal.isDisabled(), false, `${engine}: generated SLIP-39 shares must expose only an explicit reveal control`);
+
+    await reveal.click();
+    const shareText = await output.inputValue();
+    const shares = shareText.trim().split(/\r?\n/);
+    assert.equal(shares.length, 3, `${engine}: default SLIP-39 generation must produce three shares`);
+    assert.equal(shares.every((share) => share.split(' ').length === 20), true, `${engine}: 128-bit phrase entropy must produce 20-word shares`);
+    const warmText = await page.locator('body').textContent();
+    assert.equal(warmText.includes(shareText), false, `${engine}: generated SLIP-39 shares must not appear in the warm shell`);
+    await reveal.click();
+    assert.equal((await output.inputValue()).trim(), 'Masked (3 shares)');
+
+    await recoveryDetails.locator('summary').click();
+    await recoveryInput.fill([shares[0], shares[2]].join('\n'));
+    await recovery.click();
+    await coldFrame.locator('#cold-slip39-recovery-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 10000 });
+    assert.match(await coldFrame.locator('#cold-slip39-recovery-status').textContent(), /matches the selected Seed Forge phrase/i);
+    assert.equal(await recoveryInput.inputValue(), '', `${engine}: typed SLIP-39 shares must be cleared after recovery`);
+
+    const corruptShare = shares[0].split(' ');
+    corruptShare[0] = 'not-a-word';
+    await recoveryInput.fill(corruptShare.join(' '));
+    await recovery.click();
+    await coldFrame.locator('#cold-slip39-recovery-status[data-state="error"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await coldFrame.locator('#cold-slip39-recovery-status').textContent(), /share 1/i);
+
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal((await output.inputValue()).trim(), '', `${engine}: lock must clear generated SLIP-39 output`);
+    assert.equal(await recoveryInput.inputValue(), '', `${engine}: lock must clear typed SLIP-39 recovery input`);
+    assert.equal(await reveal.isDisabled(), true, `${engine}: lock must disable the SLIP-39 reveal control`);
+
+    console.log(`${engine}: SLIP-39 cold gating, masked reveal, 20-word output, local two-share recovery, indexed checksum failure, warm-shell isolation, and teardown passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyVerificationWorkflows(browser, engine) {
   const { page } = await openPage(browser, buildPath);
   try {
@@ -3577,6 +3648,7 @@ async function run() {
       await verifyDeviceRegistry(browser, engine);
       await verifyEntropyLab(browser, engine);
       await verifySeedForge(browser, engine);
+      await verifySlip39(browser, engine);
       await verifyVerificationWorkflows(browser, engine);
       await verifyQrStudio(browser, engine);
       await verifyUnlockedRuntimeHealthLockdown(browser, engine);

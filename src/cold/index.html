@@ -345,6 +345,47 @@ __COLDBOX_COLD_STYLES__
       </div>
       <p id="cold-qr-note">Standard SeedQR uses English BIP-39 word indices as zero-padded four-digit numeric groups. Compact SeedQR uses the raw BIP-39 entropy bytes, works for non-English BIP-39 phrases, and is smaller but not hand-readable. The current phrase is cleared with Seed Forge when the cold session locks.</p>
     </section>
+    <section id="cold-slip39-lab" aria-label="Cold-only SLIP-39 Backup Lab" data-state="locked">
+      <p class="eyebrow">Backup Lab / P2.1</p>
+      <h2>SLIP-39 recovery shares</h2>
+      <p id="cold-slip39-help">SLIP-39 shares are secret material and remain inside this sealed frame. Before generating, confirm that the device you intend to restore supports SLIP-39: Trezor does; Ledger and Coldcard do not. A single-share set is not a backup split. The share set contains the BIP-39 phrase entropy; any BIP-39 passphrase is a separate secret and must be backed up separately.</p>
+      <div class="cold-qr-grid-form">
+        <div>
+          <label for="cold-slip39-seed-source">Master seed source</label>
+          <select id="cold-slip39-seed-source" disabled>
+            <option value="generated">Generated Seed Forge phrase entropy</option>
+            <option value="validated">Validated existing phrase entropy</option>
+          </select>
+        </div>
+        <div>
+          <label for="cold-slip39-group-threshold">Groups required</label>
+          <input id="cold-slip39-group-threshold" type="number" min="1" max="16" step="1" value="1" disabled>
+        </div>
+      </div>
+      <label for="cold-slip39-groups">Member groups (JSON)</label>
+      <textarea id="cold-slip39-groups" rows="2" spellcheck="false" autocapitalize="off" autocomplete="off" disabled>[{"threshold":2,"count":3}]</textarea>
+      <p class="cold-qr-help">Each object is one group: <code>threshold</code> of <code>count</code>. Example: <code>[{"threshold":2,"count":3},{"threshold":1,"count":1}]</code> with groups required set to 2.</p>
+      <label for="cold-slip39-passphrase">Share passphrase extension (optional, never leaves this realm)</label>
+      <input id="cold-slip39-passphrase" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+      <label class="cold-qr-confirm"><input id="cold-slip39-compatibility-ack" type="checkbox" disabled> I checked device compatibility, will distribute the shares separately, and understand that the passphrase extension needs its own backup.</label>
+      <div class="cold-qr-actions">
+        <button id="cold-slip39-generate" type="button" disabled>Generate SLIP-39 shares</button>
+        <button id="cold-slip39-clear" type="button" disabled>Clear share output</button>
+      </div>
+      <p id="cold-slip39-status" class="cold-qr-status" data-state="idle" role="status" aria-live="polite">No SLIP-39 share set generated in this session.</p>
+      <label for="cold-slip39-output">Generated shares (one per line; secret)</label>
+      <textarea id="cold-slip39-output" class="cold-slip39-output" rows="7" spellcheck="false" autocapitalize="off" autocomplete="off" readonly></textarea>
+      <button id="cold-slip39-reveal" type="button" disabled>Reveal shares for 30 seconds</button>
+      <details class="cold-verification-workflow">
+        <summary>Recover and verify from written shares</summary>
+        <p class="cold-qr-help">Type shares from the physical copies, not the generated text above. The result is held only long enough to report its byte length and is then cleared.</p>
+        <label for="cold-slip39-recovery-input">Shares to recover (one per line)</label>
+        <textarea id="cold-slip39-recovery-input" rows="7" spellcheck="false" autocapitalize="off" autocomplete="off" disabled></textarea>
+        <button id="cold-slip39-recover" type="button" disabled>Recover from typed shares</button>
+        <p id="cold-slip39-recovery-status" class="cold-qr-status" data-state="idle" role="status" aria-live="polite">No recovery attempt.</p>
+      </details>
+      <p id="cold-slip39-note">The standard uses its own 1024-word list; these words are not BIP-39 words. The checksum detects transcription errors but does not authorize automatic correction. Verify a threshold subset from paper before treating the backup as complete.</p>
+    </section>
     <section id="cold-verification" aria-label="Verification Bench" data-state="locked">
       <p class="eyebrow">Verify Bench / P1.9</p>
       <h2>Independent hardware-wallet checks</h2>
@@ -455,6 +496,7 @@ __COLDBOX_DERIVATION_LAYER__
 __COLDBOX_VERIFICATION_LAYER__
 __COLDBOX_ADDRESS_VERIFICATION_LAYER__
 __COLDBOX_QR_LAYER__
+__COLDBOX_SLIP39_LAYER__
 __COLDBOX_COLD_SCRIPT__
   </script>
 </body>

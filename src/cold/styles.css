@@ -1125,6 +1125,20 @@ body {
   overflow-wrap: anywhere;
 }
 
+.cold-slip39-output {
+  display: block;
+  width: min(100%, 62rem);
+  margin-top: 0.45rem;
+  border: 0.16rem solid var(--cold-red);
+  border-radius: 0.3rem;
+  background: var(--cold-bg);
+  color: var(--cold-text);
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .cold-seed-forge-raw button {
   min-height: 2.75rem;
   margin-top: 0.45rem;
