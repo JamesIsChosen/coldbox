@@ -17,13 +17,14 @@ The pinned `@noble/*`, `@scure/*`, and Argon2 artifacts below are recorded in [v
 | `@scure/bip39` | 2.2.0 | Mnemonic encode/decode | `04a6e2bb040301954373f543e44c352137f14dff58f942782769984ef5ea8e1c` |
 | `@scure/base` | 2.2.0 | base58, bech32, bech32m, base64 | `659e1b1eaac82df04e5a4b97ef48779cfd3e7c24dafde5efa4324659a25d70a3` |
 | `argon2-browser` (WASM) | 1.18.0 | Argon2id KDF | `cdb11795a4971bde095fe6b836aa424de50c4558ed4b9505bc74111eee7f6d35` |
+| Shamir39 reference | source commit `30d17d8921200afd1c6365140ee1defead11386a` | Inline current-format compatibility adaptation; no runtime package | `N/A - source reference, not a release artifact` |
 | SLIP-39 implementation | TBD | Shamir mnemonic shares | `TBD` |
 | codex32 implementation | TBD | BIP-93 hand-verifiable shares | `TBD` |
-| `secrets.js` | TBD | Raw Shamir over GF(2^n) | `TBD` |
+| `secrets.js` reference | source commit `14a4b682a28242b1dbe5506674b5d5f476b78dbf` | Inline raw SSS compatibility adaptation; no runtime package | `N/A - source reference, not a release artifact` |
 | `qrcode-generator` | 1.4.4 | Ephemeral SVG/data-URL rendering for live encrypted `CBX-VT/1` transfer frames; never durable QR export | `ab6ed47d378877441deae95972e07b2716c26545a735a23aa6b9d442b33026ed` |
 | `jsQR` | TBD | Camera decoding (optional) | `TBD` |
 
-P0.2 verifies and stores release artifacts. P1.3 bundles the BIP-39 encoder/decoder and all ten official wordlists; P1.4 adds the BIP-32 Bitcoin derivation engine and the `@scure/base` encodings; P1.5 adds Keccak-256, EIP-55 formatting, EVM derivation, and the cold-only arbitrary-path projection to the same bundle alongside the selected `@noble` modules and embedded `argon2-browser` WASM bundle. The remaining TBD libraries are still not runtime-ready.
+P0.2 verifies and stores release artifacts. P1.3 bundles the BIP-39 encoder/decoder and all ten official wordlists; P1.4 adds the BIP-32 Bitcoin derivation engine and the `@scure/base` encodings; P1.5 adds Keccak-256, EIP-55 formatting, EVM derivation, and the cold-only arbitrary-path projection to the same bundle alongside the selected `@noble` modules and embedded `argon2-browser` WASM bundle. P2.4 adapts the reviewed Shamir39 and secrets.js reference behavior inline in the cold realm; those source commits are provenance references, not fetched or shipped runtime dependencies. The remaining TBD libraries are still not runtime-ready.
 
 ## Fonts (vendored; inlined as `data:` URIs by the build)
 

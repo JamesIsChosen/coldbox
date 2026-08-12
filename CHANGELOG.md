@@ -12,6 +12,22 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
+### Added - P2.4 Shamir39 and raw SSS (2026-08-12)
+
+- **Cold-only threshold shares.** Shamir39 splits valid BIP-39 phrases into
+  mnemonic shares, and raw SSS splits hexadecimal secrets over GF(2^n) with
+  the secrets.js-compatible format. Both use only `crypto.getRandomValues`
+  and fail closed when secure randomness is unavailable.
+- **Masked recovery workflow.** The sealed realm keeps sources, shares, and
+  reconstructed candidates out of the warm message channel, masks them by
+  default, offers a timed reveal, and clears all inputs and outputs on lock or
+  panic teardown. There is no clipboard, storage, download, or print action.
+- **Independent compatibility coverage.** Published Ian Coleman Shamir39 and
+  secrets.js vectors, malformed-share negatives, deterministic formatting,
+  Chromium/Firefox UI isolation, and teardown are covered. See
+  [ADR-0038](docs/05-development/adr/0038-shamir39-and-raw-sss-cold-only.md)
+  and [the guide](docs/03-guides/backup-shamir.md).
+
 ### Fixed - P1.11 independent-review remediation (2026-08-11)
 
 - Warm public registry replacements can no longer elevate an address to `cold-verified` or rewrite authenticated verification evidence; schema-1 public compartments migrate in the cold vault session and persist as schema 2; and Chromium/Firefox coverage locks the stale Registry label to `Cold verification stale`.
