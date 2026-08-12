@@ -83,6 +83,18 @@ test('Shamir39 combines the published current-format mnemonic shares', () => {
   assert.equal(result.parts, 5);
 });
 
+test('Shamir39 accepts the legacy marker at the pinned specification compatibility boundary', () => {
+  const context = createContext({ fixedRandom: true });
+  const legacyParts = OFFICIAL_SHAMIR39_PARTS.map((part) => part.replace('shamir39-p1', 'shamir39'));
+  const result = context.__coldboxShamir.shamir39.combine(legacyParts, {
+    language: 'english'
+  });
+
+  assert.equal(result.mnemonic, VALID_12);
+  assert.equal(result.threshold, 3);
+  assert.equal(result.parts, 5);
+});
+
 test('Shamir39 deterministic fixture matches Ian Coleman source and threshold order is irrelevant', () => {
   const context = createContext({ fixedRandom: true });
   const shamir39 = context.__coldboxShamir.shamir39;

@@ -20,11 +20,14 @@ wallet-device interoperability by itself. A BIP-39 passphrase is a separate
 secret and is not included in either share set.
 :::
 ::: technical
-Shamir39 uses the `shamir39-p1` encoding described by the
-[Ian Coleman specification](https://github.com/iancoleman/shamir39/blob/master/specification.md):
-parameter words carry the threshold and share order, and data words encode the
-share polynomial over GF(2^11). Coldbox also accepts the legacy `shamir39`
-marker when combining. Raw SSS follows the pinned
+The pinned Ian Coleman commit contains two historical artifacts that must not
+be conflated: its `specification.md` names the prototype marker `shamir39`,
+while its `src/js/shamir39.js` implementation emits `shamir39-p1`. Coldbox
+follows that implementation for new output and accepts the legacy marker when
+combining. The pinned specification's three-word example is not a valid BIP-39
+input for this tool, so the shipped input boundary remains 12, 15, 18, 21, or
+24 valid BIP-39 words. Parameter words carry the threshold and share order,
+and data words encode the share polynomial over GF(2^11). Raw SSS follows the pinned
 [secrets.js share format](https://github.com/grempe/secrets.js/blob/master/README.md):
 the leading base-36 field-size digit, hexadecimal share identifier, padded
 field data, default 8-bit field, and default 128-bit padding. Both generators

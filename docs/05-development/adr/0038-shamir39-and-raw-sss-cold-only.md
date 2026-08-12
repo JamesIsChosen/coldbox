@@ -19,17 +19,21 @@ browser bundle would needlessly expand the trusted code surface.
 
 The primary references were reviewed on 2026-08-12:
 
-- [Ian Coleman Shamir39 specification](https://github.com/iancoleman/shamir39/blob/master/specification.md), reference commit `30d17d8921200afd1c6365140ee1defead11386a`.
-- [Ian Coleman Shamir39 implementation](https://github.com/iancoleman/shamir39), same reference commit.
-- [secrets.js README](https://github.com/grempe/secrets.js/blob/master/README.md) and
-  [source](https://github.com/grempe/secrets.js/blob/master/secrets.js), reference commit `14a4b682a28242b1dbe5506674b5d5f476b78dbf`.
+- [Ian Coleman `specification.md`](https://github.com/iancoleman/shamir39/blob/30d17d8921200afd1c6365140ee1defead11386a/specification.md), commit `30d17d8921200afd1c6365140ee1defead11386a`, Git blob `8be52ecd5d7700bf68086dccff7851dee3670074`, SHA-256 `86ca41da920644d09857c15cd00faba3824917cf6475391474bf12df861da55a`.
+- Ian Coleman `src/js/shamir39.js`, the same commit, Git blob `4b0aae2cc63ac588326037e1718f7d888c21d269`, SHA-256 `0d20b48116ee4a41fbf13b323c72237252b9ac74b2a0da2e8124a222d4420564`.
+- [secrets.js `README.md`](https://github.com/grempe/secrets.js/blob/14a4b682a28242b1dbe5506674b5d5f476b78dbf/README.md), commit `14a4b682a28242b1dbe5506674b5d5f476b78dbf`, Git blob `a4f1b45a96de9ab9c6a86f6927d3657b417cb643`, SHA-256 `40d9f61be4495516e378bd832da48da98227eb319ec73ceddf4755a73ef1ff1e`.
+- secrets.js `secrets.js`, the same commit, Git blob `2eb1360d61d99f5cee46ebb2aaf1f938b065069`, SHA-256 `c790e06716c7608eea706d96c63dd1c665dd3578d71a9162ebe3e28ce69db411`.
+- secrets.js fixture `spec/secrets/SecretsSpec.js`, the same commit, Git blob `8986699144de4d25623217ac4377f85a4042f945`, SHA-256 `870cbd1be4495516e378bd832da48da98227eb319ec73ceddf4755a73ef1ff1e`.
 
 ## Decision
 
 ### Shamir39
 
-- Implement the current `shamir39-p1` encoding, and accept the legacy
-  `shamir39` marker when combining for compatibility.
+- The pinned specification uses the legacy `shamir39` marker in its prototype
+  example, while the pinned implementation emits `shamir39-p1`. Implement the
+  pinned implementation's `shamir39-p1` encoding and accept the legacy marker
+  when combining for compatibility. This is an explicit compatibility
+  boundary, not a claim that the pinned specification describes `p1`.
 - Split valid 12-, 15-, 18-, 21-, and 24-word BIP-39 phrases using the
   selected official wordlist. The input is validated before any polynomial
   work begins.
