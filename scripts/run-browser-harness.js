@@ -85,7 +85,11 @@ const CLIPBOARD_CANARY_CONTROL_SCRIPT = `(function () {
   var state = {
     permission: 'denied',
     clipboardAvailable: true,
-    text: 'baseline'
+    text: 'baseline',
+    deferNextPermission: false,
+    deferNextRead: false,
+    pendingPermissionResolvers: [],
+    pendingReadResolvers: []
   };
   window.__coldboxClipboardCanaryTest = state;
   Object.defineProperty(Navigator.prototype, 'permissions', {
@@ -93,6 +97,12 @@ const CLIPBOARD_CANARY_CONTROL_SCRIPT = `(function () {
     get: function () {
       return {
         query: function () {
+          if (state.deferNextPermission) {
+            state.deferNextPermission = false;
+            return new Promise(function (resolve) {
+              state.pendingPermissionResolvers.push(resolve);
+            });
+          }
           return Promise.resolve({ state: state.permission });
         }
       };
@@ -106,6 +116,12 @@ const CLIPBOARD_CANARY_CONTROL_SCRIPT = `(function () {
       }
       return {
         readText: function () {
+          if (state.deferNextRead) {
+            state.deferNextRead = false;
+            return new Promise(function (resolve) {
+              state.pendingReadResolvers.push(resolve);
+            });
+          }
           return Promise.resolve(state.text);
         }
       };
@@ -1480,6 +1496,33 @@ async function verifyClipboardCanary(browser, engine) {
     await toggle.click();
     await page.locator('#clipboard-canary-status[data-state="off"]').waitFor({ state: 'visible', timeout: 5000 });
     await page.evaluate(() => {
+      const state = window.__coldboxClipboardCanaryTest;
+      state.deferNextPermission = true;
+      state.deferNextRead = true;
+    });
+    await toggle.click();
+    await page.waitForFunction(() => window.__coldboxClipboardCanaryTest.pendingPermissionResolvers.length === 1);
+    await toggle.click();
+    await page.locator('#clipboard-canary-status[data-state="off"]').waitFor({ state: 'visible', timeout: 5000 });
+    await toggle.click();
+    await page.waitForFunction(() => window.__coldboxClipboardCanaryTest.pendingReadResolvers.length === 1);
+    await page.evaluate(() => {
+      const state = window.__coldboxClipboardCanaryTest;
+      state.pendingPermissionResolvers.shift()({ state: state.permission });
+    });
+    await page.waitForTimeout(25);
+    await page.evaluate(() => {
+      const state = window.__coldboxClipboardCanaryTest;
+      state.pendingReadResolvers.shift()(state.text);
+    });
+    await page.waitForFunction(() => (
+      document.querySelector('#clipboard-canary-status').getAttribute('data-state') === 'armed'
+      && document.querySelector('#clipboard-canary-toggle').checked
+    ));
+
+    await toggle.click();
+    await page.locator('#clipboard-canary-status[data-state="off"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.evaluate(() => {
       window.__coldboxClipboardCanaryTest.clipboardAvailable = false;
     });
     await toggle.click();
@@ -1490,8 +1533,30 @@ async function verifyClipboardCanary(browser, engine) {
       window.__coldboxClipboardCanaryTest.clipboardAvailable = true;
       window.__coldboxClipboardCanaryTest.text = 'baseline';
     });
+    await page.evaluate(() => {
+      const state = window.__coldboxClipboardCanaryTest;
+      state.deferNextPermission = true;
+      state.deferNextRead = true;
+    });
     await page.locator('#clipboard-canary-retry').click();
-    await page.locator('#clipboard-canary-status[data-state="armed"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.waitForFunction(() => window.__coldboxClipboardCanaryTest.pendingPermissionResolvers.length === 1);
+    await page.evaluate(() => {
+      document.getElementById('clipboard-canary-retry').click();
+    });
+    await page.waitForFunction(() => window.__coldboxClipboardCanaryTest.pendingReadResolvers.length === 1);
+    await page.evaluate(() => {
+      const state = window.__coldboxClipboardCanaryTest;
+      state.pendingPermissionResolvers.shift()({ state: state.permission });
+    });
+    await page.waitForTimeout(25);
+    await page.evaluate(() => {
+      const state = window.__coldboxClipboardCanaryTest;
+      state.pendingReadResolvers.shift()(state.text);
+    });
+    await page.waitForFunction(() => (
+      document.querySelector('#clipboard-canary-status').getAttribute('data-state') === 'armed'
+      && document.querySelector('#clipboard-canary-toggle').checked
+    ));
     await page.evaluate(() => {
       window.__coldboxClipboardCanaryTest.text = 'changed without user action';
     });

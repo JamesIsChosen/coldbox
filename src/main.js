@@ -326,6 +326,7 @@ __COLDBOX_CONCEALMENT__
   var pendingRegistryMutation = null;
   var pendingAddressVerification = null;
   var clipboardCanaryController = null;
+  var clipboardCanaryUiGeneration = 0;
   var hiddenRegistryVisible = false;
   var pendingHiddenReveal = null;
   var concealmentController = concealment && typeof concealment.createController === 'function'
@@ -3317,6 +3318,15 @@ __COLDBOX_CONCEALMENT__
     }
   }
 
+  function beginClipboardCanaryUiOperation() {
+    clipboardCanaryUiGeneration += 1;
+    return clipboardCanaryUiGeneration;
+  }
+
+  function isCurrentClipboardCanaryUiOperation(operation) {
+    return operation === clipboardCanaryUiGeneration;
+  }
+
   function createClipboardCanary() {
     if (!clipboardCanary || typeof clipboardCanary.create !== 'function') {
       setClipboardCanaryStatus('unavailable', 'The clipboard canary is unavailable; address comparison still works.');
@@ -5316,14 +5326,22 @@ __COLDBOX_CONCEALMENT__
   if (clipboardCanaryToggle && clipboardCanaryController) {
     clipboardCanaryToggle.addEventListener('change', function () {
       if (!clipboardCanaryToggle.checked) {
+        beginClipboardCanaryUiOperation();
         clipboardCanaryController.disable();
         return;
       }
+      var operation = beginClipboardCanaryUiOperation();
       clipboardCanaryController.enable().then(function (result) {
+        if (!isCurrentClipboardCanaryUiOperation(operation)) {
+          return;
+        }
         if (result.state !== 'armed') {
           clipboardCanaryToggle.checked = false;
         }
       }, function () {
+        if (!isCurrentClipboardCanaryUiOperation(operation)) {
+          return;
+        }
         clipboardCanaryToggle.checked = false;
         setClipboardCanaryStatus('unavailable', 'Clipboard read permission was unavailable for the canary; address comparison still works.');
       });
@@ -5331,9 +5349,16 @@ __COLDBOX_CONCEALMENT__
   }
   if (clipboardCanaryRetry && clipboardCanaryController) {
     clipboardCanaryRetry.addEventListener('click', function () {
+      var operation = beginClipboardCanaryUiOperation();
       clipboardCanaryController.retry().then(function (result) {
+        if (!isCurrentClipboardCanaryUiOperation(operation)) {
+          return;
+        }
         clipboardCanaryToggle.checked = result.state === 'armed';
       }, function () {
+        if (!isCurrentClipboardCanaryUiOperation(operation)) {
+          return;
+        }
         clipboardCanaryToggle.checked = false;
         setClipboardCanaryStatus('unavailable', 'Clipboard read permission was unavailable for the canary; address comparison still works.');
       });
