@@ -1,6 +1,6 @@
 # ADR-0038: Shamir39 and raw SSS are cold-only inline adaptations
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2026-08-12
 
 ## Context
