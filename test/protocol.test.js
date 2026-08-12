@@ -50,6 +50,7 @@ test('protocol exposes only the documented message whitelist', () => {
     'panic.hide',
     'mode.set',
     'derive.request',
+    'address.verifyRequest',
     'publicData.request',
     'publicData.replace',
     'concealment.reveal',
@@ -61,6 +62,7 @@ test('protocol exposes only the documented message whitelist', () => {
     'vault.bytes',
     'vault.lockRequest',
     'derive.result',
+    'address.verifyResult',
     'publicData.updated',
     'concealment.revealed',
     'secretData.updated',
@@ -455,6 +457,41 @@ test('cold acknowledgements accept only the documented address verification stat
         }]
       }
     }
+  }), null);
+});
+
+test('address verification messages carry enum fields only', () => {
+  const protocol = loadProtocol();
+  const addressId = SAFE_ID;
+  const accountId = '550e8400-e29b-41d4-a716-446655440001';
+  const request = protocol.validateMessage('warm-to-cold', {
+    id: 'address-request-1',
+    type: 'address.verifyRequest',
+    payload: { addressId, accountRef: accountId, index: 0, candidate: SAFE_ADDRESS, note: 'discarded prose' }
+  });
+  assert.equal(JSON.stringify(request.payload), JSON.stringify({ addressId, accountRef: accountId, index: 0, candidate: SAFE_ADDRESS }));
+  const whitespaceRequest = protocol.validateMessage('warm-to-cold', {
+    id: 'address-request-whitespace',
+    type: 'address.verifyRequest',
+    payload: { addressId, accountRef: accountId, index: 0, candidate: ` ${SAFE_ADDRESS} ` }
+  });
+  assert.equal(whitespaceRequest.payload.candidate, ` ${SAFE_ADDRESS} `);
+  const result = protocol.validateMessage('cold-to-warm', {
+    id: 'address-result-1',
+    type: 'address.verifyResult',
+    payload: {
+      addressId,
+      outcome: 'mismatch',
+      divergenceIndex: 12,
+      verificationState: 'unverified',
+      reason: 'free-form text must not cross'
+    }
+  });
+  assert.equal(result.payload.reason, undefined);
+  assert.equal(protocol.validateMessage('cold-to-warm', {
+    id: 'address-result-bad',
+    type: 'address.verifyResult',
+    payload: { addressId, outcome: 'no-match', verificationState: 'unverified' }
   }), null);
 });
 

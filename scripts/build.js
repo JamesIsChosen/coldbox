@@ -53,6 +53,7 @@ const coldRealmManifest = Object.freeze([
   Object.freeze({ file: 'index.html', token: '__COLDBOX_SEED_FORGE_LAYER__', content: 'seed-forge.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_DERIVATION_LAYER__', content: 'derivation.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_VERIFICATION_LAYER__', content: 'verification.js' }),
+  Object.freeze({ file: 'index.html', token: '__COLDBOX_ADDRESS_VERIFICATION_LAYER__', content: 'address-verification.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_QR_LAYER__', content: 'qr.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_COLD_STYLES__', content: 'styles.css' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_COLD_SCRIPT__', content: 'main.js' })
@@ -225,6 +226,7 @@ function assemble() {
   const registrySource = readSource('registry.js');
   const concealmentSource = readSource('concealment.js');
   let mainScript = injectOnce(readSource('main.js'), '__COLDBOX_QR_ENCODER__', readQrEncoderSource());
+  mainScript = injectOnce(mainScript, '__COLDBOX_ADDRESS_VERIFICATION__', readSource('address-verification.js'));
   mainScript = injectOnce(mainScript, '__COLDBOX_PROTOCOL__', protocolSource);
   mainScript = injectOnce(mainScript, '__COLDBOX_REGISTRY__', registrySource);
   mainScript = injectOnce(mainScript, '__COLDBOX_CONCEALMENT__', concealmentSource);
@@ -293,7 +295,8 @@ function assemble() {
     '__COLDBOX_FRAME_SCRIPT_HASHES__',
     '__COLDBOX_FRAME_STYLE_HASHES__',
     '__COLDBOX_HELP_CONTENT__',
-    '__COLDBOX_LICENSE_TEXT__'
+    '__COLDBOX_LICENSE_TEXT__',
+    '__COLDBOX_ADDRESS_VERIFICATION__'
   ]) {
     if (document.includes(placeholder)) {
       throw new Error(`Unresolved source placeholder in assembled document: ${placeholder}`);
@@ -324,6 +327,7 @@ function assembleColdRealm(protocolSource, airgapSource, capabilitiesSource) {
     ['seed-forge.js', readSource('cold/seed-forge.js')],
     ['derivation.js', readSource('cold/derivation.js')],
     ['verification.js', readSource('cold/verification.js')],
+    ['address-verification.js', readSource('address-verification.js')],
     ['qr.js', readSource('cold/qr.js')],
     ['styles.css', readSource('cold/styles.css')],
     ['main.js', coldMainScript]
@@ -348,6 +352,7 @@ function assembleColdRealm(protocolSource, airgapSource, capabilitiesSource) {
     '__COLDBOX_SEED_FORGE_LAYER__',
     '__COLDBOX_DERIVATION_LAYER__',
     '__COLDBOX_VERIFICATION_LAYER__',
+    '__COLDBOX_ADDRESS_VERIFICATION_LAYER__',
     '__COLDBOX_QR_LAYER__',
     '__COLDBOX_QR_ENCODER__',
     '__COLDBOX_PROTOCOL__',

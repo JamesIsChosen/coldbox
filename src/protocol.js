@@ -265,6 +265,14 @@
     return /^(?:bc1|tb1|bcrt1|0x|[13mn2])[A-Za-z0-9]{20,130}$/.test(value) ? value : null;
   }
 
+  function cleanAddressVerifyCandidate(value) {
+    if (typeof value !== 'string' || value.length === 0 || value.length > 256
+      || isSecretContent(value) || !/^[\x09\x0a\x0d\x20-\x7e]+$/.test(value)) {
+      return null;
+    }
+    return value;
+  }
+
   function cleanPublicAddressArray(value) {
     if (!Array.isArray(value) || value.length > 10000) {
       return null;
@@ -839,6 +847,70 @@
     return { accountRef: accountRef, scriptType: scriptType, range: range };
   }
 
+  var ADDRESS_VERIFY_OUTCOMES = Object.freeze([
+    'match',
+    'mismatch',
+    'unrecognised-format',
+    'checksum-invalid',
+    'no-record',
+    'different-account',
+    'vault-locked'
+  ]);
+  var ADDRESS_VERIFY_OUTCOME_SET = makeSet(ADDRESS_VERIFY_OUTCOMES);
+
+  function cleanAddressVerifyRequest(value) {
+    if (!isRecord(value)) {
+      return null;
+    }
+    var addressId = cleanUuid(value.addressId);
+    var accountRef = cleanUuid(value.accountRef);
+    var index = cleanInteger(value.index, 0, 0x7fffffff);
+    var candidate = cleanAddressVerifyCandidate(value.candidate);
+    if (addressId === null || accountRef === null || index === null || candidate === null) {
+      return null;
+    }
+    return { addressId: addressId, accountRef: accountRef, index: index, candidate: candidate };
+  }
+
+  function cleanAddressVerifyResult(value) {
+    if (!isRecord(value)) {
+      return null;
+    }
+    var addressId = cleanUuid(value.addressId);
+    var outcome = cleanEnum(value.outcome, ADDRESS_VERIFY_OUTCOME_SET, 32);
+    var verificationState = cleanEnum(value.verificationState, VERIFICATION_STATE_SET, 32);
+    if (addressId === null || outcome === null || verificationState === null) {
+      return null;
+    }
+    var result = {
+      addressId: addressId,
+      outcome: outcome,
+      verificationState: verificationState
+    };
+    if (value.divergenceIndex !== undefined) {
+      var divergenceIndex = cleanInteger(value.divergenceIndex, -1, 256);
+      if (divergenceIndex === null) {
+        return null;
+      }
+      result.divergenceIndex = divergenceIndex;
+    }
+    if (value.verifiedAt !== undefined) {
+      var verifiedAt = cleanIsoTimestamp(value.verifiedAt);
+      if (verifiedAt === null) {
+        return null;
+      }
+      result.verifiedAt = verifiedAt;
+    }
+    if (value.xpubFingerprint !== undefined) {
+      var xpubFingerprint = cleanFingerprint(value.xpubFingerprint);
+      if (xpubFingerprint === null) {
+        return null;
+      }
+      result.xpubFingerprint = xpubFingerprint;
+    }
+    return result;
+  }
+
   function cleanPublicDataRequest(value) {
     if (!isRecord(value)) {
       return null;
@@ -982,6 +1054,7 @@
     'panic.hide': cleanEmptyPayload,
     'mode.set': cleanModeSet,
     'derive.request': cleanDeriveRequest,
+    'address.verifyRequest': cleanAddressVerifyRequest,
     'publicData.request': cleanPublicDataRequest,
     'publicData.replace': cleanPublicDataReplace,
     'concealment.reveal': cleanStrictEmptyPayload,
@@ -993,6 +1066,7 @@
     'vault.bytes': cleanVaultBytes,
     'vault.lockRequest': cleanStrictEmptyPayload,
     'derive.result': cleanDeriveResult,
+    'address.verifyResult': cleanAddressVerifyResult,
     'publicData.updated': cleanVaultOpened,
     'concealment.revealed': cleanConcealmentRevealed,
     'secretData.updated': cleanSecretDataUpdated,

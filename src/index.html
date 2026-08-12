@@ -707,6 +707,36 @@ __COLDBOX_STYLES__
         <section class="page" id="page-verify" data-page="verify" aria-labelledby="page-title-verify" hidden>
           <header class="page-header"><p class="eyebrow">Reference / Verification / P1.9</p><h1 id="page-title-verify">Verify Bench</h1><p class="page-lede">Five hardware-wallet checks run inside the sealed workspace: fingerprint, receive address, account xpub, metal backup, and BIP-39 passphrase.</p></header>
           <div class="empty-panel" id="verify-bench-info"><span class="panel-kicker">Use the sealed workspace</span><h2>Public comparisons, protected inputs.</h2><p>Scroll to the sealed workspace above and use the Verify Bench panel. Seed phrases and passphrases are typed only into the opaque cold frame; this warm page deliberately has no secret-capable form and receives no verification payload.</p><p>Read the value from the device's own screen and compare the complete result. P1.9 has no hardware transport, signing, or device authenticity claim.</p><a class="comic-btn" href="#vault">Jump to sealed workspace</a></div>
+          <section class="address-verification-panel info-card" id="address-verification-panel" aria-labelledby="address-verification-title">
+            <p class="eyebrow">P1.12 / Clipboard round-trip</p>
+            <h2 id="address-verification-title">Verify what actually arrived</h2>
+            <p class="page-lede">Copy the address back out of the destination field and paste it here. Coldbox compares the complete string, reports the first divergence, and keeps registry matching separate from cold re-derivation.</p>
+            <div class="address-verification-grid">
+              <div>
+                <label class="vault-label" for="address-verify-record">Recorded address</label>
+                <select class="registry-input" id="address-verify-record" disabled><option value="">Unlock a vault to choose an address</option></select>
+              </div>
+              <div>
+                <label class="vault-label" for="address-verify-candidate">Pasted address</label>
+                <input class="registry-input" id="address-verify-candidate" type="text" maxlength="256" autocomplete="off" spellcheck="false" placeholder="Paste the complete address">
+              </div>
+            </div>
+            <div class="registry-form-actions">
+              <button class="vault-button vault-button-primary" id="address-verify-compare" type="button">Compare with registry</button>
+              <button class="vault-button" id="address-verify-cold" type="button">Compare and cold-verify</button>
+              <button class="vault-button" id="address-verify-inbound" type="button">Check inbound address</button>
+            </div>
+            <p class="registry-status" id="address-verify-status" data-state="idle" role="status" aria-live="polite">Unlock a vault to compare against recorded public addresses.</p>
+            <div class="address-verification-comparison" id="address-verify-comparison" role="region" aria-label="Complete address comparison" hidden></div>
+            <details class="address-batch-check">
+              <summary>Batch-check a pasted address list</summary>
+              <label class="vault-label" for="address-verify-batch">One address per line</label>
+              <textarea class="registry-input" id="address-verify-batch" rows="5" maxlength="20000" placeholder="Paste a payout list or CSV address column"></textarea>
+              <button class="vault-button" id="address-verify-batch-run" type="button">Check every row</button>
+              <div class="address-batch-results" id="address-verify-batch-results" role="status" aria-live="polite"></div>
+            </details>
+            <p class="registry-help">A registry match does not prove the address was recorded correctly. Never-verified and unverifiable states are stated inline; only an actual cold re-derivation can make an address cold-verified.</p>
+          </section>
         </section>
 
         <section class="page" id="page-reference" data-page="reference" aria-labelledby="page-title-reference" hidden>

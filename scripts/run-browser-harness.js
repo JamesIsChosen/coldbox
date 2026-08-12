@@ -1259,6 +1259,158 @@ async function verifyStaleAddressDisplay(browser, engine) {
   }
 }
 
+async function verifyAddressVerification(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    const coldFrame = await getColdFrame(page, engine);
+    const phrase = 'address verification harness phrase';
+    const mnemonic = [
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
+    ].join(' ');
+    const primaryAddressId = '550e8400-e29b-41d4-a716-446655440013';
+    const secondaryAddressId = '550e8400-e29b-41d4-a716-446655440015';
+    const fixtureBytes = await coldFrame.evaluate(async ({ unlockPhrase, seedPhrase }) => {
+      const seed = window.__coldboxSeedForge.mnemonicToSeed(seedPhrase, '', 'english');
+      try {
+        const primary = window.__coldboxDerivation.deriveEvmFromSeed(seed, { account: 0, count: 1 });
+        const secondary = window.__coldboxDerivation.deriveEvmFromSeed(seed, { account: 1, count: 1 });
+        const bytes = await window.__coldboxVault.create({
+          passphrase: unlockPhrase,
+          profile: 'fast',
+          publicData: {
+            schema: 2,
+            id: '550e8400-e29b-41d4-a716-446655440010',
+            wallets: [{
+              id: '550e8400-e29b-41d4-a716-446655440011',
+              label: 'EVM verification wallet',
+              type: 'singlesig',
+              network: 'ethereum',
+              scriptType: 'n/a',
+              primaryPath: "m/44'/60'/0'",
+              xpubs: [primary.xpub]
+            }],
+            accounts: [{
+              id: '550e8400-e29b-41d4-a716-446655440012',
+              walletId: '550e8400-e29b-41d4-a716-446655440011',
+              asset: 'ETH',
+              path: "m/44'/60'/0'",
+              xpub: primary.xpub,
+              label: 'Primary Ethereum'
+            }, {
+              id: '550e8400-e29b-41d4-a716-446655440014',
+              walletId: '550e8400-e29b-41d4-a716-446655440011',
+              asset: 'ETH',
+              path: "m/44'/60'/1'",
+              xpub: secondary.xpub,
+              label: 'Trading Ethereum'
+            }],
+            addresses: [{
+              id: '550e8400-e29b-41d4-a716-446655440013',
+              accountId: '550e8400-e29b-41d4-a716-446655440012',
+              index: 0,
+              address: primary.addresses[0],
+              label: 'Primary receive',
+              isChange: false,
+              used: false,
+              addressOrigin: 'derived',
+              verificationState: 'unverified'
+            }, {
+              id: '550e8400-e29b-41d4-a716-446655440015',
+              accountId: '550e8400-e29b-41d4-a716-446655440014',
+              index: 0,
+              address: secondary.addresses[0],
+              label: 'Trading receive',
+              isChange: false,
+              used: false,
+              addressOrigin: 'derived',
+              verificationState: 'unverified'
+            }]
+          }
+        });
+        return {
+          bytes: Array.from(bytes),
+          primary: primary.addresses[0],
+          secondary: secondary.addresses[0]
+        };
+      } finally {
+        seed.fill(0);
+      }
+    }, { unlockPhrase: phrase, seedPhrase: mnemonic });
+
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('#vault-file-input').setInputFiles({
+      name: 'evm-address-verification--550e8400.cbx',
+      mimeType: 'application/octet-stream',
+      buffer: Buffer.from(fixtureBytes.bytes)
+    });
+    await page.locator('#vault-library-list [data-vault-library-index="0"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#vault-library-list [data-vault-library-index="0"]').click();
+    await coldFrame.locator('#cold-vault-status[data-state="pending"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-passphrase').fill(phrase);
+    await coldFrame.locator('#cold-vault-unlock').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+
+    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(mnemonic);
+    await coldFrame.locator('#cold-seed-forge-validate').click();
+    await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 10000 });
+
+    await page.locator('#nav-rail a[data-route="verify"]').click();
+    await page.locator('#page-verify:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('#address-verify-record').selectOption(primaryAddressId);
+    await page.locator('#address-verify-candidate').fill(fixtureBytes.primary);
+    await page.locator('#address-verify-cold').click();
+    await page.locator('#address-verify-status[data-state="match"]').waitFor({ state: 'visible', timeout: 15000 });
+    assert.match(await page.locator('#address-verify-status').textContent(), /cold-verified/);
+
+    await page.locator('#address-verify-record').selectOption(primaryAddressId);
+    await page.locator('#address-verify-candidate').fill(fixtureBytes.secondary);
+    await page.locator('#address-verify-compare').click();
+    await page.locator('#address-verify-status[data-state="different-account"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await page.locator('#address-verify-status').textContent(), /Trading Ethereum/);
+
+    const lowerPrimary = fixtureBytes.primary.toLowerCase();
+    const changedCharacter = lowerPrimary[22] === '0' ? '1' : '0';
+    const mismatch = lowerPrimary.slice(0, 22) + changedCharacter + lowerPrimary.slice(23);
+    await page.locator('#address-verify-candidate').fill(mismatch);
+    await page.locator('#address-verify-compare').click();
+    await page.locator('#address-verify-status[data-state="mismatch"]').waitFor({ state: 'visible', timeout: 5000 });
+    const comparison = page.locator('#address-verify-comparison:not([hidden])');
+    await comparison.waitFor({ state: 'visible', timeout: 5000 });
+    const comparisonText = await comparison.textContent();
+    assert.match(comparisonText, new RegExp(mismatch));
+    assert.match(comparisonText, new RegExp(fixtureBytes.primary));
+    assert.match(comparisonText, /\^/);
+
+    await page.locator('#address-verify-candidate').fill(` ${fixtureBytes.primary}`);
+    await page.locator('#address-verify-compare').click();
+    await page.locator('#address-verify-status[data-state="unrecognised-format"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await comparison.isHidden(), true);
+
+    const batchDetails = page.locator('details.address-batch-check');
+    if (!(await batchDetails.evaluate((element) => element.open))) {
+      await batchDetails.locator('summary').click();
+    }
+    await page.locator('#address-verify-batch').fill([
+      '0x52908400098527886E0F7030069857D2E4169Ee7',
+      fixtureBytes.primary,
+      ` ${fixtureBytes.primary}`
+    ].join('\n'));
+    await page.locator('#address-verify-batch-run').click();
+    const batchResults = page.locator('#address-verify-batch-results p');
+    await batchResults.nth(2).waitFor({ state: 'visible', timeout: 5000 });
+    const batchText = await page.locator('#address-verify-batch-results').textContent();
+    assert.match(batchText, /1: Checksum-invalid address/);
+    assert.match(batchText, /2: Registry match under account "Primary Ethereum"/);
+    assert.match(batchText, /3: The pasted value is not a recognised address format/);
+    assert.equal(await batchResults.count(), 3);
+    console.log(`${engine}: EVM cold verdict/state transition, named different-account match, aligned mismatch, raw whitespace, and checksum-invalid batch rows passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyDeviceRegistry(browser, engine) {
   const { page } = await openPage(browser, buildPath);
   try {
@@ -3263,6 +3415,7 @@ async function run() {
       await verifyColdSecretNotes(browser, engine);
       await verifyRegistryCrud(browser, engine);
       await verifyStaleAddressDisplay(browser, engine);
+      await verifyAddressVerification(browser, engine);
       await verifyDeviceRegistry(browser, engine);
       await verifyEntropyLab(browser, engine);
       await verifySeedForge(browser, engine);

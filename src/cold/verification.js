@@ -17,7 +17,8 @@
   function requireLayers() {
     if (!base || !base.base58check || !base.bech32 || !base.bech32m
       || !derivation || typeof derivation.deriveBitcoinFromSeed !== 'function'
-      || typeof derivation.deriveBitcoinFromXpub !== 'function') {
+      || typeof derivation.deriveBitcoinFromXpub !== 'function'
+      || typeof derivation.deriveEvmFromSeed !== 'function') {
       throw new Error('Verification crypto is unavailable; refusing to verify.');
     }
   }
@@ -130,6 +131,108 @@
     throw new RangeError('The requested Bitcoin script family is unavailable.');
   }
 
+  function isEvmAccount(account, wallet) {
+    var walletNetwork = wallet && typeof wallet.network === 'string'
+      ? wallet.network.toLowerCase()
+      : '';
+    var asset = account && typeof account.asset === 'string'
+      ? account.asset.toLowerCase()
+      : '';
+    return walletNetwork === 'ethereum'
+      || walletNetwork === 'evm'
+      || asset === 'eth'
+      || asset === 'ethereum'
+      || asset === 'evm'
+      || (account && typeof account.path === 'string'
+        && /^m\/44'\/60'\/\d+'$/.test(account.path));
+  }
+
+  function evmAccountIndex(path) {
+    if (typeof path !== 'string') {
+      throw new TypeError('EVM account path is required for cold verification.');
+    }
+    var match = /^m\/44'\/60'\/(\d+)'$/.exec(path);
+    if (!match) {
+      throw new TypeError('EVM account path is not canonical.');
+    }
+    return Number(match[1]);
+  }
+
+  function bitcoinAccountIndex(path) {
+    if (typeof path !== 'string') {
+      return 0;
+    }
+    var match = path.match(/\/(\d+)'?$/);
+    return match ? Number(match[1]) : 0;
+  }
+
+  function deriveRegistryAddress(seed, account, wallet, address) {
+    requireLayers();
+    if (!account || typeof account !== 'object' || !address || typeof address !== 'object') {
+      throw new TypeError('A public account and address record are required.');
+    }
+    if (!Number.isInteger(address.index) || address.index < 0) {
+      throw new TypeError('The recorded address index is invalid.');
+    }
+    var change = address.isChange === true ? 1 : 0;
+    var index = address.index;
+    if (isEvmAccount(account, wallet)) {
+      var evm = derivation.deriveEvmFromSeed(seed, {
+        account: evmAccountIndex(account.path),
+        change: change,
+        start: index,
+        count: 1
+      });
+      if (evm.accountPath !== account.path || (account.xpub && account.xpub !== evm.xpub)) {
+        throw new Error('The recorded EVM account does not match the current seed.');
+      }
+      return Object.freeze({
+        network: 'evm',
+        address: evm.addresses[0],
+        path: evm.paths[0],
+        xpub: evm.xpub
+      });
+    }
+
+    var identity = deriveWalletIdentity(seed, {
+      network: wallet && wallet.network === 'testnet' ? 'testnet' : 'mainnet',
+      account: bitcoinAccountIndex(account.path),
+      count: Math.max(5, index + 1)
+    });
+    var family = account.xpub
+      ? identity.families.filter(function (entry) { return entry.xpub === account.xpub; })[0]
+      : familyFor(identity, wallet && wallet.scriptType ? wallet.scriptType : 'p2wpkh');
+    var addresses = family && (change === 1 ? family.changeAddresses : family.receiveAddresses);
+    if (!family || !addresses || !addresses[index]) {
+      throw new Error('The recorded Bitcoin address is outside the derived range.');
+    }
+    return Object.freeze({
+      network: 'bitcoin',
+      address: addresses[index],
+      path: family.accountPath + '/' + String(change) + '/' + String(index),
+      xpub: family.xpub
+    });
+  }
+
+  function markAddressColdVerified(publicData, addressId, verifiedAt, xpub) {
+    if (!publicData || typeof publicData !== 'object' || typeof addressId !== 'string'
+      || typeof verifiedAt !== 'string' || typeof xpub !== 'string') {
+      throw new TypeError('Cold verification evidence is incomplete.');
+    }
+    var nextPublicData = JSON.parse(JSON.stringify(publicData));
+    var nextAddress = Array.isArray(nextPublicData.addresses)
+      ? nextPublicData.addresses.filter(function (record) { return record.id === addressId; })[0]
+      : null;
+    if (!nextAddress) {
+      throw new Error('The recorded address disappeared before verification could be saved.');
+    }
+    nextAddress.verificationState = 'cold-verified';
+    nextAddress.addressOrigin = 'derived';
+    nextAddress.lastColdVerifiedAt = verifiedAt;
+    nextAddress.verifiedAgainstXpub = xpub;
+    return nextPublicData;
+  }
+
   function compareFingerprint(actual, expectedValue) {
     var expected = expectedFingerprint(expectedValue);
     if (typeof actual !== 'string' || !/^[0-9a-f]{8}$/.test(actual)) {
@@ -228,6 +331,8 @@
 
   global.__coldboxVerification = Object.freeze({
     deriveWalletIdentity: deriveWalletIdentity,
+    deriveRegistryAddress: deriveRegistryAddress,
+    markAddressColdVerified: markAddressColdVerified,
     familyFor: familyFor,
     compareFingerprint: compareFingerprint,
     compareXpub: compareXpub,

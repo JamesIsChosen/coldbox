@@ -1295,6 +1295,44 @@ samp {
   font-weight: 750;
 }
 
+.address-verification-comparison {
+  margin: 0 0 1rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.55rem;
+  background: #101820;
+  overflow-x: auto;
+}
+
+.address-verification-comparison-line {
+  display: grid;
+  grid-template-columns: 5.5rem max-content;
+  min-width: max-content;
+  align-items: baseline;
+  gap: 0.65rem;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.address-verification-comparison-label {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.address-verification-comparison code {
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.78rem;
+  white-space: pre;
+}
+
+.address-verification-comparison-marker code {
+  color: var(--warning);
+  font-weight: 900;
+}
+
 .registry-forms,
 .device-grid,
 .registry-lists {
