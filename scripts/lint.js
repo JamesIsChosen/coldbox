@@ -138,7 +138,7 @@ function scanSourceFile(root, file, source, findings) {
     addFindings(findings, root, file, source, 'localStorage', localStoragePattern);
   }
 
-  if (relative === 'src/capabilities.js') {
+  if (isSecretHandlingPath(relative) || relative === 'src/capabilities.js') {
     addFindings(findings, root, file, source, 'Math.random', executableMathRandomPattern);
   }
 

@@ -24,8 +24,8 @@ and its 1024-word list are loaded only into the cold iframe.
 The upstream `ilap/slip39-js` v0.1.9 tag resolves to commit
 `414a73b0a28f2fc966514b8f318eb6f68bf9979a`. The upstream
 `src/slip39_helper.js` source is identified by Git blob SHA-1
-`8bcb9568c6c6191e686de2d34864088c644fc7b2` and exact file SHA-256
-`21c15adf2a2f692662b469b609e6a3e42eb828d4fc5c13707f3a4beea027ea48`.
+`8bcb9568c6c6191e686de2d34864088c644fc7b2` and exact upstream Git-blob
+byte-sequence SHA-256 `2009d910cda84e81e3d75f78f6961a9b82258c66513f4160efc25c6a4f6a6c5e`.
 Coldbox's browser file is an adaptation, not a byte-identical copy; these
 identities pin the source used for the adaptation rather than claiming byte
 identity.
