@@ -233,7 +233,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
 - [ ] P2.2 codex32
 - [ ] P2.3 Seed XOR
 - [ ] P2.4 Shamir39 and raw SSS
-- [ ] P2.5 Vault recovery shares
+- [~] P2.5 Vault recovery shares
 - [ ] P2.6 BackupRecords and verify-your-shares
 - [ ] P2.7 Backup Health dashboard
 - [ ] P2.8 Printable cards and hand-computation worksheets
