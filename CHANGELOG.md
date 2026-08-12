@@ -24,6 +24,11 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 - Cold verification now derives and verifies both Bitcoin and EVM registry accounts before updating public provenance; different-account results name the account.
 - Added focused cold-state coverage and Chromium/Firefox browser coverage for EVM cold verification, account labels, aligned mismatches, raw whitespace, and checksum-invalid batch rows.
 
+### Fixed - P1.13 remediation (2026-08-11)
+
+- Clipboard canary permission/API exceptions are visibly unavailable instead of escaping synchronously; stale enable, retry, disable, and delayed-read callbacks can no longer overwrite newer state.
+- Added Chromium/Firefox file:// coverage for the off-by-default, denied/retry, API-absent, and affirmative-change canary UI paths while preserving ordinary address comparison.
+
 Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
 ### Added — P1.11 address verification state (2026-08-10)
