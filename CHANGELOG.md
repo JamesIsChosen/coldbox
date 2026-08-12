@@ -12,6 +12,10 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
+### Added — P2.3 Seed XOR (2026-08-12)
+
+- Added a cold-only Seed XOR backup workflow for 12-, 18-, and 24-word BIP-39 phrases, with 2–4 required parts, Coldcard-compatible deterministic masks, CSPRNG-derived random masks, independent checksum validation, masked timed reveals, local combine/recovery, and teardown clearing. Seed XOR is explicitly N-of-N rather than threshold recovery; BIP-39 passphrases remain separate. See [ADR-0037](docs/05-development/adr/0037-seed-xor-cold-only.md) and the [Seed XOR guide](docs/03-guides/backup-seed-xor.md).
+
 ### Fixed - P1.11 independent-review remediation (2026-08-11)
 
 - Warm public registry replacements can no longer elevate an address to `cold-verified` or rewrite authenticated verification evidence; schema-1 public compartments migrate in the cold vault session and persist as schema 2; and Chromium/Firefox coverage locks the stale Registry label to `Cold verification stale`.

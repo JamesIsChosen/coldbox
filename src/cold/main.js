@@ -13,6 +13,7 @@ __COLDBOX_QR_ENCODER__
   var entropyLab = window.__coldboxEntropyLab;
   var entropyHealth = window.__coldboxEntropyHealth;
   var seedForge = window.__coldboxSeedForge;
+  var seedXor = window.__coldboxSeedXor;
   var derivation = window.__coldboxDerivation;
   var addressVerification = window.__coldboxAddressVerification;
   var verification = window.__coldboxVerification;
@@ -147,6 +148,21 @@ __COLDBOX_QR_ENCODER__
   var seedForgeValidationRaw = document.getElementById('cold-seed-forge-validation-raw');
   var seedForgeValidationSeed = document.getElementById('cold-seed-forge-validation-seed');
   var seedForgeValidationSeedReveal = document.getElementById('cold-seed-forge-validation-seed-reveal');
+  var seedXorPanel = document.getElementById('cold-seed-xor');
+  var seedXorLanguage = document.getElementById('cold-seed-xor-language');
+  var seedXorCount = document.getElementById('cold-seed-xor-count');
+  var seedXorMode = document.getElementById('cold-seed-xor-mode');
+  var seedXorSource = document.getElementById('cold-seed-xor-source');
+  var seedXorSplitButton = document.getElementById('cold-seed-xor-split');
+  var seedXorSplitStatus = document.getElementById('cold-seed-xor-split-status');
+  var seedXorGenerated = document.getElementById('cold-seed-xor-generated');
+  var seedXorGeneratedParts = document.getElementById('cold-seed-xor-generated-parts');
+  var seedXorRevealButton = document.getElementById('cold-seed-xor-reveal');
+  var seedXorPartFields = document.getElementById('cold-seed-xor-part-fields');
+  var seedXorCombineButton = document.getElementById('cold-seed-xor-combine');
+  var seedXorCombineStatus = document.getElementById('cold-seed-xor-combine-status');
+  var seedXorCombined = document.getElementById('cold-seed-xor-combined');
+  var seedXorCombinedRevealButton = document.getElementById('cold-seed-xor-combined-reveal');
   var verificationPanel = document.getElementById('cold-verification');
   var verificationWalletNetwork = document.getElementById('cold-verification-wallet-network');
   var verificationWalletScript = document.getElementById('cold-verification-wallet-script');
@@ -213,6 +229,14 @@ __COLDBOX_QR_ENCODER__
   var qrArtifact = null;
   var pendingSeedForgeMix = null;
   var pendingSeedForgeMixTargetBits = null;
+  var seedXorPartInputs = [];
+  var seedXorParts = [];
+  var seedXorPartsRevealed = false;
+  var seedXorRevealTimer = null;
+  var seedXorCombinedMnemonic = '';
+  var seedXorCombinedWordCount = 0;
+  var seedXorCombinedRevealed = false;
+  var seedXorCombinedRevealTimer = null;
   var CARD_RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
   var CARD_SUITS = ['♠', '♥', '♦', '♣'];
   var vaultCryptoReady = false;
@@ -1947,6 +1971,292 @@ __COLDBOX_QR_ENCODER__
     }
   }
 
+  // --- Seed XOR (P2.3) ----------------------------------------------------
+  // Seed XOR is deliberately a cold-local surface. The only values retained
+  // here are the phrases needed for an explicit, time-limited reveal or a
+  // local combine; no handler below creates a warm message or storage record.
+
+  function setSeedXorStatus(output, state, text) {
+    if (!output) {
+      return;
+    }
+    output.setAttribute('data-state', state);
+    output.textContent = text;
+  }
+
+  function maskSeedXorMnemonic(mnemonic) {
+    if (!seedForge || typeof seedForge.splitMnemonic !== 'function') {
+      return 'Masked phrase';
+    }
+    var words = seedForge.splitMnemonic(mnemonic);
+    return words.map(function () { return '••••'; }).join(' ');
+  }
+
+  function clearSeedXorRevealTimer() {
+    if (seedXorRevealTimer !== null) {
+      window.clearTimeout(seedXorRevealTimer);
+      seedXorRevealTimer = null;
+    }
+  }
+
+  function clearSeedXorCombinedRevealTimer() {
+    if (seedXorCombinedRevealTimer !== null) {
+      window.clearTimeout(seedXorCombinedRevealTimer);
+      seedXorCombinedRevealTimer = null;
+    }
+  }
+
+  function renderSeedXorParts() {
+    if (!seedXorGeneratedParts) {
+      return;
+    }
+    seedXorGeneratedParts.textContent = '';
+    seedXorParts.forEach(function (part) {
+      var item = document.createElement('li');
+      item.textContent = seedXorPartsRevealed ? part : maskSeedXorMnemonic(part);
+      seedXorGeneratedParts.appendChild(item);
+    });
+    if (seedXorGenerated) {
+      seedXorGenerated.hidden = seedXorParts.length === 0;
+    }
+    if (seedXorRevealButton) {
+      seedXorRevealButton.disabled = !vaultCryptoReady || seedXorParts.length === 0;
+      seedXorRevealButton.textContent = seedXorPartsRevealed
+        ? 'Hide parts now'
+        : 'Reveal parts for 30 seconds';
+    }
+  }
+
+  function renderSeedXorCombined() {
+    if (!seedXorCombined) {
+      return;
+    }
+    if (!seedXorCombinedMnemonic) {
+      seedXorCombined.textContent = 'Not calculated';
+    } else {
+      seedXorCombined.textContent = seedXorCombinedRevealed
+        ? seedXorCombinedMnemonic
+        : 'Masked (' + seedXorCombinedWordCount + '-word phrase)';
+    }
+    if (seedXorCombinedRevealButton) {
+      seedXorCombinedRevealButton.disabled = !vaultCryptoReady || !seedXorCombinedMnemonic;
+      seedXorCombinedRevealButton.textContent = seedXorCombinedRevealed
+        ? 'Hide combined phrase now'
+        : 'Reveal combined phrase for 30 seconds';
+    }
+  }
+
+  function clearSeedXorGenerated() {
+    clearSeedXorRevealTimer();
+    seedXorParts = [];
+    seedXorPartsRevealed = false;
+    renderSeedXorParts();
+  }
+
+  function clearSeedXorCombined() {
+    clearSeedXorCombinedRevealTimer();
+    seedXorCombinedMnemonic = '';
+    seedXorCombinedWordCount = 0;
+    seedXorCombinedRevealed = false;
+    renderSeedXorCombined();
+  }
+
+  function clearSeedXorResults() {
+    clearSeedXorGenerated();
+    clearSeedXorCombined();
+    setSeedXorStatus(seedXorSplitStatus, 'idle', 'No Seed XOR parts generated.');
+    setSeedXorStatus(seedXorCombineStatus, 'idle', 'No phrase combined.');
+  }
+
+  function updateSeedXorPartFields() {
+    var ready = Boolean(seedXorPanel && seedXor && vaultCryptoReady);
+    var count = seedXorCount ? Number(seedXorCount.value) : 2;
+    seedXorPartInputs.forEach(function (input, index) {
+      var field = input.parentElement;
+      var active = index < count;
+      if (field) {
+        field.hidden = !active;
+      }
+      input.disabled = !ready || !active;
+    });
+  }
+
+  function updateSeedXorControls() {
+    if (!seedXor) {
+      return;
+    }
+    var ready = Boolean(seedXorPanel && vaultCryptoReady);
+    if (seedXorPanel) {
+      seedXorPanel.setAttribute('data-state', ready ? 'ready' : 'locked');
+    }
+    [seedXorLanguage, seedXorCount, seedXorMode, seedXorSource, seedXorSplitButton, seedXorCombineButton]
+      .forEach(function (control) {
+        if (control) {
+          control.disabled = !ready;
+        }
+      });
+    updateSeedXorPartFields();
+    renderSeedXorParts();
+    renderSeedXorCombined();
+  }
+
+  function revealSeedXorParts() {
+    if (seedXorParts.length === 0) {
+      return;
+    }
+    clearSeedXorRevealTimer();
+    seedXorPartsRevealed = !seedXorPartsRevealed;
+    renderSeedXorParts();
+    if (seedXorPartsRevealed) {
+      seedXorRevealTimer = window.setTimeout(function () {
+        seedXorPartsRevealed = false;
+        seedXorRevealTimer = null;
+        renderSeedXorParts();
+      }, 30000);
+    }
+  }
+
+  function revealSeedXorCombined() {
+    if (!seedXorCombinedMnemonic) {
+      return;
+    }
+    clearSeedXorCombinedRevealTimer();
+    seedXorCombinedRevealed = !seedXorCombinedRevealed;
+    renderSeedXorCombined();
+    if (seedXorCombinedRevealed) {
+      seedXorCombinedRevealTimer = window.setTimeout(function () {
+        seedXorCombinedRevealed = false;
+        seedXorCombinedRevealTimer = null;
+        renderSeedXorCombined();
+      }, 30000);
+    }
+  }
+
+  function clearSeedXorSession() {
+    clearSeedXorResults();
+    if (seedXorSource) {
+      seedXorSource.value = '';
+    }
+    seedXorPartInputs.forEach(function (input) { input.value = ''; });
+    if (seedXorLanguage) {
+      seedXorLanguage.value = 'english';
+    }
+    if (seedXorCount) {
+      seedXorCount.value = '2';
+    }
+    if (seedXorMode) {
+      seedXorMode.value = 'deterministic';
+    }
+    updateSeedXorPartFields();
+  }
+
+  function wireSeedXor() {
+    if (!seedXor || !seedForge) {
+      return;
+    }
+    if (seedXorLanguage) {
+      seedXorLanguage.textContent = '';
+      seedForge.languages.forEach(function (language) {
+        var option = document.createElement('option');
+        option.value = language.id;
+        option.textContent = language.label;
+        seedXorLanguage.appendChild(option);
+      });
+      seedXorLanguage.value = 'english';
+    }
+    if (seedXorPartFields) {
+      seedXorPartFields.textContent = '';
+      seedXorPartInputs = [];
+      for (var index = 0; index < 4; index += 1) {
+        var field = document.createElement('div');
+        field.className = 'cold-seed-xor-part-field';
+        var label = document.createElement('label');
+        var input = document.createElement('input');
+        input.type = 'password';
+        input.id = 'cold-seed-xor-part-' + String(index + 1);
+        input.autocomplete = 'off';
+        input.spellcheck = false;
+        input.autocorrect = 'off';
+        input.autocapitalize = 'off';
+        label.htmlFor = input.id;
+        label.textContent = 'Seed XOR part ' + String(index + 1) + ' (masked)';
+        field.appendChild(label);
+        field.appendChild(input);
+        seedXorPartFields.appendChild(field);
+        seedXorPartInputs.push(input);
+      }
+    }
+    if (seedXorCount) {
+      seedXorCount.addEventListener('change', function () {
+        clearSeedXorResults();
+        updateSeedXorPartFields();
+      });
+    }
+    [seedXorLanguage, seedXorMode].forEach(function (control) {
+      if (control) {
+        control.addEventListener('change', clearSeedXorResults);
+      }
+    });
+    if (seedXorSplitButton) {
+      seedXorSplitButton.addEventListener('click', function () {
+        var source = seedXorSource ? seedXorSource.value : '';
+        if (seedXorSource) {
+          seedXorSource.value = '';
+        }
+        clearSeedXorGenerated();
+        if (!source.trim()) {
+          setSeedXorStatus(seedXorSplitStatus, 'error', 'Split refused: enter a BIP-39 phrase.');
+          updateSeedXorControls();
+          return;
+        }
+        try {
+          var result = seedXor.split(source, {
+            language: seedXorLanguage ? seedXorLanguage.value : 'english',
+            count: seedXorCount ? Number(seedXorCount.value) : 2,
+            mode: seedXorMode ? seedXorMode.value : 'deterministic'
+          });
+          seedXorParts = Array.prototype.slice.call(result.parts);
+          setSeedXorStatus(seedXorSplitStatus, 'ready', 'Generated ' + seedXorParts.length + ' valid Seed XOR parts. Every part is required for recovery.');
+        } catch (error) {
+          setSeedXorStatus(seedXorSplitStatus, 'error', 'Split refused: ' + error.message);
+        }
+        renderSeedXorParts();
+        updateSeedXorControls();
+      });
+    }
+    if (seedXorRevealButton) {
+      seedXorRevealButton.addEventListener('click', revealSeedXorParts);
+    }
+    if (seedXorCombineButton) {
+      seedXorCombineButton.addEventListener('click', function () {
+        var count = seedXorCount ? Number(seedXorCount.value) : 2;
+        var parts = seedXorPartInputs.slice(0, count).map(function (input) { return input.value; });
+        seedXorPartInputs.forEach(function (input) { input.value = ''; });
+        clearSeedXorCombined();
+        try {
+          if (parts.some(function (part) { return part.trim() === ''; })) {
+            throw new Error('Every selected Seed XOR part is required.');
+          }
+          var result = seedXor.combine(parts, {
+            language: seedXorLanguage ? seedXorLanguage.value : 'english'
+          });
+          seedXorCombinedMnemonic = result.mnemonic;
+          seedXorCombinedWordCount = result.wordCount;
+          zeroBytes(result.entropy);
+          setSeedXorStatus(seedXorCombineStatus, 'ready', 'Combined ' + result.parts + ' valid parts into one checked BIP-39 phrase.');
+        } catch (error) {
+          setSeedXorStatus(seedXorCombineStatus, 'error', 'Combine refused: ' + error.message);
+        }
+        renderSeedXorCombined();
+        updateSeedXorControls();
+      });
+    }
+    if (seedXorCombinedRevealButton) {
+      seedXorCombinedRevealButton.addEventListener('click', revealSeedXorCombined);
+    }
+    updateSeedXorControls();
+  }
+
   // --- Verification Bench (P1.9) ------------------------------------------
   //
   // These workflows are intentionally cold-local. The only values written to
@@ -3039,12 +3349,14 @@ __COLDBOX_QR_ENCODER__
 
   function clearVaultSession(clearPending) {
     clearSeedForgeSession();
+    clearSeedXorSession();
     clearVerificationSession();
     clearQrArtifact();
     if (qrSecretConfirm) {
       qrSecretConfirm.checked = false;
     }
     updateSeedForgeControls();
+    updateSeedXorControls();
     updateVerificationControls();
     updateQrControls();
     if (currentVaultSession && typeof currentVaultSession.close === 'function') {
@@ -3913,6 +4225,7 @@ __COLDBOX_QR_ENCODER__
     updateVaultControls();
     updateBenchmarkAvailability();
     updateEntropyLabControls();
+    updateSeedXorControls();
     updateVerificationControls();
     updateQrControls();
     window.parent.postMessage({ type: 'cold.ready' }, '*');
@@ -3985,7 +4298,7 @@ __COLDBOX_QR_ENCODER__
     messagePort.postMessage(readyMessage);
   }
 
-  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer || !vaultLayer || !entropyLab || !seedForge || !derivation || !verification || !qr) {
+  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer || !vaultLayer || !entropyLab || !seedForge || !seedXor || !derivation || !verification || !qr) {
     return;
   }
 
@@ -4184,6 +4497,7 @@ __COLDBOX_QR_ENCODER__
 
   installThrowContract();
   wireSeedForge();
+  wireSeedXor();
   wireQrStudio();
   wireEntropyLab();
   wireVerification();

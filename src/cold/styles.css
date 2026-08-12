@@ -1229,6 +1229,195 @@ body {
   border-top: 0.13rem solid var(--cold-outline);
 }
 
+/* Seed XOR (P2.3). All mnemonic processing and reveal surfaces stay in the
+   cold document; the warm shell has no selector or message for this feature. */
+#cold-seed-xor {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border: 0.16rem solid var(--cold-pink);
+  border-radius: 0.35rem;
+  background: var(--cold-surface);
+  box-shadow: 0.2rem 0.2rem 0 var(--cold-drop);
+}
+
+#cold-seed-xor h2,
+#cold-seed-xor h3,
+#cold-seed-xor p {
+  margin-top: 0;
+}
+
+#cold-seed-xor-help,
+#cold-seed-xor-note,
+#cold-seed-xor-generated > p,
+.cold-seed-xor-workflow > p {
+  max-width: 48rem;
+  color: var(--cold-muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.cold-seed-xor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.55rem;
+}
+
+.cold-seed-xor-grid label,
+.cold-seed-xor-workflow > label,
+.cold-seed-xor-part-fields label {
+  display: block;
+  color: var(--cold-text);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.cold-seed-xor-grid select,
+#cold-seed-xor-source,
+.cold-seed-xor-part-fields input,
+#cold-seed-xor-split,
+#cold-seed-xor-combine,
+#cold-seed-xor-reveal,
+#cold-seed-xor-combined-reveal {
+  min-height: 2.75rem;
+  margin-top: 0.25rem;
+  padding: 0.35rem 0.5rem;
+  border: 0.14rem solid var(--cold-outline);
+  border-radius: 0.3rem;
+  background: var(--cold-bg);
+  color: var(--cold-text);
+  font: inherit;
+  font-size: 0.72rem;
+}
+
+.cold-seed-xor-workflow {
+  margin-top: 0.25rem;
+  padding-top: 0.65rem;
+  border-top: 0.13rem solid var(--cold-outline);
+}
+
+#cold-seed-xor-source {
+  display: block;
+  width: min(100%, 48rem);
+}
+
+#cold-seed-xor-split,
+#cold-seed-xor-combine,
+#cold-seed-xor-reveal,
+#cold-seed-xor-combined-reveal {
+  border-color: var(--cold-drop);
+  background: var(--cold-green);
+  box-shadow: 0.15rem 0.15rem 0 var(--cold-drop);
+  color: var(--cold-ink);
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+#cold-seed-xor-split:disabled,
+#cold-seed-xor-combine:disabled,
+#cold-seed-xor-reveal:disabled,
+#cold-seed-xor-combined-reveal:disabled,
+.cold-seed-xor-grid select:disabled,
+#cold-seed-xor-source:disabled,
+.cold-seed-xor-part-fields input:disabled {
+  background: var(--cold-disabled-fill);
+  box-shadow: none;
+  color: var(--cold-ink);
+  cursor: not-allowed;
+}
+
+#cold-seed-xor-split-status,
+#cold-seed-xor-combine-status {
+  margin: 0.45rem 0 0;
+  padding-left: 0.55rem;
+  border-left: 0.28rem solid var(--cold-yellow);
+  color: var(--cold-yellow);
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+#cold-seed-xor-split-status[data-state="ready"],
+#cold-seed-xor-combine-status[data-state="ready"] {
+  border-left-color: var(--cold-green);
+  color: var(--cold-green);
+}
+
+#cold-seed-xor-split-status[data-state="error"],
+#cold-seed-xor-combine-status[data-state="error"] {
+  border-left-color: var(--cold-red);
+  color: var(--cold-red);
+}
+
+#cold-seed-xor-generated[hidden] {
+  display: none;
+}
+
+#cold-seed-xor-generated-parts {
+  display: grid;
+  gap: 0.45rem;
+  max-width: 48rem;
+  margin: 0.55rem 0 0;
+  padding-left: 1.7rem;
+}
+
+#cold-seed-xor-generated-parts li {
+  min-height: 2.25rem;
+  padding: 0.4rem 0.5rem;
+  border: 0.1rem solid var(--cold-outline);
+  border-radius: 0.25rem;
+  background: var(--cold-bg);
+  color: var(--cold-text);
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.cold-seed-xor-part-fields {
+  display: grid;
+  gap: 0.55rem;
+  max-width: 48rem;
+  margin-top: 0.45rem;
+}
+
+.cold-seed-xor-part-field[hidden] {
+  display: none;
+}
+
+.cold-seed-xor-part-fields input {
+  display: block;
+  width: 100%;
+  letter-spacing: 0.04em;
+}
+
+#cold-seed-xor-combined {
+  display: block;
+  max-width: 48rem;
+  margin-top: 0.55rem;
+  padding: 0.5rem 0.6rem;
+  border: 0.16rem solid var(--cold-red);
+  border-radius: 0.3rem;
+  background: var(--cold-bg);
+  color: var(--cold-text);
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.cold-seed-xor-grid select:focus-visible,
+#cold-seed-xor-source:focus-visible,
+.cold-seed-xor-part-fields input:focus-visible,
+#cold-seed-xor-split:focus-visible,
+#cold-seed-xor-combine:focus-visible,
+#cold-seed-xor-reveal:focus-visible,
+#cold-seed-xor-combined-reveal:focus-visible {
+  outline: 0.2rem solid var(--cold-pink);
+  outline-offset: 0.18rem;
+}
+
 /* P1.10: secret QR generation, export, and printing remain in the cold
    document. The warm shell never receives the payload or generated pixels. */
 #cold-qr-studio {

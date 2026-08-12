@@ -43,6 +43,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0033](0033-device-registry.md) | Device records are public companion metadata | Accepted |
 | [0034](0034-cold-local-verification-workflows.md) | Verification workflows stay cold-local and manual | Accepted |
 | [0035](0035-cold-printing-allow-modals.md) | Cold-only printing adds `allow-modals` without weakening the opaque origin | Accepted |
+| [0037](0037-seed-xor-cold-only.md) | Seed XOR operates on BIP-39 entropy and stays cold-only | Accepted |
 
 ## When to write one
 

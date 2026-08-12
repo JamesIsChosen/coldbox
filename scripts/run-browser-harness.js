@@ -3270,6 +3270,89 @@ async function verifySeedForge(browser, engine) {
   }
 }
 
+async function verifySeedXor(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    const coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-seed-xor[data-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
+
+    assert.equal(await page.evaluate(() => typeof window.__coldboxSeedXor), 'undefined');
+    assert.equal(await coldFrame.locator('#cold-seed-xor-language option').count(), 10);
+    assert.equal(await coldFrame.locator('#cold-seed-xor-count option').count(), 3);
+    assert.equal(await coldFrame.locator('#cold-seed-xor-generated').isHidden(), true);
+
+    const mnemonic = [
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
+    ].join(' ');
+    await coldFrame.locator('#cold-seed-xor-count').selectOption('3');
+    await coldFrame.locator('#cold-seed-xor-mode').selectOption('deterministic');
+    await coldFrame.locator('#cold-seed-xor-source').fill(mnemonic);
+    await coldFrame.locator('#cold-seed-xor-split').click();
+    await coldFrame.locator('#cold-seed-xor-generated:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-seed-xor-generated-parts li').count(), 3);
+    assert.match(
+      await coldFrame.locator('#cold-seed-xor-generated-parts li').first().textContent(),
+      /\u2022\u2022/
+    );
+    assert.equal(await coldFrame.locator('#cold-seed-xor-source').inputValue(), '');
+    assert.match(await coldFrame.locator('#cold-seed-xor-split-status').textContent(), /Every part is required/i);
+
+    await coldFrame.locator('#cold-seed-xor-reveal').click();
+    const parts = await coldFrame.locator('#cold-seed-xor-generated-parts li').allTextContents();
+    assert.equal(parts.length, 3);
+    parts.forEach((part) => assert.match(part, /\b[a-z]+\b/));
+    await coldFrame.locator('#cold-seed-xor-reveal').click();
+    assert.match(await coldFrame.locator('#cold-seed-xor-generated-parts li').first().textContent(), /\u2022\u2022/);
+
+    for (let index = 0; index < parts.length; index += 1) {
+      await coldFrame.locator(`#cold-seed-xor-part-${index + 1}`).fill(parts[index]);
+    }
+    await coldFrame.locator('#cold-seed-xor-combine').click();
+    assert.equal(await coldFrame.locator('#cold-seed-xor-part-1').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-seed-xor-part-2').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-seed-xor-part-3').inputValue(), '');
+    assert.equal((await coldFrame.locator('#cold-seed-xor-combined').textContent()).trim(), 'Masked (12-word phrase)');
+    assert.match(await coldFrame.locator('#cold-seed-xor-combine-status').textContent(), /checked BIP-39 phrase/i);
+    await coldFrame.locator('#cold-seed-xor-combined-reveal').click();
+    assert.equal((await coldFrame.locator('#cold-seed-xor-combined').textContent()).trim(), mnemonic);
+    await coldFrame.locator('#cold-seed-xor-combined-reveal').click();
+    assert.equal((await coldFrame.locator('#cold-seed-xor-combined').textContent()).trim(), 'Masked (12-word phrase)');
+
+    // A selected part count is a hard requirement; an incomplete set is not
+    // silently treated as a different scheme.
+    await coldFrame.locator('#cold-seed-xor-part-1').fill(parts[0]);
+    await coldFrame.locator('#cold-seed-xor-part-2').fill(parts[1]);
+    await coldFrame.locator('#cold-seed-xor-combine').click();
+    await coldFrame.locator('#cold-seed-xor-combine-status[data-state="error"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await coldFrame.locator('#cold-seed-xor-combine-status').textContent(), /every selected.*required/i);
+    assert.equal(await coldFrame.locator('#cold-seed-xor-part-1').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-seed-xor-part-2').inputValue(), '');
+
+    // Random mode exercises the CSPRNG-only path and still produces complete
+    // valid phrases without placing the source in the warm shell.
+    await coldFrame.locator('#cold-seed-xor-count').selectOption('2');
+    await coldFrame.locator('#cold-seed-xor-mode').selectOption('random');
+    await coldFrame.locator('#cold-seed-xor-source').fill(mnemonic);
+    await coldFrame.locator('#cold-seed-xor-split').click();
+    await coldFrame.locator('#cold-seed-xor-generated:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-seed-xor-generated-parts li').count(), 2);
+    assert.equal(await page.evaluate((text) => document.body.textContent.includes(text), mnemonic), false);
+
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-seed-xor-generated').isHidden(), true);
+    assert.equal((await coldFrame.locator('#cold-seed-xor-combined').textContent()).trim(), 'Not calculated');
+    assert.equal(await coldFrame.locator('#cold-seed-xor-part-1').inputValue(), '');
+
+    console.log(`${engine}: Seed XOR official-compatible deterministic flow, random flow, masked reveals, incomplete-set rejection, warm isolation, and teardown passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyVerificationWorkflows(browser, engine) {
   const { page } = await openPage(browser, buildPath);
   try {
@@ -3577,6 +3660,7 @@ async function run() {
       await verifyDeviceRegistry(browser, engine);
       await verifyEntropyLab(browser, engine);
       await verifySeedForge(browser, engine);
+      await verifySeedXor(browser, engine);
       await verifyVerificationWorkflows(browser, engine);
       await verifyQrStudio(browser, engine);
       await verifyUnlockedRuntimeHealthLockdown(browser, engine);
