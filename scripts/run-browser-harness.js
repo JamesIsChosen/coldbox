@@ -3318,7 +3318,15 @@ async function verifySlip39(browser, engine) {
     await recoveryInput.fill([shares[0], shares[2]].join('\n'));
     await recovery.click();
     await coldFrame.locator('#cold-slip39-recovery-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 10000 });
-    assert.match(await coldFrame.locator('#cold-slip39-recovery-status').textContent(), /matches the selected Seed Forge phrase/i);
+    const recoveryStatusText = await coldFrame.locator('#cold-slip39-recovery-status').textContent();
+    assert.match(recoveryStatusText, /Recovered \d+-byte phrase entropy/i, `${engine}: SLIP-39 recovery must report the recovered entropy length`);
+    assert.match(recoveryStatusText, /matches the selected Seed Forge phrase/i);
+    assert.doesNotMatch(recoveryStatusText, /fingerprint/i, `${engine}: P2.1 recovery must not claim to display a fingerprint`);
+    assert.equal(
+      await coldFrame.locator('#cold-slip39-lab button').filter({ hasText: /print|complete/i }).count(),
+      0,
+      `${engine}: P2.1 must not expose a print or completion control`
+    );
     assert.equal(await recoveryInput.inputValue(), '', `${engine}: typed SLIP-39 shares must be cleared after recovery`);
 
     const corruptShare = shares[0].split(' ');

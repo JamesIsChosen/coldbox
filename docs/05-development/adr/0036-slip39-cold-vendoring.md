@@ -19,6 +19,17 @@ Coldbox embeds a browser adaptation of `ilap/slip39-js` v0.1.9 in
 SHA-256, PBKDF2, and `crypto.getRandomValues` primitives. The embedded source
 and its 1024-word list are loaded only into the cold iframe.
 
+### Pinned source identity
+
+The upstream `ilap/slip39-js` v0.1.9 tag resolves to commit
+`414a73b0a28f2fc966514b8f318eb6f68bf9979a`. The upstream
+`src/slip39_helper.js` source is identified by Git blob SHA-1
+`8bcb9568c6c6191e686de2d34864088c644fc7b2` and exact file SHA-256
+`21c15adf2a2f692662b469b609e6a3e42eb828d4fc5c13707f3a4beea027ea48`.
+Coldbox's browser file is an adaptation, not a byte-identical copy; these
+identities pin the source used for the adaptation rather than claiming byte
+identity.
+
 The Backup Lab splits the entropy represented by the selected BIP-39 phrase,
 not the 64-byte PBKDF2-derived BIP-39 seed. The BIP-39 passphrase and the
 SLIP-39 share passphrase are separate user-visible inputs and separate backup

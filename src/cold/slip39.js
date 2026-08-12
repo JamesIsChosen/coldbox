@@ -1,7 +1,12 @@
 /*
  * SLIP-39 arithmetic and the standard 1024-word list are adapted from
  * ilap/slip39-js v0.1.9 (MIT), src/slip39_helper.js. The upstream source
- * SHA-256 is 8bcb9568c6c6191e686de2d34864088c644fc7b2.
+ * is identified by its Git blob SHA-1 and its exact file SHA-256 below.
+ * The v0.1.9 tag resolves to commit
+ * 414a73b0a28f2fc966514b8f318eb6f68bf9979a; the upstream
+ * src/slip39_helper.js blob is 8bcb9568c6c6191e686de2d34864088c644fc7b2
+ * (Git SHA-1), and its exact file SHA-256 is
+ * 21c15adf2a2f692662b469b609e6a3e42eb828d4fc5c13707f3a4beea027ea48.
  *
  * Source: ilap/slip39-js v0.1.9, src/slip39_helper.js
  * Interoperability authority: satoshilabs/slips, slip-0039.md
