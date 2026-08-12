@@ -727,6 +727,11 @@ __COLDBOX_STYLES__
               <button class="vault-button" id="address-verify-inbound" type="button">Check inbound address</button>
             </div>
             <p class="registry-status" id="address-verify-status" data-state="idle" role="status" aria-live="polite">Unlock a vault to compare against recorded public addresses.</p>
+            <div class="clipboard-canary" id="clipboard-canary-panel">
+              <label class="registry-checkbox"><input id="clipboard-canary-toggle" type="checkbox"> Enable the opt-in clipboard volatility canary</label>
+              <p class="registry-help" id="clipboard-canary-status" data-state="off" role="status" aria-live="polite">Off by default. It is never enabled by pasting or by another verification action.</p>
+              <button class="vault-button" id="clipboard-canary-retry" type="button" hidden>Retry clipboard permission</button>
+            </div>
             <div class="address-verification-comparison" id="address-verify-comparison" role="region" aria-label="Complete address comparison" hidden></div>
             <details class="address-batch-check">
               <summary>Batch-check a pasted address list</summary>

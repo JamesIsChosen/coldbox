@@ -78,6 +78,57 @@ const FILE_READER_ORDER_CONTROL_SCRIPT = `(function () {
   };
 })();`;
 
+// P1.13 UI coverage: supplies deterministic permission and clipboard states
+// before the warm shell starts. This exercises the real form controls without
+// depending on an OS permission prompt or a user's physical clipboard.
+const CLIPBOARD_CANARY_CONTROL_SCRIPT = `(function () {
+  var state = {
+    permission: 'denied',
+    clipboardAvailable: true,
+    text: 'baseline',
+    deferNextPermission: false,
+    deferNextRead: false,
+    pendingPermissionResolvers: [],
+    pendingReadResolvers: []
+  };
+  window.__coldboxClipboardCanaryTest = state;
+  Object.defineProperty(Navigator.prototype, 'permissions', {
+    configurable: true,
+    get: function () {
+      return {
+        query: function () {
+          if (state.deferNextPermission) {
+            state.deferNextPermission = false;
+            return new Promise(function (resolve) {
+              state.pendingPermissionResolvers.push(resolve);
+            });
+          }
+          return Promise.resolve({ state: state.permission });
+        }
+      };
+    }
+  });
+  Object.defineProperty(Navigator.prototype, 'clipboard', {
+    configurable: true,
+    get: function () {
+      if (!state.clipboardAvailable) {
+        return undefined;
+      }
+      return {
+        readText: function () {
+          if (state.deferNextRead) {
+            state.deferNextRead = false;
+            return new Promise(function (resolve) {
+              state.pendingReadResolvers.push(resolve);
+            });
+          }
+          return Promise.resolve(state.text);
+        }
+      };
+    }
+  });
+})();`;
+
 function fileUrl(file) {
   return pathToFileURL(file).href;
 }
@@ -455,6 +506,9 @@ async function openPage(browser, file, reachabilityMode = 'reachable', options =
   const page = await browser.newPage();
   const reachability = await installReachabilityRoutes(page, reachabilityMode);
   const harness = await createHarness(page);
+  if (options.initScript) {
+    await page.addInitScript(options.initScript);
+  }
   if (options.suspendReachabilityInterval) {
     await page.addInitScript(SUSPEND_REACHABILITY_INTERVAL_SCRIPT);
   }
@@ -1406,6 +1460,109 @@ async function verifyAddressVerification(browser, engine) {
     assert.match(batchText, /3: The pasted value is not a recognised address format/);
     assert.equal(await batchResults.count(), 3);
     console.log(`${engine}: EVM cold verdict/state transition, named different-account match, aligned mismatch, raw whitespace, and checksum-invalid batch rows passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
+async function verifyClipboardCanary(browser, engine) {
+  const { page } = await openPage(browser, buildPath, 'reachable', {
+    initScript: CLIPBOARD_CANARY_CONTROL_SCRIPT
+  });
+  try {
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#nav-rail a[data-route="verify"]').click();
+    await page.locator('#page-verify:not([hidden])').waitFor({ state: 'visible' });
+    const toggle = page.locator('#clipboard-canary-toggle');
+    const status = page.locator('#clipboard-canary-status');
+    assert.equal(await toggle.isChecked(), false);
+    assert.equal(await status.getAttribute('data-state'), 'off');
+    assert.equal(await page.evaluate(() => window.__coldboxClipboardCanaryTest.text), 'baseline');
+
+    await toggle.click();
+    await status.waitFor({ state: 'visible' });
+    await page.locator('#clipboard-canary-status[data-state="unavailable"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await page.evaluate(() => window.__coldboxClipboardCanaryTest.permission), 'denied');
+    assert.equal(await toggle.isChecked(), false);
+    assert.equal(await page.locator('#clipboard-canary-retry').isHidden(), false);
+
+    await page.evaluate(() => {
+      window.__coldboxClipboardCanaryTest.permission = 'granted';
+    });
+    await page.locator('#clipboard-canary-retry').click();
+    await page.locator('#clipboard-canary-status[data-state="armed"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await toggle.isChecked(), true);
+
+    await toggle.click();
+    await page.locator('#clipboard-canary-status[data-state="off"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.evaluate(() => {
+      const state = window.__coldboxClipboardCanaryTest;
+      state.deferNextPermission = true;
+      state.deferNextRead = true;
+    });
+    await toggle.click();
+    await page.waitForFunction(() => window.__coldboxClipboardCanaryTest.pendingPermissionResolvers.length === 1);
+    await toggle.click();
+    await page.locator('#clipboard-canary-status[data-state="off"]').waitFor({ state: 'visible', timeout: 5000 });
+    await toggle.click();
+    await page.waitForFunction(() => window.__coldboxClipboardCanaryTest.pendingReadResolvers.length === 1);
+    await page.evaluate(() => {
+      const state = window.__coldboxClipboardCanaryTest;
+      state.pendingPermissionResolvers.shift()({ state: state.permission });
+    });
+    await page.waitForTimeout(25);
+    await page.evaluate(() => {
+      const state = window.__coldboxClipboardCanaryTest;
+      state.pendingReadResolvers.shift()(state.text);
+    });
+    await page.waitForFunction(() => (
+      document.querySelector('#clipboard-canary-status').getAttribute('data-state') === 'armed'
+      && document.querySelector('#clipboard-canary-toggle').checked
+    ));
+
+    await toggle.click();
+    await page.locator('#clipboard-canary-status[data-state="off"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.evaluate(() => {
+      window.__coldboxClipboardCanaryTest.clipboardAvailable = false;
+    });
+    await toggle.click();
+    await page.locator('#clipboard-canary-status[data-state="unavailable"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await page.locator('#address-verify-compare').isDisabled(), false);
+
+    await page.evaluate(() => {
+      window.__coldboxClipboardCanaryTest.clipboardAvailable = true;
+      window.__coldboxClipboardCanaryTest.text = 'baseline';
+    });
+    await page.evaluate(() => {
+      const state = window.__coldboxClipboardCanaryTest;
+      state.deferNextPermission = true;
+      state.deferNextRead = true;
+    });
+    await page.locator('#clipboard-canary-retry').click();
+    await page.waitForFunction(() => window.__coldboxClipboardCanaryTest.pendingPermissionResolvers.length === 1);
+    await page.evaluate(() => {
+      document.getElementById('clipboard-canary-retry').click();
+    });
+    await page.waitForFunction(() => window.__coldboxClipboardCanaryTest.pendingReadResolvers.length === 1);
+    await page.evaluate(() => {
+      const state = window.__coldboxClipboardCanaryTest;
+      state.pendingPermissionResolvers.shift()({ state: state.permission });
+    });
+    await page.waitForTimeout(25);
+    await page.evaluate(() => {
+      const state = window.__coldboxClipboardCanaryTest;
+      state.pendingReadResolvers.shift()(state.text);
+    });
+    await page.waitForFunction(() => (
+      document.querySelector('#clipboard-canary-status').getAttribute('data-state') === 'armed'
+      && document.querySelector('#clipboard-canary-toggle').checked
+    ));
+    await page.evaluate(() => {
+      window.__coldboxClipboardCanaryTest.text = 'changed without user action';
+    });
+    await page.locator('#clipboard-canary-status[data-state="changed"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await status.textContent(), /clipboard managers.*sync tools.*remote-desktop clients.*malware/i);
+    console.log(`${engine}: clipboard canary off-by-default, denied/retry, API-absent fallback, and affirmative change UI passed`);
   } finally {
     await closePage(page);
   }
@@ -3416,6 +3573,7 @@ async function run() {
       await verifyRegistryCrud(browser, engine);
       await verifyStaleAddressDisplay(browser, engine);
       await verifyAddressVerification(browser, engine);
+      await verifyClipboardCanary(browser, engine);
       await verifyDeviceRegistry(browser, engine);
       await verifyEntropyLab(browser, engine);
       await verifySeedForge(browser, engine);

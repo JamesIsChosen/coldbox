@@ -24,6 +24,11 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 - Cold verification now derives and verifies both Bitcoin and EVM registry accounts before updating public provenance; different-account results name the account.
 - Added focused cold-state coverage and Chromium/Firefox browser coverage for EVM cold verification, account labels, aligned mismatches, raw whitespace, and checksum-invalid batch rows.
 
+### Fixed - P1.13 remediation (2026-08-11)
+
+- Clipboard canary permission/API exceptions are visibly unavailable instead of escaping synchronously; stale enable, retry, disable, and delayed-read callbacks can no longer overwrite newer state.
+- Added Chromium/Firefox file:// coverage for the off-by-default, denied/retry, API-absent, and affirmative-change canary UI paths while preserving ordinary address comparison.
+
 Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
 ### Added — P1.11 address verification state (2026-08-10)
@@ -45,6 +50,11 @@ Foundation work in progress. Full wallet workflows remain ahead; the P0.10 crypt
 
 - **Whole-string address comparison.** Warm round-trip, inbound, and batch checks compare every character, report the first divergence, handle Bech32 case-insensitively, keep Base58 case-sensitive, and report invalid mixed-case EVM checksums separately.
 - **Separate authority claim.** The sealed realm now accepts a typed public verification request, re-derives the selected registry address when the current Seed Forge identity is available, updates its verification evidence, and returns enum-only outcomes. Locked vaults return `vault-locked`, never `no-record`.
+
+### Added — P1.13 clipboard volatility canary (2026-08-10)
+
+- **Explicit opt-in only.** The canary is off by default and is not enabled by paste or by any other verification action. It requests clipboard-read permission only after the user enables it, and provides a retry control when permission is denied or the API is absent.
+- **Affirmative change detection.** It establishes a baseline and re-reads after a delay with no user action. A change is reported as observed clipboard volatility, naming clipboard managers, sync tools, and remote-desktop clients before malware; the ordinary address comparison remains available.
 
 ### Added — P1.9 verification workflows (2026-08-10)
 
