@@ -3284,7 +3284,8 @@ async function verifyCodex32(browser, engine) {
     await secretInput.fill(testSeed);
     await coldFrame.locator('#cold-codex32-threshold').selectOption('3');
     await coldFrame.locator('#cold-codex32-count').fill('5');
-    await coldFrame.locator('#cold-codex32-identifier').fill('cash');
+    const identifierInput = coldFrame.locator('#cold-codex32-identifier');
+    assert.equal(await identifierInput.inputValue(), '', `${engine}: codex32's ordinary identifier path must start blank`);
     await coldFrame.locator('#cold-codex32-generate').click();
     await coldFrame.locator('#cold-codex32-generate-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await secretInput.inputValue(), '');
@@ -3296,7 +3297,10 @@ async function verifyCodex32(browser, engine) {
     const visibleSharesText = await coldFrame.locator('#cold-codex32-generated').inputValue();
     const visibleShares = visibleSharesText.split(/\r?\n/).filter(Boolean);
     assert.equal(visibleShares.length, 5);
-    assert.match(visibleShares[0], /^ms13casha/);
+    const generatedIdentifier = await coldFrame.evaluate((share) => window.__coldboxCodex32.decode(share).identifier, visibleShares[0]);
+    assert.equal(generatedIdentifier.length, 4);
+    assert.notEqual(generatedIdentifier, 'cash', `${engine}: omitted codex32 identifiers must not reuse the example value`);
+    assert.match(visibleShares[0], /^ms13/);
     assert.equal(
       await coldFrame.evaluate((shares) => shares.every((share) => window.__coldboxCodex32.decode(share).threshold === 3), visibleShares),
       true
@@ -3310,7 +3314,7 @@ async function verifyCodex32(browser, engine) {
       ''
     );
     await coldFrame.locator('#cold-codex32-recovered-reveal').click();
-    assert.match((await coldFrame.locator('#cold-codex32-recovered').textContent()).trim(), /^ms13cashs/);
+    assert.match((await coldFrame.locator('#cold-codex32-recovered').textContent()).trim(), /^ms13/);
 
     const valid = 'ms10testsxxxxxxxxxxxxxxxxxxxxxxxxxx4nzvca9cmczlw';
     const corrupted = `${valid.slice(0, 20)}q${valid.slice(21)}`;
@@ -3330,7 +3334,7 @@ async function verifyCodex32(browser, engine) {
     await coldFrame.locator('#cold-codex32-recover').click();
     await coldFrame.locator('#cold-codex32-recovery-status[data-state="error"]').waitFor({ state: 'visible', timeout: 5000 });
     assert.match(await coldFrame.locator('#cold-codex32-recovery-status').textContent(), /exactly 3 shares/i);
-    assert.doesNotMatch(await page.locator('body').textContent(), /ms13casha/);
+    assert.doesNotMatch(await page.locator('body').textContent(), new RegExp(visibleShares[0]));
 
     await coldFrame.locator('body').press('Escape');
     await coldFrame.locator('body').press('Escape');

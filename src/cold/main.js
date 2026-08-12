@@ -442,12 +442,18 @@ __COLDBOX_QR_ENCODER__
       secretBytes = parseCodex32Hex(codex32SecretHex ? codex32SecretHex.value : '');
       var threshold = Number(codex32Threshold ? codex32Threshold.value : 3);
       var count = Number(codex32Count ? codex32Count.value : 5);
-      var identifier = codex32Identifier ? codex32Identifier.value : '';
-      var generated = codex32.generate(secretBytes, {
+      var identifier = codex32Identifier ? codex32Identifier.value.trim().toLowerCase() : '';
+      var generationOptions = {
         threshold: threshold,
-        count: count,
-        identifier: identifier
-      });
+        count: count
+      };
+      // An empty identifier deliberately leaves the API's secure random
+      // default active. A typed identifier is an explicit compatibility
+      // choice and must not turn the ordinary blank path into a fixed value.
+      if (identifier) {
+        generationOptions.identifier = identifier;
+      }
+      var generated = codex32.generate(secretBytes, generationOptions);
       codex32GeneratedShares = generated.shares.slice();
       codex32GeneratedRevealed = false;
       renderCodex32Generated();

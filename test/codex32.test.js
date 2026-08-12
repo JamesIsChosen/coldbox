@@ -86,6 +86,19 @@ test('generation round-trips 16, 32, and 64-byte secrets with threshold enforcem
   }
 });
 
+test('omitted identifiers use fresh secure defaults instead of reusing the example identifier', () => {
+  const api = loadApi();
+  const secret = bytes('00112233445566778899aabbccddeeff');
+  const first = api.generate(secret, { threshold: 2, count: 3 });
+  const second = api.generate(secret, { threshold: 2, count: 3 });
+
+  assert.notEqual(first.identifier, 'cash');
+  assert.notEqual(second.identifier, 'cash');
+  assert.notEqual(first.identifier, second.identifier);
+  assert.equal(first.shares.every((share) => api.decode(share).identifier === first.identifier), true);
+  assert.equal(second.shares.every((share) => api.decode(share).identifier === second.identifier), true);
+});
+
 test('invalid BIP-93 vectors fail closed and one transcription error is confirmation-gated', () => {
   const api = loadApi();
   const invalid = [
