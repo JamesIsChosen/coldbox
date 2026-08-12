@@ -1229,6 +1229,145 @@ body {
   border-top: 0.13rem solid var(--cold-outline);
 }
 
+/* P2.2: codex32 shares are secret material. The panel keeps generated and
+   recovered values masked until the user makes an explicit timed reveal. */
+#cold-codex32 {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 2px solid var(--cold-yellow);
+  border-radius: 0.5rem;
+  background: var(--cold-surface);
+}
+
+#cold-codex32 h2,
+#cold-codex32 h3,
+#cold-codex32 p {
+  margin-top: 0;
+}
+
+#cold-codex32-help,
+#cold-codex32-note,
+.cold-codex32-subsection > p {
+  color: var(--cold-muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.cold-codex32-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(3, minmax(8rem, 1fr));
+  gap: 0.55rem;
+}
+
+.cold-codex32-grid > div,
+.cold-codex32-subsection {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.cold-codex32-grid label,
+.cold-codex32-subsection label {
+  color: var(--cold-muted);
+  font-size: 0.72rem;
+}
+
+.cold-codex32-grid input,
+.cold-codex32-grid select,
+#cold-codex32-recovery-input,
+#cold-codex32-correction-input,
+#cold-codex32-generated {
+  width: 100%;
+  min-height: 2.35rem;
+  padding: 0.35rem 0.45rem;
+  border: 0.1rem solid var(--cold-outline);
+  border-radius: 0.2rem;
+  background: var(--cold-input);
+  color: var(--cold-text);
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+}
+
+#cold-codex32-generated,
+#cold-codex32-recovery-input {
+  min-height: 7rem;
+  resize: vertical;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.cold-codex32-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.cold-codex32-actions button,
+#cold-codex32-correct,
+#cold-codex32-use-correction {
+  min-height: 2.65rem;
+  padding: 0.35rem 0.7rem;
+}
+
+.cold-codex32-status {
+  min-height: 1.25rem;
+  margin-bottom: 0;
+  padding: 0.45rem 0.55rem;
+  border-left: 0.28rem solid var(--cold-outline);
+  background: var(--cold-bg);
+  color: var(--cold-muted);
+  font-size: 0.72rem;
+}
+
+.cold-codex32-status[data-state="ready"] {
+  border-color: var(--cold-green);
+  color: var(--cold-green);
+}
+
+.cold-codex32-status[data-state="error"] {
+  border-color: var(--cold-red);
+  color: var(--cold-red);
+}
+
+#cold-codex32-generated,
+#cold-codex32-recovered,
+#cold-codex32-correction-output {
+  display: block;
+  min-height: 2.35rem;
+  padding: 0.5rem 0.6rem;
+  border: 0.1rem solid var(--cold-outline);
+  border-radius: 0.2rem;
+  background: var(--cold-bg);
+  color: var(--cold-text);
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.cold-codex32-subsection {
+  margin-top: 0.35rem;
+  padding: 0.75rem;
+  border-top: 0.13rem solid var(--cold-outline);
+}
+
+#cold-codex32-note {
+  margin-bottom: 0;
+  padding-top: 0.55rem;
+  border-top: 0.13rem solid var(--cold-outline);
+}
+
+@media (max-width: 52rem) {
+  .cold-codex32-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cold-codex32-grid > div:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
 /* P1.10: secret QR generation, export, and printing remain in the cold
    document. The warm shell never receives the payload or generated pixels. */
 #cold-qr-studio {

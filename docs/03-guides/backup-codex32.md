@@ -63,9 +63,9 @@ For a backup meant to outlive its tooling, that's a genuinely different security
 
 **Offline.** Green banner.
 
-1. Backup Lab → codex32 → enter your seed.
-2. Choose a configuration (2-of-3 is a sensible default).
-3. Generate.
+1. In the sealed Backup Lab → codex32 panel, enter the direct 16-to-64-byte BIP-32 master seed as hexadecimal. This is not BIP-39 entropy, a mnemonic, or a passphrase.
+2. Choose a configuration (2-of-3 is a sensible default) and a four-character identifier.
+3. Generate, then reveal the masked shares briefly while writing each one to a separate offline copy.
 
 Shares are 48 characters for a 128-bit seed, using bech32's character set. Each carries an identifier, a share index, and a checksum.
 
@@ -122,7 +122,7 @@ That last item matters. A codex32 share without the tables loses the property yo
 4. Confirm the reconstructed fingerprint matches.
 5. Enter the resulting seed into your wallet as BIP-39.
 
-**A share fails validation?** codex32 corrects single-character errors. The app will tell you which character it fixed. If it can't correct, the share has multiple errors — use a different share if you have one above threshold.
+**A share fails validation?** codex32 can suggest a single-character correction. The app identifies the position and keeps the candidate masked; compare it with the paper copy and explicitly confirm before using it. If it cannot identify one unambiguous correction, use a different share if you have one above threshold.
 
 ---
 
