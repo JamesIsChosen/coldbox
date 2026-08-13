@@ -228,7 +228,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
 
 ## Phase 2 — Backup
 
-- [~] **P2.1 SLIP-39**
+- [x] **P2.1 SLIP-39**
   *Deps: P1.3*
 - [ ] **P2.2 codex32**
   *Deps: P1.3*
