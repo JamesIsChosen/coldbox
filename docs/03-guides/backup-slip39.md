@@ -78,15 +78,17 @@ Powerful, and easy to overcomplicate. If you can't explain your configuration fr
 
 Each share is 20 words (128-bit seed) or 33 words (256-bit), from SLIP-39's own 1024-word list. **These are not BIP-39 words** and are not interchangeable.
 
+Coldbox splits the entropy represented by the selected BIP-39 phrase. A BIP-39 passphrase is not part of that entropy and is never included in the shares; record it separately if the wallet uses one. Generated shares stay masked until you explicitly reveal them for transcription, and the reveal remasks automatically after 30 seconds.
+
 ---
 
 ## Verify before you trust — mandatory
 
-The app will not let you mark the backup complete until you reconstruct the seed from a threshold subset.
+After generation, use **Recovery** to enter at least the threshold number of shares. Coldbox reconstructs the phrase entropy locally and reports whether it matches the selected Seed Forge phrase. A mismatch is a stop condition: do not distribute the shares until you have investigated it. The P2.1 lab does not create a completion record or display a fingerprint.
 
 1. Set the generated shares aside.
 2. Recovery → SLIP-39 → enter exactly T shares, typed from your written copies.
-3. Confirm the reconstructed seed's fingerprint matches the original.
+3. Confirm the local status reports that the recovered entropy matches the selected Seed Forge phrase.
 
 **Type them from your physical copies, not copy-paste.** The point is to verify what you wrote down, not what the app already knows. This step is where transcription errors surface — which is the whole reason it exists.
 
@@ -106,7 +108,7 @@ Each share needs, physically alongside it:
 - A note that it's useless alone
 - "Do not photograph"
 
-Print from Backup Lab, sized to the SeedQR card templates. Then transfer to metal for anything long-term.
+The P2.1 lab generates and reveals shares; it does not print cards. Copy each share onto a durable offline medium, and transfer to metal for anything long-term.
 
 **Do not label them "Bitcoin backup."** That makes each one a theft target. "Document fragment 3 of 5" attracts less attention.
 
@@ -129,7 +131,7 @@ The whole point is that shares live in different places.
 1. Never store threshold-many shares in one place. Two of three in the same house is a house fire away from total loss, and a burglary away from total compromise.
 2. Consider jurisdictions if that matters to you.
 3. Tell holders what they have — not what it protects. "Keep this sealed, give it to my executor" is enough.
-4. Record locations and custodians in the Registry so the Health dashboard can flag co-location.
+4. Keep the physical locations and custodians separate enough that one incident cannot reach the threshold. P2.1 does not maintain a Registry record or a Health dashboard; keep any location record in your separate offline operational process.
 
 ---
 
@@ -138,7 +140,7 @@ The whole point is that shares live in different places.
 1. Gather at least T shares.
 2. Offline. Backup Lab → SLIP-39 → Recover.
 3. Enter each share completely.
-4. The app reconstructs the seed and shows the fingerprint. Confirm it's the one you expect.
+4. The app reconstructs the seed and reports the recovered entropy length and whether it matches the selected Seed Forge phrase. Recovery input is cleared after the attempt.
 5. Restore into your device.
 
 **If a share won't validate:** SLIP-39 has checksums, so the app can usually tell you which word is wrong. Typos are far more common than damaged shares.
@@ -149,11 +151,13 @@ The whole point is that shares live in different places.
 
 ## Maintenance
 
-**Annually:** confirm each share is where it should be, still legible, and the holder still has it. The Health dashboard tracks due dates.
+**Annually:** confirm each share is where it should be, still legible, and the holder still has it. P2.1 does not provide review reminders or a Health dashboard.
 
 **Every few years:** actually reconstruct from a threshold subset. Confirming a share exists is not confirming it's correct.
 
 **Regenerate when:** a share is lost or compromised, a custodian relationship changes, or your configuration no longer fits your life. Regenerating produces an entirely new share set — destroy the old ones, or you'll have two valid sets in circulation and no idea which is which.
+
+The completion records, printable worksheets, Registry, and Health dashboard described for later roadmap items are not part of the P2.1 SLIP-39 lab.
 
 ---
 

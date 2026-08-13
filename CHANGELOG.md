@@ -37,6 +37,12 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
   and exhaustive GF(8) checks cover one- and two-share below-threshold
   distributions.
 
+### Added - P2.1 SLIP-39 cold backup shares (2026-08-11)
+
+- Added a cold-only SLIP-39 Backup Lab using the standard 1024-word list, secure randomness, 20/33-word phrase-entropy inputs, two-level group thresholds, share passphrase extension, checksum validation, masked 30-second reveal, and local recovery comparison.
+- Added official Trezor interoperability vectors for no-sharing, 2-of-3, two-level group, extendable-backup, malformed-share, duplicate-share, and missing-randomness cases. BIP-39 passphrases remain separate backup material.
+- Added [ADR-0036](docs/05-development/adr/0036-slip39-cold-vendoring.md) and pinned source provenance for the browser adaptation.
+
 ### Fixed - P1.11 independent-review remediation (2026-08-11)
 
 - Warm public registry replacements can no longer elevate an address to `cold-verified` or rewrite authenticated verification evidence; schema-1 public compartments migrate in the cold vault session and persist as schema 2; and Chromium/Firefox coverage locks the stale Registry label to `Cold verification stale`.
