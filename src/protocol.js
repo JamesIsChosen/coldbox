@@ -1070,6 +1070,7 @@
     'publicData.updated': cleanVaultOpened,
     'concealment.revealed': cleanConcealmentRevealed,
     'secretData.updated': cleanSecretDataUpdated,
+    'vault.dirty': cleanSecretDataUpdated,
     status: cleanStatus,
     error: cleanError,
     'panic.hide': cleanEmptyPayload

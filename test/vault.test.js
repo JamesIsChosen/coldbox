@@ -10,6 +10,7 @@ const { createCryptoVendorSource } = require('../scripts/crypto-bundle.js');
 
 const projectRoot = path.resolve(__dirname, '..');
 const cryptoSource = fs.readFileSync(path.join(projectRoot, 'src', 'cold', 'crypto.js'), 'utf8');
+const slip39Source = fs.readFileSync(path.join(projectRoot, 'src', 'cold', 'slip39.js'), 'utf8');
 const vaultSource = fs.readFileSync(path.join(projectRoot, 'src', 'cold', 'vault.js'), 'utf8');
 
 function baseContext() {
@@ -86,6 +87,7 @@ function createRealContext() {
   const context = baseContext();
   vm.runInNewContext(createCryptoVendorSource(projectRoot), context);
   vm.runInNewContext(cryptoSource, context);
+  vm.runInNewContext(slip39Source, context);
   vm.runInNewContext(vaultSource, context);
   return context;
 }
@@ -149,6 +151,7 @@ function createFormatContext() {
   context.__coldboxCrypto = fakeCrypto;
   context.__forceDerivedProfile = (name) => { deriveOverride = name; };
   assert.equal(typeof nobleLayer.hkdf, 'function');
+  vm.runInNewContext(slip39Source, context);
   vm.runInNewContext(vaultSource, context);
   return context;
 }
@@ -171,6 +174,7 @@ function createPublicTrackingContext() {
     }
   });
   context.__coldboxNobleCrypto = trackedNoble;
+  vm.runInNewContext(slip39Source, context);
   vm.runInNewContext(vaultSource, context);
   return { context, infos };
 }
@@ -181,6 +185,10 @@ function createTrackingContext() {
 
 function cloneBytes(value) {
   return new Uint8Array(value);
+}
+
+function hex(value) {
+  return Buffer.from(value).toString('hex');
 }
 
 function compartmentNonce(vault, header, secret) {
@@ -993,4 +1001,153 @@ test('P0.15 the keyfile hint is filename-only display metadata, never the keyfil
   assert.equal(hintText, 'wallet-keyfile.bin');
   // The hint never contains the keyfile's own bytes.
   assert.notEqual(hintText.length, keyfile.length);
+});
+
+test('P2.5 recovery shares use the fixed method-3 fixture, preserve the normal route, and recover offline', async () => {
+  const context = createRealContext();
+  const passphrase = 'recovery route owner phrase';
+  const keyfile = context.__coldboxCrypto.randomBytes(1024);
+  const vault = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fast',
+    publicData: { id: 'recovery-vault', wallets: [{ id: 'public-wallet' }] },
+    secretData: { seeds: [{ id: 'secret-seed', storedSecret: { mnemonic: 'test-only-secret' } }] },
+    keyfile,
+    keyfileHint: 'recovery-keyfile.bin'
+  });
+  const session = await context.__coldboxVault.openSession(vault, passphrase, 'offline', keyfile);
+  const configured = await session.configureRecoveryShares({
+    identifier: 0x1234,
+    extendableBackupFlag: 1,
+    iterationExponent: 0,
+    groupThreshold: 1,
+    groups: [{ threshold: 2, count: 3 }],
+    passphrase: ''
+  });
+  assert.equal(configured.shares.length, 3);
+  assert.equal(JSON.stringify(configured.metadata.groups), JSON.stringify([{ threshold: 2, count: 3 }]));
+
+  const saved = await session.save();
+  const header = context.__coldboxVault.inspectHeader(saved);
+  assert.equal(header.hasRecoveryShares, true);
+  assert.equal(header.wrappedDekLength, 158);
+  assert.ok(saved[53] >= 0x80, 'the recovery marker makes pre-P2.5 readers reject the file');
+  const normalRecordLength = (saved[65 + 2] << 8) | saved[65 + 3];
+  const method3Offset = 65 + 4 + normalRecordLength;
+  const method3Length = (saved[method3Offset + 2] << 8) | saved[method3Offset + 3];
+  const method3Data = saved.slice(method3Offset + 4, method3Offset + 4 + method3Length - 60);
+  assert.equal(hex(method3Data), '01201234010001010203', 'method-3 metadata is byte-exact and deterministic');
+  assert.equal(method3Length, 70);
+  assert.equal(hex(saved.slice(method3Offset + 4 + method3Data.length, method3Offset + 4 + method3Length)), '0'.repeat(120));
+
+  const normalOpened = await context.__coldboxVault.open(saved, passphrase, 'offline', keyfile);
+  assert.equal(normalOpened.publicData.id, 'recovery-vault');
+  assert.equal(normalOpened.secretData.seeds[0].storedSecret.mnemonic, 'test-only-secret');
+
+  const recoveryOpened = await context.__coldboxVault.open(saved, undefined, 'offline', null, [
+    configured.shares[0],
+    configured.shares[2]
+  ]);
+  assert.equal(recoveryOpened.publicData.id, 'recovery-vault');
+  assert.equal(recoveryOpened.secretData.seeds[0].storedSecret.mnemonic, 'test-only-secret');
+
+  const recoverySession = await context.__coldboxVault.openSession(saved, undefined, 'offline', null, configured.shares);
+  assert.equal(JSON.stringify(recoverySession.getRecoveryShareMetadata().groups), JSON.stringify([{ threshold: 2, count: 3 }]));
+  assert.equal(recoverySession.canConfigureRecoveryShares(), false, 'recovery-only sessions cannot reissue the normal wrapping record');
+  await expectSerializationFailure(
+    () => recoverySession.configureRecoveryShares({ identifier: 0x1236 })
+  );
+  recoverySession.close();
+  assert.equal(recoverySession.getRecoveryShareMetadata(), null, 'closing clears recovery metadata and the retained DEK');
+
+  await expectAuthenticationFailure(
+    () => context.__coldboxVault.open(saved, undefined, 'offline', null, [configured.shares[0]])
+  );
+  await expectAuthenticationFailure(
+    () => context.__coldboxVault.open(saved, undefined, 'online', null, configured.shares)
+  );
+
+  const replacement = await session.configureRecoveryShares({
+    identifier: 0x1235,
+    groups: [{ threshold: 2, count: 3 }],
+    replace: true
+  });
+  const replacementSaved = await session.save();
+  const replacementOpened = await context.__coldboxVault.open(
+    replacementSaved,
+    undefined,
+    'offline',
+    null,
+    [replacement.shares[0], replacement.shares[1]]
+  );
+  assert.equal(replacementOpened.publicData.id, 'recovery-vault');
+  await expectAuthenticationFailure(
+    () => context.__coldboxVault.open(saved, undefined, 'offline', null, [replacement.shares[0], replacement.shares[1]])
+  );
+
+  const tamperedMetadata = cloneBytes(saved);
+  tamperedMetadata[method3Offset + 4 + 2] = 0x12;
+  tamperedMetadata[method3Offset + 4 + 3] = 0x35;
+  await expectAuthenticationFailure(
+    () => context.__coldboxVault.open(tamperedMetadata, undefined, 'offline', null, [replacement.shares[0], replacement.shares[1]])
+  );
+
+});
+
+test('P2.5 rejects malformed or unknown recovery records rather than ignoring them', async () => {
+  const context = createRealContext();
+  const passphrase = 'malformed recovery record phrase';
+  const vault = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fast',
+    publicData: { id: 'malformed-recovery-vault' },
+    secretData: { notes: [] }
+  });
+  const session = await context.__coldboxVault.openSession(vault, passphrase, 'offline');
+  const configured = await session.configureRecoveryShares({ identifier: 0x2345 });
+  const saved = await session.save();
+  const method3Offset = 65 + 64;
+
+  const badVersion = cloneBytes(saved);
+  badVersion[method3Offset + 4] = 2;
+  await expectAuthenticationFailure(() => context.__coldboxVault.open(badVersion, passphrase));
+
+  const badReservedTail = cloneBytes(saved);
+  badReservedTail[method3Offset + 4 + 8 + 2] = 1;
+  await expectAuthenticationFailure(() => context.__coldboxVault.open(badReservedTail, passphrase));
+
+  const unknownMethod = cloneBytes(saved);
+  unknownMethod[65] = 99;
+  await expectAuthenticationFailure(() => context.__coldboxVault.open(unknownMethod, passphrase));
+
+  await expectSerializationFailure(() => session.configureRecoveryShares({ identifier: 0x3456 }));
+  assert.ok(configured.shares[0].split(' ').length >= 33);
+});
+
+test('P2.5 aborts recovery-share reconfiguration if the session closes during rewrapping', async () => {
+  const context = createFormatContext();
+  const vault = await context.__coldboxVault.create({
+    passphrase: 'reconfiguration race phrase',
+    profile: 'fast',
+    publicData: { id: 'reconfiguration-race-vault' },
+    secretData: { notes: [] }
+  });
+  const session = await context.__coldboxVault.openSession(vault, 'reconfiguration race phrase', 'offline');
+  const originalAesGcm = context.__coldboxCrypto.aesGcm;
+  let releaseAesGcm;
+  const delayedAesGcm = new Promise((resolve) => { releaseAesGcm = resolve; });
+  context.__coldboxCrypto.aesGcm = function (...args) {
+    if (args[0] === 'encrypt') {
+      return delayedAesGcm.then(() => originalAesGcm.apply(this, args));
+    }
+    return originalAesGcm.apply(this, args);
+  };
+  const inFlightReplacement = session.configureRecoveryShares({
+    identifier: 0x3456,
+    groups: [{ threshold: 2, count: 3 }]
+  });
+  session.close();
+  releaseAesGcm();
+  await expectSerializationFailure(() => inFlightReplacement);
+  context.__coldboxCrypto.aesGcm = originalAesGcm;
 });

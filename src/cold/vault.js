@@ -18,6 +18,12 @@
   var CIPHER_AES_GCM = 1;
   var METHOD_PASSPHRASE = 1;
   var METHOD_PASSPHRASE_KEYFILE = 2;
+  var METHOD_RECOVERY_SHARES = 3;
+  var RECOVERY_METHOD_DATA_VERSION = 1;
+  var RECOVERY_METHOD_DATA_PREFIX_LENGTH = 8;
+  var MAX_RECOVERY_GROUPS = 16;
+  var RECOVERY_HEADER_MARKER = 0x80000000;
+  var MAX_WRAPPED_BLOCK_LENGTH = 65535;
   var PUBLIC_SCHEMA_VERSION = 2;
   var ERROR_MESSAGE = 'Vault authentication failed.';
   var SERIALIZE_ERROR = 'Vault serialization failed.';
@@ -325,7 +331,7 @@
   // profileId is the KDF identifier reported by the derivation that produced
   // the key this header will authenticate. It is never inferred from module
   // state. An unrecognized id is a serialization failure, not a default.
-  function makeHeader(profileId, salt, wrappedLength, publicLength, secretLength) {
+  function makeHeader(profileId, salt, wrappedLength, publicLength, secretLength, hasRecoveryShares) {
     requireProfiles(serializationError);
     var profileName = normalizedProfile(profileId);
     var profile = PROFILES[profileName];
@@ -338,7 +344,7 @@
     header[19] = profile.parallelism;
     header[20] = CIPHER_AES_GCM;
     header.set(salt, 21);
-    writeUint32(header, 53, wrappedLength);
+    writeUint32(header, 53, wrappedLength + (hasRecoveryShares ? RECOVERY_HEADER_MARKER : 0));
     writeUint32(header, 57, publicLength);
     writeUint32(header, 61, secretLength);
     return header;
@@ -354,6 +360,11 @@
         throw authenticationError();
       }
     }
+    var wrappedDekLengthRaw = readUint32(bytes, 53);
+    var hasRecoveryMarker = wrappedDekLengthRaw >= RECOVERY_HEADER_MARKER;
+    var wrappedDekLength = hasRecoveryMarker
+      ? wrappedDekLengthRaw - RECOVERY_HEADER_MARKER
+      : wrappedDekLengthRaw;
     var header = {
       formatVersion: readUint16(bytes, 8),
       kdfId: bytes[10],
@@ -362,14 +373,15 @@
       parallelism: bytes[19],
       cipherId: bytes[20],
       salt: bytes.slice(21, 53),
-      wrappedDekLength: readUint32(bytes, 53),
+      wrappedDekLength: wrappedDekLength,
+      hasRecoveryMarker: hasRecoveryMarker,
       publicLength: readUint32(bytes, 57),
       secretLength: readUint32(bytes, 61)
     };
     if (header.formatVersion !== FORMAT_VERSION
       || header.cipherId !== CIPHER_AES_GCM
       || header.wrappedDekLength < 4 + 60
-      || header.wrappedDekLength > 65535
+      || header.wrappedDekLength > MAX_WRAPPED_BLOCK_LENGTH
       || header.publicLength < TAG_LENGTH
       || header.publicLength > MAX_VAULT_BYTES
       || (header.secretLength !== 0 && (header.secretLength < TAG_LENGTH || header.secretLength > MAX_VAULT_BYTES))) {
@@ -389,9 +401,154 @@
       cipherId: header.cipherId,
       salt: new Uint8Array(header.salt),
       wrappedDekLength: header.wrappedDekLength,
+      hasRecoveryShares: header.hasRecoveryMarker === true,
       publicLength: header.publicLength,
       secretLength: header.secretLength
     });
+  }
+
+  function recoveryMetadata(value, errorFactory) {
+    if (!isRecord(value)
+      || value.version !== RECOVERY_METHOD_DATA_VERSION
+      || value.dekLength !== DEK_LENGTH
+      || !Number.isInteger(value.identifier)
+      || value.identifier < 0
+      || value.identifier >= 32768
+      || (value.extendableBackupFlag !== 0 && value.extendableBackupFlag !== 1)
+      || !Number.isInteger(value.iterationExponent)
+      || value.iterationExponent < 0
+      || value.iterationExponent > 15
+      || !Number.isInteger(value.groupThreshold)
+      || value.groupThreshold < 1
+      || !Array.isArray(value.groups)
+      || value.groups.length < 1
+      || value.groups.length > MAX_RECOVERY_GROUPS
+      || value.groupThreshold > value.groups.length) {
+      throw errorFactory();
+    }
+    var groups = value.groups.map(function (group) {
+      if (!isRecord(group)
+        || !Number.isInteger(group.threshold)
+        || !Number.isInteger(group.count)
+        || group.threshold < 1
+        || group.threshold > group.count
+        || group.count > 16
+        || (group.threshold === 1 && group.count > 1)) {
+        throw errorFactory();
+      }
+      return Object.freeze({ threshold: group.threshold, count: group.count });
+    });
+    return Object.freeze({
+      version: RECOVERY_METHOD_DATA_VERSION,
+      dekLength: DEK_LENGTH,
+      identifier: value.identifier,
+      extendableBackupFlag: value.extendableBackupFlag,
+      iterationExponent: value.iterationExponent,
+      groupThreshold: value.groupThreshold,
+      groups: Object.freeze(groups)
+    });
+  }
+
+  function encodeRecoveryMethodData(value) {
+    var metadata = recoveryMetadata(value, serializationError);
+    var output = new Uint8Array(RECOVERY_METHOD_DATA_PREFIX_LENGTH + (metadata.groups.length * 2));
+    output[0] = metadata.version;
+    output[1] = metadata.dekLength;
+    writeUint16(output, 2, metadata.identifier);
+    output[4] = metadata.extendableBackupFlag;
+    output[5] = metadata.iterationExponent;
+    output[6] = metadata.groupThreshold;
+    output[7] = metadata.groups.length;
+    metadata.groups.forEach(function (group, index) {
+      output[RECOVERY_METHOD_DATA_PREFIX_LENGTH + (index * 2)] = group.threshold;
+      output[RECOVERY_METHOD_DATA_PREFIX_LENGTH + (index * 2) + 1] = group.count;
+    });
+    return output;
+  }
+
+  function decodeRecoveryMethodData(value) {
+    var data = copyBytes(value);
+    if (data.length < RECOVERY_METHOD_DATA_PREFIX_LENGTH
+      || data[0] !== RECOVERY_METHOD_DATA_VERSION
+      || data[1] !== DEK_LENGTH) {
+      throw authenticationError();
+    }
+    var groupCount = data[7];
+    if (groupCount < 1
+      || groupCount > MAX_RECOVERY_GROUPS
+      || data.length !== RECOVERY_METHOD_DATA_PREFIX_LENGTH + (groupCount * 2)) {
+      throw authenticationError();
+    }
+    var groups = [];
+    for (var index = 0; index < groupCount; index += 1) {
+      groups.push({
+        threshold: data[RECOVERY_METHOD_DATA_PREFIX_LENGTH + (index * 2)],
+        count: data[RECOVERY_METHOD_DATA_PREFIX_LENGTH + (index * 2) + 1]
+      });
+    }
+    return recoveryMetadata({
+      version: data[0],
+      dekLength: data[1],
+      identifier: readUint16(data, 2),
+      extendableBackupFlag: data[4],
+      iterationExponent: data[5],
+      groupThreshold: data[6],
+      groups: groups
+    }, authenticationError);
+  }
+
+  function recoveryRecord(methodData) {
+    if (methodData.length > 255) {
+      throw serializationError();
+    }
+    var recordLength = methodData.length + 60;
+    var record = new Uint8Array(4 + recordLength);
+    record[0] = METHOD_RECOVERY_SHARES;
+    record[1] = 0;
+    writeUint16(record, 2, recordLength);
+    record.set(methodData, 4);
+    // Method 3 reconstructs the DEK directly. The ordinary nonce/wrapped-DEK
+    // tail remains present for the v1 record grammar but is reserved and must
+    // stay zero. Recovery metadata is authenticated as compartment AAD below.
+    return record;
+  }
+
+  function isAllZero(value) {
+    for (var index = 0; index < value.length; index += 1) {
+      if (value[index] !== 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function compartmentAad(headerBytes, methodData) {
+    return methodData ? concatBytes([headerBytes, methodData]) : copyBytes(headerBytes);
+  }
+
+  function recoveryRecordFor(records) {
+    for (var index = 0; index < records.length; index += 1) {
+      if (records[index].methodId === METHOD_RECOVERY_SHARES) {
+        return records[index];
+      }
+    }
+    return null;
+  }
+
+  function validateRecordSet(records, hasRecoveryMarker) {
+    var normalCount = 0;
+    var recoveryCount = 0;
+    records.forEach(function (record) {
+      if (record.methodId === METHOD_PASSPHRASE || record.methodId === METHOD_PASSPHRASE_KEYFILE) {
+        normalCount += 1;
+      } else if (record.methodId === METHOD_RECOVERY_SHARES) {
+        recoveryCount += 1;
+      }
+    });
+    if (normalCount !== 1 || recoveryCount > 1 || (hasRecoveryMarker === true) !== (recoveryCount === 1)) {
+      throw authenticationError();
+    }
+    return recoveryRecordFor(records);
   }
 
   function parseWrappedRecords(bytes, offset, length) {
@@ -405,23 +562,49 @@
       var methodId = bytes[cursor];
       var flags = bytes[cursor + 1];
       var recordLength = readUint16(bytes, cursor + 2);
-      if (recordLength < 60 || cursor + 4 + recordLength > end) {
+      if (recordLength < 60 || cursor + 4 + recordLength > end
+        || (methodId !== METHOD_PASSPHRASE
+          && methodId !== METHOD_PASSPHRASE_KEYFILE
+          && methodId !== METHOD_RECOVERY_SHARES)
+        || flags !== 0) {
         throw authenticationError();
       }
       var methodDataLength = recordLength - 60;
       var recordStart = cursor + 4;
       var nonceStart = recordStart + methodDataLength;
       var wrappedStart = nonceStart + NONCE_LENGTH;
+      var methodData = bytes.slice(recordStart, nonceStart);
+      var recoveryMetadataValue = null;
+      if (methodId === METHOD_PASSPHRASE && methodData.length !== 0) {
+        throw authenticationError();
+      }
+      if (methodId === METHOD_RECOVERY_SHARES) {
+        recoveryMetadataValue = decodeRecoveryMethodData(methodData);
+        if (!isAllZero(bytes.slice(nonceStart, wrappedStart + WRAPPED_DEK_LENGTH))) {
+          throw authenticationError();
+        }
+      }
       records.push({
         methodId: methodId,
         flags: flags,
-        methodData: bytes.slice(recordStart, nonceStart),
+        methodData: methodData,
+        recoveryMetadata: recoveryMetadataValue,
         nonce: bytes.slice(nonceStart, wrappedStart),
-        wrappedDek: bytes.slice(wrappedStart, wrappedStart + WRAPPED_DEK_LENGTH)
+        wrappedDek: bytes.slice(wrappedStart, wrappedStart + WRAPPED_DEK_LENGTH),
+        raw: bytes.slice(cursor, cursor + 4 + recordLength)
       });
       cursor += 4 + recordLength;
     }
     if (records.length === 0 || cursor !== end) {
+      throw authenticationError();
+    }
+    var normalCount = records.filter(function (record) {
+      return record.methodId === METHOD_PASSPHRASE || record.methodId === METHOD_PASSPHRASE_KEYFILE;
+    }).length;
+    var recoveryCount = records.filter(function (record) {
+      return record.methodId === METHOD_RECOVERY_SHARES;
+    }).length;
+    if (normalCount !== 1 || recoveryCount > 1) {
       throw authenticationError();
     }
     return records;
@@ -647,7 +830,7 @@
       try {
         var dek = await aesGcm('decrypt', kek, record.nonce, record.wrappedDek, header.bytes);
         if (dek.length === DEK_LENGTH) {
-          return dek;
+          return { dek: dek, wrappingKey: new Uint8Array(kek) };
         }
         zeroBytes(dek);
       } catch (error) {
@@ -665,6 +848,81 @@
     return record.methodId === METHOD_PASSPHRASE_KEYFILE && record.flags === 0;
   }
 
+  function recoveryDekForRecord(record, recoveryShares) {
+    var slip39 = global.__coldboxSlip39;
+    if (!record || !Array.isArray(recoveryShares) || recoveryShares.length === 0
+      || recoveryShares.length > 256 || !slip39
+      || typeof slip39.decode !== 'function' || typeof slip39.recover !== 'function') {
+      return null;
+    }
+    var metadata = record.recoveryMetadata;
+    var seen = Object.create(null);
+    var groups = Object.create(null);
+    try {
+      recoveryShares.forEach(function (share) {
+        if (typeof share !== 'string' || share.length === 0) {
+          throw authenticationError();
+        }
+        var decoded = slip39.decode(share);
+        var group = metadata.groups[decoded.groupIndex];
+        if (!group
+          || decoded.identifier !== metadata.identifier
+          || decoded.extendableBackupFlag !== metadata.extendableBackupFlag
+          || decoded.iterationExponent !== metadata.iterationExponent
+          || decoded.groupThreshold !== metadata.groupThreshold
+          || decoded.groupCount !== metadata.groups.length
+          || decoded.memberThreshold !== group.threshold
+          || decoded.memberIndex < 0
+          || decoded.memberIndex >= group.count) {
+          throw authenticationError();
+        }
+        var key = decoded.groupIndex + ':' + decoded.memberIndex;
+        if (seen[key]) {
+          throw authenticationError();
+        }
+        seen[key] = true;
+        if (!groups[decoded.groupIndex]) {
+          groups[decoded.groupIndex] = [];
+        }
+        groups[decoded.groupIndex].push({ mnemonic: share, memberIndex: decoded.memberIndex });
+      });
+      var usableGroupIndexes = Object.keys(groups).map(function (index) {
+        return Number(index);
+      }).filter(function (groupIndex) {
+        return groups[groupIndex].length >= metadata.groups[groupIndex].threshold;
+      }).sort(function (left, right) { return left - right; });
+      if (usableGroupIndexes.length < metadata.groupThreshold) {
+        throw authenticationError();
+      }
+      var usableShares = [];
+      usableGroupIndexes.slice(0, metadata.groupThreshold).forEach(function (groupIndex) {
+        groups[groupIndex].sort(function (left, right) { return left.memberIndex - right.memberIndex; });
+        groups[groupIndex].slice(0, metadata.groups[groupIndex].threshold).forEach(function (entry) {
+          usableShares.push(entry.mnemonic);
+        });
+      });
+      var recoveredValue = slip39.recover(usableShares, '');
+      var recovered;
+      if (Array.isArray(recoveredValue)) {
+        if (recoveredValue.some(function (value) {
+          return !Number.isInteger(value) || value < 0 || value > 255;
+        })) {
+          throw authenticationError();
+        }
+        recovered = new Uint8Array(recoveredValue);
+      } else {
+        recovered = copyBytes(recoveredValue);
+      }
+      if (recovered.length !== DEK_LENGTH) {
+        zeroBytes(recovered);
+        throw authenticationError();
+      }
+      return recovered;
+    } catch (error) {
+      throw authenticationError();
+    }
+  }
+
   // Tries every wrapped-DEK record this vault carries against every unlock
   // credential this caller supplied. A vault created without a keyfile has no
   // method-2 record, so supplying one is simply never consulted - passphrase-
@@ -673,7 +931,7 @@
   // unwrap it. Every failure path - wrong passphrase, missing keyfile, or a
   // byte-altered keyfile - converges on the same authenticationError(), never
   // revealing which credential or which record was wrong.
-  async function unwrapDek(records, passphrase, header, keyfile) {
+  async function unwrapDek(records, passphrase, header, keyfile, recoveryShares, allowRecovery) {
     if (!cryptoLayer || typeof cryptoLayer.deriveKey !== 'function') {
       throw authenticationError();
     }
@@ -683,23 +941,31 @@
     var keyMaterial = null;
     try {
       var hasPassphraseRecord = records.some(isPassphraseRecord);
-      if (hasPassphraseRecord) {
+      if (hasPassphraseRecord && passphrase !== undefined && passphrase !== null) {
         var derivedPassphrase = await cryptoLayer.deriveKey(passphrase, header.salt, profileName);
         passphraseKek = derivedPassphrase.key;
-        var dek = await tryUnwrapWithKey(records, isPassphraseRecord, passphraseKek, header);
-        if (dek) {
-          return dek;
+        var passphraseResult = await tryUnwrapWithKey(records, isPassphraseRecord, passphraseKek, header);
+        if (passphraseResult) {
+          return passphraseResult;
         }
       }
 
       var hasKeyfileRecord = records.some(isKeyfileRecord);
-      if (hasKeyfileRecord && keyfile) {
+      if (hasKeyfileRecord && keyfile && passphrase !== undefined && passphrase !== null) {
         keyMaterial = combinePassphraseKeyfile(passphrase, keyfile, authenticationError);
         var derivedKeyfile = await cryptoLayer.deriveKey(keyMaterial, header.salt, profileName);
         keyfileKek = derivedKeyfile.key;
-        var keyfileDek = await tryUnwrapWithKey(records, isKeyfileRecord, keyfileKek, header);
-        if (keyfileDek) {
-          return keyfileDek;
+        var keyfileResult = await tryUnwrapWithKey(records, isKeyfileRecord, keyfileKek, header);
+        if (keyfileResult) {
+          return keyfileResult;
+        }
+      }
+
+      var recoveryRecord = recoveryRecordFor(records);
+      if (allowRecovery && recoveryRecord && recoveryShares !== undefined && recoveryShares !== null) {
+        var recoveredDek = recoveryDekForRecord(recoveryRecord, recoveryShares);
+        if (recoveredDek) {
+          return { dek: recoveredDek, wrappingKey: null };
         }
       }
 
@@ -711,15 +977,23 @@
     }
   }
 
-  async function openVault(value, passphrase, mode, keyfile) {
+  async function openVault(value, passphrase, mode, keyfile, recoveryShares) {
+    var bytes = null;
+    var headerBytes = null;
     var dek = null;
+    var wrappingKey = null;
     var publicKey = null;
     var secretKey = null;
     var publicPlain = null;
     var secretPlain = null;
+    var publicNonce = null;
+    var publicCiphertext = null;
+    var secretNonce = null;
+    var secretCiphertext = null;
+    var aad = null;
     try {
       var resolvedMode = resolveMode(mode);
-      var bytes = ensureVaultBytes(value);
+      bytes = ensureVaultBytes(value);
       var header = parseHeader(bytes);
       var expectedLength = HEADER_LENGTH
         + header.wrappedDekLength
@@ -730,30 +1004,43 @@
       if (expectedLength !== bytes.length || expectedLength > MAX_VAULT_BYTES) {
         throw authenticationError();
       }
-      header.bytes = bytes.slice(0, HEADER_LENGTH);
+      headerBytes = bytes.slice(0, HEADER_LENGTH);
+      header.bytes = headerBytes;
       var records = parseWrappedRecords(bytes, HEADER_LENGTH, header.wrappedDekLength);
+      var recoveryRecord = validateRecordSet(records, header.hasRecoveryMarker);
+      aad = compartmentAad(header.bytes, recoveryRecord ? recoveryRecord.methodData : null);
       var publicNonceOffset = HEADER_LENGTH + header.wrappedDekLength;
-      var publicNonce = bytes.slice(publicNonceOffset, publicNonceOffset + NONCE_LENGTH);
+      publicNonce = bytes.slice(publicNonceOffset, publicNonceOffset + NONCE_LENGTH);
       var publicCipherOffset = publicNonceOffset + NONCE_LENGTH;
-      var publicCiphertext = bytes.slice(publicCipherOffset, publicCipherOffset + header.publicLength);
+      publicCiphertext = bytes.slice(publicCipherOffset, publicCipherOffset + header.publicLength);
       var secretNonceOffset = publicCipherOffset + header.publicLength;
-      var secretNonce = bytes.slice(secretNonceOffset, secretNonceOffset + NONCE_LENGTH);
-      var secretCiphertext = bytes.slice(secretNonceOffset + NONCE_LENGTH);
-      dek = await unwrapDek(records, passphrase, header, keyfile);
+      secretNonce = bytes.slice(secretNonceOffset, secretNonceOffset + NONCE_LENGTH);
+      secretCiphertext = bytes.slice(secretNonceOffset + NONCE_LENGTH);
+      var unlockResult = await unwrapDek(
+        records,
+        passphrase,
+        header,
+        keyfile,
+        recoveryShares,
+        resolvedMode === 'offline'
+      );
+      dek = unlockResult.dek;
+      wrappingKey = unlockResult.wrappingKey;
       publicKey = hkdfSubkey(dek, 'cbx/public/v1');
-      publicPlain = await aesGcm('decrypt', publicKey, publicNonce, publicCiphertext, header.bytes);
+      publicPlain = await aesGcm('decrypt', publicKey, publicNonce, publicCiphertext, aad);
       var publicData = migratePublicData(parsePaddedJson(publicPlain));
       var secretData = null;
       if (resolvedMode === 'offline' && header.secretLength > 0) {
         secretKey = hkdfSubkey(dek, 'cbx/secret/v1');
-        secretPlain = await aesGcm('decrypt', secretKey, secretNonce, secretCiphertext, header.bytes);
+        secretPlain = await aesGcm('decrypt', secretKey, secretNonce, secretCiphertext, aad);
         secretData = parsePaddedJson(secretPlain);
       }
       return Object.freeze({
         formatVersion: FORMAT_VERSION,
         header: publicHeader(header),
         publicData: publicData,
-        secretData: secretData
+        secretData: secretData,
+        recoveryShareMetadata: recoveryRecord ? recoveryRecord.recoveryMetadata : null
       });
     } catch (error) {
       if (isSizeLimitError(error)) {
@@ -766,6 +1053,14 @@
       zeroBytes(secretKey);
       zeroBytes(publicPlain);
       zeroBytes(secretPlain);
+      zeroBytes(bytes);
+      zeroBytes(headerBytes);
+      zeroBytes(publicNonce);
+      zeroBytes(publicCiphertext);
+      zeroBytes(secretNonce);
+      zeroBytes(secretCiphertext);
+      zeroBytes(aad);
+      zeroBytes(wrappingKey);
     }
   }
 
@@ -793,6 +1088,27 @@
       return closed || state.mode !== 'offline' || !state.secretData
         ? null
         : clonePublicData(state.secretData);
+    }
+
+    function getRecoveryShareMetadata() {
+      if (closed || !state.recoveryMetadata) {
+        return null;
+      }
+      return {
+        version: state.recoveryMetadata.version,
+        dekLength: state.recoveryMetadata.dekLength,
+        identifier: state.recoveryMetadata.identifier,
+        extendableBackupFlag: state.recoveryMetadata.extendableBackupFlag,
+        iterationExponent: state.recoveryMetadata.iterationExponent,
+        groupThreshold: state.recoveryMetadata.groupThreshold,
+        groups: state.recoveryMetadata.groups.map(function (group) {
+          return { threshold: group.threshold, count: group.count };
+        })
+      };
+    }
+
+    function canConfigureRecoveryShares() {
+      return !closed && state.mode === 'offline' && Boolean(state.dek && state.wrappingKey);
     }
 
     function findAddress(addresses, id) {
@@ -953,6 +1269,115 @@
       return getSecretData();
     }
 
+    async function configureRecoveryShares(options) {
+      if (closed || saving || state.mode !== 'offline' || !state.dek || !state.wrappingKey) {
+        throw serializationError();
+      }
+      requireVaultHealth(serializationError);
+      if (networkState() !== state.mode) {
+        close();
+        throw serializationError();
+      }
+      var value = options || {};
+      if (value.passphrase !== undefined && value.passphrase !== '') {
+        throw serializationError();
+      }
+      if (state.recoveryMetadata && value.replace !== true) {
+        throw serializationError();
+      }
+      var slip39 = global.__coldboxSlip39;
+      if (!slip39 || typeof slip39.generate !== 'function') {
+        throw serializationError();
+      }
+      var generated;
+      try {
+        generated = slip39.generate(state.dek, {
+          identifier: value.identifier,
+          extendableBackupFlag: value.extendableBackupFlag === undefined ? 1 : value.extendableBackupFlag,
+          iterationExponent: value.iterationExponent === undefined ? 0 : value.iterationExponent,
+          groupThreshold: value.groupThreshold === undefined ? 1 : value.groupThreshold,
+          groups: value.groups === undefined ? [{ threshold: 2, count: 3 }] : value.groups,
+          passphrase: ''
+        });
+      } catch (error) {
+        throw serializationError();
+      }
+      var metadata = recoveryMetadata({
+        version: RECOVERY_METHOD_DATA_VERSION,
+        dekLength: DEK_LENGTH,
+        identifier: generated.identifier,
+        extendableBackupFlag: generated.extendableBackupFlag,
+        iterationExponent: generated.iterationExponent,
+        groupThreshold: generated.groupThreshold,
+        groups: generated.groups
+      }, serializationError);
+      var methodData = encodeRecoveryMethodData(metadata);
+      var nextRecord = recoveryRecord(methodData);
+      var records = parseWrappedRecords(state.wrappedBlock, 0, state.wrappedBlock.length);
+      validateRecordSet(records, state.header.hasRecoveryShares);
+      var normalRecord = records.filter(function (record) {
+        return record.methodId === METHOD_PASSPHRASE || record.methodId === METHOD_PASSPHRASE_KEYFILE;
+      })[0];
+      if (!normalRecord) {
+        throw serializationError();
+      }
+      var nextBlockLength = normalRecord.raw.length + nextRecord.length;
+      var nextHeaderBytes = new Uint8Array(state.headerBytes);
+      writeUint32(nextHeaderBytes, 53, nextBlockLength + RECOVERY_HEADER_MARKER);
+      var nextHeader = parseHeader(nextHeaderBytes);
+      var wrapNonce = null;
+      var wrappedDek = null;
+      var nextNormalRecord = null;
+      var nextWrappedBlock = null;
+      try {
+        wrapNonce = cryptoLayer.randomBytes(NONCE_LENGTH);
+        wrappedDek = await aesGcm('encrypt', state.wrappingKey, wrapNonce, state.dek, nextHeaderBytes);
+        if (closed || !vaultHealthReady() || networkState() !== state.mode) {
+          throw serializationError();
+        }
+        if (!wrappedDek || wrappedDek.length !== WRAPPED_DEK_LENGTH) {
+          throw serializationError();
+        }
+        nextNormalRecord = normalRecord.methodId === METHOD_PASSPHRASE
+          ? passphraseRecord(wrapNonce, wrappedDek)
+          : keyfileRecord(wrapNonce, wrappedDek, normalRecord.methodData);
+        nextWrappedBlock = concatBytes([nextNormalRecord, nextRecord]);
+        if (nextWrappedBlock.length !== nextBlockLength) {
+          throw serializationError();
+        }
+        var previousHeaderBytes = state.headerBytes;
+        var previousWrappedBlock = state.wrappedBlock;
+        var previousMethodData = state.recoveryMethodData;
+        state.headerBytes = nextHeaderBytes;
+        state.header = publicHeader(nextHeader);
+        state.wrappedBlock = nextWrappedBlock;
+        state.recoveryMetadata = metadata;
+        state.recoveryMethodData = methodData;
+        zeroBytes(previousHeaderBytes);
+        zeroBytes(previousWrappedBlock);
+        zeroBytes(previousMethodData);
+        nextHeaderBytes = null;
+        methodData = null;
+        nextRecord = null;
+        nextNormalRecord = null;
+        nextWrappedBlock = null;
+        return {
+          metadata: getRecoveryShareMetadata(),
+          shares: generated.shares.map(function (share) { return share.mnemonic; })
+        };
+      } catch (error) {
+        throw serializationError();
+      } finally {
+        zeroBytes(wrapNonce);
+        zeroBytes(wrappedDek);
+        zeroBytes(nextHeaderBytes);
+        zeroBytes(methodData);
+        zeroBytes(nextRecord);
+        zeroBytes(nextNormalRecord);
+        zeroBytes(nextWrappedBlock);
+      }
+    }
+
     function close() {
       if (closed) {
         return;
@@ -966,6 +1391,9 @@
       zeroBytes(state.secretCiphertext);
       zeroBytes(state.headerBytes);
       zeroBytes(state.wrappedBlock);
+      zeroBytes(state.dek);
+      zeroBytes(state.wrappingKey);
+      zeroBytes(state.recoveryMethodData);
       state.publicKey = null;
       state.secretKey = null;
       state.publicData = null;
@@ -976,6 +1404,10 @@
       state.secretCiphertext = null;
       state.headerBytes = null;
       state.wrappedBlock = null;
+      state.dek = null;
+      state.wrappingKey = null;
+      state.recoveryMethodData = null;
+      state.recoveryMetadata = null;
     }
 
     async function save() {
@@ -987,6 +1419,7 @@
       var publicCiphertext = null;
       var secretNonce = null;
       var secretCiphertext = null;
+      var aad = null;
       try {
         requireVaultHealth(serializationError);
         if (networkState() !== state.mode) {
@@ -994,13 +1427,14 @@
           throw serializationError();
         }
 
+        aad = compartmentAad(state.headerBytes, state.recoveryMethodData);
         publicNonce = cryptoLayer.randomBytes(NONCE_LENGTH);
         publicCiphertext = await aesGcm(
           'encrypt',
           state.publicKey,
           publicNonce,
           state.publicPlain,
-          state.headerBytes
+          aad
         );
 
         if (state.mode === 'online') {
@@ -1018,7 +1452,7 @@
               state.secretKey,
               secretNonce,
               state.secretPlain,
-              state.headerBytes
+              aad
             );
           } else {
             secretCiphertext = new Uint8Array(0);
@@ -1051,34 +1485,42 @@
         zeroBytes(publicCiphertext);
         zeroBytes(secretNonce);
         zeroBytes(secretCiphertext);
+        zeroBytes(aad);
       }
     }
 
     return Object.freeze({
       formatVersion: FORMAT_VERSION,
-      header: state.header,
+      get header() { return state.header; },
       get publicData() { return getPublicData(); },
       getPublicData: getPublicData,
       replacePublicData: replacePublicData,
       getSecretData: getSecretData,
       replaceSecretData: replaceSecretData,
+      getRecoveryShareMetadata: getRecoveryShareMetadata,
+      canConfigureRecoveryShares: canConfigureRecoveryShares,
+      configureRecoveryShares: configureRecoveryShares,
       save: save,
       close: close
     });
   }
 
-  async function openVaultSession(value, passphrase, mode, keyfile) {
+  async function openVaultSession(value, passphrase, mode, keyfile, recoveryShares) {
     var bytes = null;
     var headerBytes = null;
     var wrappedBlock = null;
     var dek = null;
+    var wrappingKey = null;
     var publicKey = null;
     var secretKey = null;
     var publicPlain = null;
     var secretPlain = null;
+    var publicNonce = null;
+    var publicCiphertext = null;
     var secretNonce = null;
     var secretCiphertext = null;
     var secretData = null;
+    var aad = null;
     var session = null;
     try {
       var resolvedMode = resolveMode(mode);
@@ -1096,21 +1538,32 @@
       headerBytes = bytes.slice(0, HEADER_LENGTH);
       header.bytes = headerBytes;
       var records = parseWrappedRecords(bytes, HEADER_LENGTH, header.wrappedDekLength);
+      var recoveryRecord = validateRecordSet(records, header.hasRecoveryMarker);
+      aad = compartmentAad(headerBytes, recoveryRecord ? recoveryRecord.methodData : null);
       wrappedBlock = bytes.slice(HEADER_LENGTH, HEADER_LENGTH + header.wrappedDekLength);
       var publicNonceOffset = HEADER_LENGTH + header.wrappedDekLength;
-      var publicNonce = bytes.slice(publicNonceOffset, publicNonceOffset + NONCE_LENGTH);
+      publicNonce = bytes.slice(publicNonceOffset, publicNonceOffset + NONCE_LENGTH);
       var publicCipherOffset = publicNonceOffset + NONCE_LENGTH;
-      var publicCiphertext = bytes.slice(publicCipherOffset, publicCipherOffset + header.publicLength);
+      publicCiphertext = bytes.slice(publicCipherOffset, publicCipherOffset + header.publicLength);
       var secretNonceOffset = publicCipherOffset + header.publicLength;
       secretNonce = bytes.slice(secretNonceOffset, secretNonceOffset + NONCE_LENGTH);
       secretCiphertext = bytes.slice(secretNonceOffset + NONCE_LENGTH);
-      dek = await unwrapDek(records, passphrase, header, keyfile);
+      var unlockResult = await unwrapDek(
+        records,
+        passphrase,
+        header,
+        keyfile,
+        recoveryShares,
+        resolvedMode === 'offline'
+      );
+      dek = unlockResult.dek;
+      wrappingKey = unlockResult.wrappingKey;
       publicKey = hkdfSubkey(dek, 'cbx/public/v1');
-      publicPlain = await aesGcm('decrypt', publicKey, publicNonce, publicCiphertext, headerBytes);
-       var publicData = migratePublicData(parsePaddedJson(publicPlain));
+      publicPlain = await aesGcm('decrypt', publicKey, publicNonce, publicCiphertext, aad);
+      var publicData = migratePublicData(parsePaddedJson(publicPlain));
       if (resolvedMode === 'offline' && header.secretLength > 0) {
         secretKey = hkdfSubkey(dek, 'cbx/secret/v1');
-        secretPlain = await aesGcm('decrypt', secretKey, secretNonce, secretCiphertext, headerBytes);
+        secretPlain = await aesGcm('decrypt', secretKey, secretNonce, secretCiphertext, aad);
         secretData = parsePaddedJson(secretPlain);
       }
 
@@ -1128,11 +1581,15 @@
         secretData: secretData,
         publicPlain: publicPlain,
         publicKey: publicKey,
+        dek: new Uint8Array(dek),
+        wrappingKey: resolvedMode === 'offline' && wrappingKey ? new Uint8Array(wrappingKey) : null,
         secretLength: header.secretLength,
         secretNonce: secretNonce,
         secretCiphertext: secretCiphertext,
         secretPlain: secretPlain,
-        secretKey: secretKey
+        secretKey: secretKey,
+        recoveryMetadata: recoveryRecord ? recoveryRecord.recoveryMetadata : null,
+        recoveryMethodData: recoveryRecord ? new Uint8Array(recoveryRecord.methodData) : null
       });
 
       headerBytes = null;
@@ -1159,13 +1616,17 @@
       zeroBytes(secretKey);
       zeroBytes(publicPlain);
       zeroBytes(secretPlain);
+      zeroBytes(publicNonce);
+      zeroBytes(publicCiphertext);
       zeroBytes(secretNonce);
       zeroBytes(secretCiphertext);
+      zeroBytes(aad);
+      zeroBytes(wrappingKey);
     }
   }
 
-  async function openSession(value, passphrase, mode, keyfile) {
-    return openVaultSession(value, passphrase, mode, keyfile);
+  async function openSession(value, passphrase, mode, keyfile, recoveryShares) {
+    return openVaultSession(value, passphrase, mode, keyfile, recoveryShares);
   }
 
   function inspectHeader(value) {
@@ -1195,7 +1656,10 @@
       kdfPbkdf2: KDF_PBKDF2,
       cipherAesGcm: CIPHER_AES_GCM,
       methodPassphrase: METHOD_PASSPHRASE,
-      methodPassphraseKeyfile: METHOD_PASSPHRASE_KEYFILE
+      methodPassphraseKeyfile: METHOD_PASSPHRASE_KEYFILE,
+      methodRecoveryShares: METHOD_RECOVERY_SHARES,
+      recoveryMethodDataVersion: RECOVERY_METHOD_DATA_VERSION,
+      recoveryHeaderMarker: RECOVERY_HEADER_MARKER
     }),
     create: createVault,
     serialize: createVault,

@@ -4633,6 +4633,16 @@ __COLDBOX_CONCEALMENT__
       );
       return;
     }
+    if (handshakeState === 'ready' && message.type === 'vault.dirty') {
+      setVaultPersistenceState('unsaved');
+      setVaultStatus(
+        'unlocked',
+        activeVaultName ? activeVaultName + ' is unlocked' : 'Vault is unlocked',
+        'Cold-local recovery-share settings changed. Save the vault to make the encrypted update durable.',
+        vaultPersistenceLabel()
+      );
+      return;
+    }
     if (handshakeState === 'ready' && message.type === 'status') {
       handleVaultStatus(message);
       return;

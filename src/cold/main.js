@@ -64,6 +64,17 @@ __COLDBOX_QR_ENCODER__
   var keyfileWarning = document.getElementById('cold-vault-keyfile-warning');
   var keyfileInput = document.getElementById('cold-vault-keyfile-input');
   var keyfileStatus = document.getElementById('cold-vault-keyfile-status');
+  var vaultRecoveryStatus = document.getElementById('cold-vault-recovery-status');
+  var vaultRecoveryGroupThreshold = document.getElementById('cold-vault-recovery-group-threshold');
+  var vaultRecoveryGroupCount = document.getElementById('cold-vault-recovery-group-count');
+  var vaultRecoveryReplaceLabel = document.getElementById('cold-vault-recovery-replace-label');
+  var vaultRecoveryReplace = document.getElementById('cold-vault-recovery-replace');
+  var vaultRecoveryConfigureButton = document.getElementById('cold-vault-recovery-configure');
+  var vaultRecoveryGenerated = document.getElementById('cold-vault-recovery-generated');
+  var vaultRecoveryOutput = document.getElementById('cold-vault-recovery-output');
+  var vaultRecoveryRevealButton = document.getElementById('cold-vault-recovery-reveal');
+  var vaultRecoveryInput = document.getElementById('cold-vault-recovery-input');
+  var vaultRecoveryUnlockButton = document.getElementById('cold-vault-recovery-unlock');
   var entropyDiceFace = document.getElementById('cold-entropy-dice-face');
   var entropyDiceBase6Add = document.getElementById('cold-entropy-dice-base6-add');
   var entropyDiceDiscardAdd = document.getElementById('cold-entropy-dice-discard-add');
@@ -337,6 +348,9 @@ __COLDBOX_QR_ENCODER__
   var currentVaultSession = null;
   var pendingVaultBytes = null;
   var pendingOpenId = null;
+  var vaultRecoveryShareText = '';
+  var vaultRecoverySharesRevealed = false;
+  var vaultRecoveryRevealTimer = null;
   var pendingConcealmentRevealId = null;
   var secretNoteRevealTimers = [];
   // Off by default (P0.15). Keyfile bytes and name never leave this document -
@@ -4302,6 +4316,85 @@ __COLDBOX_QR_ENCODER__
     );
   }
 
+  function clearVaultRecoveryRevealTimer() {
+    if (vaultRecoveryRevealTimer !== null) {
+      window.clearTimeout(vaultRecoveryRevealTimer);
+      vaultRecoveryRevealTimer = null;
+    }
+  }
+
+  function recoveryMetadataSummary(metadata) {
+    if (!metadata || !Array.isArray(metadata.groups)) {
+      return 'No recovery-share set configured.';
+    }
+    if (metadata.groups.length === 1) {
+      return 'Configured: ' + String(metadata.groups[0].threshold) + ' of '
+        + String(metadata.groups[0].count) + ' shares are needed.';
+    }
+    return 'Configured: ' + String(metadata.groupThreshold) + ' of '
+      + String(metadata.groups.length) + ' share groups are needed.';
+  }
+
+  function renderVaultRecovery() {
+    var metadata = null;
+    if (currentVaultSession && typeof currentVaultSession.getRecoveryShareMetadata === 'function') {
+      try {
+        metadata = currentVaultSession.getRecoveryShareMetadata();
+      } catch (error) {
+        metadata = null;
+      }
+    }
+    if (vaultRecoveryStatus) {
+      vaultRecoveryStatus.textContent = recoveryMetadataSummary(metadata);
+    }
+    if (vaultRecoveryReplaceLabel) {
+      vaultRecoveryReplaceLabel.hidden = !metadata;
+    }
+    if (vaultRecoveryOutput) {
+      vaultRecoveryOutput.value = vaultRecoverySharesRevealed
+        ? vaultRecoveryShareText
+        : (vaultRecoveryShareText ? 'Masked recovery shares. Reveal only while transcribing them.' : '');
+    }
+    if (vaultRecoveryGenerated) {
+      vaultRecoveryGenerated.hidden = !vaultRecoveryShareText;
+    }
+    if (vaultRecoveryRevealButton) {
+      vaultRecoveryRevealButton.disabled = !vaultCryptoReady || !vaultRecoveryShareText;
+      vaultRecoveryRevealButton.textContent = vaultRecoverySharesRevealed
+        ? 'Hide shares now'
+        : 'Reveal shares for 30 seconds';
+    }
+  }
+
+  function clearVaultRecoveryState() {
+    clearVaultRecoveryRevealTimer();
+    vaultRecoveryShareText = '';
+    vaultRecoverySharesRevealed = false;
+    if (vaultRecoveryReplace) {
+      vaultRecoveryReplace.checked = false;
+    }
+    if (vaultRecoveryInput) {
+      vaultRecoveryInput.value = '';
+    }
+    renderVaultRecovery();
+  }
+
+  function revealVaultRecoveryShares() {
+    if (!vaultRecoveryShareText) {
+      return;
+    }
+    clearVaultRecoveryRevealTimer();
+    vaultRecoverySharesRevealed = !vaultRecoverySharesRevealed;
+    renderVaultRecovery();
+    if (vaultRecoverySharesRevealed) {
+      vaultRecoveryRevealTimer = window.setTimeout(function () {
+        vaultRecoverySharesRevealed = false;
+        vaultRecoveryRevealTimer = null;
+        renderVaultRecovery();
+      }, 30000);
+    }
+  }
+
   function setVaultStatus(state, text) {
     if (vaultControls) {
       vaultControls.setAttribute('data-state', state);
@@ -4311,6 +4404,7 @@ __COLDBOX_QR_ENCODER__
       vaultStatus.textContent = text;
     }
     document.documentElement.setAttribute('data-vault-state', state);
+    renderVaultRecovery();
   }
 
   function setCreateConfirmationError(text) {
@@ -4353,6 +4447,34 @@ __COLDBOX_QR_ENCODER__
     return vaultCryptoReady && handshakeState === 'ready' && messagePort !== null;
   }
 
+  function updateVaultRecoveryControls() {
+    var ready = vaultControlsReady();
+    var offlineUnlocked = ready && !onlineMode && vaultUnlocked && currentVaultSession
+      && typeof currentVaultSession.configureRecoveryShares === 'function'
+      && (typeof currentVaultSession.canConfigureRecoveryShares !== 'function'
+        || currentVaultSession.canConfigureRecoveryShares());
+    var pendingOffline = ready && !onlineMode && !vaultUnlocked && Boolean(pendingVaultBytes);
+    if (vaultRecoveryGroupThreshold) {
+      vaultRecoveryGroupThreshold.disabled = !offlineUnlocked || vaultBusy;
+    }
+    if (vaultRecoveryGroupCount) {
+      vaultRecoveryGroupCount.disabled = !offlineUnlocked || vaultBusy;
+    }
+    if (vaultRecoveryReplace) {
+      vaultRecoveryReplace.disabled = !offlineUnlocked || vaultBusy;
+    }
+    if (vaultRecoveryConfigureButton) {
+      vaultRecoveryConfigureButton.disabled = !offlineUnlocked || vaultBusy;
+    }
+    if (vaultRecoveryInput) {
+      vaultRecoveryInput.disabled = !pendingOffline || vaultBusy;
+    }
+    if (vaultRecoveryUnlockButton) {
+      vaultRecoveryUnlockButton.disabled = !pendingOffline || vaultBusy;
+    }
+    renderVaultRecovery();
+  }
+
   function updateVaultControls() {
     var ready = vaultControlsReady();
     if (passphraseInput) {
@@ -4380,6 +4502,7 @@ __COLDBOX_QR_ENCODER__
       keyfileInput.disabled = !ready || vaultBusy || vaultUnlocked || !(keyfileToggle && keyfileToggle.checked);
     }
     updateVaultPassphraseHealth();
+    updateVaultRecoveryControls();
   }
 
   function zeroKeyfile() {
@@ -4634,6 +4757,7 @@ __COLDBOX_QR_ENCODER__
     if (secretNotesPanel) {
       secretNotesPanel.hidden = true;
     }
+    clearVaultRecoveryState();
     setSessionEvidence('locked');
     updateVaultControls();
   }
@@ -4864,6 +4988,123 @@ __COLDBOX_QR_ENCODER__
     if (vaultUnlocked) {
       scheduleIdleLock();
     }
+  }
+
+  function configureVaultRecoveryShares() {
+    if (!currentVaultSession || !vaultUnlocked || onlineMode
+      || typeof currentVaultSession.configureRecoveryShares !== 'function') {
+      setVaultStatus('locked', 'Recovery shares can be configured only in an offline unlocked vault.');
+      return;
+    }
+    var threshold = vaultRecoveryGroupThreshold ? Number(vaultRecoveryGroupThreshold.value) : NaN;
+    var count = vaultRecoveryGroupCount ? Number(vaultRecoveryGroupCount.value) : NaN;
+    if (!Number.isInteger(threshold) || !Number.isInteger(count)
+      || threshold < 1 || threshold > count || count > 16) {
+      setVaultStatus('pending', 'Choose a whole-number threshold no greater than the number of shares.');
+      return;
+    }
+    var metadata = null;
+    if (typeof currentVaultSession.getRecoveryShareMetadata === 'function') {
+      metadata = currentVaultSession.getRecoveryShareMetadata();
+    }
+    if (metadata && (!vaultRecoveryReplace || !vaultRecoveryReplace.checked)) {
+      setVaultStatus('pending', 'This vault already has recovery shares. Check the replacement box before generating a new set.');
+      return;
+    }
+    vaultBusy = true;
+    updateVaultControls();
+    setVaultStatus('pending', 'Generating recovery shares inside the sealed realm...');
+    var resultPromise;
+    try {
+      resultPromise = currentVaultSession.configureRecoveryShares({
+        groupThreshold: 1,
+        groups: [{ threshold: threshold, count: count }],
+        extendableBackupFlag: 1,
+        iterationExponent: 0,
+        passphrase: '',
+        replace: Boolean(vaultRecoveryReplace && vaultRecoveryReplace.checked)
+      });
+    } catch (error) {
+      setVaultStatus('unlocked', 'Recovery-share generation failed; the existing vault remains unchanged.');
+      vaultBusy = false;
+      updateVaultControls();
+      return;
+    }
+    Promise.resolve(resultPromise).then(function (result) {
+      if (!result || !Array.isArray(result.shares) || result.shares.length === 0) {
+        throw new Error('No recovery shares were generated.');
+      }
+      vaultRecoveryShareText = result.shares.join('\n');
+      vaultRecoverySharesRevealed = false;
+      if (vaultRecoveryReplace) {
+        vaultRecoveryReplace.checked = false;
+      }
+      renderVaultRecovery();
+      if (!postVaultMessage(nextVaultMessageId('recovery-configured'), 'vault.dirty', { dirty: true })) {
+        lockVaultSession(null, 'Vault locked because the recovery-share acknowledgement failed.', true);
+        return;
+      }
+      setVaultStatus('unlocked', 'Recovery shares generated in the sealed realm. Reveal and transcribe them, then save the vault.');
+      recordVaultActivity();
+    }).catch(function () {
+      setVaultStatus('unlocked', 'Recovery-share generation failed; the existing vault remains unchanged.');
+    }).then(function () {
+      vaultBusy = false;
+      updateVaultControls();
+    });
+  }
+
+  function unlockLoadedVaultWithRecoveryShares() {
+    if (!vaultLayer || typeof vaultLayer.openSession !== 'function'
+      || !pendingVaultBytes || !vaultRecoveryInput) {
+      setVaultStatus('locked', 'Load an encrypted vault before using recovery shares.');
+      return;
+    }
+    if (onlineMode) {
+      setVaultStatus('pending', 'Recovery-share unlocking is available only after the warm shell confirms offline mode.');
+      return;
+    }
+    var shares = vaultRecoveryInput.value.split(/\r?\n/).map(function (share) {
+      return share.trim();
+    }).filter(function (share) { return share.length > 0; });
+    if (shares.length === 0) {
+      setVaultStatus('pending', 'Enter the recovery shares, one per line, inside the sealed realm.');
+      vaultRecoveryInput.focus();
+      return;
+    }
+    var bytes = pendingVaultBytes;
+    var responseId = pendingOpenId || nextVaultMessageId('recovery-opened');
+    vaultRecoveryInput.value = '';
+    vaultBusy = true;
+    updateVaultControls();
+    setVaultStatus('pending', 'Authenticating recovery shares inside the sealed realm...');
+    vaultLayer.openSession(bytes, undefined, 'offline', null, shares).then(function (session) {
+      currentVaultSession = session;
+      currentVaultBytes = new Uint8Array(bytes);
+      zeroBytes(pendingVaultBytes);
+      pendingVaultBytes = null;
+      pendingOpenId = null;
+      vaultUnlocked = true;
+      if (passphraseInput) {
+        passphraseInput.value = '';
+      }
+      clearVaultRecoveryState();
+      setSessionEvidence('unlocked');
+      setVaultStatus('unlocked', 'Encrypted vault opened with recovery shares.');
+      sendVaultOpened(responseId, session.publicData);
+      sendVaultStatus(false);
+      renderSecretNotes();
+      scheduleIdleLock();
+    }, function () {
+      setVaultStatus('pending', 'Recovery-share unlock failed. The vault remains locked; check the threshold and try again.');
+      sendVaultError(responseId, 'vault-corrupt');
+    }).then(function () {
+      vaultBusy = false;
+      updateVaultControls();
+    }, function () {
+      vaultBusy = false;
+      updateVaultControls();
+    });
   }
 
   function createEmptyVault() {
@@ -5137,9 +5378,13 @@ __COLDBOX_QR_ENCODER__
       var wasOnline = onlineMode;
       onlineMode = message.payload.online;
       document.documentElement.setAttribute('data-warm-network-online', String(message.payload.online));
+      if (wasOnline !== onlineMode && onlineMode && vaultRecoveryInput) {
+        vaultRecoveryInput.value = '';
+      }
       if (wasOnline !== onlineMode && vaultUnlocked) {
         lockVaultSession(null, 'Vault locked because network mode changed.', true);
       }
+      updateVaultControls();
       return;
     }
     if (message.type === 'panic.hide') {
@@ -5542,6 +5787,15 @@ __COLDBOX_QR_ENCODER__
   }
   if (unlockVaultButton) {
     unlockVaultButton.addEventListener('click', unlockLoadedVault);
+  }
+  if (vaultRecoveryConfigureButton) {
+    vaultRecoveryConfigureButton.addEventListener('click', configureVaultRecoveryShares);
+  }
+  if (vaultRecoveryRevealButton) {
+    vaultRecoveryRevealButton.addEventListener('click', revealVaultRecoveryShares);
+  }
+  if (vaultRecoveryUnlockButton) {
+    vaultRecoveryUnlockButton.addEventListener('click', unlockLoadedVaultWithRecoveryShares);
   }
   if (lockVaultButton) {
     lockVaultButton.addEventListener('click', function () {

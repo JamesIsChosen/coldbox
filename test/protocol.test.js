@@ -66,6 +66,7 @@ test('protocol exposes only the documented message whitelist', () => {
     'publicData.updated',
     'concealment.revealed',
     'secretData.updated',
+    'vault.dirty',
     'status',
     'error',
     'panic.hide'
@@ -203,6 +204,10 @@ test('every cold-to-warm message rejects secret-bearing fields', () => {
     {
       type: 'error',
       payload: { code: 'operation-failed', message: 'discarded', storedSecret: 'discarded' }
+    },
+    {
+      type: 'vault.dirty',
+      payload: { dirty: true, shareMaterial: ['discarded'] }
     },
     {
       type: 'panic.hide',
