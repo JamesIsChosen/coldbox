@@ -192,10 +192,8 @@
     }
     sample = new Uint32Array(1);
     try {
-      do {
-        cryptoObject.getRandomValues(sample);
-        value = sample[0] & field.max;
-      } while (value === 0);
+      cryptoObject.getRandomValues(sample);
+      value = sample[0] & field.max;
       return value;
     } finally {
       zeroBytes(sample);

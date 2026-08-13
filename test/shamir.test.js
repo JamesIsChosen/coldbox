@@ -17,8 +17,28 @@ const shamirSource = fs.readFileSync(
   path.join(projectRoot, 'src', 'cold', 'shamir.js'),
   'utf8'
 );
+const referenceShamirSourcePath = path.join(
+  projectRoot,
+  'test',
+  'fixtures',
+  'reference',
+  'ian-coleman-shamir39.js'
+);
+const referenceSecretsSourcePath = path.join(
+  projectRoot,
+  'test',
+  'fixtures',
+  'reference',
+  'secrets.js'
+);
+const referenceShamirSource = fs.readFileSync(referenceShamirSourcePath, 'utf8');
+
+const PINNED_IAN_COLEMAN_SHA256 = 'a1f822fe010d5ddbf9b33bda0eaf5152388e8700d5e35893fb8f85116ed4233c';
+const PINNED_SECRETS_JS_SHA256 = '6c90ec0b0d88a8c90d08f8657448c72db6592fcec5096306c70c815e2404eee9';
 
 function createContext(options = {}) {
+  const randomValues = Array.isArray(options.randomValues) ? options.randomValues.slice() : null;
+  const randomCalls = { count: 0 };
   const context = {
     ArrayBuffer,
     TextDecoder,
@@ -32,6 +52,11 @@ function createContext(options = {}) {
       ? {}
       : {
           getRandomValues(array) {
+            randomCalls.count += 1;
+            if (randomValues) {
+              array.fill(randomValues.length > 0 ? randomValues.shift() : 0);
+              return array;
+            }
             if (options.fixedRandom) {
               array.fill(123456789);
               return array;
@@ -45,7 +70,43 @@ function createContext(options = {}) {
   vm.runInNewContext(createCryptoVendorSource(projectRoot), context);
   vm.runInNewContext(seedForgeSource, context, { filename: 'src/cold/seed-forge.js' });
   vm.runInNewContext(shamirSource, context, { filename: 'src/cold/shamir.js' });
+  context.__testRandomCalls = randomCalls;
   return context;
+}
+
+function loadReferenceShamir39() {
+  const context = { console, Uint32Array, window: {} };
+  vm.runInNewContext(
+    `${referenceShamirSource}\nthis.__referenceShamir39 = Shamir39;`,
+    context,
+    { filename: referenceShamirSourcePath }
+  );
+  return new context.__referenceShamir39();
+}
+
+function sha256File(filePath) {
+  return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+}
+
+function gf8Multiply(left, right) {
+  let result = 0;
+  let multiplicand = left;
+  let multiplier = right;
+  for (let bit = 0; bit < 3; bit += 1) {
+    if (multiplier & 1) {
+      result ^= multiplicand;
+    }
+    multiplier >>>= 1;
+    multiplicand <<= 1;
+    if (multiplicand & 8) {
+      multiplicand ^= 3;
+    }
+  }
+  return result & 7;
+}
+
+function gf8Polynomial(secret, firstCoefficient, secondCoefficient, x) {
+  return gf8Multiply(gf8Multiply(secondCoefficient, x) ^ firstCoefficient, x) ^ secret;
 }
 
 const VALID_12 = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
@@ -71,6 +132,23 @@ const SECRETS_JS_KNOWN_SHARES = Object.freeze([
   '809f3b0585740fd80830c355fa501a8057733',
   '80aeca744ec715290906c995aac371ed118c2'
 ]);
+
+const FORCED_ZERO_SHAMIR39_PARTS = Object.freeze([
+  'shamir39-p1 amount abandon ability abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about',
+  'shamir39-p1 amused abandon ability abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about',
+  'shamir39-p1 analyst abandon ability abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
+]);
+
+const FORCED_ZERO_RAW_SHARES = Object.freeze([
+  '8010000000000000000000000000000000182585c749a3db7f73009d0d6107dd650',
+  '8020000000000000000000000000000000182585c749a3db7f73009d0d6107dd650',
+  '8030000000000000000000000000000000182585c749a3db7f73009d0d6107dd650'
+]);
+
+test('pinned reference combiner fixtures retain their exact reviewed bytes', () => {
+  assert.equal(sha256File(referenceShamirSourcePath), PINNED_IAN_COLEMAN_SHA256);
+  assert.equal(sha256File(referenceSecretsSourcePath), PINNED_SECRETS_JS_SHA256);
+});
 
 test('Shamir39 combines the published current-format mnemonic shares', () => {
   const context = createContext({ fixedRandom: true });
@@ -172,6 +250,82 @@ test('raw SSS supports arbitrary bytes, configurable fields, and fails closed on
   assert.throws(() => raw.combine([generated.parts[0], '70100'], { threshold: 2 }), /invalid|mismatch/i);
   assert.throws(() => raw.split(source, { bits: 2, shares: 3, threshold: 2 }), /bits/i);
   assert.throws(() => raw.split(source, { bits: 3, shares: 8, threshold: 2 }), /shares|bits/i);
+});
+
+test('full-uniform sampling accepts forced-zero coefficients for both formats', () => {
+  const shamirContext = createContext({ randomValues: [0] });
+  const shamirResult = shamirContext.__coldboxShamir.shamir39.split(VALID_12, {
+    language: 'english',
+    threshold: 2,
+    shares: 3
+  });
+
+  assert.deepEqual([...shamirResult.parts], FORCED_ZERO_SHAMIR39_PARTS);
+  assert.equal(shamirContext.__testRandomCalls.count, 13);
+  assert.equal(
+    shamirContext.__coldboxShamir.shamir39.combine(shamirResult.parts.slice(0, 2), { language: 'english' }).mnemonic,
+    VALID_12
+  );
+
+  const rawContext = createContext({ randomValues: [0] });
+  const rawResult = rawContext.__coldboxShamir.raw.split(SECRETS_JS_KNOWN_KEY, {
+    bits: 8,
+    shares: 3,
+    threshold: 2,
+    padLength: 128
+  });
+
+  assert.deepEqual([...rawResult.parts], FORCED_ZERO_RAW_SHARES);
+  assert.equal(rawContext.__testRandomCalls.count, 32);
+  assert.equal(rawContext.__coldboxShamir.raw.combine(rawResult.parts.slice(0, 2), { threshold: 2 }).hex, SECRETS_JS_KNOWN_KEY);
+});
+
+test('pinned reference combiners reconstruct the forced-zero vectors', () => {
+  const context = createContext({ fixedRandom: true });
+  const referenceShamir39 = loadReferenceShamir39();
+  const referenceShamirResult = referenceShamir39.combine(
+    FORCED_ZERO_SHAMIR39_PARTS.map((part) => part.split(' ')),
+    context.__coldboxBip39.wordlists.english
+  );
+  const referenceSecrets = require(referenceSecretsSourcePath);
+
+  assert.deepEqual(Array.from(referenceShamirResult.mnemonic), VALID_12.split(' '));
+  assert.equal(referenceSecrets.combine([...FORCED_ZERO_RAW_SHARES].slice(0, 2)), SECRETS_JS_KNOWN_KEY);
+});
+
+test('GF(8) full coefficient space preserves every candidate secret below threshold', () => {
+  const observedSingleShare = 5;
+  const singleShareCandidates = [];
+  for (let secret = 0; secret < 8; secret += 1) {
+    for (let coefficient = 0; coefficient < 8; coefficient += 1) {
+      if ((secret ^ coefficient) === observedSingleShare) {
+        singleShareCandidates.push({ secret, coefficient });
+      }
+    }
+  }
+
+  assert.deepEqual(singleShareCandidates.map((entry) => entry.secret), [0, 1, 2, 3, 4, 5, 6, 7]);
+  assert.deepEqual(singleShareCandidates.map((entry) => entry.coefficient), [5, 4, 7, 6, 1, 0, 3, 2]);
+
+  const observedTwoShares = [
+    gf8Polynomial(3, 2, 5, 1),
+    gf8Polynomial(3, 2, 5, 2)
+  ];
+  const candidateCounts = Array(8).fill(0);
+  for (let secret = 0; secret < 8; secret += 1) {
+    for (let firstCoefficient = 0; firstCoefficient < 8; firstCoefficient += 1) {
+      for (let secondCoefficient = 0; secondCoefficient < 8; secondCoefficient += 1) {
+        if (
+          gf8Polynomial(secret, firstCoefficient, secondCoefficient, 1) === observedTwoShares[0]
+          && gf8Polynomial(secret, firstCoefficient, secondCoefficient, 2) === observedTwoShares[1]
+        ) {
+          candidateCounts[secret] += 1;
+        }
+      }
+    }
+  }
+
+  assert.deepEqual(candidateCounts, [1, 1, 1, 1, 1, 1, 1, 1]);
 });
 
 test('both Shamir implementations refuse missing randomness and expose no warm or persistence surface', () => {
