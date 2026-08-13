@@ -13,6 +13,7 @@ __COLDBOX_QR_ENCODER__
   var entropyLab = window.__coldboxEntropyLab;
   var entropyHealth = window.__coldboxEntropyHealth;
   var seedForge = window.__coldboxSeedForge;
+  var codex32 = window.__coldboxCodex32;
   var shamir = window.__coldboxShamir;
   var derivation = window.__coldboxDerivation;
   var addressVerification = window.__coldboxAddressVerification;
@@ -149,6 +150,25 @@ __COLDBOX_QR_ENCODER__
   var seedForgeValidationRaw = document.getElementById('cold-seed-forge-validation-raw');
   var seedForgeValidationSeed = document.getElementById('cold-seed-forge-validation-seed');
   var seedForgeValidationSeedReveal = document.getElementById('cold-seed-forge-validation-seed-reveal');
+  var codex32Panel = document.getElementById('cold-codex32');
+  var codex32SecretHex = document.getElementById('cold-codex32-secret-hex');
+  var codex32Threshold = document.getElementById('cold-codex32-threshold');
+  var codex32Count = document.getElementById('cold-codex32-count');
+  var codex32Identifier = document.getElementById('cold-codex32-identifier');
+  var codex32GenerateButton = document.getElementById('cold-codex32-generate');
+  var codex32RevealButton = document.getElementById('cold-codex32-reveal');
+  var codex32GenerateStatus = document.getElementById('cold-codex32-generate-status');
+  var codex32Generated = document.getElementById('cold-codex32-generated');
+  var codex32RecoveryInput = document.getElementById('cold-codex32-recovery-input');
+  var codex32RecoverButton = document.getElementById('cold-codex32-recover');
+  var codex32RecoveredRevealButton = document.getElementById('cold-codex32-recovered-reveal');
+  var codex32Recovered = document.getElementById('cold-codex32-recovered');
+  var codex32RecoveryStatus = document.getElementById('cold-codex32-recovery-status');
+  var codex32CorrectionInput = document.getElementById('cold-codex32-correction-input');
+  var codex32CorrectButton = document.getElementById('cold-codex32-correct');
+  var codex32CorrectionOutput = document.getElementById('cold-codex32-correction-output');
+  var codex32UseCorrectionButton = document.getElementById('cold-codex32-use-correction');
+  var codex32CorrectionStatus = document.getElementById('cold-codex32-correction-status');
   var shamirPanel = document.getElementById('cold-shamir');
   var shamir39Language = document.getElementById('cold-shamir39-language');
   var shamir39Threshold = document.getElementById('cold-shamir39-threshold');
@@ -275,6 +295,14 @@ __COLDBOX_QR_ENCODER__
   var qrArtifact = null;
   var pendingSeedForgeMix = null;
   var pendingSeedForgeMixTargetBits = null;
+  var codex32GeneratedShares = [];
+  var codex32GeneratedRevealed = false;
+  var codex32GeneratedRevealTimer = null;
+  var codex32RecoveredValue = '';
+  var codex32RecoveredBytes = null;
+  var codex32RecoveredRevealed = false;
+  var codex32RecoveredRevealTimer = null;
+  var codex32CorrectionCandidate = '';
   var CARD_RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
   var CARD_SUITS = ['♠', '♥', '♦', '♣'];
   var vaultCryptoReady = false;
@@ -336,6 +364,321 @@ __COLDBOX_QR_ENCODER__
       hex += bytes[index].toString(16).padStart(2, '0');
     }
     return hex;
+  }
+
+  // --- codex32 (P2.2) ------------------------------------------------------
+  //
+  // Codex32 strings are secret material. Keep all display state in this
+  // document, mask it by default, and never offer clipboard or message-channel
+  // paths for the generated or recovered values.
+
+  function maskCodex32Text(value) {
+    return String(value || '').replace(/[^\r\n]/g, '•');
+  }
+
+  function setCodex32Status(output, state, text) {
+    if (!output) {
+      return;
+    }
+    output.setAttribute('data-state', state);
+    output.textContent = text;
+  }
+
+  function parseCodex32Hex(value) {
+    var text = String(value || '').replace(/\s+/g, '');
+    if (!/^[0-9a-f]+$/i.test(text) || text.length % 2 !== 0) {
+      throw new Error('Enter an even number of hexadecimal characters.');
+    }
+    if (text.length < 32 || text.length > 128) {
+      throw new Error('The BIP-32 master seed must be 16 through 64 bytes.');
+    }
+    var bytes = new Uint8Array(text.length / 2);
+    for (var index = 0; index < bytes.length; index += 1) {
+      bytes[index] = Number.parseInt(text.slice(index * 2, index * 2 + 2), 16);
+    }
+    return bytes;
+  }
+
+  function renderCodex32Generated() {
+    if (!codex32Generated) {
+      return;
+    }
+    var value = codex32GeneratedShares.join('\n');
+    codex32Generated.value = codex32GeneratedRevealed ? value : maskCodex32Text(value);
+  }
+
+  function renderCodex32Recovered() {
+    if (!codex32Recovered) {
+      return;
+    }
+    codex32Recovered.textContent = codex32RecoveredValue
+      ? (codex32RecoveredRevealed ? codex32RecoveredValue : maskCodex32Text(codex32RecoveredValue))
+      : 'No recovered seed.';
+  }
+
+  function clearCodex32Recovered() {
+    if (codex32RecoveredRevealTimer !== null) {
+      window.clearTimeout(codex32RecoveredRevealTimer);
+      codex32RecoveredRevealTimer = null;
+    }
+    zeroBytes(codex32RecoveredBytes);
+    codex32RecoveredBytes = null;
+    codex32RecoveredValue = '';
+    codex32RecoveredRevealed = false;
+    renderCodex32Recovered();
+    if (codex32RecoveredRevealButton) {
+      codex32RecoveredRevealButton.disabled = true;
+    }
+  }
+
+  function clearCodex32State() {
+    if (codex32GeneratedRevealTimer !== null) {
+      window.clearTimeout(codex32GeneratedRevealTimer);
+      codex32GeneratedRevealTimer = null;
+    }
+    codex32GeneratedShares = [];
+    codex32GeneratedRevealed = false;
+    if (codex32SecretHex) {
+      codex32SecretHex.value = '';
+    }
+    if (codex32Generated) {
+      codex32Generated.value = '';
+    }
+    clearCodex32Recovered();
+    codex32CorrectionCandidate = '';
+    if (codex32RecoveryInput) {
+      codex32RecoveryInput.value = '';
+    }
+    if (codex32CorrectionInput) {
+      codex32CorrectionInput.value = '';
+    }
+    if (codex32CorrectionOutput) {
+      codex32CorrectionOutput.textContent = 'No correction suggested.';
+    }
+    if (codex32UseCorrectionButton) {
+      codex32UseCorrectionButton.disabled = true;
+    }
+    setCodex32Status(codex32GenerateStatus, 'idle', 'No codex32 shares generated in this session.');
+    setCodex32Status(codex32RecoveryStatus, 'idle', 'No shares entered.');
+    setCodex32Status(codex32CorrectionStatus, 'idle', 'No transcription checked.');
+  }
+
+  function updateCodex32Controls() {
+    if (!codex32Panel || !codex32) {
+      return;
+    }
+    var ready = vaultCryptoReady;
+    codex32Panel.setAttribute('data-state', ready ? 'ready' : 'locked');
+    [
+      codex32SecretHex,
+      codex32Threshold,
+      codex32Count,
+      codex32Identifier,
+      codex32GenerateButton,
+      codex32RecoveryInput,
+      codex32RecoverButton,
+      codex32CorrectionInput,
+      codex32CorrectButton
+    ].forEach(function (control) {
+      if (control) {
+        control.disabled = !ready;
+      }
+    });
+    if (codex32RevealButton) {
+      codex32RevealButton.disabled = !ready || codex32GeneratedShares.length === 0;
+    }
+    if (codex32RecoveredRevealButton) {
+      codex32RecoveredRevealButton.disabled = !ready || !codex32RecoveredValue;
+    }
+    if (codex32UseCorrectionButton) {
+      codex32UseCorrectionButton.disabled = !ready || !codex32CorrectionCandidate;
+    }
+  }
+
+  function generateCodex32Shares() {
+    if (!vaultCryptoReady || !codex32) {
+      return;
+    }
+    var secretBytes = null;
+    try {
+      secretBytes = parseCodex32Hex(codex32SecretHex ? codex32SecretHex.value : '');
+      var threshold = Number(codex32Threshold ? codex32Threshold.value : 3);
+      var count = Number(codex32Count ? codex32Count.value : 5);
+      var identifier = codex32Identifier ? codex32Identifier.value.trim().toLowerCase() : '';
+      var generationOptions = {
+        threshold: threshold,
+        count: count
+      };
+      // An empty identifier deliberately leaves the API's secure random
+      // default active. A typed identifier is an explicit compatibility
+      // choice and must not turn the ordinary blank path into a fixed value.
+      if (identifier) {
+        generationOptions.identifier = identifier;
+      }
+      var generated = codex32.generate(secretBytes, generationOptions);
+      codex32GeneratedShares = generated.shares.slice();
+      codex32GeneratedRevealed = false;
+      renderCodex32Generated();
+      zeroBytes(generated.bytes);
+      if (codex32SecretHex) {
+        codex32SecretHex.value = '';
+      }
+      setCodex32Status(
+        codex32GenerateStatus,
+        'ready',
+        'Generated ' + String(generated.count) + ' codex32 shares at a ' + String(generated.threshold)
+          + '-of-' + String(generated.count) + ' threshold. Write them to separate offline copies.'
+      );
+      clearCodex32Recovered();
+    } catch (error) {
+      codex32GeneratedShares = [];
+      codex32GeneratedRevealed = false;
+      renderCodex32Generated();
+      setCodex32Status(codex32GenerateStatus, 'error', 'Codex32 generation failed closed: ' + error.message);
+    } finally {
+      zeroBytes(secretBytes);
+      updateCodex32Controls();
+    }
+  }
+
+  function revealCodex32Generated() {
+    if (!codex32GeneratedShares.length) {
+      return;
+    }
+    if (codex32GeneratedRevealTimer !== null) {
+      window.clearTimeout(codex32GeneratedRevealTimer);
+    }
+    codex32GeneratedRevealed = true;
+    renderCodex32Generated();
+    setCodex32Status(codex32GenerateStatus, 'ready', 'Shares are visible for 30 seconds; transcribe them offline and verify each copy.');
+    codex32GeneratedRevealTimer = window.setTimeout(function () {
+      codex32GeneratedRevealed = false;
+      codex32GeneratedRevealTimer = null;
+      renderCodex32Generated();
+      setCodex32Status(codex32GenerateStatus, 'ready', 'Generated shares were masked again after the timed reveal.');
+    }, 30000);
+  }
+
+  function recoverCodex32Shares() {
+    if (!vaultCryptoReady || !codex32) {
+      return;
+    }
+    var shares = String(codex32RecoveryInput ? codex32RecoveryInput.value : '')
+      .split(/\r?\n/)
+      .map(function (share) { return share.trim(); })
+      .filter(function (share) { return share.length > 0; });
+    try {
+      var recovered = codex32.recover(shares);
+      clearCodex32Recovered();
+      codex32RecoveredValue = recovered.value;
+      codex32RecoveredBytes = new Uint8Array(recovered.bytes);
+      zeroBytes(recovered.bytes);
+      renderCodex32Recovered();
+      setCodex32Status(
+        codex32RecoveryStatus,
+        'ready',
+        'Recovered and checksum-verified a ' + String(recovered.threshold) + '-of-' + String(shares.length)
+          + ' codex32 set. The seed is masked until you explicitly reveal it.'
+      );
+    } catch (error) {
+      clearCodex32Recovered();
+      setCodex32Status(codex32RecoveryStatus, 'error', 'Codex32 recovery failed closed: ' + error.message);
+    } finally {
+      updateCodex32Controls();
+    }
+  }
+
+  function revealCodex32Recovered() {
+    if (!codex32RecoveredValue) {
+      return;
+    }
+    if (codex32RecoveredRevealTimer !== null) {
+      window.clearTimeout(codex32RecoveredRevealTimer);
+    }
+    codex32RecoveredRevealed = true;
+    renderCodex32Recovered();
+    setCodex32Status(codex32RecoveryStatus, 'ready', 'Recovered seed is visible for 30 seconds. Keep it inside the offline workflow.');
+    codex32RecoveredRevealTimer = window.setTimeout(function () {
+      codex32RecoveredRevealed = false;
+      codex32RecoveredRevealTimer = null;
+      renderCodex32Recovered();
+      setCodex32Status(codex32RecoveryStatus, 'ready', 'Recovered seed was masked again after the timed reveal.');
+    }, 30000);
+  }
+
+  function suggestCodex32Correction() {
+    if (!vaultCryptoReady || !codex32) {
+      return;
+    }
+    codex32CorrectionCandidate = '';
+    if (codex32UseCorrectionButton) {
+      codex32UseCorrectionButton.disabled = true;
+    }
+    if (codex32CorrectionOutput) {
+      codex32CorrectionOutput.textContent = 'No correction suggested.';
+    }
+    try {
+      var result = codex32.correctSingleError(codex32CorrectionInput ? codex32CorrectionInput.value.trim() : '');
+      if (!result.changed) {
+        if (codex32CorrectionOutput) {
+          codex32CorrectionOutput.textContent = 'Checksum is valid; no correction is needed.';
+        }
+        setCodex32Status(codex32CorrectionStatus, 'ready', 'This codex32 value is already valid.');
+        return;
+      }
+      codex32CorrectionCandidate = result.corrected;
+      if (codex32CorrectionOutput) {
+        codex32CorrectionOutput.textContent = maskCodex32Text(result.corrected);
+      }
+      setCodex32Status(
+        codex32CorrectionStatus,
+        'ready',
+        'Suggested one-character change at position ' + String(result.position)
+          + ' (' + result.from + ' to ' + result.to + '). Compare with paper before using it.'
+      );
+      updateCodex32Controls();
+    } catch (error) {
+      setCodex32Status(codex32CorrectionStatus, 'error', 'Codex32 correction failed closed: ' + error.message);
+    }
+  }
+
+  function useCodex32Correction() {
+    if (!codex32CorrectionCandidate || !codex32CorrectionInput) {
+      return;
+    }
+    codex32CorrectionInput.value = codex32CorrectionCandidate;
+    codex32CorrectionCandidate = '';
+    if (codex32CorrectionOutput) {
+      codex32CorrectionOutput.textContent = 'Corrected value loaded into the field; it remains masked.';
+    }
+    setCodex32Status(codex32CorrectionStatus, 'ready', 'Corrected value loaded after confirmation. Submit it to recovery separately.');
+    updateCodex32Controls();
+  }
+
+  function wireCodex32() {
+    if (!codex32Panel || !codex32) {
+      return;
+    }
+    if (codex32GenerateButton) {
+      codex32GenerateButton.addEventListener('click', generateCodex32Shares);
+    }
+    if (codex32RevealButton) {
+      codex32RevealButton.addEventListener('click', revealCodex32Generated);
+    }
+    if (codex32RecoverButton) {
+      codex32RecoverButton.addEventListener('click', recoverCodex32Shares);
+    }
+    if (codex32RecoveredRevealButton) {
+      codex32RecoveredRevealButton.addEventListener('click', revealCodex32Recovered);
+    }
+    if (codex32CorrectButton) {
+      codex32CorrectButton.addEventListener('click', suggestCodex32Correction);
+    }
+    if (codex32UseCorrectionButton) {
+      codex32UseCorrectionButton.addEventListener('click', useCodex32Correction);
+    }
+    clearCodex32State();
+    updateCodex32Controls();
   }
 
   // --- Entropy Lab (P1.1) ---------------------------------------------------
@@ -3918,12 +4261,14 @@ __COLDBOX_QR_ENCODER__
     clearShamirSession();
     clearVerificationSession();
     clearQrArtifact();
+    clearCodex32State();
     if (qrSecretConfirm) {
       qrSecretConfirm.checked = false;
     }
     updateSeedForgeControls();
     updateVerificationControls();
     updateQrControls();
+    updateCodex32Controls();
     if (currentVaultSession && typeof currentVaultSession.close === 'function') {
       currentVaultSession.close();
     }
@@ -4793,6 +5138,7 @@ __COLDBOX_QR_ENCODER__
     updateShamirControls();
     updateVerificationControls();
     updateQrControls();
+    updateCodex32Controls();
     window.parent.postMessage({ type: 'cold.ready' }, '*');
   }
 
@@ -4863,7 +5209,7 @@ __COLDBOX_QR_ENCODER__
     messagePort.postMessage(readyMessage);
   }
 
-  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer || !vaultLayer || !entropyLab || !seedForge || !shamir || !slip39 || !derivation || !verification || !qr) {
+  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer || !vaultLayer || !entropyLab || !seedForge || !codex32 || !shamir || !slip39 || !derivation || !verification || !qr) {
     return;
   }
 
@@ -5062,6 +5408,7 @@ __COLDBOX_QR_ENCODER__
 
   installThrowContract();
   wireSeedForge();
+  wireCodex32();
   wireShamir();
   wireSlip39();
   wireQrStudio();

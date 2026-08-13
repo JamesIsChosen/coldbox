@@ -3270,6 +3270,85 @@ async function verifySeedForge(browser, engine) {
   }
 }
 
+async function verifyCodex32(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    const coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-codex32[data-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
+    assert.equal(await coldFrame.evaluate(() => typeof window.__coldboxCodex32), 'object');
+    assert.equal(await page.evaluate(() => typeof window.__coldboxCodex32), 'undefined');
+
+    const testSeed = '00112233445566778899aabbccddeeff';
+    const secretInput = coldFrame.locator('#cold-codex32-secret-hex');
+    await secretInput.fill(testSeed);
+    await coldFrame.locator('#cold-codex32-threshold').selectOption('3');
+    await coldFrame.locator('#cold-codex32-count').fill('5');
+    const identifierInput = coldFrame.locator('#cold-codex32-identifier');
+    assert.equal(await identifierInput.inputValue(), '', `${engine}: codex32's ordinary identifier path must start blank`);
+    await coldFrame.locator('#cold-codex32-generate').click();
+    await coldFrame.locator('#cold-codex32-generate-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await secretInput.inputValue(), '');
+    const maskedShares = await coldFrame.locator('#cold-codex32-generated').inputValue();
+    assert.equal(maskedShares.replace(/[\u2022\r\n]/g, ''), '');
+    assert.doesNotMatch(maskedShares, /ms13cash/);
+
+    await coldFrame.locator('#cold-codex32-reveal').click();
+    const visibleSharesText = await coldFrame.locator('#cold-codex32-generated').inputValue();
+    const visibleShares = visibleSharesText.split(/\r?\n/).filter(Boolean);
+    assert.equal(visibleShares.length, 5);
+    const generatedIdentifier = await coldFrame.evaluate((share) => window.__coldboxCodex32.decode(share).identifier, visibleShares[0]);
+    assert.equal(generatedIdentifier.length, 4);
+    assert.notEqual(generatedIdentifier, 'cash', `${engine}: omitted codex32 identifiers must not reuse the example value`);
+    assert.match(visibleShares[0], /^ms13/);
+    assert.equal(
+      await coldFrame.evaluate((shares) => shares.every((share) => window.__coldboxCodex32.decode(share).threshold === 3), visibleShares),
+      true
+    );
+
+    await coldFrame.locator('#cold-codex32-recovery-input').fill(visibleShares.slice(0, 3).join('\n'));
+    await coldFrame.locator('#cold-codex32-recover').click();
+    await coldFrame.locator('#cold-codex32-recovery-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(
+      (await coldFrame.locator('#cold-codex32-recovered').textContent()).replace(/[\u2022\r\n]/g, '').trim(),
+      ''
+    );
+    await coldFrame.locator('#cold-codex32-recovered-reveal').click();
+    assert.match((await coldFrame.locator('#cold-codex32-recovered').textContent()).trim(), /^ms13/);
+
+    const valid = 'ms10testsxxxxxxxxxxxxxxxxxxxxxxxxxx4nzvca9cmczlw';
+    const corrupted = `${valid.slice(0, 20)}q${valid.slice(21)}`;
+    await coldFrame.locator('#cold-codex32-correction-input').fill(corrupted);
+    await coldFrame.locator('#cold-codex32-correct').click();
+    await coldFrame.locator('#cold-codex32-correction-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-codex32-use-correction').isDisabled(), false);
+    assert.equal(
+      (await coldFrame.locator('#cold-codex32-correction-output').textContent()).replace(/[\u2022\r\n]/g, '').trim(),
+      ''
+    );
+    await coldFrame.locator('#cold-codex32-use-correction').click();
+    assert.equal(await coldFrame.locator('#cold-codex32-correction-input').inputValue(), valid);
+    assert.match(await coldFrame.locator('#cold-codex32-correction-status').textContent(), /loaded after confirmation/i);
+
+    await coldFrame.locator('#cold-codex32-recovery-input').fill(visibleShares[0]);
+    await coldFrame.locator('#cold-codex32-recover').click();
+    await coldFrame.locator('#cold-codex32-recovery-status[data-state="error"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await coldFrame.locator('#cold-codex32-recovery-status').textContent(), /exactly 3 shares/i);
+    assert.doesNotMatch(await page.locator('body').textContent(), new RegExp(visibleShares[0]));
+
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-codex32-generated').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-codex32-recovery-input').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-codex32-correction-input').inputValue(), '');
+    assert.equal((await coldFrame.locator('#cold-codex32-recovered').textContent()).trim(), 'No recovered seed.');
+    console.log(`${engine}: codex32 BIP-93 vectors, threshold generation/recovery, masking, confirmation-gated correction, warm isolation, and teardown passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyShamirBackups(browser, engine) {
   const { page } = await openPage(browser, buildPath);
   try {
@@ -3747,6 +3826,7 @@ async function run() {
       await verifyDeviceRegistry(browser, engine);
       await verifyEntropyLab(browser, engine);
       await verifySeedForge(browser, engine);
+      await verifyCodex32(browser, engine);
       await verifyShamirBackups(browser, engine);
       await verifySlip39(browser, engine);
       await verifyVerificationWorkflows(browser, engine);

@@ -60,6 +60,11 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 - Clipboard canary permission/API exceptions are visibly unavailable instead of escaping synchronously; stale enable, retry, disable, and delayed-read callbacks can no longer overwrite newer state.
 - Added Chromium/Firefox file:// coverage for the off-by-default, denied/retry, API-absent, and affirmative-change canary UI paths while preserving ordinary address comparison.
 
+### Added - P2.2 codex32 (2026-08-12)
+
+- **Cold-only BIP-93 backup shares.** The sealed realm now encodes direct 16-to-64-byte BIP-32 master seeds, generates threshold shares over GF(32), recovers exact threshold sets, supports the regular and long checksum formats, and fails closed on invalid configuration, missing randomness, or bad checksums.
+- **Masked recovery workflow.** Generated and recovered codex32 strings stay masked until a timed reveal; single-character correction is a confirmation-gated suggestion and never auto-applied. Official BIP-93 vectors and Chromium/Firefox `file://` coverage are included. See [ADR-0036](docs/05-development/adr/0037-codex32-cold-hand-verifiable.md).
+
 Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 
 ### Added — P1.11 address verification state (2026-08-10)

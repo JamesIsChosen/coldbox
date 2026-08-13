@@ -466,7 +466,7 @@ test('randomness fallback mutation fails the capability lint and build', () => {
 });
 
 test('randomness fallback mutation in cold backup security modules fails the lint and build', () => {
-  for (const coldModule of ['shamir.js', 'slip39.js']) {
+  for (const coldModule of ['codex32.js', 'shamir.js', 'slip39.js']) {
     const root = createBuildRoot();
     try {
       const coldModulePath = path.join(root, 'src', 'cold', coldModule);

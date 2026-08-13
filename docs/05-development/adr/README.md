@@ -44,6 +44,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0034](0034-cold-local-verification-workflows.md) | Verification workflows stay cold-local and manual | Accepted |
 | [0035](0035-cold-printing-allow-modals.md) | Cold-only printing adds `allow-modals` without weakening the opaque origin | Accepted |
 | [0036](0036-slip39-cold-vendoring.md) | Cold-only SLIP-39 uses phrase-entropy shares and a pinned source adaptation | Accepted |
+| [0037](0037-codex32-cold-hand-verifiable.md) | Codex32 is an inline BIP-93 adaptation owned by the cold realm | Accepted |
 | [0038](0038-shamir39-and-raw-sss-cold-only.md) | Shamir39 and raw SSS are cold-only inline adaptations | Accepted |
 
 ## When to write one
