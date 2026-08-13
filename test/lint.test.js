@@ -36,7 +36,8 @@ test('each forbidden-construct fixture is rejected', () => {
     ['import', 'import.fixture'],
     ['require', 'require.fixture'],
     ['external URL', 'external-url.fixture'],
-    ['localStorage', 'local-storage.fixture']
+    ['localStorage', 'local-storage.fixture'],
+    ['Math.random', 'math-random.fixture']
   ];
 
   for (const [name, fixture] of cases) {
