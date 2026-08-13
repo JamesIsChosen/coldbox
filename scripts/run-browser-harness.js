@@ -3270,6 +3270,258 @@ async function verifySeedForge(browser, engine) {
   }
 }
 
+async function verifySeedXor(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    const coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-seed-xor[data-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
+
+    assert.equal(await page.evaluate(() => typeof window.__coldboxSeedXor), 'undefined');
+    assert.equal(await coldFrame.locator('#cold-seed-xor-language option').count(), 10);
+    assert.equal(await coldFrame.locator('#cold-seed-xor-count option').count(), 3);
+    assert.equal(await coldFrame.locator('#cold-seed-xor-generated').isHidden(), true);
+
+    const mnemonic = [
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
+    ].join(' ');
+    await coldFrame.locator('#cold-seed-xor-count').selectOption('3');
+    await coldFrame.locator('#cold-seed-xor-mode').selectOption('deterministic');
+    await coldFrame.locator('#cold-seed-xor-source').fill(mnemonic);
+    await coldFrame.locator('#cold-seed-xor-split').click();
+    await coldFrame.locator('#cold-seed-xor-generated:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-seed-xor-generated-parts li').count(), 3);
+    assert.match(
+      await coldFrame.locator('#cold-seed-xor-generated-parts li').first().textContent(),
+      /\u2022\u2022/
+    );
+    assert.equal(await coldFrame.locator('#cold-seed-xor-source').inputValue(), '');
+    assert.match(await coldFrame.locator('#cold-seed-xor-split-status').textContent(), /Every part is required/i);
+
+    await coldFrame.locator('#cold-seed-xor-reveal').click();
+    const parts = await coldFrame.locator('#cold-seed-xor-generated-parts li').allTextContents();
+    assert.equal(parts.length, 3);
+    parts.forEach((part) => assert.match(part, /\b[a-z]+\b/));
+    await coldFrame.locator('#cold-seed-xor-reveal').click();
+    assert.match(await coldFrame.locator('#cold-seed-xor-generated-parts li').first().textContent(), /\u2022\u2022/);
+
+    for (let index = 0; index < parts.length; index += 1) {
+      await coldFrame.locator(`#cold-seed-xor-part-${index + 1}`).fill(parts[index]);
+    }
+    await coldFrame.locator('#cold-seed-xor-combine').click();
+    assert.equal(await coldFrame.locator('#cold-seed-xor-part-1').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-seed-xor-part-2').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-seed-xor-part-3').inputValue(), '');
+    assert.equal((await coldFrame.locator('#cold-seed-xor-combined').textContent()).trim(), 'Masked (12-word phrase)');
+    assert.match(await coldFrame.locator('#cold-seed-xor-combine-status').textContent(), /checked BIP-39 phrase/i);
+    await coldFrame.locator('#cold-seed-xor-combined-reveal').click();
+    assert.equal((await coldFrame.locator('#cold-seed-xor-combined').textContent()).trim(), mnemonic);
+    await coldFrame.locator('#cold-seed-xor-combined-reveal').click();
+    assert.equal((await coldFrame.locator('#cold-seed-xor-combined').textContent()).trim(), 'Masked (12-word phrase)');
+
+    // A selected part count is a hard requirement; an incomplete set is not
+    // silently treated as a different scheme.
+    await coldFrame.locator('#cold-seed-xor-part-1').fill(parts[0]);
+    await coldFrame.locator('#cold-seed-xor-part-2').fill(parts[1]);
+    await coldFrame.locator('#cold-seed-xor-combine').click();
+    await coldFrame.locator('#cold-seed-xor-combine-status[data-state="error"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await coldFrame.locator('#cold-seed-xor-combine-status').textContent(), /every selected.*required/i);
+    assert.equal(await coldFrame.locator('#cold-seed-xor-part-1').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-seed-xor-part-2').inputValue(), '');
+
+    // Random mode exercises the CSPRNG-only path and still produces complete
+    // valid phrases without placing the source in the warm shell.
+    await coldFrame.locator('#cold-seed-xor-count').selectOption('2');
+    await coldFrame.locator('#cold-seed-xor-mode').selectOption('random');
+    await coldFrame.locator('#cold-seed-xor-source').fill(mnemonic);
+    await coldFrame.locator('#cold-seed-xor-split').click();
+    await coldFrame.locator('#cold-seed-xor-generated:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-seed-xor-generated-parts li').count(), 2);
+    assert.equal(await page.evaluate((text) => document.body.textContent.includes(text), mnemonic), false);
+
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-seed-xor-generated').isHidden(), true);
+    assert.equal((await coldFrame.locator('#cold-seed-xor-combined').textContent()).trim(), 'Not calculated');
+    assert.equal(await coldFrame.locator('#cold-seed-xor-part-1').inputValue(), '');
+
+    console.log(`${engine}: Seed XOR official-compatible deterministic flow, random flow, masked reveals, incomplete-set rejection, warm isolation, and teardown passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+async function verifyCodex32(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    const coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-codex32[data-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
+    assert.equal(await coldFrame.evaluate(() => typeof window.__coldboxCodex32), 'object');
+    assert.equal(await page.evaluate(() => typeof window.__coldboxCodex32), 'undefined');
+
+    const testSeed = '00112233445566778899aabbccddeeff';
+    const secretInput = coldFrame.locator('#cold-codex32-secret-hex');
+    await secretInput.fill(testSeed);
+    await coldFrame.locator('#cold-codex32-threshold').selectOption('3');
+    await coldFrame.locator('#cold-codex32-count').fill('5');
+    const identifierInput = coldFrame.locator('#cold-codex32-identifier');
+    assert.equal(await identifierInput.inputValue(), '', `${engine}: codex32's ordinary identifier path must start blank`);
+    await coldFrame.locator('#cold-codex32-generate').click();
+    await coldFrame.locator('#cold-codex32-generate-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await secretInput.inputValue(), '');
+    const maskedShares = await coldFrame.locator('#cold-codex32-generated').inputValue();
+    assert.equal(maskedShares.replace(/[\u2022\r\n]/g, ''), '');
+    assert.doesNotMatch(maskedShares, /ms13cash/);
+
+    await coldFrame.locator('#cold-codex32-reveal').click();
+    const visibleSharesText = await coldFrame.locator('#cold-codex32-generated').inputValue();
+    const visibleShares = visibleSharesText.split(/\r?\n/).filter(Boolean);
+    assert.equal(visibleShares.length, 5);
+    const generatedIdentifier = await coldFrame.evaluate((share) => window.__coldboxCodex32.decode(share).identifier, visibleShares[0]);
+    assert.equal(generatedIdentifier.length, 4);
+    assert.notEqual(generatedIdentifier, 'cash', `${engine}: omitted codex32 identifiers must not reuse the example value`);
+    assert.match(visibleShares[0], /^ms13/);
+    assert.equal(
+      await coldFrame.evaluate((shares) => shares.every((share) => window.__coldboxCodex32.decode(share).threshold === 3), visibleShares),
+      true
+    );
+
+    await coldFrame.locator('#cold-codex32-recovery-input').fill(visibleShares.slice(0, 3).join('\n'));
+    await coldFrame.locator('#cold-codex32-recover').click();
+    await coldFrame.locator('#cold-codex32-recovery-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(
+      (await coldFrame.locator('#cold-codex32-recovered').textContent()).replace(/[\u2022\r\n]/g, '').trim(),
+      ''
+    );
+    await coldFrame.locator('#cold-codex32-recovered-reveal').click();
+    assert.match((await coldFrame.locator('#cold-codex32-recovered').textContent()).trim(), /^ms13/);
+
+    const valid = 'ms10testsxxxxxxxxxxxxxxxxxxxxxxxxxx4nzvca9cmczlw';
+    const corrupted = `${valid.slice(0, 20)}q${valid.slice(21)}`;
+    await coldFrame.locator('#cold-codex32-correction-input').fill(corrupted);
+    await coldFrame.locator('#cold-codex32-correct').click();
+    await coldFrame.locator('#cold-codex32-correction-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-codex32-use-correction').isDisabled(), false);
+    assert.equal(
+      (await coldFrame.locator('#cold-codex32-correction-output').textContent()).replace(/[\u2022\r\n]/g, '').trim(),
+      ''
+    );
+    await coldFrame.locator('#cold-codex32-use-correction').click();
+    assert.equal(await coldFrame.locator('#cold-codex32-correction-input').inputValue(), valid);
+    assert.match(await coldFrame.locator('#cold-codex32-correction-status').textContent(), /loaded after confirmation/i);
+
+    await coldFrame.locator('#cold-codex32-recovery-input').fill(visibleShares[0]);
+    await coldFrame.locator('#cold-codex32-recover').click();
+    await coldFrame.locator('#cold-codex32-recovery-status[data-state="error"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await coldFrame.locator('#cold-codex32-recovery-status').textContent(), /exactly 3 shares/i);
+    assert.doesNotMatch(await page.locator('body').textContent(), new RegExp(visibleShares[0]));
+
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-codex32-generated').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-codex32-recovery-input').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-codex32-correction-input').inputValue(), '');
+    assert.equal((await coldFrame.locator('#cold-codex32-recovered').textContent()).trim(), 'No recovered seed.');
+    console.log(`${engine}: codex32 BIP-93 vectors, threshold generation/recovery, masking, confirmation-gated correction, warm isolation, and teardown passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
+async function verifyShamirBackups(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    const coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-shamir[data-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
+    assert.equal(await page.evaluate(() => typeof window.__coldboxShamir), 'undefined');
+    assert.equal(await coldFrame.locator('#cold-shamir39-language option').count(), 10);
+    assert.equal(await coldFrame.locator('#cold-shamir39-combine-fields input').count(), 8);
+    assert.equal(await coldFrame.locator('#cold-raw-sss-bits option').count(), 18);
+
+    const mnemonic = [
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
+    ].join(' ');
+    await coldFrame.locator('#cold-shamir39-threshold').selectOption('3');
+    await coldFrame.locator('#cold-shamir39-shares').selectOption('5');
+    await coldFrame.locator('#cold-shamir39-source').fill(mnemonic);
+    await coldFrame.locator('#cold-shamir39-split').click();
+    await coldFrame.locator('#cold-shamir39-generated:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-shamir39-generated-parts li').count(), 5);
+    assert.equal(await coldFrame.locator('#cold-shamir39-generated-parts [data-secret-visible="false"]').count(), 5);
+    assert.equal(await coldFrame.locator('#cold-shamir39-source').inputValue(), '');
+    assert.match(await coldFrame.locator('#cold-shamir39-generated-parts').textContent(), /Masked share/);
+    await coldFrame.locator('#cold-shamir39-reveal').click();
+    const shamirParts = await coldFrame.locator('#cold-shamir39-generated-parts .cold-shamir-share-value').allTextContents();
+    assert.equal(shamirParts.length, 5);
+    assert.equal(await coldFrame.locator('#cold-shamir39-generated-parts [data-secret-visible="true"]').count(), 5);
+    assert.doesNotMatch(shamirParts[0], /Masked share/);
+    await coldFrame.locator('#cold-shamir39-reveal').click();
+    assert.equal(await coldFrame.locator('#cold-shamir39-generated-parts [data-secret-visible="false"]').count(), 5);
+
+    for (let index = 0; index < 3; index += 1) {
+      await coldFrame.locator('#cold-shamir39-combine-fields input').nth(index).fill(shamirParts[index]);
+    }
+    await coldFrame.locator('#cold-shamir39-combine-button').click();
+    await coldFrame.locator('#cold-shamir39-combine-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal((await coldFrame.locator('#cold-shamir39-result').textContent()).trim(), 'Masked BIP-39 phrase');
+    assert.equal(await coldFrame.locator('#cold-shamir39-result').getAttribute('data-secret-visible'), 'false');
+    assert.equal(await coldFrame.locator('#cold-shamir39-combine-fields input').nth(0).inputValue(), '');
+    await coldFrame.locator('#cold-shamir39-result-reveal').click();
+    assert.equal((await coldFrame.locator('#cold-shamir39-result').textContent()).trim(), mnemonic);
+    assert.equal(await coldFrame.locator('#cold-shamir39-result').getAttribute('data-secret-visible'), 'true');
+    await coldFrame.locator('#cold-shamir39-result-reveal').click();
+
+    const rawSecret = '82585c749a3db7f73009d0d6107dd650';
+    await coldFrame.locator('#cold-raw-sss-bits').selectOption('8');
+    await coldFrame.locator('#cold-raw-sss-threshold').selectOption('2');
+    await coldFrame.locator('#cold-raw-sss-shares').selectOption('3');
+    await coldFrame.locator('#cold-raw-sss-source').fill(rawSecret);
+    await coldFrame.locator('#cold-raw-sss-split').click();
+    await coldFrame.locator('#cold-raw-sss-generated:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-raw-sss-generated-parts li').count(), 3);
+    assert.equal(await coldFrame.locator('#cold-raw-sss-generated-parts [data-secret-visible="false"]').count(), 3);
+    assert.equal(await coldFrame.locator('#cold-raw-sss-source').inputValue(), '');
+    await coldFrame.locator('#cold-raw-sss-reveal').click();
+    const rawParts = await coldFrame.locator('#cold-raw-sss-generated-parts .cold-shamir-share-value').allTextContents();
+    assert.equal(rawParts.length, 3);
+    assert.doesNotMatch(rawParts[0], /Masked share/);
+    await coldFrame.locator('#cold-raw-sss-reveal').click();
+    for (let index = 0; index < 2; index += 1) {
+      await coldFrame.locator('#cold-raw-sss-combine-fields input').nth(index).fill(rawParts[index]);
+    }
+    await coldFrame.locator('#cold-raw-sss-combine-button').click();
+    await coldFrame.locator('#cold-raw-sss-combine-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal((await coldFrame.locator('#cold-raw-sss-result').textContent()).trim(), 'Masked hexadecimal secret');
+    await coldFrame.locator('#cold-raw-sss-result-reveal').click();
+    assert.equal((await coldFrame.locator('#cold-raw-sss-result').textContent()).trim(), rawSecret);
+    await coldFrame.locator('#cold-raw-sss-result-reveal').click();
+
+    await coldFrame.locator('#cold-raw-sss-combine-fields input').nth(0).fill('80100');
+    await coldFrame.locator('#cold-raw-sss-combine-button').click();
+    assert.match(await coldFrame.locator('#cold-raw-sss-combine-status').textContent(), /did not reconstruct|at least two/i);
+    assert.equal(await coldFrame.locator('#cold-raw-sss-combine-fields input').nth(0).inputValue(), '');
+
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-shamir39-generated').isHidden(), true);
+    assert.equal(await coldFrame.locator('#cold-raw-sss-generated').isHidden(), true);
+    assert.equal((await coldFrame.locator('#cold-shamir39-result').textContent()).trim(), 'Not reconstructed');
+    assert.equal((await coldFrame.locator('#cold-raw-sss-result').textContent()).trim(), 'Not reconstructed');
+    assert.equal(await coldFrame.locator('#cold-shamir39-source').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-raw-sss-source').inputValue(), '');
+
+    console.log(`${engine}: Shamir39 and raw SSS official-format UI, masking, reconstruction, negative case, warm isolation, and teardown passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifySlip39(browser, engine) {
   const { page } = await openPage(browser, buildPath);
   try {
@@ -3318,7 +3570,15 @@ async function verifySlip39(browser, engine) {
     await recoveryInput.fill([shares[0], shares[2]].join('\n'));
     await recovery.click();
     await coldFrame.locator('#cold-slip39-recovery-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 10000 });
-    assert.match(await coldFrame.locator('#cold-slip39-recovery-status').textContent(), /matches the selected Seed Forge phrase/i);
+    const recoveryStatusText = await coldFrame.locator('#cold-slip39-recovery-status').textContent();
+    assert.match(recoveryStatusText, /Recovered \d+-byte phrase entropy/i, `${engine}: SLIP-39 recovery must report the recovered entropy length`);
+    assert.match(recoveryStatusText, /matches the selected Seed Forge phrase/i);
+    assert.doesNotMatch(recoveryStatusText, /fingerprint/i, `${engine}: P2.1 recovery must not claim to display a fingerprint`);
+    assert.equal(
+      await coldFrame.locator('#cold-slip39-lab button').filter({ hasText: /print|complete/i }).count(),
+      0,
+      `${engine}: P2.1 must not expose a print or completion control`
+    );
     assert.equal(await recoveryInput.inputValue(), '', `${engine}: typed SLIP-39 shares must be cleared after recovery`);
 
     const corruptShare = shares[0].split(' ');
@@ -3648,6 +3908,9 @@ async function run() {
       await verifyDeviceRegistry(browser, engine);
       await verifyEntropyLab(browser, engine);
       await verifySeedForge(browser, engine);
+      await verifySeedXor(browser, engine);
+      await verifyCodex32(browser, engine);
+      await verifyShamirBackups(browser, engine);
       await verifySlip39(browser, engine);
       await verifyVerificationWorkflows(browser, engine);
       await verifyQrStudio(browser, engine);

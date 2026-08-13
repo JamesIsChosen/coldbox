@@ -465,6 +465,29 @@ test('randomness fallback mutation fails the capability lint and build', () => {
   }
 });
 
+test('randomness fallback mutation in cold backup security modules fails the lint and build', () => {
+  for (const coldModule of ['seed-xor.js', 'codex32.js', 'shamir.js', 'slip39.js']) {
+    const root = createBuildRoot();
+    try {
+      const coldModulePath = path.join(root, 'src', 'cold', coldModule);
+      fs.appendFileSync(coldModulePath, '\nvoid Math.random();\n', 'utf8');
+
+      const lint = spawnSync(process.execPath, [path.join(root, 'scripts', 'lint.js'), '--root', root], {
+        cwd: root,
+        encoding: 'utf8'
+      });
+      assert.notEqual(lint.status, 0, `Cold security-module lint accepted executable Math.random in ${coldModule}`);
+      assert.match(`${lint.stdout}\n${lint.stderr}`, /Forbidden construct "Math\.random"/);
+
+      const build = runBuildProcessAt(root);
+      assert.notEqual(build.status, 0, `Build accepted executable Math.random in ${coldModule}`);
+      assert.match(`${build.stdout}\n${build.stderr}`, /Math\.random/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  }
+});
+
 test('airgap canary and lockdown markers are embedded in both realms', () => {
   runBuild();
   const html = fs.readFileSync(htmlPath, 'utf8');
