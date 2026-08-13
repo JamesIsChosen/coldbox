@@ -232,7 +232,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
   *Deps: P1.3*
 - [x] **P2.2 codex32**
   *Deps: P1.3*
-- [~] P2.3 Seed XOR
+- [x] P2.3 Seed XOR
   *Deps: P1.3*
   Coldcard-compatible N-of-N splitting of BIP-39 entropy into 2, 3, or 4 independently checked phrases, with deterministic and CSPRNG-derived masks, cold-only UI, and local reconstruction.
   **Accept:** only 12-, 18-, and 24-word BIP-39 phrases are accepted; every generated part is independently valid BIP-39; deterministic output matches the published Coldcard construction and independent vectors; random output refuses missing `crypto.getRandomValues`; combine accepts all parts in any order but rejects missing, malformed, mismatched-length, or invalid-checksum parts; the source, parts, and combined phrase never cross the cold boundary or persist, are masked by default, and clear on teardown; docs state that Seed XOR is N-of-N and that any BIP-39 passphrase is separate.
