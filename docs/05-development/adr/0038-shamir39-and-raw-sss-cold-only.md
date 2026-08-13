@@ -22,7 +22,7 @@ The primary references were reviewed on 2026-08-12:
 - [Ian Coleman `specification.md`](https://github.com/iancoleman/shamir39/blob/30d17d8921200afd1c6365140ee1defead11386a/specification.md), commit `30d17d8921200afd1c6365140ee1defead11386a`, Git blob `8be52ecd5d7700bf68086dccff7851dee3670074`, exact LF-byte SHA-256 `979d15d588adf80b27d515dbaf97a8a9f97766395289632142bef78614f77c62`.
 - Ian Coleman `src/js/shamir39.js`, the same commit, Git blob `4b0aae2cc63ac588326037e1718f7d888c21d269`, exact LF-byte SHA-256 `a1f822fe010d5ddbf9b33bda0eaf5152388e8700d5e35893fb8f85116ed4233c`.
 - [secrets.js `README.md`](https://github.com/grempe/secrets.js/blob/14a4b682a28242b1dbe5506674b5d5f476b78dbf/README.md), commit `14a4b682a28242b1dbe5506674b5d5f476b78dbf`, Git blob `a4f1b45a96de9ab9c6a86f6927d3657b417cb643`, exact LF-byte SHA-256 `56d52d02a32735a5858bf7e6ffb2b95544c6a761906a4594cd438ffbbf125914`.
-- secrets.js `secrets.js`, the same commit, Git blob `2eb1360d61d99f5cee46ebb2aaf1f938b065069`, exact LF-byte SHA-256 `6c90ec0b0d88a8c90d08f8657448c72db6592fcec5096306c70c815e2404eee9`.
+- secrets.js `secrets.js`, the same commit, Git blob `2eb1360d61d99f5cee46ebb2aaf1f938b065069c`, exact LF-byte SHA-256 `6c90ec0b0d88a8c90d08f8657448c72db6592fcec5096306c70c815e2404eee9`.
 - secrets.js fixture `spec/secrets/SecretsSpec.js`, the same commit, Git blob `8986699144de4d25623217ac4377f85a4042f945`, exact LF-byte SHA-256 `b6f843bc4c40f268c175b0c49564fb5be43e1187e4216c33efd6b3559040db0f`.
 
 ## Decision
