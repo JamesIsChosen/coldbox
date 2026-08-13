@@ -299,6 +299,88 @@ __COLDBOX_COLD_STYLES__
       </section>
       <p id="cold-seed-forge-note">Write the words down offline and verify them from paper. A fingerprint is only a public identifier: it cannot recover a phrase. The raw BIP-39 seed is an advanced cold-only output; it is masked by default and has no clipboard or storage action. BIP-85 child phrases, xprv/xpub/ypub/zpub, script/path derivation, WIF, addresses, and password derivation are separate roadmap items.</p>
     </section>
+    <section id="cold-shamir" aria-label="Cold-only backup shares" data-state="locked">
+      <p class="eyebrow">Backup Shares / P2.4</p>
+      <h2>Shamir39 and raw SSS - cold-only</h2>
+      <p id="cold-shamir-help">Split a BIP-39 phrase with the non-standard Shamir39 mnemonic format, or split raw hexadecimal key material with the secrets.js-compatible raw SSS format. Both workflows stay in this sealed realm. Shares are masked until a brief reveal, and there is no clipboard, download, storage, or message-channel action.</p>
+      <div class="cold-shamir-grid">
+        <section id="cold-shamir39" class="cold-shamir-workflow" aria-labelledby="cold-shamir39-title">
+          <h3 id="cold-shamir39-title">Shamir39 - BIP-39 phrase shares</h3>
+          <p id="cold-shamir39-help">Shamir39 creates mnemonic shares from a valid 12-, 15-, 18-, 21-, or 24-word BIP-39 phrase. Choose a language, a threshold, and a total share count. This format is not SLIP-39 and has no built-in share authentication.</p>
+          <div id="cold-shamir39-controls" class="cold-shamir-controls">
+            <div>
+              <label for="cold-shamir39-language">BIP-39 language</label>
+              <select id="cold-shamir39-language" disabled></select>
+            </div>
+            <div>
+              <label for="cold-shamir39-threshold">Shares required</label>
+              <select id="cold-shamir39-threshold" disabled></select>
+            </div>
+            <div>
+              <label for="cold-shamir39-shares">Total shares</label>
+              <select id="cold-shamir39-shares" disabled></select>
+            </div>
+          </div>
+          <label for="cold-shamir39-source">BIP-39 phrase to split (masked)</label>
+          <input id="cold-shamir39-source" type="password" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <button id="cold-shamir39-split" type="button" disabled>Split phrase</button>
+          <p id="cold-shamir39-status" role="status" aria-live="polite">Shamir39 is waiting for the cold-realm self-test.</p>
+          <section id="cold-shamir39-generated" class="cold-shamir-generated" hidden aria-labelledby="cold-shamir39-generated-title">
+            <h4 id="cold-shamir39-generated-title">Generated Shamir39 shares</h4>
+            <p>Shares are masked by default. Copy them by hand to separate offline records only after checking the reveal.</p>
+            <ol id="cold-shamir39-generated-parts" class="cold-shamir-share-list" aria-label="Generated Shamir39 shares"></ol>
+            <button id="cold-shamir39-reveal" type="button" disabled>Reveal shares for 30 seconds</button>
+          </section>
+          <section id="cold-shamir39-combine" class="cold-shamir-combine" aria-labelledby="cold-shamir39-combine-title">
+            <h4 id="cold-shamir39-combine-title">Combine existing Shamir39 shares</h4>
+            <p>Enter at least the threshold number of complete shares. The fields are password inputs and are cleared after a combine attempt.</p>
+            <div id="cold-shamir39-combine-fields" class="cold-shamir-combine-fields"></div>
+            <button id="cold-shamir39-combine-button" type="button" disabled>Combine phrase shares</button>
+            <p id="cold-shamir39-combine-status" role="status" aria-live="polite">No shares entered.</p>
+            <output id="cold-shamir39-result" class="cold-shamir-result">Not reconstructed</output>
+            <button id="cold-shamir39-result-reveal" type="button" disabled>Reveal phrase for 30 seconds</button>
+          </section>
+        </section>
+        <section id="cold-raw-sss" class="cold-shamir-workflow" aria-labelledby="cold-raw-sss-title">
+          <h3 id="cold-raw-sss-title">Raw SSS - hexadecimal key material</h3>
+          <p id="cold-raw-sss-help">Raw SSS uses Shamir over GF(2^n), with a configurable field size from 3 through 20 bits. The default is 8 bits with 128 bits of padding, matching the pinned secrets.js behavior. The input must be even-length hexadecimal data.</p>
+          <div id="cold-raw-sss-controls" class="cold-shamir-controls">
+            <div>
+              <label for="cold-raw-sss-bits">Field size</label>
+              <select id="cold-raw-sss-bits" disabled></select>
+            </div>
+            <div>
+              <label for="cold-raw-sss-threshold">Shares required</label>
+              <select id="cold-raw-sss-threshold" disabled></select>
+            </div>
+            <div>
+              <label for="cold-raw-sss-shares">Total shares</label>
+              <select id="cold-raw-sss-shares" disabled></select>
+            </div>
+          </div>
+          <label for="cold-raw-sss-source">Hexadecimal secret to split (masked)</label>
+          <input id="cold-raw-sss-source" type="password" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <button id="cold-raw-sss-split" type="button" disabled>Split hex secret</button>
+          <p id="cold-raw-sss-status" role="status" aria-live="polite">Raw SSS is waiting for the cold-realm self-test.</p>
+          <section id="cold-raw-sss-generated" class="cold-shamir-generated" hidden aria-labelledby="cold-raw-sss-generated-title">
+            <h4 id="cold-raw-sss-generated-title">Generated raw SSS shares</h4>
+            <p>Raw shares are masked by default. They do not include a checksum or authenticity proof.</p>
+            <ol id="cold-raw-sss-generated-parts" class="cold-shamir-share-list" aria-label="Generated raw SSS shares"></ol>
+            <button id="cold-raw-sss-reveal" type="button" disabled>Reveal shares for 30 seconds</button>
+          </section>
+          <section id="cold-raw-sss-combine" class="cold-shamir-combine" aria-labelledby="cold-raw-sss-combine-title">
+            <h4 id="cold-raw-sss-combine-title">Combine existing raw SSS shares</h4>
+            <p>Enter at least the threshold number of complete shares. The fields are password inputs and are cleared after a combine attempt.</p>
+            <div id="cold-raw-sss-combine-fields" class="cold-shamir-combine-fields"></div>
+            <button id="cold-raw-sss-combine-button" type="button" disabled>Combine hex shares</button>
+            <p id="cold-raw-sss-combine-status" role="status" aria-live="polite">No shares entered.</p>
+            <output id="cold-raw-sss-result" class="cold-shamir-result">Not reconstructed</output>
+            <button id="cold-raw-sss-result-reveal" type="button" disabled>Reveal hex secret for 30 seconds</button>
+          </section>
+        </section>
+      </div>
+      <p id="cold-shamir-note">A threshold share set is not the same as a passphrase: the original phrase or raw secret must still be protected from unauthorized reconstruction. Wrong or damaged shares can reconstruct an incorrect candidate; always validate the resulting BIP-39 checksum or independently verify the raw secret. Prefer the standard SLIP-39 workflow when interoperable wallet backup is the goal.</p>
+    </section>
     <section id="cold-qr-studio" aria-label="Cold-only SeedQR Studio" data-state="locked">
       <p class="eyebrow">SeedQR Studio / P1.10</p>
       <h2>Plaintext seed QR — cold-only</h2>
@@ -492,6 +574,7 @@ __COLDBOX_VAULT_LAYER__
 __COLDBOX_ENTROPY_LAB_LAYER__
 __COLDBOX_ENTROPY_HEALTH_LAYER__
 __COLDBOX_SEED_FORGE_LAYER__
+__COLDBOX_SHAMIR_LAYER__
 __COLDBOX_DERIVATION_LAYER__
 __COLDBOX_VERIFICATION_LAYER__
 __COLDBOX_ADDRESS_VERIFICATION_LAYER__

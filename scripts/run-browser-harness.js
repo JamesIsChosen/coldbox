@@ -3270,6 +3270,97 @@ async function verifySeedForge(browser, engine) {
   }
 }
 
+async function verifyShamirBackups(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    const coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-shamir[data-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
+    assert.equal(await page.evaluate(() => typeof window.__coldboxShamir), 'undefined');
+    assert.equal(await coldFrame.locator('#cold-shamir39-language option').count(), 10);
+    assert.equal(await coldFrame.locator('#cold-shamir39-combine-fields input').count(), 8);
+    assert.equal(await coldFrame.locator('#cold-raw-sss-bits option').count(), 18);
+
+    const mnemonic = [
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
+    ].join(' ');
+    await coldFrame.locator('#cold-shamir39-threshold').selectOption('3');
+    await coldFrame.locator('#cold-shamir39-shares').selectOption('5');
+    await coldFrame.locator('#cold-shamir39-source').fill(mnemonic);
+    await coldFrame.locator('#cold-shamir39-split').click();
+    await coldFrame.locator('#cold-shamir39-generated:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-shamir39-generated-parts li').count(), 5);
+    assert.equal(await coldFrame.locator('#cold-shamir39-generated-parts [data-secret-visible="false"]').count(), 5);
+    assert.equal(await coldFrame.locator('#cold-shamir39-source').inputValue(), '');
+    assert.match(await coldFrame.locator('#cold-shamir39-generated-parts').textContent(), /Masked share/);
+    await coldFrame.locator('#cold-shamir39-reveal').click();
+    const shamirParts = await coldFrame.locator('#cold-shamir39-generated-parts .cold-shamir-share-value').allTextContents();
+    assert.equal(shamirParts.length, 5);
+    assert.equal(await coldFrame.locator('#cold-shamir39-generated-parts [data-secret-visible="true"]').count(), 5);
+    assert.doesNotMatch(shamirParts[0], /Masked share/);
+    await coldFrame.locator('#cold-shamir39-reveal').click();
+    assert.equal(await coldFrame.locator('#cold-shamir39-generated-parts [data-secret-visible="false"]').count(), 5);
+
+    for (let index = 0; index < 3; index += 1) {
+      await coldFrame.locator('#cold-shamir39-combine-fields input').nth(index).fill(shamirParts[index]);
+    }
+    await coldFrame.locator('#cold-shamir39-combine-button').click();
+    await coldFrame.locator('#cold-shamir39-combine-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal((await coldFrame.locator('#cold-shamir39-result').textContent()).trim(), 'Masked BIP-39 phrase');
+    assert.equal(await coldFrame.locator('#cold-shamir39-result').getAttribute('data-secret-visible'), 'false');
+    assert.equal(await coldFrame.locator('#cold-shamir39-combine-fields input').nth(0).inputValue(), '');
+    await coldFrame.locator('#cold-shamir39-result-reveal').click();
+    assert.equal((await coldFrame.locator('#cold-shamir39-result').textContent()).trim(), mnemonic);
+    assert.equal(await coldFrame.locator('#cold-shamir39-result').getAttribute('data-secret-visible'), 'true');
+    await coldFrame.locator('#cold-shamir39-result-reveal').click();
+
+    const rawSecret = '82585c749a3db7f73009d0d6107dd650';
+    await coldFrame.locator('#cold-raw-sss-bits').selectOption('8');
+    await coldFrame.locator('#cold-raw-sss-threshold').selectOption('2');
+    await coldFrame.locator('#cold-raw-sss-shares').selectOption('3');
+    await coldFrame.locator('#cold-raw-sss-source').fill(rawSecret);
+    await coldFrame.locator('#cold-raw-sss-split').click();
+    await coldFrame.locator('#cold-raw-sss-generated:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-raw-sss-generated-parts li').count(), 3);
+    assert.equal(await coldFrame.locator('#cold-raw-sss-generated-parts [data-secret-visible="false"]').count(), 3);
+    assert.equal(await coldFrame.locator('#cold-raw-sss-source').inputValue(), '');
+    await coldFrame.locator('#cold-raw-sss-reveal').click();
+    const rawParts = await coldFrame.locator('#cold-raw-sss-generated-parts .cold-shamir-share-value').allTextContents();
+    assert.equal(rawParts.length, 3);
+    assert.doesNotMatch(rawParts[0], /Masked share/);
+    await coldFrame.locator('#cold-raw-sss-reveal').click();
+    for (let index = 0; index < 2; index += 1) {
+      await coldFrame.locator('#cold-raw-sss-combine-fields input').nth(index).fill(rawParts[index]);
+    }
+    await coldFrame.locator('#cold-raw-sss-combine-button').click();
+    await coldFrame.locator('#cold-raw-sss-combine-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal((await coldFrame.locator('#cold-raw-sss-result').textContent()).trim(), 'Masked hexadecimal secret');
+    await coldFrame.locator('#cold-raw-sss-result-reveal').click();
+    assert.equal((await coldFrame.locator('#cold-raw-sss-result').textContent()).trim(), rawSecret);
+    await coldFrame.locator('#cold-raw-sss-result-reveal').click();
+
+    await coldFrame.locator('#cold-raw-sss-combine-fields input').nth(0).fill('80100');
+    await coldFrame.locator('#cold-raw-sss-combine-button').click();
+    assert.match(await coldFrame.locator('#cold-raw-sss-combine-status').textContent(), /did not reconstruct|at least two/i);
+    assert.equal(await coldFrame.locator('#cold-raw-sss-combine-fields input').nth(0).inputValue(), '');
+
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-shamir39-generated').isHidden(), true);
+    assert.equal(await coldFrame.locator('#cold-raw-sss-generated').isHidden(), true);
+    assert.equal((await coldFrame.locator('#cold-shamir39-result').textContent()).trim(), 'Not reconstructed');
+    assert.equal((await coldFrame.locator('#cold-raw-sss-result').textContent()).trim(), 'Not reconstructed');
+    assert.equal(await coldFrame.locator('#cold-shamir39-source').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-raw-sss-source').inputValue(), '');
+
+    console.log(`${engine}: Shamir39 and raw SSS official-format UI, masking, reconstruction, negative case, warm isolation, and teardown passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifySlip39(browser, engine) {
   const { page } = await openPage(browser, buildPath);
   try {
@@ -3656,6 +3747,7 @@ async function run() {
       await verifyDeviceRegistry(browser, engine);
       await verifyEntropyLab(browser, engine);
       await verifySeedForge(browser, engine);
+      await verifyShamirBackups(browser, engine);
       await verifySlip39(browser, engine);
       await verifyVerificationWorkflows(browser, engine);
       await verifyQrStudio(browser, engine);
