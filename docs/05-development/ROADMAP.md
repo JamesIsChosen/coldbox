@@ -229,7 +229,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
 ## Phase 2 — Backup
 
 - [ ] P2.1 SLIP-39
-- [~] P2.2 codex32
+- [x] P2.2 codex32
 - [ ] P2.3 Seed XOR
 - [ ] P2.4 Shamir39 and raw SSS
 - [ ] P2.5 Vault recovery shares
