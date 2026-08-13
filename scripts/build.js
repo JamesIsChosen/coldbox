@@ -52,10 +52,12 @@ const coldRealmManifest = Object.freeze([
   Object.freeze({ file: 'index.html', token: '__COLDBOX_ENTROPY_HEALTH_LAYER__', content: 'entropy-health.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_SEED_FORGE_LAYER__', content: 'seed-forge.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_CODEX32_LAYER__', content: 'codex32.js' }),
+  Object.freeze({ file: 'index.html', token: '__COLDBOX_SHAMIR_LAYER__', content: 'shamir.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_DERIVATION_LAYER__', content: 'derivation.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_VERIFICATION_LAYER__', content: 'verification.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_ADDRESS_VERIFICATION_LAYER__', content: 'address-verification.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_QR_LAYER__', content: 'qr.js' }),
+  Object.freeze({ file: 'index.html', token: '__COLDBOX_SLIP39_LAYER__', content: 'slip39.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_COLD_STYLES__', content: 'styles.css' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_COLD_SCRIPT__', content: 'main.js' })
 ]);
@@ -329,10 +331,12 @@ function assembleColdRealm(protocolSource, airgapSource, capabilitiesSource) {
     ['entropy-health.js', readSource('cold/entropy-health.js')],
     ['seed-forge.js', readSource('cold/seed-forge.js')],
     ['codex32.js', readSource('cold/codex32.js')],
+    ['shamir.js', readSource('cold/shamir.js')],
     ['derivation.js', readSource('cold/derivation.js')],
     ['verification.js', readSource('cold/verification.js')],
     ['address-verification.js', readSource('address-verification.js')],
     ['qr.js', readSource('cold/qr.js')],
+    ['slip39.js', readSource('cold/slip39.js')],
     ['styles.css', readSource('cold/styles.css')],
     ['main.js', coldMainScript]
   ]);
@@ -355,10 +359,12 @@ function assembleColdRealm(protocolSource, airgapSource, capabilitiesSource) {
     '__COLDBOX_ENTROPY_HEALTH_LAYER__',
     '__COLDBOX_SEED_FORGE_LAYER__',
     '__COLDBOX_CODEX32_LAYER__',
+    '__COLDBOX_SHAMIR_LAYER__',
     '__COLDBOX_DERIVATION_LAYER__',
     '__COLDBOX_VERIFICATION_LAYER__',
     '__COLDBOX_ADDRESS_VERIFICATION_LAYER__',
     '__COLDBOX_QR_LAYER__',
+    '__COLDBOX_SLIP39_LAYER__',
     '__COLDBOX_QR_ENCODER__',
     '__COLDBOX_PROTOCOL__',
     '__COLDBOX_AIRGAP__',

@@ -3349,6 +3349,176 @@ async function verifyCodex32(browser, engine) {
   }
 }
 
+async function verifyShamirBackups(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    const coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-shamir[data-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
+    assert.equal(await page.evaluate(() => typeof window.__coldboxShamir), 'undefined');
+    assert.equal(await coldFrame.locator('#cold-shamir39-language option').count(), 10);
+    assert.equal(await coldFrame.locator('#cold-shamir39-combine-fields input').count(), 8);
+    assert.equal(await coldFrame.locator('#cold-raw-sss-bits option').count(), 18);
+
+    const mnemonic = [
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
+    ].join(' ');
+    await coldFrame.locator('#cold-shamir39-threshold').selectOption('3');
+    await coldFrame.locator('#cold-shamir39-shares').selectOption('5');
+    await coldFrame.locator('#cold-shamir39-source').fill(mnemonic);
+    await coldFrame.locator('#cold-shamir39-split').click();
+    await coldFrame.locator('#cold-shamir39-generated:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-shamir39-generated-parts li').count(), 5);
+    assert.equal(await coldFrame.locator('#cold-shamir39-generated-parts [data-secret-visible="false"]').count(), 5);
+    assert.equal(await coldFrame.locator('#cold-shamir39-source').inputValue(), '');
+    assert.match(await coldFrame.locator('#cold-shamir39-generated-parts').textContent(), /Masked share/);
+    await coldFrame.locator('#cold-shamir39-reveal').click();
+    const shamirParts = await coldFrame.locator('#cold-shamir39-generated-parts .cold-shamir-share-value').allTextContents();
+    assert.equal(shamirParts.length, 5);
+    assert.equal(await coldFrame.locator('#cold-shamir39-generated-parts [data-secret-visible="true"]').count(), 5);
+    assert.doesNotMatch(shamirParts[0], /Masked share/);
+    await coldFrame.locator('#cold-shamir39-reveal').click();
+    assert.equal(await coldFrame.locator('#cold-shamir39-generated-parts [data-secret-visible="false"]').count(), 5);
+
+    for (let index = 0; index < 3; index += 1) {
+      await coldFrame.locator('#cold-shamir39-combine-fields input').nth(index).fill(shamirParts[index]);
+    }
+    await coldFrame.locator('#cold-shamir39-combine-button').click();
+    await coldFrame.locator('#cold-shamir39-combine-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal((await coldFrame.locator('#cold-shamir39-result').textContent()).trim(), 'Masked BIP-39 phrase');
+    assert.equal(await coldFrame.locator('#cold-shamir39-result').getAttribute('data-secret-visible'), 'false');
+    assert.equal(await coldFrame.locator('#cold-shamir39-combine-fields input').nth(0).inputValue(), '');
+    await coldFrame.locator('#cold-shamir39-result-reveal').click();
+    assert.equal((await coldFrame.locator('#cold-shamir39-result').textContent()).trim(), mnemonic);
+    assert.equal(await coldFrame.locator('#cold-shamir39-result').getAttribute('data-secret-visible'), 'true');
+    await coldFrame.locator('#cold-shamir39-result-reveal').click();
+
+    const rawSecret = '82585c749a3db7f73009d0d6107dd650';
+    await coldFrame.locator('#cold-raw-sss-bits').selectOption('8');
+    await coldFrame.locator('#cold-raw-sss-threshold').selectOption('2');
+    await coldFrame.locator('#cold-raw-sss-shares').selectOption('3');
+    await coldFrame.locator('#cold-raw-sss-source').fill(rawSecret);
+    await coldFrame.locator('#cold-raw-sss-split').click();
+    await coldFrame.locator('#cold-raw-sss-generated:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-raw-sss-generated-parts li').count(), 3);
+    assert.equal(await coldFrame.locator('#cold-raw-sss-generated-parts [data-secret-visible="false"]').count(), 3);
+    assert.equal(await coldFrame.locator('#cold-raw-sss-source').inputValue(), '');
+    await coldFrame.locator('#cold-raw-sss-reveal').click();
+    const rawParts = await coldFrame.locator('#cold-raw-sss-generated-parts .cold-shamir-share-value').allTextContents();
+    assert.equal(rawParts.length, 3);
+    assert.doesNotMatch(rawParts[0], /Masked share/);
+    await coldFrame.locator('#cold-raw-sss-reveal').click();
+    for (let index = 0; index < 2; index += 1) {
+      await coldFrame.locator('#cold-raw-sss-combine-fields input').nth(index).fill(rawParts[index]);
+    }
+    await coldFrame.locator('#cold-raw-sss-combine-button').click();
+    await coldFrame.locator('#cold-raw-sss-combine-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal((await coldFrame.locator('#cold-raw-sss-result').textContent()).trim(), 'Masked hexadecimal secret');
+    await coldFrame.locator('#cold-raw-sss-result-reveal').click();
+    assert.equal((await coldFrame.locator('#cold-raw-sss-result').textContent()).trim(), rawSecret);
+    await coldFrame.locator('#cold-raw-sss-result-reveal').click();
+
+    await coldFrame.locator('#cold-raw-sss-combine-fields input').nth(0).fill('80100');
+    await coldFrame.locator('#cold-raw-sss-combine-button').click();
+    assert.match(await coldFrame.locator('#cold-raw-sss-combine-status').textContent(), /did not reconstruct|at least two/i);
+    assert.equal(await coldFrame.locator('#cold-raw-sss-combine-fields input').nth(0).inputValue(), '');
+
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-shamir39-generated').isHidden(), true);
+    assert.equal(await coldFrame.locator('#cold-raw-sss-generated').isHidden(), true);
+    assert.equal((await coldFrame.locator('#cold-shamir39-result').textContent()).trim(), 'Not reconstructed');
+    assert.equal((await coldFrame.locator('#cold-raw-sss-result').textContent()).trim(), 'Not reconstructed');
+    assert.equal(await coldFrame.locator('#cold-shamir39-source').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-raw-sss-source').inputValue(), '');
+
+    console.log(`${engine}: Shamir39 and raw SSS official-format UI, masking, reconstruction, negative case, warm isolation, and teardown passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
+async function verifySlip39(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    const coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-slip39-lab[data-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
+
+    const generate = coldFrame.locator('#cold-slip39-generate');
+    const acknowledge = coldFrame.locator('#cold-slip39-compatibility-ack');
+    const output = coldFrame.locator('#cold-slip39-output');
+    const reveal = coldFrame.locator('#cold-slip39-reveal');
+    const recoveryDetails = coldFrame.locator('#cold-slip39-lab details');
+    const recoveryInput = coldFrame.locator('#cold-slip39-recovery-input');
+    const recovery = coldFrame.locator('#cold-slip39-recover');
+
+    assert.equal(await generate.isDisabled(), true, `${engine}: SLIP-39 generation must stay gated without a valid source phrase`);
+    assert.equal(await reveal.isDisabled(), true, `${engine}: SLIP-39 reveal must stay disabled without generated shares`);
+
+    const mnemonic = [
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
+    ].join(' ');
+    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(mnemonic);
+    await coldFrame.locator('#cold-seed-forge-validate').click();
+    await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-slip39-seed-source').selectOption('validated');
+    await acknowledge.check();
+    assert.equal(await generate.isDisabled(), false, `${engine}: SLIP-39 generation should enable after source and compatibility acknowledgement`);
+
+    await generate.click();
+    await coldFrame.locator('#cold-slip39-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    assert.equal((await output.inputValue()).trim(), 'Masked (3 shares)', `${engine}: SLIP-39 shares must be masked by default`);
+    assert.equal(await reveal.isDisabled(), false, `${engine}: generated SLIP-39 shares must expose only an explicit reveal control`);
+
+    await reveal.click();
+    const shareText = await output.inputValue();
+    const shares = shareText.trim().split(/\r?\n/);
+    assert.equal(shares.length, 3, `${engine}: default SLIP-39 generation must produce three shares`);
+    assert.equal(shares.every((share) => share.split(' ').length === 20), true, `${engine}: 128-bit phrase entropy must produce 20-word shares`);
+    const warmText = await page.locator('body').textContent();
+    assert.equal(warmText.includes(shareText), false, `${engine}: generated SLIP-39 shares must not appear in the warm shell`);
+    await reveal.click();
+    assert.equal((await output.inputValue()).trim(), 'Masked (3 shares)');
+
+    await recoveryDetails.locator('summary').click();
+    await recoveryInput.fill([shares[0], shares[2]].join('\n'));
+    await recovery.click();
+    await coldFrame.locator('#cold-slip39-recovery-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 10000 });
+    const recoveryStatusText = await coldFrame.locator('#cold-slip39-recovery-status').textContent();
+    assert.match(recoveryStatusText, /Recovered \d+-byte phrase entropy/i, `${engine}: SLIP-39 recovery must report the recovered entropy length`);
+    assert.match(recoveryStatusText, /matches the selected Seed Forge phrase/i);
+    assert.doesNotMatch(recoveryStatusText, /fingerprint/i, `${engine}: P2.1 recovery must not claim to display a fingerprint`);
+    assert.equal(
+      await coldFrame.locator('#cold-slip39-lab button').filter({ hasText: /print|complete/i }).count(),
+      0,
+      `${engine}: P2.1 must not expose a print or completion control`
+    );
+    assert.equal(await recoveryInput.inputValue(), '', `${engine}: typed SLIP-39 shares must be cleared after recovery`);
+
+    const corruptShare = shares[0].split(' ');
+    corruptShare[0] = 'not-a-word';
+    await recoveryInput.fill(corruptShare.join(' '));
+    await recovery.click();
+    await coldFrame.locator('#cold-slip39-recovery-status[data-state="error"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await coldFrame.locator('#cold-slip39-recovery-status').textContent(), /share 1/i);
+
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal((await output.inputValue()).trim(), '', `${engine}: lock must clear generated SLIP-39 output`);
+    assert.equal(await recoveryInput.inputValue(), '', `${engine}: lock must clear typed SLIP-39 recovery input`);
+    assert.equal(await reveal.isDisabled(), true, `${engine}: lock must disable the SLIP-39 reveal control`);
+
+    console.log(`${engine}: SLIP-39 cold gating, masked reveal, 20-word output, local two-share recovery, indexed checksum failure, warm-shell isolation, and teardown passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyVerificationWorkflows(browser, engine) {
   const { page } = await openPage(browser, buildPath);
   try {
@@ -3657,6 +3827,8 @@ async function run() {
       await verifyEntropyLab(browser, engine);
       await verifySeedForge(browser, engine);
       await verifyCodex32(browser, engine);
+      await verifyShamirBackups(browser, engine);
+      await verifySlip39(browser, engine);
       await verifyVerificationWorkflows(browser, engine);
       await verifyQrStudio(browser, engine);
       await verifyUnlockedRuntimeHealthLockdown(browser, engine);

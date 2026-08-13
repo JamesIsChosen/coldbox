@@ -14,10 +14,12 @@ __COLDBOX_QR_ENCODER__
   var entropyHealth = window.__coldboxEntropyHealth;
   var seedForge = window.__coldboxSeedForge;
   var codex32 = window.__coldboxCodex32;
+  var shamir = window.__coldboxShamir;
   var derivation = window.__coldboxDerivation;
   var addressVerification = window.__coldboxAddressVerification;
   var verification = window.__coldboxVerification;
   var qr = window.__coldboxQr;
+  var slip39 = window.__coldboxSlip39;
   var readyMarker = document.getElementById('cold-ready');
   var protocolWarning = document.getElementById('cold-protocol-warning');
   var details = document.getElementById('cold-realm-details');
@@ -167,6 +169,35 @@ __COLDBOX_QR_ENCODER__
   var codex32CorrectionOutput = document.getElementById('cold-codex32-correction-output');
   var codex32UseCorrectionButton = document.getElementById('cold-codex32-use-correction');
   var codex32CorrectionStatus = document.getElementById('cold-codex32-correction-status');
+  var shamirPanel = document.getElementById('cold-shamir');
+  var shamir39Language = document.getElementById('cold-shamir39-language');
+  var shamir39Threshold = document.getElementById('cold-shamir39-threshold');
+  var shamir39Shares = document.getElementById('cold-shamir39-shares');
+  var shamir39Source = document.getElementById('cold-shamir39-source');
+  var shamir39SplitButton = document.getElementById('cold-shamir39-split');
+  var shamir39Status = document.getElementById('cold-shamir39-status');
+  var shamir39Generated = document.getElementById('cold-shamir39-generated');
+  var shamir39GeneratedParts = document.getElementById('cold-shamir39-generated-parts');
+  var shamir39RevealButton = document.getElementById('cold-shamir39-reveal');
+  var shamir39CombineFields = document.getElementById('cold-shamir39-combine-fields');
+  var shamir39CombineButton = document.getElementById('cold-shamir39-combine-button');
+  var shamir39CombineStatus = document.getElementById('cold-shamir39-combine-status');
+  var shamir39Result = document.getElementById('cold-shamir39-result');
+  var shamir39ResultRevealButton = document.getElementById('cold-shamir39-result-reveal');
+  var rawSssBits = document.getElementById('cold-raw-sss-bits');
+  var rawSssThreshold = document.getElementById('cold-raw-sss-threshold');
+  var rawSssShares = document.getElementById('cold-raw-sss-shares');
+  var rawSssSource = document.getElementById('cold-raw-sss-source');
+  var rawSssSplitButton = document.getElementById('cold-raw-sss-split');
+  var rawSssStatus = document.getElementById('cold-raw-sss-status');
+  var rawSssGenerated = document.getElementById('cold-raw-sss-generated');
+  var rawSssGeneratedParts = document.getElementById('cold-raw-sss-generated-parts');
+  var rawSssRevealButton = document.getElementById('cold-raw-sss-reveal');
+  var rawSssCombineFields = document.getElementById('cold-raw-sss-combine-fields');
+  var rawSssCombineButton = document.getElementById('cold-raw-sss-combine-button');
+  var rawSssCombineStatus = document.getElementById('cold-raw-sss-combine-status');
+  var rawSssResult = document.getElementById('cold-raw-sss-result');
+  var rawSssResultRevealButton = document.getElementById('cold-raw-sss-result-reveal');
   var verificationPanel = document.getElementById('cold-verification');
   var verificationWalletNetwork = document.getElementById('cold-verification-wallet-network');
   var verificationWalletScript = document.getElementById('cold-verification-wallet-script');
@@ -214,8 +245,36 @@ __COLDBOX_QR_ENCODER__
   var qrCard = document.getElementById('cold-qr-card');
   var qrCardCode = document.getElementById('cold-qr-card-code');
   var qrCardGrid = document.getElementById('cold-qr-card-grid');
+  var slip39Panel = document.getElementById('cold-slip39-lab');
+  var slip39SeedSource = document.getElementById('cold-slip39-seed-source');
+  var slip39GroupThreshold = document.getElementById('cold-slip39-group-threshold');
+  var slip39Groups = document.getElementById('cold-slip39-groups');
+  var slip39Passphrase = document.getElementById('cold-slip39-passphrase');
+  var slip39CompatibilityAck = document.getElementById('cold-slip39-compatibility-ack');
+  var slip39GenerateButton = document.getElementById('cold-slip39-generate');
+  var slip39ClearButton = document.getElementById('cold-slip39-clear');
+  var slip39Status = document.getElementById('cold-slip39-status');
+  var slip39Output = document.getElementById('cold-slip39-output');
+  var slip39RevealButton = document.getElementById('cold-slip39-reveal');
+  var slip39RecoveryInput = document.getElementById('cold-slip39-recovery-input');
+  var slip39RecoverButton = document.getElementById('cold-slip39-recover');
+  var slip39RecoveryStatus = document.getElementById('cold-slip39-recovery-status');
   var entropySession = entropyLab ? entropyLab.createSession() : null;
   var seedForgeWordInputs = [];
+  var shamir39CombineInputs = [];
+  var rawSssCombineInputs = [];
+  var shamir39Parts = [];
+  var rawSssParts = [];
+  var shamir39PartsRevealed = false;
+  var rawSssPartsRevealed = false;
+  var shamir39ResultValue = '';
+  var rawSssResultValue = '';
+  var shamir39ResultRevealed = false;
+  var rawSssResultRevealed = false;
+  var shamir39PartsRevealTimer = null;
+  var rawSssPartsRevealTimer = null;
+  var shamir39ResultRevealTimer = null;
+  var rawSssResultRevealTimer = null;
   var generatedMnemonic = '';
   var generatedLanguage = 'english';
   var generatedRevealed = false;
@@ -226,6 +285,9 @@ __COLDBOX_QR_ENCODER__
   var validationSeedRevealed = false;
   var generatedSeedRevealTimer = null;
   var validationSeedRevealTimer = null;
+  var slip39ShareText = '';
+  var slip39SharesRevealed = false;
+  var slip39RevealTimer = null;
   var generatedWalletRevision = 0;
   var validationWalletRevision = 0;
   var seedForgeWalletRevision = 0;
@@ -1882,6 +1944,282 @@ __COLDBOX_QR_ENCODER__
       seedForgeTarget.value = entropyTargetSelect.value;
     }
     updateSeedForgeMarginalControl(ready);
+    updateSlip39Controls();
+  }
+
+  function setSlip39Status(output, state, text) {
+    if (!output) {
+      return;
+    }
+    output.setAttribute('data-state', state);
+    output.textContent = text;
+  }
+
+  function slip39SourceBytes() {
+    if (!slip39 || !seedForge || !slip39SeedSource) {
+      return null;
+    }
+    if (slip39SeedSource.value === 'generated') {
+      if (!generatedMnemonic || !generatedSeedBytes || generatedWalletRevision <= 0) {
+        return null;
+      }
+      return new Uint8Array(seedForge.mnemonicToEntropy(generatedMnemonic, generatedLanguage));
+    }
+    if (slip39SeedSource.value === 'validated') {
+      if (!validationPhraseText || !validationSeedBytes || validationWalletRevision <= 0) {
+        return null;
+      }
+      var language = seedForgeLanguage ? seedForgeLanguage.value : 'english';
+      return new Uint8Array(seedForge.mnemonicToEntropy(validationPhraseText, language));
+    }
+    return null;
+  }
+
+  function slip39SourceAvailable() {
+    var source = null;
+    try {
+      source = slip39SourceBytes();
+      return Boolean(source);
+    } catch (_error) {
+      return false;
+    } finally {
+      zeroBytes(source);
+    }
+  }
+
+  function remaskSlip39Shares() {
+    slip39SharesRevealed = false;
+    if (slip39RevealTimer !== null) {
+      window.clearTimeout(slip39RevealTimer);
+      slip39RevealTimer = null;
+    }
+    if (slip39Output) {
+      slip39Output.value = slip39ShareText
+        ? 'Masked (' + slip39ShareText.split('\n').length + ' shares)'
+        : '';
+    }
+    if (slip39RevealButton) {
+      slip39RevealButton.textContent = 'Reveal shares for 30 seconds';
+      slip39RevealButton.disabled = !vaultCryptoReady || !slip39ShareText;
+    }
+  }
+
+  function clearSlip39Outputs() {
+    slip39ShareText = '';
+    remaskSlip39Shares();
+    if (slip39Output) {
+      slip39Output.value = '';
+    }
+    if (slip39RecoveryInput) {
+      slip39RecoveryInput.value = '';
+    }
+    setSlip39Status(slip39Status, 'idle', 'No SLIP-39 share set generated in this session.');
+    setSlip39Status(slip39RecoveryStatus, 'idle', 'No recovery attempt.');
+    updateSlip39Controls();
+  }
+
+  function revealSlip39Shares() {
+    if (!slip39ShareText || !slip39Output) {
+      return;
+    }
+    if (slip39RevealTimer !== null) {
+      window.clearTimeout(slip39RevealTimer);
+      slip39RevealTimer = null;
+    }
+    slip39Output.value = slip39ShareText;
+    slip39SharesRevealed = true;
+    if (slip39RevealButton) {
+      slip39RevealButton.textContent = 'Hide shares now';
+    }
+    slip39RevealTimer = window.setTimeout(remaskSlip39Shares, 30000);
+  }
+
+  function parseSlip39Options() {
+    var groupThreshold = Number(slip39GroupThreshold && slip39GroupThreshold.value);
+    if (!Number.isInteger(groupThreshold) || groupThreshold < 1 || groupThreshold > 16) {
+      throw new Error('Groups required must be an integer from 1 to 16.');
+    }
+    var groups;
+    try {
+      groups = JSON.parse(slip39Groups ? slip39Groups.value : '');
+    } catch (_error) {
+      throw new Error('Member groups must be valid JSON.');
+    }
+    if (!Array.isArray(groups) || groups.length < 1 || groups.length > 16) {
+      throw new Error('Member groups must contain 1 to 16 group objects.');
+    }
+    return {
+      groups: groups,
+      groupThreshold: groupThreshold,
+      passphrase: slip39Passphrase ? slip39Passphrase.value : ''
+    };
+  }
+
+  function updateSlip39Controls() {
+    if (!slip39Panel) {
+      return;
+    }
+    var ready = Boolean(slip39 && seedForge && vaultCryptoReady);
+    var sourceReady = ready && slip39SourceAvailable();
+    slip39Panel.setAttribute('data-state', ready ? 'ready' : 'locked');
+    [slip39SeedSource, slip39GroupThreshold, slip39Groups, slip39Passphrase, slip39RecoveryInput]
+      .forEach(function (control) {
+        if (control) {
+          control.disabled = !ready;
+        }
+      });
+    if (slip39CompatibilityAck) {
+      slip39CompatibilityAck.disabled = !ready || !sourceReady;
+      if (!sourceReady) {
+        slip39CompatibilityAck.checked = false;
+      }
+    }
+    if (slip39GenerateButton) {
+      slip39GenerateButton.disabled = !ready || !sourceReady
+        || !slip39CompatibilityAck || !slip39CompatibilityAck.checked;
+    }
+    if (slip39ClearButton) {
+      slip39ClearButton.disabled = !ready;
+    }
+    if (slip39RecoverButton) {
+      slip39RecoverButton.disabled = !ready;
+    }
+    if (slip39RevealButton) {
+      slip39RevealButton.disabled = !ready || !slip39ShareText;
+    }
+  }
+
+  function generateSlip39Shares() {
+    if (!slip39 || !vaultCryptoReady) {
+      setSlip39Status(slip39Status, 'error', 'SLIP-39 is unavailable; generation refused.');
+      return;
+    }
+    if (!slip39CompatibilityAck || !slip39CompatibilityAck.checked) {
+      setSlip39Status(slip39Status, 'error', 'Confirm device compatibility and separate distribution before generating.');
+      return;
+    }
+    var source = null;
+    var generated = null;
+    try {
+      source = slip39SourceBytes();
+      if (!source) {
+        throw new Error('A valid generated or validated phrase is required.');
+      }
+      var options = parseSlip39Options();
+      clearSlip39Outputs();
+      generated = slip39.generate(source, options);
+      slip39ShareText = generated.shares.map(function (share) { return share.mnemonic; }).join('\n');
+      remaskSlip39Shares();
+      setSlip39Status(
+        slip39Status,
+        'ready',
+        'Generated ' + generated.shares.length + ' share(s) from ' + (source.length * 8)
+          + '-bit BIP-39 phrase entropy. Write each share separately; the BIP-39 passphrase, if any, is not included.'
+      );
+    } catch (error) {
+      setSlip39Status(slip39Status, 'error', 'SLIP-39 generation failed closed: ' + error.message);
+      slip39ShareText = '';
+      remaskSlip39Shares();
+    } finally {
+      zeroBytes(source);
+      generated = null;
+      updateSlip39Controls();
+    }
+  }
+
+  function recoverSlip39Shares() {
+    if (!slip39 || !vaultCryptoReady) {
+      setSlip39Status(slip39RecoveryStatus, 'error', 'SLIP-39 is unavailable; recovery refused.');
+      return;
+    }
+    var recovered = null;
+    var source = null;
+    var lines = [];
+    try {
+      lines = (slip39RecoveryInput ? slip39RecoveryInput.value : '')
+        .split(/\r?\n/)
+        .map(function (line) { return line.trim(); })
+        .filter(function (line) { return line.length > 0; });
+      if (lines.length === 0) {
+        throw new Error('Enter at least one complete share from the written copies.');
+      }
+      recovered = slip39.recover(lines, slip39Passphrase ? slip39Passphrase.value : '');
+      source = slip39SourceBytes();
+      if (source && slip39.bytesEqual(recovered, source)) {
+        setSlip39Status(
+          slip39RecoveryStatus,
+          'valid',
+          'Recovered ' + recovered.length + '-byte phrase entropy and it matches the selected Seed Forge phrase.'
+        );
+      } else if (source) {
+        setSlip39Status(
+          slip39RecoveryStatus,
+          'error',
+          'Recovered ' + recovered.length + '-byte phrase entropy, but it does not match the selected Seed Forge phrase.'
+        );
+      } else {
+        setSlip39Status(
+          slip39RecoveryStatus,
+          'ready',
+          'Recovered ' + recovered.length + '-byte phrase entropy. Select the source phrase to compare it locally.'
+        );
+      }
+    } catch (error) {
+      setSlip39Status(slip39RecoveryStatus, 'error', 'SLIP-39 recovery failed closed: ' + error.message);
+    } finally {
+      zeroBytes(recovered);
+      zeroBytes(source);
+      lines.length = 0;
+      if (slip39RecoveryInput) {
+        slip39RecoveryInput.value = '';
+      }
+      updateSlip39Controls();
+    }
+  }
+
+  function wireSlip39() {
+    if (!slip39) {
+      return;
+    }
+    if (slip39GenerateButton) {
+      slip39GenerateButton.addEventListener('click', generateSlip39Shares);
+    }
+    if (slip39ClearButton) {
+      slip39ClearButton.addEventListener('click', clearSlip39Outputs);
+    }
+    if (slip39RevealButton) {
+      slip39RevealButton.addEventListener('click', function () {
+        if (slip39SharesRevealed) {
+          remaskSlip39Shares();
+        } else {
+          revealSlip39Shares();
+        }
+      });
+    }
+    if (slip39RecoverButton) {
+      slip39RecoverButton.addEventListener('click', recoverSlip39Shares);
+    }
+    if (slip39SeedSource) {
+      slip39SeedSource.addEventListener('change', function () {
+        clearSlip39Outputs();
+        if (slip39CompatibilityAck) {
+          slip39CompatibilityAck.checked = false;
+        }
+        updateSlip39Controls();
+      });
+    }
+    [slip39GroupThreshold, slip39Groups, slip39Passphrase].forEach(function (control) {
+      if (control) {
+        control.addEventListener('input', function () {
+          clearSlip39Outputs();
+          updateSlip39Controls();
+        });
+      }
+    });
+    if (slip39CompatibilityAck) {
+      slip39CompatibilityAck.addEventListener('change', updateSlip39Controls);
+    }
+    updateSlip39Controls();
   }
 
   function setFingerprintOutput(output, value) {
@@ -1973,6 +2311,11 @@ __COLDBOX_QR_ENCODER__
     if (seedForgeGeneratedSeedReveal) {
       seedForgeGeneratedSeedReveal.disabled = true;
     }
+    if (slip39SeedSource && slip39SeedSource.value === 'generated') {
+      clearSlip39Outputs();
+    } else {
+      updateSlip39Controls();
+    }
   }
 
   function replaceGeneratedSeed(bytes) {
@@ -2023,6 +2366,11 @@ __COLDBOX_QR_ENCODER__
     }
     if (seedForgeValidationSeedReveal) {
       seedForgeValidationSeedReveal.disabled = true;
+    }
+    if (slip39SeedSource && slip39SeedSource.value === 'validated') {
+      clearSlip39Outputs();
+    } else {
+      updateSlip39Controls();
     }
   }
 
@@ -2288,6 +2636,534 @@ __COLDBOX_QR_ENCODER__
     if (seedForgeValidationPassphraseConfirm) {
       seedForgeValidationPassphraseConfirm.value = '';
     }
+  }
+
+  // --- Backup shares (P2.4) -----------------------------------------------
+  //
+  // Shamir39 and raw SSS are cold-local workflows. Share strings, source
+  // material, and reconstructed candidates never enter a message payload or
+  // a persistent store. The visible share/result nodes stay masked until the
+  // user explicitly requests a short reveal, and the shared cold-session
+  // teardown clears every input, array, timer, and output.
+
+  function setShamirStatus(output, state, text) {
+    if (!output) {
+      return;
+    }
+    output.setAttribute('data-state', state);
+    output.textContent = text;
+  }
+
+  function fillShamirCountOptions(select, selected) {
+    if (!select) {
+      return;
+    }
+    select.textContent = '';
+    for (var count = 2; count <= 8; count += 1) {
+      var option = document.createElement('option');
+      option.value = String(count);
+      option.textContent = String(count);
+      select.appendChild(option);
+    }
+    select.value = String(selected);
+  }
+
+  function fillShamirBitsOptions() {
+    if (!rawSssBits) {
+      return;
+    }
+    rawSssBits.textContent = '';
+    for (var bits = 3; bits <= 20; bits += 1) {
+      var option = document.createElement('option');
+      option.value = String(bits);
+      option.textContent = String(bits) + ' bits (GF(2^' + String(bits) + '))';
+      rawSssBits.appendChild(option);
+    }
+    rawSssBits.value = '8';
+  }
+
+  function updateShamirCountSelection(thresholdSelect, sharesSelect) {
+    var threshold = Number(thresholdSelect && thresholdSelect.value);
+    var shares = Number(sharesSelect && sharesSelect.value);
+    if (!Number.isInteger(threshold) || threshold < 2 || threshold > 8) {
+      threshold = 2;
+      if (thresholdSelect) {
+        thresholdSelect.value = '2';
+      }
+    }
+    if (!Number.isInteger(shares) || shares < threshold || shares > 8) {
+      shares = threshold;
+      if (sharesSelect) {
+        sharesSelect.value = String(shares);
+      }
+    }
+  }
+
+  function renderShamirParts(output, parts, revealed) {
+    if (!output) {
+      return;
+    }
+    output.textContent = '';
+    parts.forEach(function (part, index) {
+      var item = document.createElement('li');
+      var value = document.createElement('span');
+      value.className = 'cold-shamir-share-value';
+      value.textContent = revealed ? part : 'Masked share ' + String(index + 1);
+      value.setAttribute('data-secret-visible', revealed ? 'true' : 'false');
+      item.appendChild(value);
+      output.appendChild(item);
+    });
+  }
+
+  function setShamirResultOutput(output, value, revealed, maskedText) {
+    if (!output) {
+      return;
+    }
+    output.textContent = revealed && value ? value : maskedText;
+    output.setAttribute('data-secret-visible', revealed && value ? 'true' : 'false');
+  }
+
+  function clearShamirTimers() {
+    [
+      ['shamir39Parts', shamir39PartsRevealTimer],
+      ['rawSssParts', rawSssPartsRevealTimer],
+      ['shamir39Result', shamir39ResultRevealTimer],
+      ['rawSssResult', rawSssResultRevealTimer]
+    ].forEach(function (entry) {
+      if (entry[1] !== null) {
+        window.clearTimeout(entry[1]);
+      }
+    });
+    shamir39PartsRevealTimer = null;
+    rawSssPartsRevealTimer = null;
+    shamir39ResultRevealTimer = null;
+    rawSssResultRevealTimer = null;
+  }
+
+  function remaskShamir39Parts() {
+    shamir39PartsRevealed = false;
+    renderShamirParts(shamir39GeneratedParts, shamir39Parts, false);
+    if (shamir39RevealButton) {
+      shamir39RevealButton.textContent = 'Reveal shares for 30 seconds';
+    }
+  }
+
+  function revealShamir39Parts() {
+    if (shamir39Parts.length === 0) {
+      return;
+    }
+    shamir39PartsRevealed = true;
+    renderShamirParts(shamir39GeneratedParts, shamir39Parts, true);
+    if (shamir39PartsRevealTimer !== null) {
+      window.clearTimeout(shamir39PartsRevealTimer);
+    }
+    shamir39PartsRevealTimer = window.setTimeout(remaskShamir39Parts, 30000);
+    if (shamir39RevealButton) {
+      shamir39RevealButton.textContent = 'Hide shares now';
+    }
+  }
+
+  function remaskRawSssParts() {
+    rawSssPartsRevealed = false;
+    renderShamirParts(rawSssGeneratedParts, rawSssParts, false);
+    if (rawSssRevealButton) {
+      rawSssRevealButton.textContent = 'Reveal shares for 30 seconds';
+    }
+  }
+
+  function revealRawSssParts() {
+    if (rawSssParts.length === 0) {
+      return;
+    }
+    rawSssPartsRevealed = true;
+    renderShamirParts(rawSssGeneratedParts, rawSssParts, true);
+    if (rawSssPartsRevealTimer !== null) {
+      window.clearTimeout(rawSssPartsRevealTimer);
+    }
+    rawSssPartsRevealTimer = window.setTimeout(remaskRawSssParts, 30000);
+    if (rawSssRevealButton) {
+      rawSssRevealButton.textContent = 'Hide shares now';
+    }
+  }
+
+  function remaskShamir39Result() {
+    shamir39ResultRevealed = false;
+    setShamirResultOutput(shamir39Result, shamir39ResultValue, false, 'Masked BIP-39 phrase');
+    if (shamir39ResultRevealButton) {
+      shamir39ResultRevealButton.textContent = 'Reveal phrase for 30 seconds';
+    }
+  }
+
+  function revealShamir39Result() {
+    if (!shamir39ResultValue) {
+      return;
+    }
+    shamir39ResultRevealed = true;
+    setShamirResultOutput(shamir39Result, shamir39ResultValue, true, 'Masked BIP-39 phrase');
+    if (shamir39ResultRevealTimer !== null) {
+      window.clearTimeout(shamir39ResultRevealTimer);
+    }
+    shamir39ResultRevealTimer = window.setTimeout(remaskShamir39Result, 30000);
+    if (shamir39ResultRevealButton) {
+      shamir39ResultRevealButton.textContent = 'Hide phrase now';
+    }
+  }
+
+  function remaskRawSssResult() {
+    rawSssResultRevealed = false;
+    setShamirResultOutput(rawSssResult, rawSssResultValue, false, 'Masked hexadecimal secret');
+    if (rawSssResultRevealButton) {
+      rawSssResultRevealButton.textContent = 'Reveal hex secret for 30 seconds';
+    }
+  }
+
+  function revealRawSssResult() {
+    if (!rawSssResultValue) {
+      return;
+    }
+    rawSssResultRevealed = true;
+    setShamirResultOutput(rawSssResult, rawSssResultValue, true, 'Masked hexadecimal secret');
+    if (rawSssResultRevealTimer !== null) {
+      window.clearTimeout(rawSssResultRevealTimer);
+    }
+    rawSssResultRevealTimer = window.setTimeout(remaskRawSssResult, 30000);
+    if (rawSssResultRevealButton) {
+      rawSssResultRevealButton.textContent = 'Hide hex secret now';
+    }
+  }
+
+  function clearShamirInputs(inputs) {
+    inputs.forEach(function (input) {
+      input.value = '';
+    });
+  }
+
+  function readShamirInputs(inputs) {
+    return inputs.map(function (input) {
+      return input.value.trim();
+    }).filter(function (value) {
+      return value.length > 0;
+    });
+  }
+
+  function updateShamirControls() {
+    if (!shamirPanel) {
+      return;
+    }
+    var ready = Boolean(
+      vaultCryptoReady
+      && shamir
+      && shamir.shamir39
+      && shamir.raw
+      && typeof shamir.shamir39.split === 'function'
+      && typeof shamir.shamir39.combine === 'function'
+      && typeof shamir.raw.split === 'function'
+      && typeof shamir.raw.combine === 'function'
+    );
+    shamirPanel.setAttribute('data-state', ready ? 'ready' : 'locked');
+    [
+      shamir39Language,
+      shamir39Threshold,
+      shamir39Shares,
+      shamir39Source,
+      shamir39SplitButton,
+      shamir39CombineButton,
+      rawSssBits,
+      rawSssThreshold,
+      rawSssShares,
+      rawSssSource,
+      rawSssSplitButton,
+      rawSssCombineButton
+    ].forEach(function (control) {
+      if (control) {
+        control.disabled = !ready;
+      }
+    });
+    shamir39CombineInputs.concat(rawSssCombineInputs).forEach(function (input) {
+      input.disabled = !ready;
+    });
+    if (shamir39RevealButton) {
+      shamir39RevealButton.disabled = !ready || shamir39Parts.length === 0;
+    }
+    if (rawSssRevealButton) {
+      rawSssRevealButton.disabled = !ready || rawSssParts.length === 0;
+    }
+    if (shamir39ResultRevealButton) {
+      shamir39ResultRevealButton.disabled = !ready || !shamir39ResultValue;
+    }
+    if (rawSssResultRevealButton) {
+      rawSssResultRevealButton.disabled = !ready || !rawSssResultValue;
+    }
+  }
+
+  function splitShamir39Phrase() {
+    var source = shamir39Source ? shamir39Source.value : '';
+    var threshold = Number(shamir39Threshold && shamir39Threshold.value);
+    var shares = Number(shamir39Shares && shamir39Shares.value);
+    if (!shamir || !source) {
+      setShamirStatus(shamir39Status, 'error', 'Enter a BIP-39 phrase before splitting.');
+      return;
+    }
+    try {
+      var result = shamir.shamir39.split(source, {
+        language: shamir39Language ? shamir39Language.value : 'english',
+        threshold: threshold,
+        shares: shares
+      });
+      shamir39Parts = Array.prototype.slice.call(result.parts);
+      shamir39PartsRevealed = false;
+      renderShamirParts(shamir39GeneratedParts, shamir39Parts, false);
+      if (shamir39Generated) {
+        shamir39Generated.hidden = false;
+      }
+      clearShamirTimers();
+      remaskShamir39Parts();
+      setShamirStatus(shamir39Status, 'ready', 'Generated ' + String(result.shares) + ' Shamir39 shares; ' + String(result.threshold) + ' are required.');
+    } catch (error) {
+      shamir39Parts = [];
+      if (shamir39Generated) {
+        shamir39Generated.hidden = true;
+      }
+      setShamirStatus(shamir39Status, 'error', 'Shamir39 refused the input: ' + error.message);
+    } finally {
+      if (shamir39Source) {
+        shamir39Source.value = '';
+      }
+      updateShamirControls();
+    }
+  }
+
+  function splitRawSssSecret() {
+    var source = rawSssSource ? rawSssSource.value : '';
+    var threshold = Number(rawSssThreshold && rawSssThreshold.value);
+    var shares = Number(rawSssShares && rawSssShares.value);
+    if (!shamir || !source) {
+      setShamirStatus(rawSssStatus, 'error', 'Enter an even-length hexadecimal secret before splitting.');
+      return;
+    }
+    try {
+      var result = shamir.raw.split(source, {
+        bits: Number(rawSssBits && rawSssBits.value),
+        threshold: threshold,
+        shares: shares,
+        padLength: 128
+      });
+      rawSssParts = Array.prototype.slice.call(result.parts);
+      rawSssPartsRevealed = false;
+      renderShamirParts(rawSssGeneratedParts, rawSssParts, false);
+      if (rawSssGenerated) {
+        rawSssGenerated.hidden = false;
+      }
+      clearShamirTimers();
+      remaskRawSssParts();
+      setShamirStatus(rawSssStatus, 'ready', 'Generated ' + String(result.shares) + ' raw SSS shares; ' + String(result.threshold) + ' are required.');
+    } catch (error) {
+      rawSssParts = [];
+      if (rawSssGenerated) {
+        rawSssGenerated.hidden = true;
+      }
+      setShamirStatus(rawSssStatus, 'error', 'Raw SSS refused the input: ' + error.message);
+    } finally {
+      if (rawSssSource) {
+        rawSssSource.value = '';
+      }
+      updateShamirControls();
+    }
+  }
+
+  function combineShamir39Shares() {
+    var parts = readShamirInputs(shamir39CombineInputs);
+    try {
+      if (!shamir || parts.length < 2) {
+        throw new Error('Enter at least two complete Shamir39 shares.');
+      }
+      var result = shamir.shamir39.combine(parts, {
+        language: shamir39Language ? shamir39Language.value : 'english'
+      });
+      shamir39ResultValue = result.mnemonic;
+      shamir39ResultRevealed = false;
+      setShamirResultOutput(shamir39Result, shamir39ResultValue, false, 'Masked BIP-39 phrase');
+      setShamirStatus(shamir39CombineStatus, 'ready', 'Reconstructed a valid ' + String(result.wordCount) + '-word BIP-39 phrase.');
+    } catch (error) {
+      shamir39ResultValue = '';
+      setShamirResultOutput(shamir39Result, '', false, 'Not reconstructed');
+      setShamirStatus(shamir39CombineStatus, 'error', 'Shamir39 did not reconstruct a valid phrase: ' + error.message);
+    } finally {
+      clearShamirInputs(shamir39CombineInputs);
+      updateShamirControls();
+    }
+  }
+
+  function combineRawSssShares() {
+    var parts = readShamirInputs(rawSssCombineInputs);
+    try {
+      if (!shamir || parts.length < 2) {
+        throw new Error('Enter at least two complete raw SSS shares.');
+      }
+      var result = shamir.raw.combine(parts, {
+        threshold: Number(rawSssThreshold && rawSssThreshold.value)
+      });
+      rawSssResultValue = result.hex;
+      rawSssResultRevealed = false;
+      setShamirResultOutput(rawSssResult, rawSssResultValue, false, 'Masked hexadecimal secret');
+      setShamirStatus(rawSssCombineStatus, 'ready', 'Reconstructed the raw secret from ' + String(result.shares) + ' shares.');
+    } catch (error) {
+      rawSssResultValue = '';
+      setShamirResultOutput(rawSssResult, '', false, 'Not reconstructed');
+      setShamirStatus(rawSssCombineStatus, 'error', 'Raw SSS did not reconstruct the secret: ' + error.message);
+    } finally {
+      clearShamirInputs(rawSssCombineInputs);
+      updateShamirControls();
+    }
+  }
+
+  function createShamirCombineInputs(container, target, labelPrefix) {
+    if (!container) {
+      return;
+    }
+    container.textContent = '';
+    for (var index = 0; index < 8; index += 1) {
+      var label = document.createElement('label');
+      label.textContent = labelPrefix + ' ' + String(index + 1);
+      var input = document.createElement('input');
+      input.type = 'password';
+      input.autocomplete = 'off';
+      input.spellcheck = false;
+      input.setAttribute('autocorrect', 'off');
+      input.setAttribute('autocapitalize', 'off');
+      input.setAttribute('aria-label', labelPrefix + ' ' + String(index + 1));
+      input.disabled = true;
+      label.appendChild(input);
+      container.appendChild(label);
+      target.push(input);
+    }
+  }
+
+  function wireShamir() {
+    if (!shamirPanel || !shamir || !shamir.shamir39 || !shamir.raw) {
+      return;
+    }
+    if (shamir39Language && Array.isArray(seedForge && seedForge.languages)) {
+      shamir39Language.textContent = '';
+      seedForge.languages.forEach(function (language) {
+        var option = document.createElement('option');
+        option.value = language.id;
+        option.textContent = language.label;
+        shamir39Language.appendChild(option);
+      });
+      shamir39Language.value = 'english';
+    }
+    fillShamirCountOptions(shamir39Threshold, 3);
+    fillShamirCountOptions(shamir39Shares, 5);
+    fillShamirCountOptions(rawSssThreshold, 3);
+    fillShamirCountOptions(rawSssShares, 5);
+    fillShamirBitsOptions();
+    createShamirCombineInputs(shamir39CombineFields, shamir39CombineInputs, 'Shamir39 share');
+    createShamirCombineInputs(rawSssCombineFields, rawSssCombineInputs, 'Raw SSS share');
+    if (shamir39Threshold) {
+      shamir39Threshold.addEventListener('change', function () {
+        updateShamirCountSelection(shamir39Threshold, shamir39Shares);
+      });
+    }
+    if (shamir39Shares) {
+      shamir39Shares.addEventListener('change', function () {
+        updateShamirCountSelection(shamir39Threshold, shamir39Shares);
+      });
+    }
+    if (rawSssThreshold) {
+      rawSssThreshold.addEventListener('change', function () {
+        updateShamirCountSelection(rawSssThreshold, rawSssShares);
+      });
+    }
+    if (rawSssShares) {
+      rawSssShares.addEventListener('change', function () {
+        updateShamirCountSelection(rawSssThreshold, rawSssShares);
+      });
+    }
+    if (shamir39SplitButton) {
+      shamir39SplitButton.addEventListener('click', splitShamir39Phrase);
+    }
+    if (rawSssSplitButton) {
+      rawSssSplitButton.addEventListener('click', splitRawSssSecret);
+    }
+    if (shamir39CombineButton) {
+      shamir39CombineButton.addEventListener('click', combineShamir39Shares);
+    }
+    if (rawSssCombineButton) {
+      rawSssCombineButton.addEventListener('click', combineRawSssShares);
+    }
+    if (shamir39RevealButton) {
+      shamir39RevealButton.addEventListener('click', function () {
+        if (shamir39PartsRevealed) {
+          remaskShamir39Parts();
+        } else {
+          revealShamir39Parts();
+        }
+      });
+    }
+    if (rawSssRevealButton) {
+      rawSssRevealButton.addEventListener('click', function () {
+        if (rawSssPartsRevealed) {
+          remaskRawSssParts();
+        } else {
+          revealRawSssParts();
+        }
+      });
+    }
+    if (shamir39ResultRevealButton) {
+      shamir39ResultRevealButton.addEventListener('click', function () {
+        if (shamir39ResultRevealed) {
+          remaskShamir39Result();
+        } else {
+          revealShamir39Result();
+        }
+      });
+    }
+    if (rawSssResultRevealButton) {
+      rawSssResultRevealButton.addEventListener('click', function () {
+        if (rawSssResultRevealed) {
+          remaskRawSssResult();
+        } else {
+          revealRawSssResult();
+        }
+      });
+    }
+    updateShamirControls();
+  }
+
+  function clearShamirSession() {
+    clearShamirTimers();
+    shamir39Parts = [];
+    rawSssParts = [];
+    shamir39PartsRevealed = false;
+    rawSssPartsRevealed = false;
+    shamir39ResultValue = '';
+    rawSssResultValue = '';
+    shamir39ResultRevealed = false;
+    rawSssResultRevealed = false;
+    clearShamirInputs(shamir39CombineInputs);
+    clearShamirInputs(rawSssCombineInputs);
+    if (shamir39Source) {
+      shamir39Source.value = '';
+    }
+    if (rawSssSource) {
+      rawSssSource.value = '';
+    }
+    renderShamirParts(shamir39GeneratedParts, shamir39Parts, false);
+    renderShamirParts(rawSssGeneratedParts, rawSssParts, false);
+    if (shamir39Generated) {
+      shamir39Generated.hidden = true;
+    }
+    if (rawSssGenerated) {
+      rawSssGenerated.hidden = true;
+    }
+    setShamirStatus(shamir39Status, 'idle', 'Shamir39 is waiting for a phrase.');
+    setShamirStatus(rawSssStatus, 'idle', 'Raw SSS is waiting for a hexadecimal secret.');
+    setShamirStatus(shamir39CombineStatus, 'idle', 'No shares entered.');
+    setShamirStatus(rawSssCombineStatus, 'idle', 'No shares entered.');
+    setShamirResultOutput(shamir39Result, '', false, 'Not reconstructed');
+    setShamirResultOutput(rawSssResult, '', false, 'Not reconstructed');
+    updateShamirControls();
   }
 
   // --- Verification Bench (P1.9) ------------------------------------------
@@ -3382,6 +4258,7 @@ __COLDBOX_QR_ENCODER__
 
   function clearVaultSession(clearPending) {
     clearSeedForgeSession();
+    clearShamirSession();
     clearVerificationSession();
     clearQrArtifact();
     clearCodex32State();
@@ -4258,6 +5135,7 @@ __COLDBOX_QR_ENCODER__
     updateVaultControls();
     updateBenchmarkAvailability();
     updateEntropyLabControls();
+    updateShamirControls();
     updateVerificationControls();
     updateQrControls();
     updateCodex32Controls();
@@ -4331,7 +5209,7 @@ __COLDBOX_QR_ENCODER__
     messagePort.postMessage(readyMessage);
   }
 
-  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer || !vaultLayer || !entropyLab || !seedForge || !codex32 || !derivation || !verification || !qr) {
+  if (!readyMarker || !window.parent || !protocol || !airgap || !capabilities || !cryptoLayer || !vaultLayer || !entropyLab || !seedForge || !codex32 || !shamir || !slip39 || !derivation || !verification || !qr) {
     return;
   }
 
@@ -4531,6 +5409,8 @@ __COLDBOX_QR_ENCODER__
   installThrowContract();
   wireSeedForge();
   wireCodex32();
+  wireShamir();
+  wireSlip39();
   wireQrStudio();
   wireEntropyLab();
   wireVerification();

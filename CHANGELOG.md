@@ -12,6 +12,37 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
+### Added - P2.4 Shamir39 and raw SSS (2026-08-12)
+
+- **Cold-only threshold shares.** Shamir39 splits valid BIP-39 phrases into
+  mnemonic shares, and raw SSS splits hexadecimal secrets over GF(2^n) with
+  the secrets.js-compatible format. Both use only `crypto.getRandomValues`
+  and fail closed when secure randomness is unavailable.
+- **Masked recovery workflow.** The sealed realm keeps sources, shares, and
+  reconstructed candidates out of the warm message channel, masks them by
+  default, offers a timed reveal, and clears all inputs and outputs on lock or
+  panic teardown. There is no clipboard, storage, download, or print action.
+- **Independent compatibility coverage.** Published Ian Coleman Shamir39 and
+  secrets.js vectors, malformed-share negatives, deterministic formatting,
+  Chromium/Firefox UI isolation, and teardown are covered. See
+  [ADR-0038](docs/05-development/adr/0038-shamir39-and-raw-sss-cold-only.md)
+  and [the guide](docs/03-guides/backup-shamir.md).
+- **Full-uniform coefficient policy.** Nonconstant polynomial coefficients are
+  sampled independently from the complete finite field, including zero, to
+  preserve Shamir's below-threshold secrecy property. This intentionally does
+  not reproduce the pinned generators' nonzero coefficient distribution; the
+  share encoding and combine compatibility remain unchanged.
+- **Cross-combine regression coverage.** Forced-zero Shamir39 and raw-SSS
+  vectors reconstruct with the pinned Ian Coleman and secrets.js combiners,
+  and exhaustive GF(8) checks cover one- and two-share below-threshold
+  distributions.
+
+### Added - P2.1 SLIP-39 cold backup shares (2026-08-11)
+
+- Added a cold-only SLIP-39 Backup Lab using the standard 1024-word list, secure randomness, 20/33-word phrase-entropy inputs, two-level group thresholds, share passphrase extension, checksum validation, masked 30-second reveal, and local recovery comparison.
+- Added official Trezor interoperability vectors for no-sharing, 2-of-3, two-level group, extendable-backup, malformed-share, duplicate-share, and missing-randomness cases. BIP-39 passphrases remain separate backup material.
+- Added [ADR-0036](docs/05-development/adr/0036-slip39-cold-vendoring.md) and pinned source provenance for the browser adaptation.
+
 ### Fixed - P1.11 independent-review remediation (2026-08-11)
 
 - Warm public registry replacements can no longer elevate an address to `cold-verified` or rewrite authenticated verification evidence; schema-1 public compartments migrate in the cold vault session and persist as schema 2; and Chromium/Firefox coverage locks the stale Registry label to `Cold verification stale`.
@@ -32,7 +63,7 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 ### Added - P2.2 codex32 (2026-08-12)
 
 - **Cold-only BIP-93 backup shares.** The sealed realm now encodes direct 16-to-64-byte BIP-32 master seeds, generates threshold shares over GF(32), recovers exact threshold sets, supports the regular and long checksum formats, and fails closed on invalid configuration, missing randomness, or bad checksums.
-- **Masked recovery workflow.** Generated and recovered codex32 strings stay masked until a timed reveal; single-character correction is a confirmation-gated suggestion and never auto-applied. Official BIP-93 vectors and Chromium/Firefox `file://` coverage are included. See [ADR-0036](docs/05-development/adr/0036-codex32-cold-hand-verifiable.md).
+- **Masked recovery workflow.** Generated and recovered codex32 strings stay masked until a timed reveal; single-character correction is a confirmation-gated suggestion and never auto-applied. Official BIP-93 vectors and Chromium/Firefox `file://` coverage are included. See [ADR-0036](docs/05-development/adr/0037-codex32-cold-hand-verifiable.md).
 
 Foundation work in progress. Full wallet workflows remain ahead; the P0.10 cryptographic layer, P0.11 vault format, P0.12 KDF benchmark, and P0.13 lock/save/load surface are now present behind the cold-realm boundary. See [ROADMAP.md](docs/05-development/ROADMAP.md) for item-level status.
 

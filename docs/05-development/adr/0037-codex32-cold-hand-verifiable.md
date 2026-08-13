@@ -1,4 +1,4 @@
-# ADR-0036: Codex32 is an inline BIP-93 adaptation owned by the cold realm
+# ADR-0037: Codex32 is an inline BIP-93 adaptation owned by the cold realm
 
 **Status:** Accepted
 **Date:** 2026-08-12

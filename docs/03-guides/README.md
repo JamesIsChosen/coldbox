@@ -22,6 +22,7 @@ Step-by-step for the flows where mistakes are expensive. These compile into the 
 |---|---|
 | [SLIP-39](backup-slip39.md) | Threshold shares — check device support first |
 | [codex32](backup-codex32.md) | Shares verifiable by hand, no computer |
+| [Shamir39 and raw SSS](backup-shamir.md) | Non-standard threshold shares for BIP-39 phrases or raw hexadecimal secrets |
 | [Recover a damaged seed](recover-a-seed.md) | Missing words, typos, wrong order |
 
 ## Planning
