@@ -234,7 +234,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
   *Deps: P1.3*
 - [ ] P2.3 Seed XOR
   *Deps: P1.3*
-- [~] **P2.4 Shamir39 and raw SSS**
+- [x] **P2.4 Shamir39 and raw SSS**
   *Deps: P1.3*
 - [ ] P2.5 Vault recovery shares
   *Deps: P2.1*
