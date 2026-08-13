@@ -8,17 +8,20 @@ specification and the secrets.js reference behavior were reviewed on
 
 ::: plain
 Choose a threshold, such as 2 of 3 or 3 of 5. Any threshold number of shares
-can rebuild the secret. The current coefficient-sampling design is under
-cryptographic review, so do not rely on fewer than the threshold revealing
-nothing useful until that review is resolved. Keep the shares in separate
-offline places, and keep the original phrase or raw secret protected too.
+can rebuild the secret. Coldbox samples the hidden polynomial coefficients
+across the complete field, including zero, so fewer than the threshold shares
+do not reveal useful information about the field-segment secret under the
+stated randomness assumption. Keep the shares in separate offline places, and
+keep the original phrase or raw secret protected too.
 :::
 ::: working
 Shamir39 is a non-standard mnemonic format for splitting a valid BIP-39
 phrase. Raw SSS is Shamir Secret Sharing over a configurable binary finite
 field for hexadecimal data. Neither format is SLIP-39, and neither provides
 wallet-device interoperability by itself. A BIP-39 passphrase is a separate
-secret and is not included in either share set.
+secret and is not included in either share set. The full-uniform coefficient
+policy protects the field-segment secret below threshold, but it does not
+authenticate shares or protect a separate passphrase.
 :::
 ::: technical
 The pinned Ian Coleman commit contains two historical artifacts that must not
@@ -32,7 +35,15 @@ and data words encode the share polynomial over GF(2^11). Raw SSS follows the pi
 [secrets.js share format](https://github.com/grempe/secrets.js/blob/master/README.md):
 the leading base-36 field-size digit, hexadecimal share identifier, padded
 field data, default 8-bit field, and default 128-bit padding. Both generators
-require `crypto.getRandomValues`; there is no `Math.random` fallback.
+require `crypto.getRandomValues`; there is no `Math.random` fallback. Coldbox
+samples every nonconstant coefficient uniformly from the entire finite field,
+including zero. This intentionally differs from the pinned Ian Coleman and
+secrets.js generators, which reject an all-zero random coefficient; existing
+share encoding and combine compatibility remain unchanged, but generator
+outputs are not promised to match byte-for-byte. The below-threshold secrecy
+claim is limited to field-segment secret values conditioned on public
+parameters and an independent uniform CSPRNG; it does not cover share
+authenticity, host compromise, metadata, or a BIP-39 passphrase.
 :::
 
 ## Which format should you use?
@@ -102,12 +113,11 @@ that the output is correct; independent verification is mandatory.
 - Raw SSS shares do not authenticate their contents. A maliciously changed
   share may cause a wrong candidate; verify the reconstructed value
   independently.
-- The current implementation does not claim information-theoretic secrecy
-  below threshold: its nonconstant coefficient sampler excludes zero, which
-  narrows the below-threshold distribution. A maintainer cryptographic
-  decision and new verification are required before relying on that property.
-  The threshold also does not identify which shares are genuine or preserve
-  the original passphrase.
+- The full-uniform coefficient policy gives the field-segment secret the
+  standard below-threshold information-theoretic secrecy property when the
+  CSPRNG produces independent uniform field elements. It does not authenticate
+  shares, protect against a compromised host, hide public metadata, or
+  preserve the original passphrase.
 - Field size limits the maximum share count. Coldbox’s UI exposes up to eight
   shares; the cold API enforces the mathematical field limit.
 - Missing `crypto.getRandomValues` is a hard failure. Coldbox never substitutes

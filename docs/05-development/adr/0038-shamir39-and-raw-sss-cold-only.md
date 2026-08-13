@@ -24,6 +24,7 @@ The primary references were reviewed on 2026-08-12:
 - [secrets.js `README.md`](https://github.com/grempe/secrets.js/blob/14a4b682a28242b1dbe5506674b5d5f476b78dbf/README.md), commit `14a4b682a28242b1dbe5506674b5d5f476b78dbf`, Git blob `a4f1b45a96de9ab9c6a86f6927d3657b417cb643`, exact LF-byte SHA-256 `56d52d02a32735a5858bf7e6ffb2b95544c6a761906a4594cd438ffbbf125914`.
 - secrets.js `secrets.js`, the same commit, Git blob `2eb1360d61d99f5cee46ebb2aaf1f938b065069c`, exact LF-byte SHA-256 `6c90ec0b0d88a8c90d08f8657448c72db6592fcec5096306c70c815e2404eee9`.
 - secrets.js fixture `spec/secrets/SecretsSpec.js`, the same commit, Git blob `8986699144de4d25623217ac4377f85a4042f945`, exact LF-byte SHA-256 `b6f843bc4c40f268c175b0c49564fb5be43e1187e4216c33efd6b3559040db0f`.
+- [Shamir, “How to Share a Secret”](https://cdn.nakamotoinstitute.org/docs/how-to-share-a-secret.pdf), the defining threshold-secrecy construction; reviewed on 2026-08-12.
 
 ## Decision
 
@@ -60,11 +61,21 @@ The primary references were reviewed on 2026-08-12:
   the warm message protocol.
 - Use only `crypto.getRandomValues` for non-constant polynomial coefficients.
   Missing randomness is a hard error; `Math.random` is forbidden.
-- The current nonconstant coefficient sampler excludes zero. Until a
-  maintainer decides whether compatibility or full information-theoretic
-  below-threshold secrecy governs this format, no below-threshold secrecy
-  guarantee is authorized. P2.4 remains blocked; this item does not change
-  the sampler or invent a compatibility policy.
+- Sample every nonconstant coefficient independently and uniformly from the
+  complete finite field, including zero. This follows Shamir's
+  below-threshold secrecy construction and deliberately differs from the
+  pinned Ian Coleman/Shamir39 and secrets.js generators, whose random
+  coefficient helpers reject an all-zero field element.
+- Preserve the existing share encodings, version marker, interpolation, and
+  combine behavior. The compatibility consequence is that Coldbox generation
+  is not byte-for-byte or distribution-compatible with those generators when
+  a zero coefficient is drawn; their published shares and combiners remain
+  compatibility fixtures. The exact pinned combiners reconstruct Coldbox's
+  forced-zero vectors in `test/shamir.test.js`.
+- With an independent uniform CSPRNG, below-threshold secrecy applies to the
+  field-segment secret values conditioned on the public format parameters.
+  This does not claim share authenticity, protection from a compromised host,
+  metadata secrecy, or protection for a separate BIP-39 passphrase.
 - Mask generated shares and reconstructed results by default. A user-initiated
   reveal lasts 30 seconds or until hidden manually. Lock, panic hide, and
   session teardown clear inputs, arrays, results, and timers.
@@ -85,9 +96,11 @@ teardown behavior auditable without adding a package tree.
 
 The implementation tests the published Shamir39 fixture and the published
 secrets.js compatibility shares, then checks deterministic formatting against
-the respective reference behavior. A BIP-39 checksum check is required after
-Shamir39 interpolation because a mathematically reconstructed candidate is not
-alone proof that the entered shares were the intended set.
+the respective reference behavior. Forced-zero vectors are checked against
+the pinned reference combiners, and exhaustive GF(8) tests cover one-share
+and two-share below-threshold distributions. A BIP-39 checksum check is
+required after Shamir39 interpolation because a mathematically reconstructed
+candidate is not alone proof that the entered shares were the intended set.
 
 ## Consequences
 
@@ -95,6 +108,9 @@ alone proof that the entered shares were the intended set.
 
 - Threshold recovery can be used for BIP-39 phrases or raw hexadecimal data
   while the warm realm remains unable to read either.
+- The full uniform coefficient space restores the defining
+  information-theoretic below-threshold secrecy property for each field
+  segment, under the stated CSPRNG and public-parameter conditions.
 - The browser artifact has no new runtime dependency or network behavior.
 - The UI makes the separate formats, masked output, passphrase boundary, and
   independent verification requirement visible.
@@ -108,6 +124,10 @@ alone proof that the entered shares were the intended set.
 - Neither format authenticates an arbitrary share set. A changed or malicious
   share can produce a wrong candidate, so the result needs independent
   verification.
+- Coldbox generation intentionally does not reproduce the pinned generators'
+  nonzero coefficient distribution. This changes generator outputs, not the
+  encoded share format or the ability of the pinned combiners to reconstruct
+  valid shares.
 - The UI exposes only eight share fields even though the underlying fields can
   represent more; larger sets require a separate reviewed UI decision.
 - The passphrase remains a separate secret and can still be omitted or lost.
@@ -146,13 +166,22 @@ Rejected. A share is secret-compartment material, and this item has no storage
 or export requirement. A future encrypted backup record needs its own data
 model, threat analysis, and roadmap item.
 
+### Retain the nonzero coefficient distribution for generator compatibility
+
+Rejected. The pinned generators reject zero during coefficient sampling, but
+that is a generator behavior rather than an encoded format requirement. The
+maintainer chose the standard full coefficient space so that fewer than the
+threshold number of shares does not narrow the field-segment secret
+distribution. Published nonzero vectors remain combine-compatibility tests,
+and the distribution difference is documented rather than hidden.
+
 ## What would change our mind
 
-An official reference change, a demonstrated compatibility failure, or a
-review finding that the finite-field implementation is not equivalent to the
-published vectors would require new vectors and an ADR amendment before code
-changes. A request for wallet-native or durable share storage requires a new
-roadmap item and a separate boundary review.
+An official reference change, a demonstrated combine-compatibility failure,
+or a review finding that the finite-field implementation is not equivalent to
+the published vectors would require new vectors and an ADR amendment before
+code changes. A request for wallet-native or durable share storage requires a
+new roadmap item and a separate boundary review.
 
 ## References
 

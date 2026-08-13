@@ -27,6 +27,15 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
   Chromium/Firefox UI isolation, and teardown are covered. See
   [ADR-0038](docs/05-development/adr/0038-shamir39-and-raw-sss-cold-only.md)
   and [the guide](docs/03-guides/backup-shamir.md).
+- **Full-uniform coefficient policy.** Nonconstant polynomial coefficients are
+  sampled independently from the complete finite field, including zero, to
+  preserve Shamir's below-threshold secrecy property. This intentionally does
+  not reproduce the pinned generators' nonzero coefficient distribution; the
+  share encoding and combine compatibility remain unchanged.
+- **Cross-combine regression coverage.** Forced-zero Shamir39 and raw-SSS
+  vectors reconstruct with the pinned Ian Coleman and secrets.js combiners,
+  and exhaustive GF(8) checks cover one- and two-share below-threshold
+  distributions.
 
 ### Fixed - P1.11 independent-review remediation (2026-08-11)
 
