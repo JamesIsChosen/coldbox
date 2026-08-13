@@ -240,6 +240,21 @@ Nothing above this phase is safe to build until the container is trustworthy.
   *Deps: P1.3*
 - [~] **P2.5 Vault recovery shares**
   *Deps: P2.1*
+  An additional offline-only vault unlock route: a configured threshold of
+  SLIP-39 shares reconstructs the 32-byte vault DEK while the normal
+  passphrase or passphrase-plus-keyfile route remains available. The vault
+  stores only fixed public recovery metadata, never the printed share words.
+  **Accept:** method 3 has a versioned fixed binary record with exact bounds,
+  one normal record, and a recovery marker that makes pre-P2.5 readers reject
+  recovery-enabled files; generation and recovery are cold-only and always use
+  the empty SLIP-39 share passphrase; supplied shares must match every
+  recorded SLIP-39 parameter and member index, with malformed, duplicate,
+  insufficient, mixed, tampered, unknown, or unsupported inputs failing closed;
+  recovery metadata is authenticated with both encrypted compartments; the
+  normal unlock route continues to work; replacing an existing set requires an
+  explicit choice; share material never crosses the realm boundary or persists
+  outside the cold session; and tests include an independent official vector
+  plus a deterministic byte-exact method-data fixture.
 - [ ] P2.6 BackupRecords and verify-your-shares
   *Deps: P2.5*
 - [ ] P2.7 Backup Health dashboard

@@ -28,7 +28,7 @@ They get an encrypted blob. Opening it requires your passphrase, and Argon2id ma
 Off by default, deliberately. An encrypted file on a general-purpose computer is genuinely weaker than a metal plate in a safe. Our recommendation: use the vault for everything *except* seeds — fingerprints, xpubs, backup locations, and notes are enough to manage a portfolio — and add seeds only where you've decided the convenience is worth it. Never as your only copy.
 
 **What if I forget my vault passphrase?**
-Currently, the data is gone. There is no reset, no recovery email, nobody to call. From Phase 2, recovery shares provide a second route in. Until then: write it down and store it physically.
+If you configured and saved vault recovery shares, enough of those printed shares can open the vault offline without the normal phrase. Otherwise, the data is gone: there is no reset, recovery email, or backdoor. Rehearse the recovery route while the amount at risk is trivial, and keep the shares separate from the encrypted `.cbx` file.
 
 **Can the app phone home?**
 The secret half has no network capability at all — CSP `connect-src 'none'` removes the mechanisms. The warm shell can only reach the fixed hosts written in the source. It makes small, content-free reachability probes to two of those existing public endpoints while Coldbox is open so the status display can detect a cable/Wi-Fi loss more reliably than `navigator.onLine` alone. Those requests expose ordinary connection metadata such as your IP address and time to the endpoint operators, but carry no vault, address, asset, or user-entered data. There is no Coldbox analytics or telemetry collector. See [ADR-0024](../05-development/adr/0024-warm-reachability-monitor.md).

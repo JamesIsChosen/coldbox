@@ -12,6 +12,18 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
+### Added - P2.5 vault recovery shares (2026-08-13)
+
+- Added an offline cold-realm recovery route that generates configured SLIP-39
+  shares (2-of-3 by default) for the vault's 32-byte encryption key. The normal passphrase or
+  keyfile route remains available; share phrases are never stored in the
+  encrypted file and no second share passphrase is used.
+- Added a fixed binary method-3 record with exact SLIP-39 metadata binding,
+  a v1 recovery marker that makes pre-P2.5 readers reject recovery-enabled
+  files, fail-closed malformed/unknown-record parsing, and recovery-share
+  UI teardown/masking. See [ADR-0040](docs/05-development/adr/0040-vault-recovery-share-record.md)
+  and the [vault-format specification](docs/01-spec/vault-format.md).
+
 ### Added - P2.3 Seed XOR (2026-08-12)
 
 - Added a cold-only Seed XOR backup workflow for 12-, 18-, and 24-word BIP-39 phrases, with 2–4 required parts, Coldcard-compatible deterministic masks, CSPRNG-derived random masks, independent checksum validation, masked timed reveals, local combine/recovery, and teardown clearing. Seed XOR is explicitly N-of-N rather than threshold recovery; BIP-39 passphrases remain separate. See [ADR-0039](docs/05-development/adr/0039-seed-xor-cold-only.md) and the [Seed XOR guide](docs/03-guides/backup-seed-xor.md).

@@ -335,7 +335,7 @@ Offset  Size   Field
 19      1      Parallelism
 20      1      Cipher id (1=AES-256-GCM, 2=XChaCha20-Poly1305)
 21      32     KDF salt
-53      4      Wrapped-DEK block length      (uint32 BE)
+53      4      Wrapped-DEK block length      (uint32 BE; method-3 marker in the high bit)
 57      4      Public compartment length L1  (uint32 BE, incl. tag)
 61      4      Secret compartment length L2  (uint32 BE, incl. tag)
 65      --     ---- header ends; AAD = bytes 0..64 ----
@@ -346,7 +346,7 @@ Offset  Size   Field
         L2     Secret ciphertext + 16-byte tag
 ```
 
-Explicit length fields are required — without them the two compartments cannot be parsed apart. The plaintext header (bytes 0–64) is passed as **AAD**, so KDF parameters and compartment boundaries cannot be tampered with. Everything after the header is indistinguishable from random.
+Explicit length fields are required — without them the two compartments cannot be parsed apart. The plaintext header (bytes 0–64) is passed as **AAD**; recovery-enabled vaults append their exact method-3 metadata to that AAD. KDF parameters, compartment boundaries, and recovery metadata therefore cannot be tampered with. Everything after the header is indistinguishable from random. See the byte-level [vault-format specification](vault-format.md) for the complete record contract.
 
 **Nonce discipline:** every save generates a fresh random nonce for every compartment it re-encrypts. In Warm Mode the secret compartment is copied through byte-for-byte — ciphertext, nonce, and tag together — so no nonce is ever reused against the same key with different plaintext.
 
@@ -356,13 +356,13 @@ A random 256-bit **DEK** is the root. From it, HKDF-SHA-512 derives two subkeys 
 
 1. **Passphrase** (required) — Argon2id(passphrase, salt) → KEK → wraps DEK.
 2. **Keyfile** (optional) — any file on your USB; its SHA-512 mixes into the KEK. Two-factor: something you know plus something you have.
-3. **Recovery shares** (optional) — the DEK split via SLIP-39 into printed shares. Reconstructing a threshold unwraps the vault without the passphrase. This is how your heirs get in.
+3. **Recovery shares** (optional) — the DEK split via SLIP-39 into printed shares. A threshold reconstructs the vault without the normal passphrase; shares are an additional route, never a replacement for the normal credential. The fixed method-3 record and no-share-passphrase rule live in the [vault-format specification](vault-format.md).
 
 Changing your passphrase rewraps 32 bytes instead of re-encrypting everything, and multiple unlock paths coexist without duplicating data.
 
-**The wrapped-DEK block is a list of records from format version 1**, each tagged with its method, even when only the passphrase record is present. This is deliberate: reserving the structure in Phase 0 costs a few bytes and means keyfile and recovery-share unlock can be added later without a format version bump or a migration of vaults already in the field.
+**The wrapped-DEK block is a list of records from format version 1**, each tagged with its method, even when only the passphrase record is present. Recovery-enabled files use the reserved high-bit marker and method-3 record defined in [ADR-0040](../05-development/adr/0040-vault-recovery-share-record.md); older readers reject that marker.
 
-**Interim risk, Phases 0–1.** Until recovery shares ship in Phase 2, the passphrase is the only way in. During that window the app requires you to acknowledge this at vault creation and nags until you confirm you've escrowed the passphrase physically. A vault holding your backup locations, protected by a password only you know and haven't written down, is a single point of failure wearing a disguise.
+**Remaining responsibility.** Recovery shares are optional. If you do not configure and independently rehearse them, the normal passphrase or keyfile remains the only route into that vault. A vault holding your backup locations still needs a tested, physically stored unlock plan.
 
 ### 8.3 Crypto parameters
 

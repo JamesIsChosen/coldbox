@@ -66,11 +66,27 @@ Update it annually. The app flags it when stale.
 
 ## Layer 2 — Vault recovery shares
 
-*Available from Phase 2.*
-
 Your vault holds the records: which wallet is which, where every backup is, which passphrase belongs to which device, your notes.
 
-Currently the passphrase is the only way in. Recovery shares add a second route: the vault key is split via SLIP-39 into printed cards, and any threshold reconstructs it **without the passphrase**.
+::: plain
+When you configure recovery shares from an offline unlocked vault, Coldbox
+creates printed SLIP-39 shares for the vault itself. The normal unlock phrase
+or keyfile still works. The shares are an extra route for an heir: enough
+holders can open the vault without knowing your normal unlock phrase.
+:::
+::: working
+The shares reconstruct the vault's encryption key, not a seed phrase. Coldbox
+never stores the share words in the `.cbx` file. It keeps the share set in the
+cold realm, masks it by default, and asks you to save the changed encrypted
+vault after generating it. There is no second share passphrase to lose.
+:::
+::: technical
+P2.5 stores only fixed binary SLIP-39 metadata in method 3 beside exactly one
+passphrase or passphrase-plus-keyfile record. The metadata and compartment
+ciphertexts are bound together; malformed, mixed, duplicate, or insufficient
+shares fail closed. The byte contract is canonical in
+[vault-format.md](../01-spec/vault-format.md) and [ADR-0040](../05-development/adr/0040-vault-recovery-share-record.md).
+:::
 
 **A 2-of-3 example:**
 
@@ -173,7 +189,7 @@ This will reveal that your instructions are less clear than you believed. Everyo
 - [ ] At least two people know crypto exists
 - [ ] Custodians know what they hold and what to do
 - [ ] Shares geographically separated
-- [ ] Vault recovery shares distributed *(Phase 2)*
+- [ ] Vault recovery shares distributed and independently rehearsed
 - [ ] Passphrases documented and separately backed up
 - [ ] Derivation paths recorded for every wallet
 - [ ] Devices catalogued with locations
