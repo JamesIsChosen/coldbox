@@ -46,6 +46,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0036](0036-slip39-cold-vendoring.md) | Cold-only SLIP-39 uses phrase-entropy shares and a pinned source adaptation | Accepted |
 | [0037](0037-codex32-cold-hand-verifiable.md) | Codex32 is an inline BIP-93 adaptation owned by the cold realm | Accepted |
 | [0038](0038-shamir39-and-raw-sss-cold-only.md) | Shamir39 and raw SSS are cold-only inline adaptations | Accepted |
+| [0039](0039-seed-xor-cold-only.md) | Seed XOR operates on BIP-39 entropy and stays cold-only | Accepted |
 
 ## When to write one
 

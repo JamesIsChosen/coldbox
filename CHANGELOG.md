@@ -12,6 +12,10 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
+### Added - P2.3 Seed XOR (2026-08-12)
+
+- Added a cold-only Seed XOR backup workflow for 12-, 18-, and 24-word BIP-39 phrases, with 2–4 required parts, Coldcard-compatible deterministic masks, CSPRNG-derived random masks, independent checksum validation, masked timed reveals, local combine/recovery, and teardown clearing. Seed XOR is explicitly N-of-N rather than threshold recovery; BIP-39 passphrases remain separate. See [ADR-0039](docs/05-development/adr/0039-seed-xor-cold-only.md) and the [Seed XOR guide](docs/03-guides/backup-seed-xor.md).
+
 ### Added - P2.4 Shamir39 and raw SSS (2026-08-12)
 
 - **Cold-only threshold shares.** Shamir39 splits valid BIP-39 phrases into

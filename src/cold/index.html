@@ -299,6 +299,55 @@ __COLDBOX_COLD_STYLES__
       </section>
       <p id="cold-seed-forge-note">Write the words down offline and verify them from paper. A fingerprint is only a public identifier: it cannot recover a phrase. The raw BIP-39 seed is an advanced cold-only output; it is masked by default and has no clipboard or storage action. BIP-85 child phrases, xprv/xpub/ypub/zpub, script/path derivation, WIF, addresses, and password derivation are separate roadmap items.</p>
     </section>
+    <section id="cold-seed-xor" aria-label="Cold-only Seed XOR backup" data-state="locked">
+      <p class="eyebrow">Seed XOR / P2.3</p>
+      <h2>N-of-N Seed XOR backup</h2>
+      <p id="cold-seed-xor-help">Seed XOR splits a 12-, 18-, or 24-word BIP-39 phrase into 2, 3, or 4 valid phrases. Every part is required: there is no threshold recovery. The phrase, parts, and entropy remain inside this sealed realm; nothing is stored or copied for you.</p>
+      <div class="cold-seed-xor-grid">
+        <div>
+          <label for="cold-seed-xor-language">BIP-39 wordlist</label>
+          <select id="cold-seed-xor-language" disabled></select>
+        </div>
+        <div>
+          <label for="cold-seed-xor-count">Number of parts</label>
+          <select id="cold-seed-xor-count" disabled>
+            <option value="2">2 parts</option>
+            <option value="3">3 parts</option>
+            <option value="4">4 parts</option>
+          </select>
+        </div>
+        <div>
+          <label for="cold-seed-xor-mode">Split mode</label>
+          <select id="cold-seed-xor-mode" disabled>
+            <option value="deterministic">Deterministic (Coldcard-compatible)</option>
+            <option value="random">Random masks (CSPRNG)</option>
+          </select>
+        </div>
+      </div>
+      <section class="cold-seed-xor-workflow" aria-labelledby="cold-seed-xor-split-title">
+        <h3 id="cold-seed-xor-split-title">Split an existing phrase</h3>
+        <label for="cold-seed-xor-source">Phrase to split (masked)</label>
+        <input id="cold-seed-xor-source" type="password" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+        <button id="cold-seed-xor-split" type="button" disabled>Generate Seed XOR parts</button>
+        <p id="cold-seed-xor-split-status" role="status" aria-live="polite">No Seed XOR parts generated.</p>
+      </section>
+      <section id="cold-seed-xor-generated" class="cold-seed-xor-workflow" hidden aria-labelledby="cold-seed-xor-generated-title">
+        <h3 id="cold-seed-xor-generated-title">Generated parts</h3>
+        <p>Each part is a complete BIP-39 phrase and is masked until you explicitly reveal it for transcription.</p>
+        <ol id="cold-seed-xor-generated-parts" aria-label="Generated Seed XOR parts"></ol>
+        <button id="cold-seed-xor-reveal" type="button" disabled>Reveal parts for 30 seconds</button>
+      </section>
+      <section class="cold-seed-xor-workflow" aria-labelledby="cold-seed-xor-combine-title">
+        <h3 id="cold-seed-xor-combine-title">Combine existing parts</h3>
+        <p>Enter every part in the masked fields below. The selected count must match the set; order does not matter.</p>
+        <div id="cold-seed-xor-part-fields" class="cold-seed-xor-part-fields" aria-label="Seed XOR part inputs"></div>
+        <button id="cold-seed-xor-combine" type="button" disabled>Combine Seed XOR parts</button>
+        <p id="cold-seed-xor-combine-status" role="status" aria-live="polite">No phrase combined.</p>
+        <output id="cold-seed-xor-combined" aria-label="Combined Seed XOR phrase">Not calculated</output>
+        <button id="cold-seed-xor-combined-reveal" type="button" disabled>Reveal combined phrase for 30 seconds</button>
+      </section>
+      <p id="cold-seed-xor-note">Keep every part in a separate offline location. A missing or invalid part makes recovery impossible. Deterministic mode follows Coldcard's published Seed XOR construction; random mode requires crypto.getRandomValues and refuses to continue if that source is unavailable. Seed XOR does not accept a BIP-39 passphrase and does not provide threshold recovery.</p>
+    </section>
     <section id="cold-codex32" aria-label="Codex32 Backup Lab" data-state="locked">
       <p class="eyebrow">Backup Lab / P2.2 codex32</p>
       <h2>Hand-verifiable codex32 shares</h2>
@@ -638,6 +687,7 @@ __COLDBOX_VAULT_LAYER__
 __COLDBOX_ENTROPY_LAB_LAYER__
 __COLDBOX_ENTROPY_HEALTH_LAYER__
 __COLDBOX_SEED_FORGE_LAYER__
+__COLDBOX_SEED_XOR_LAYER__
 __COLDBOX_CODEX32_LAYER__
 __COLDBOX_SHAMIR_LAYER__
 __COLDBOX_DERIVATION_LAYER__
