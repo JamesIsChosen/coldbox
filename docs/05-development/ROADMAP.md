@@ -228,15 +228,15 @@ Nothing above this phase is safe to build until the container is trustworthy.
 
 ## Phase 2 — Backup
 
-- [ ] P2.1 SLIP-39
+- [x] **P2.1 SLIP-39**
   *Deps: P1.3*
-- [ ] P2.2 codex32
+- [x] **P2.2 codex32**
   *Deps: P1.3*
 - [~] P2.3 Seed XOR
   *Deps: P1.3*
   Coldcard-compatible N-of-N splitting of BIP-39 entropy into 2, 3, or 4 independently checked phrases, with deterministic and CSPRNG-derived masks, cold-only UI, and local reconstruction.
   **Accept:** only 12-, 18-, and 24-word BIP-39 phrases are accepted; every generated part is independently valid BIP-39; deterministic output matches the published Coldcard construction and independent vectors; random output refuses missing `crypto.getRandomValues`; combine accepts all parts in any order but rejects missing, malformed, mismatched-length, or invalid-checksum parts; the source, parts, and combined phrase never cross the cold boundary or persist, are masked by default, and clear on teardown; docs state that Seed XOR is N-of-N and that any BIP-39 passphrase is separate.
-- [ ] P2.4 Shamir39 and raw SSS
+- [x] **P2.4 Shamir39 and raw SSS**
   *Deps: P1.3*
 - [ ] P2.5 Vault recovery shares
   *Deps: P2.1*

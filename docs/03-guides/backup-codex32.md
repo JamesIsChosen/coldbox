@@ -38,7 +38,7 @@ For a backup meant to outlive its tooling, that's a genuinely different security
 
 **Wallet adoption is the catch.** A Bitcoin Core import PR exists but is unmerged, and no major hardware wallet reads codex32 directly.
 
-**So treat it as a backup format, not an interchange format.** You recover by reconstructing the seed and entering it as BIP-39. That works — but it means codex32 is for archival durability, not operational convenience.
+**So treat it as a backup format, not an interchange format.** You recover the direct BIP-32 master-seed bytes and must use a wallet or tool that explicitly supports that input domain. Do not relabel those bytes as BIP-39 entropy or turn arbitrary bytes into a BIP-39 mnemonic. Codex32 is for archival durability, not operational convenience.
 
 ---
 
@@ -63,15 +63,15 @@ For a backup meant to outlive its tooling, that's a genuinely different security
 
 **Offline.** Green banner.
 
-1. Backup Lab → codex32 → enter your seed.
-2. Choose a configuration (2-of-3 is a sensible default).
-3. Generate.
+1. In the sealed Backup Lab → codex32 panel, enter the direct 16-to-64-byte BIP-32 master seed as hexadecimal. This is not BIP-39 entropy, a mnemonic, or a passphrase.
+2. Choose a configuration (2-of-3 is a sensible default) and a four-character identifier.
+3. Generate, then reveal the masked shares briefly while writing each one to a separate offline copy.
 
 Shares are 48 characters for a 128-bit seed, using bech32's character set. Each carries an identifier, a share index, and a checksum.
 
 ## Generating by hand
 
-The distinctive capability. Backup Lab → codex32 → Print worksheets produces everything you need: lookup tables, a step-by-step worksheet, and a verification sheet.
+The distinctive capability is the BIP-93 format's hand-checkable checksum. The P2.2 Backup Lab generates and reveals codex32 shares, but it does not print worksheets, lookup tables, or verification sheets. If you choose hand generation or hand verification, obtain and preserve the BIP-93 materials separately.
 
 The procedure — generate entropy with dice, encode it, compute the checksum, derive shares, verify each — takes an hour or two the first time. **No computer is involved at any point**, so no computer can have compromised the result.
 
@@ -81,7 +81,7 @@ This is the strongest key generation available to an ordinary person. It is also
 
 ## Verify before you trust — mandatory
 
-As with any scheme, the app requires reconstruction from a threshold subset before marking the backup complete. Type the shares from your written copies, not copy-paste.
+As with any scheme, reconstruct from a threshold subset before relying on the backup. Type the shares from your written copies, not copy-paste. The P2.2 app reports recovery status and keeps the recovered value masked; it does not create a completion record or display a fingerprint.
 
 **Then verify the checksum by hand at least once**, using the printed worksheet. That's the capability you chose this format for — confirm you can actually use it before relying on it.
 
@@ -89,14 +89,14 @@ As with any scheme, the app requires reconstruction from a threshold subset befo
 
 ## Periodic verification, the point of all this
 
-Annually, without a computer:
+Annually, using the BIP-93 materials you preserved separately:
 
 1. Retrieve a share.
-2. Take out the printed lookup tables.
+2. Take out the BIP-93 lookup tables.
 3. Compute the checksum by hand — a few minutes once you're practised.
-4. Confirm it matches.
+4. Confirm it matches. The P2.2 app does not provide the printed worksheet or a Health dashboard.
 
-You've now verified your backup is intact without trusting any software, any device, or any supply chain. Record the date in the Health dashboard when you're next at a computer.
+You've now verified your backup is intact without trusting any software, any device, or any supply chain. Record the date in your separate offline backup log; the P2.2 app does not provide a Health dashboard.
 
 ---
 
@@ -108,9 +108,9 @@ Alongside each share, physically:
 - Creation date
 - What it's for — wallet name and fingerprint
 - A note that it's useless alone
-- **The printed lookup tables and worksheet**
+- **The BIP-93 lookup tables and worksheet, if you chose a hand-verification process**
 
-That last item matters. A codex32 share without the tables loses the property you chose it for. Print a set with every share.
+That last item matters. A codex32 share without the tables loses the property you chose it for. Preserve the external BIP-93 materials with the backup if you rely on hand verification; the P2.2 app does not print them.
 
 ---
 
@@ -119,10 +119,10 @@ That last item matters. A codex32 share without the tables loses the property yo
 1. Gather at least T shares.
 2. Offline. Backup Lab → codex32 → Recover.
 3. Enter each share.
-4. Confirm the reconstructed fingerprint matches.
-5. Enter the resulting seed into your wallet as BIP-39.
+4. Confirm the recovery status and keep the recovered value masked until you are ready to use it.
+5. Use the recovered bytes only with a wallet or tool that explicitly imports direct BIP-32 master-seed bytes. Do not convert arbitrary recovered bytes into BIP-39 words or label them as BIP-39; these are different domains.
 
-**A share fails validation?** codex32 corrects single-character errors. The app will tell you which character it fixed. If it can't correct, the share has multiple errors — use a different share if you have one above threshold.
+**A share fails validation?** codex32 can suggest a single-character correction. The app identifies the position and keeps the candidate masked; compare it with the paper copy and explicitly confirm before using it. If it cannot identify one unambiguous correction, use a different share if you have one above threshold.
 
 ---
 

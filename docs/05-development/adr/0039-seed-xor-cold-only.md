@@ -1,4 +1,4 @@
-# ADR-0037: Seed XOR operates on BIP-39 entropy and stays cold-only
+# ADR-0039: Seed XOR operates on BIP-39 entropy and stays cold-only
 
 **Status:** Accepted
 **Date:** 2026-08-12
