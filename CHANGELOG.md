@@ -20,9 +20,11 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
   encrypted file and no second share passphrase is used.
 - Added a fixed binary method-3 record with exact SLIP-39 metadata binding,
   a v1 recovery marker that makes pre-P2.5 readers reject recovery-enabled
-  files, fail-closed malformed/unknown-record parsing, and recovery-share
-  UI teardown/masking. See [ADR-0040](docs/05-development/adr/0040-vault-recovery-share-record.md)
-  and the [vault-format specification](docs/01-spec/vault-format.md).
+  files, fail-closed malformed/unknown-record parsing, exact threshold-set
+  validation, and recovery-share UI teardown/masking. Sessions re-authenticate
+  before reissuing shares and do not retain the root DEK or wrapping key. See
+  [ADR-0040](docs/05-development/adr/0040-vault-recovery-share-record.md) and
+  the [vault-format specification](docs/01-spec/vault-format.md).
 
 ### Added - P2.3 Seed XOR (2026-08-12)
 

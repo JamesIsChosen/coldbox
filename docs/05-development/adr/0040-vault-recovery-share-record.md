@@ -80,18 +80,26 @@ record bytes to the authenticated vault ciphertext without putting share
 material in the file.
 
 On recovery, the cold realm decodes every supplied share and requires an exact
-match for identifier, extendable flag, iteration exponent, group threshold,
-group count, each group's member threshold/count, and each member index's
-valid range. Duplicate member indices, malformed shares, and a non-empty
-share passphrase all fail closed. Only then does SLIP-39 reconstruct the DEK;
-the public compartment's AES-GCM tag remains the final authentication check.
+match for every SLIP-39 field that the mnemonic actually encodes: identifier,
+extendable flag, iteration exponent, group index, group threshold, group count,
+member threshold, member index, and checksum. The method-3 member count is a
+Coldbox generation policy, not a field encoded in a standard SLIP-39 mnemonic;
+the implementation uses it to bound valid member indices and cannot prove
+that no unprovided members existed at generation time. Duplicate member
+indices, malformed shares, a non-empty share passphrase, surplus groups, and
+surplus members fail closed. The supplied set must contain exactly the
+recorded group threshold of groups and exactly each selected group's member
+threshold of shares. Only then does SLIP-39 reconstruct the DEK; the public
+compartment's AES-GCM tag remains the final authentication check.
 
 Recovery shares are accepted only for an offline cold session. The normal
 passphrase/keyfile route remains available online for public-only opening.
-The DEK is retained only inside an offline cold session long enough to issue a
-new share set and save the updated encrypted vault. Reissuing an existing set
-requires an explicit replacement choice; the old set stops matching once the
-new metadata is saved.
+Sessions do not retain the root DEK or normal wrapping key. Reissuing a set
+requires the normal passphrase and, when applicable, keyfile to be supplied
+again to the cold realm; those credentials unwrap the DEK only for the
+configuration operation and are zeroed before it returns. Saving does not need
+the root DEK. Reissuing an existing set requires an explicit replacement
+choice; the old set stops matching once the new metadata is saved.
 
 ### Compatibility and rejection
 

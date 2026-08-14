@@ -248,8 +248,9 @@ Nothing above this phase is safe to build until the container is trustworthy.
   one normal record, and a recovery marker that makes pre-P2.5 readers reject
   recovery-enabled files; generation and recovery are cold-only and always use
   the empty SLIP-39 share passphrase; supplied shares must match every
-  recorded SLIP-39 parameter and member index, with malformed, duplicate,
-  insufficient, mixed, tampered, unknown, or unsupported inputs failing closed;
+  recorded SLIP-39 field encoded by each mnemonic and member-index bound, with
+  exactly the required threshold groups/members supplied; malformed, duplicate,
+  insufficient, surplus, mixed, tampered, unknown, or unsupported inputs failing closed;
   recovery metadata is authenticated with both encrypted compartments; the
   normal unlock route continues to work; replacing an existing set requires an
   explicit choice; share material never crosses the realm boundary or persists

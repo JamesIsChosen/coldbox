@@ -95,10 +95,15 @@ version 1, DEK length 32, identifier, extendable flag, iteration exponent,
 group threshold/count, and one member threshold/count pair per group. The
 method-data length is exactly `8 + 2 * group count`, with at most 16 groups.
 Each member threshold is no greater than its count, and a one-share threshold
-cannot advertise multiple members. The remaining 60 bytes in the record are
-reserved zero bytes. No mnemonic or share material is stored. Coldbox always uses the empty SLIP-39 share
-passphrase for this route; the supplied shares must match the recorded
-metadata exactly, and the method data is authenticated as compartment AAD.
+cannot advertise multiple members. The stored member count is a Coldbox
+generation policy and bounds valid member indices; standard SLIP-39 mnemonics
+do not encode the total member count. Recovery therefore requires exactly the
+recorded group threshold of groups and exactly each selected group's member
+threshold of shares, while matching every SLIP-39 field the mnemonic encodes.
+The remaining 60 bytes in the record are reserved zero bytes. No mnemonic or
+share material is stored. Coldbox always uses the empty SLIP-39 share
+passphrase for this route, and the method data is authenticated as compartment
+AAD.
 
 ---
 
@@ -244,4 +249,4 @@ rather than silently ignoring method 3.
 
 An older reader encountering a newer version must refuse to open rather than guess — misparsing an encrypted file could silently destroy data on the next save.
 
-Any change to this format requires a test asserting that a vault written by the previous version still opens. P2.5 additionally requires an independent SLIP-39 recovery vector and a byte-exact method-3 method-data fixture.
+Any change to this format requires a test asserting that a vault written by the previous version still opens. P2.5 additionally requires an independent SLIP-39 recovery vector, a byte-exact method-3 method-data fixture, and a byte-stable pre-P2.5 vault fixture.

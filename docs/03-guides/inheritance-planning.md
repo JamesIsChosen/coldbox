@@ -78,13 +78,16 @@ holders can open the vault without knowing your normal unlock phrase.
 The shares reconstruct the vault's encryption key, not a seed phrase. Coldbox
 never stores the share words in the `.cbx` file. It keeps the share set in the
 cold realm, masks it by default, and asks you to save the changed encrypted
-vault after generating it. There is no second share passphrase to lose.
+vault after generating it. Creating or replacing a set asks you to re-enter the
+normal unlock phrase inside the sealed realm; there is no second share
+passphrase to lose.
 :::
 ::: technical
 P2.5 stores only fixed binary SLIP-39 metadata in method 3 beside exactly one
 passphrase or passphrase-plus-keyfile record. The metadata and compartment
-ciphertexts are bound together; malformed, mixed, duplicate, or insufficient
-shares fail closed. The byte contract is canonical in
+ciphertexts are bound together; malformed, mixed, duplicate, surplus, or
+insufficient shares fail closed. The exact encoded fields, threshold-set rule,
+and the limit of what standard SLIP-39 can record are canonical in
 [vault-format.md](../01-spec/vault-format.md) and [ADR-0040](../05-development/adr/0040-vault-recovery-share-record.md).
 :::
 
