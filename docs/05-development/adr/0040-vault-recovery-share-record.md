@@ -96,10 +96,14 @@ Recovery shares are accepted only for an offline cold session. The normal
 passphrase/keyfile route remains available online for public-only opening.
 Sessions do not retain the root DEK or normal wrapping key. Reissuing a set
 requires the normal passphrase and, when applicable, keyfile to be supplied
-again to the cold realm; those credentials unwrap the DEK only for the
-configuration operation and are zeroed before it returns. Saving does not need
-the root DEK. Reissuing an existing set requires an explicit replacement
-choice; the old set stops matching once the new metadata is saved.
+again to the cold realm. The mutable keyfile, derived-key, DEK, wrapping-key,
+and other temporary byte buffers used for that operation are explicitly
+overwritten before it returns. The cold UI clears its passphrase input and the
+operation drops its local passphrase reference, but JavaScript strings are
+immutable, so application code cannot guarantee overwriting the string's
+backing storage. Saving does not need the root DEK. Reissuing an existing set
+requires an explicit replacement choice; the old set stops matching once the
+new metadata is saved.
 
 ### Compatibility and rejection
 
