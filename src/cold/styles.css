@@ -317,6 +317,7 @@ body {
 }
 
 #cold-vault-recovery-help,
+#cold-vault-recovery-reauth-help,
 #cold-vault-recovery-unlock-help,
 #cold-vault-recovery-status {
   max-width: 48rem;
@@ -343,6 +344,18 @@ body {
 
 #cold-vault-recovery-configure-fields input[type="number"] {
   width: 5rem;
+  margin-top: 0.25rem;
+  padding: 0.35rem 0.45rem;
+  border: 0.14rem solid var(--cold-outline);
+  border-radius: 0.3rem;
+  background: var(--cold-bg);
+  color: var(--cold-text);
+  font: inherit;
+}
+
+#cold-vault-recovery-passphrase {
+  display: block;
+  width: min(100%, 24rem);
   margin-top: 0.25rem;
   padding: 0.35rem 0.45rem;
   border: 0.14rem solid var(--cold-outline);

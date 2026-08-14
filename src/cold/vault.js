@@ -886,18 +886,21 @@
         }
         groups[decoded.groupIndex].push({ mnemonic: share, memberIndex: decoded.memberIndex });
       });
-      var usableGroupIndexes = Object.keys(groups).map(function (index) {
+      var suppliedGroupIndexes = Object.keys(groups).map(function (index) {
         return Number(index);
-      }).filter(function (groupIndex) {
-        return groups[groupIndex].length >= metadata.groups[groupIndex].threshold;
       }).sort(function (left, right) { return left - right; });
-      if (usableGroupIndexes.length < metadata.groupThreshold) {
+      if (suppliedGroupIndexes.length !== metadata.groupThreshold) {
         throw authenticationError();
       }
+      suppliedGroupIndexes.forEach(function (groupIndex) {
+        if (groups[groupIndex].length !== metadata.groups[groupIndex].threshold) {
+          throw authenticationError();
+        }
+      });
       var usableShares = [];
-      usableGroupIndexes.slice(0, metadata.groupThreshold).forEach(function (groupIndex) {
+      suppliedGroupIndexes.forEach(function (groupIndex) {
         groups[groupIndex].sort(function (left, right) { return left.memberIndex - right.memberIndex; });
-        groups[groupIndex].slice(0, metadata.groups[groupIndex].threshold).forEach(function (entry) {
+        groups[groupIndex].forEach(function (entry) {
           usableShares.push(entry.mnemonic);
         });
       });
@@ -1071,6 +1074,7 @@
   function createVaultSession(state) {
     var closed = false;
     var saving = false;
+    var operationInFlight = false;
 
     function clonePublicData(value) {
       try {
@@ -1108,7 +1112,7 @@
     }
 
     function canConfigureRecoveryShares() {
-      return !closed && state.mode === 'offline' && Boolean(state.dek && state.wrappingKey);
+      return !closed && state.mode === 'offline' && Boolean(state.headerBytes && state.wrappedBlock);
     }
 
     function findAddress(addresses, id) {
@@ -1225,7 +1229,7 @@
     }
 
     function replacePublicData(publicData) {
-      if (closed || saving || !publicData
+      if (closed || saving || operationInFlight || !publicData
         || Object.prototype.toString.call(publicData) !== '[object Object]') {
         throw serializationError();
       }
@@ -1251,7 +1255,7 @@
     }
 
     function replaceSecretData(secretData) {
-      if (closed || saving || state.mode !== 'offline' || !state.secretKey
+      if (closed || saving || operationInFlight || state.mode !== 'offline' || !state.secretKey
         || !state.secretPlain || state.secretLength === 0
         || !secretData || Object.prototype.toString.call(secretData) !== '[object Object]') {
         throw serializationError();
@@ -1270,68 +1274,96 @@
     }
 
     async function configureRecoveryShares(options) {
-      if (closed || saving || state.mode !== 'offline' || !state.dek || !state.wrappingKey) {
+      if (closed || operationInFlight || state.mode !== 'offline') {
         throw serializationError();
       }
-      requireVaultHealth(serializationError);
-      if (networkState() !== state.mode) {
-        close();
-        throw serializationError();
-      }
+      operationInFlight = true;
       var value = options || {};
-      if (value.passphrase !== undefined && value.passphrase !== '') {
-        throw serializationError();
-      }
-      if (state.recoveryMetadata && value.replace !== true) {
-        throw serializationError();
-      }
-      var slip39 = global.__coldboxSlip39;
-      if (!slip39 || typeof slip39.generate !== 'function') {
-        throw serializationError();
-      }
-      var generated;
-      try {
-        generated = slip39.generate(state.dek, {
-          identifier: value.identifier,
-          extendableBackupFlag: value.extendableBackupFlag === undefined ? 1 : value.extendableBackupFlag,
-          iterationExponent: value.iterationExponent === undefined ? 0 : value.iterationExponent,
-          groupThreshold: value.groupThreshold === undefined ? 1 : value.groupThreshold,
-          groups: value.groups === undefined ? [{ threshold: 2, count: 3 }] : value.groups,
-          passphrase: ''
-        });
-      } catch (error) {
-        throw serializationError();
-      }
-      var metadata = recoveryMetadata({
-        version: RECOVERY_METHOD_DATA_VERSION,
-        dekLength: DEK_LENGTH,
-        identifier: generated.identifier,
-        extendableBackupFlag: generated.extendableBackupFlag,
-        iterationExponent: generated.iterationExponent,
-        groupThreshold: generated.groupThreshold,
-        groups: generated.groups
-      }, serializationError);
-      var methodData = encodeRecoveryMethodData(metadata);
-      var nextRecord = recoveryRecord(methodData);
-      var records = parseWrappedRecords(state.wrappedBlock, 0, state.wrappedBlock.length);
-      validateRecordSet(records, state.header.hasRecoveryShares);
-      var normalRecord = records.filter(function (record) {
-        return record.methodId === METHOD_PASSPHRASE || record.methodId === METHOD_PASSPHRASE_KEYFILE;
-      })[0];
-      if (!normalRecord) {
-        throw serializationError();
-      }
-      var nextBlockLength = normalRecord.raw.length + nextRecord.length;
-      var nextHeaderBytes = new Uint8Array(state.headerBytes);
-      writeUint32(nextHeaderBytes, 53, nextBlockLength + RECOVERY_HEADER_MARKER);
-      var nextHeader = parseHeader(nextHeaderBytes);
+      var reauthKeyfile = null;
+      var localDek = null;
+      var wrappingKey = null;
+      var headerBytesSnapshot = null;
+      var wrappedBlockSnapshot = null;
+      var methodData = null;
+      var nextRecord = null;
+      var nextHeaderBytes = null;
       var wrapNonce = null;
       var wrappedDek = null;
       var nextNormalRecord = null;
       var nextWrappedBlock = null;
       try {
+        requireVaultHealth(serializationError);
+        if (networkState() !== state.mode
+          || typeof value.normalPassphrase !== 'string'
+          || (value.passphrase !== undefined && value.passphrase !== '')) {
+          throw serializationError();
+        }
+        if (state.recoveryMetadata && value.replace !== true) {
+          throw serializationError();
+        }
+        reauthKeyfile = normalizeKeyfileBytes(value.keyfile);
+        headerBytesSnapshot = new Uint8Array(state.headerBytes);
+        wrappedBlockSnapshot = new Uint8Array(state.wrappedBlock);
+        var header = parseHeader(headerBytesSnapshot);
+        header.bytes = headerBytesSnapshot;
+        var records = parseWrappedRecords(wrappedBlockSnapshot, 0, wrappedBlockSnapshot.length);
+        var existingRecoveryRecord = validateRecordSet(records, header.hasRecoveryMarker);
+        var normalRecord = records.filter(function (record) {
+          return record.methodId === METHOD_PASSPHRASE || record.methodId === METHOD_PASSPHRASE_KEYFILE;
+        })[0];
+        if (!normalRecord || (existingRecoveryRecord && value.replace !== true)) {
+          throw serializationError();
+        }
+        var unlockResult = await unwrapDek(
+          records,
+          value.normalPassphrase,
+          header,
+          reauthKeyfile,
+          null,
+          false
+        );
+        localDek = unlockResult.dek;
+        wrappingKey = unlockResult.wrappingKey;
+        if (!localDek || !wrappingKey) {
+          throw serializationError();
+        }
+        if (closed || !vaultHealthReady() || networkState() !== state.mode) {
+          throw serializationError();
+        }
+        var slip39 = global.__coldboxSlip39;
+        if (!slip39 || typeof slip39.generate !== 'function') {
+          throw serializationError();
+        }
+        var generated;
+        try {
+          generated = slip39.generate(localDek, {
+            identifier: value.identifier,
+            extendableBackupFlag: value.extendableBackupFlag === undefined ? 1 : value.extendableBackupFlag,
+            iterationExponent: value.iterationExponent === undefined ? 0 : value.iterationExponent,
+            groupThreshold: value.groupThreshold === undefined ? 1 : value.groupThreshold,
+            groups: value.groups === undefined ? [{ threshold: 2, count: 3 }] : value.groups,
+            passphrase: ''
+          });
+        } catch (error) {
+          throw serializationError();
+        }
+        var metadata = recoveryMetadata({
+          version: RECOVERY_METHOD_DATA_VERSION,
+          dekLength: DEK_LENGTH,
+          identifier: generated.identifier,
+          extendableBackupFlag: generated.extendableBackupFlag,
+          iterationExponent: generated.iterationExponent,
+          groupThreshold: generated.groupThreshold,
+          groups: generated.groups
+        }, serializationError);
+        methodData = encodeRecoveryMethodData(metadata);
+        nextRecord = recoveryRecord(methodData);
+        var nextBlockLength = normalRecord.raw.length + nextRecord.length;
+        nextHeaderBytes = new Uint8Array(headerBytesSnapshot);
+        writeUint32(nextHeaderBytes, 53, nextBlockLength + RECOVERY_HEADER_MARKER);
+        var nextHeader = parseHeader(nextHeaderBytes);
         wrapNonce = cryptoLayer.randomBytes(NONCE_LENGTH);
-        wrappedDek = await aesGcm('encrypt', state.wrappingKey, wrapNonce, state.dek, nextHeaderBytes);
+        wrappedDek = await aesGcm('encrypt', wrappingKey, wrapNonce, localDek, nextHeaderBytes);
         if (closed || !vaultHealthReady() || networkState() !== state.mode) {
           throw serializationError();
         }
@@ -1343,6 +1375,9 @@
           : keyfileRecord(wrapNonce, wrappedDek, normalRecord.methodData);
         nextWrappedBlock = concatBytes([nextNormalRecord, nextRecord]);
         if (nextWrappedBlock.length !== nextBlockLength) {
+          throw serializationError();
+        }
+        if (closed || !vaultHealthReady() || networkState() !== state.mode) {
           throw serializationError();
         }
         var previousHeaderBytes = state.headerBytes;
@@ -1368,6 +1403,12 @@
       } catch (error) {
         throw serializationError();
       } finally {
+        operationInFlight = false;
+        zeroBytes(reauthKeyfile);
+        zeroBytes(localDek);
+        zeroBytes(wrappingKey);
+        zeroBytes(headerBytesSnapshot);
+        zeroBytes(wrappedBlockSnapshot);
         zeroBytes(wrapNonce);
         zeroBytes(wrappedDek);
         zeroBytes(nextHeaderBytes);
@@ -1391,8 +1432,6 @@
       zeroBytes(state.secretCiphertext);
       zeroBytes(state.headerBytes);
       zeroBytes(state.wrappedBlock);
-      zeroBytes(state.dek);
-      zeroBytes(state.wrappingKey);
       zeroBytes(state.recoveryMethodData);
       state.publicKey = null;
       state.secretKey = null;
@@ -1404,17 +1443,19 @@
       state.secretCiphertext = null;
       state.headerBytes = null;
       state.wrappedBlock = null;
-      state.dek = null;
-      state.wrappingKey = null;
       state.recoveryMethodData = null;
       state.recoveryMetadata = null;
     }
 
     async function save() {
-      if (closed || saving) {
+      if (closed || saving || operationInFlight) {
         throw serializationError();
       }
       saving = true;
+      operationInFlight = true;
+      var headerBytesSnapshot = null;
+      var wrappedBlockSnapshot = null;
+      var recoveryMethodDataSnapshot = null;
       var publicNonce = null;
       var publicCiphertext = null;
       var secretNonce = null;
@@ -1427,7 +1468,12 @@
           throw serializationError();
         }
 
-        aad = compartmentAad(state.headerBytes, state.recoveryMethodData);
+        headerBytesSnapshot = new Uint8Array(state.headerBytes);
+        wrappedBlockSnapshot = new Uint8Array(state.wrappedBlock);
+        recoveryMethodDataSnapshot = state.recoveryMethodData
+          ? new Uint8Array(state.recoveryMethodData)
+          : null;
+        aad = compartmentAad(headerBytesSnapshot, recoveryMethodDataSnapshot);
         publicNonce = cryptoLayer.randomBytes(NONCE_LENGTH);
         publicCiphertext = await aesGcm(
           'encrypt',
@@ -1436,6 +1482,9 @@
           state.publicPlain,
           aad
         );
+        if (closed || !vaultHealthReady() || networkState() !== state.mode) {
+          throw serializationError();
+        }
 
         if (state.mode === 'online') {
           secretNonce = new Uint8Array(state.secretNonce);
@@ -1458,10 +1507,13 @@
             secretCiphertext = new Uint8Array(0);
           }
         }
+        if (closed || !vaultHealthReady() || networkState() !== state.mode) {
+          throw serializationError();
+        }
 
         var vault = concatBytes([
-          state.headerBytes,
-          state.wrappedBlock,
+          headerBytesSnapshot,
+          wrappedBlockSnapshot,
           publicNonce,
           publicCiphertext,
           secretNonce,
@@ -1481,6 +1533,10 @@
         throw serializationError();
       } finally {
         saving = false;
+        operationInFlight = false;
+        zeroBytes(headerBytesSnapshot);
+        zeroBytes(wrappedBlockSnapshot);
+        zeroBytes(recoveryMethodDataSnapshot);
         zeroBytes(publicNonce);
         zeroBytes(publicCiphertext);
         zeroBytes(secretNonce);
@@ -1581,8 +1637,6 @@
         secretData: secretData,
         publicPlain: publicPlain,
         publicKey: publicKey,
-        dek: new Uint8Array(dek),
-        wrappingKey: resolvedMode === 'offline' && wrappingKey ? new Uint8Array(wrappingKey) : null,
         secretLength: header.secretLength,
         secretNonce: secretNonce,
         secretCiphertext: secretCiphertext,
