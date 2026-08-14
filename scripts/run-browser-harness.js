@@ -582,6 +582,20 @@ async function closePage(page) {
   await page.close();
 }
 
+async function openDashboard(page, engine) {
+  const desktopRoute = page.locator('#nav-rail a[data-route="dashboard"]');
+  if (await desktopRoute.isVisible()) {
+    await desktopRoute.evaluate((element) => element.click());
+    return;
+  }
+  const mobileRoute = page.locator('#mobile-tabs a[data-route="dashboard"]');
+  if (await mobileRoute.isVisible()) {
+    await mobileRoute.evaluate((element) => element.click());
+    return;
+  }
+  throw new Error(`${engine}: no visible dashboard route control`);
+}
+
 // F1 support: same as openPage, but injects FILE_READER_ORDER_CONTROL_SCRIPT
 // before the document (and every child frame, including the cold realm's
 // srcdoc iframe) first runs, so the page's own FileReader usage is wrapped
@@ -3701,6 +3715,17 @@ async function verifyBackupRecordVerification(browser, engine) {
     assert.equal(await page.locator('#backup-list .registry-record').count(), 1, `${engine}: BackupRecord did not render`);
     assert.match(await page.locator('#backup-list').textContent(), /Not verified/);
 
+    await openDashboard(page, engine);
+    await page.locator('#page-dashboard:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('#dashboard-backup-health-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await page.locator('#dashboard-backup-health-metrics .backup-health-metric').count(), 5, `${engine}: Backup Health metrics did not render`);
+    assert.match(await page.locator('#dashboard-backup-health-headline').textContent(), /incomplete/);
+    assert.match(await page.locator('#dashboard-backup-health-alerts').textContent(), /never passed a cold reconstruction/);
+    assert.match(await page.locator('#dashboard-backup-health-alerts').textContent(), /threshold proof/);
+
+    await page.locator('#nav-rail a[data-route="backup"]').click();
+    await page.locator('#page-backup:not([hidden])').waitFor({ state: 'visible' });
+
     await page.locator('#backup-list [data-registry-action="verify"]').click();
     await coldFrame.locator('#cold-backup-verification:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
     await coldFrame.locator('#cold-backup-verification-input').fill([shares[0], shares[2]].join('\n'));
@@ -3710,9 +3735,13 @@ async function verifyBackupRecordVerification(browser, engine) {
     assert.equal((await page.locator('html').evaluate((element) => element.outerHTML)).includes(shares[0]), false, `${engine}: BackupRecord verification shares must never enter the warm DOM`);
     assert.equal(await coldFrame.locator('#cold-backup-verification-input').inputValue(), '', `${engine}: BackupRecord verification input must clear after reconstruction`);
 
-    await coldFrame.locator('body').press('Escape');
-    await coldFrame.locator('body').press('Escape');
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    await lockVaultDiscardingUnsaved(page);
     await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    await openDashboard(page, engine);
+    await page.locator('#dashboard-backup-health-locked:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await page.locator('#dashboard-backup-health-workspace').getAttribute('hidden'), '');
     console.log(`${engine}: unresolved BackupRecord subject failed closed, share input stayed cold-only, and teardown passed`);
   } finally {
     await closePage(page);

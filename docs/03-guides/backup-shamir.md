@@ -135,6 +135,8 @@ reconstruction, not proof that the physical custodian or location is safe.
 
 ## Related standards and references
 
+- [Backup Health](backup-health.md) — public verification schedules and conservative placement warnings.
+
 - [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) —
   mnemonic entropy and checksum rules.
 - [Ian Coleman Shamir39 specification](https://github.com/iancoleman/shamir39/blob/master/specification.md)

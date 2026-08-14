@@ -1,6 +1,7 @@
 
 __COLDBOX_PROTOCOL__
 __COLDBOX_REGISTRY__
+__COLDBOX_BACKUP_HEALTH__
 __COLDBOX_AIRGAP__
 __COLDBOX_CAPABILITIES__
 __COLDBOX_SAVE_INTEGRITY__
@@ -16,6 +17,7 @@ __COLDBOX_CONCEALMENT__
   var coldRealmDocument = __COLDBOX_COLD_REALM_DOCUMENT__;
   var protocol = window.__coldboxProtocol;
   var registry = window.__coldboxRegistry;
+  var backupHealth = window.__coldboxBackupHealth;
   var concealment = window.__coldboxConcealment;
   var airgap = window.__coldboxAirgap;
   var capabilities = window.__coldboxCapabilities;
@@ -230,6 +232,13 @@ __COLDBOX_CONCEALMENT__
   var backupCancel = document.getElementById('backup-cancel');
   var backupSearch = document.getElementById('backup-search');
   var backupList = document.getElementById('backup-list');
+  var backupHealthLocked = document.getElementById('dashboard-backup-health-locked');
+  var backupHealthWorkspace = document.getElementById('dashboard-backup-health-workspace');
+  var backupHealthHeadline = document.getElementById('dashboard-backup-health-headline');
+  var backupHealthMetrics = document.getElementById('dashboard-backup-health-metrics');
+  var backupHealthAlerts = document.getElementById('dashboard-backup-health-alerts');
+  var backupHealthRecords = document.getElementById('dashboard-backup-health-records');
+  var backupHealthPlacement = document.getElementById('dashboard-backup-health-placement');
   var registryAddressVerificationSummary = document.getElementById('registry-address-verification-summary');
   var addressVerifyRecord = document.getElementById('address-verify-record');
   var addressVerifyCandidate = document.getElementById('address-verify-candidate');
@@ -3116,6 +3125,200 @@ __COLDBOX_CONCEALMENT__
     }
   }
 
+  function uniqueStrings(values) {
+    var result = [];
+    (values || []).forEach(function (value) {
+      if (typeof value === 'string' && value && result.indexOf(value) === -1) {
+        result.push(value);
+      }
+    });
+    return result;
+  }
+
+  function appendBackupHealthMetric(node, value, label, state) {
+    var metric = document.createElement('article');
+    metric.className = 'backup-health-metric';
+    metric.setAttribute('data-health-state', state || 'neutral');
+    var valueNode = document.createElement('strong');
+    valueNode.className = 'backup-health-metric-value';
+    valueNode.textContent = String(value);
+    var labelNode = document.createElement('span');
+    labelNode.className = 'backup-health-metric-label';
+    labelNode.textContent = label;
+    metric.appendChild(valueNode);
+    metric.appendChild(labelNode);
+    node.appendChild(metric);
+  }
+
+  function backupHealthAlertCopy(item) {
+    var recordCount = uniqueStrings(item.recordIds).length;
+    var subjectCount = uniqueStrings(item.subjectIds).length;
+    switch (item.code) {
+      case 'no-records':
+        return 'No BackupRecords have been recorded yet. Add a public record for each backup you want to monitor.';
+      case 'invalid-records':
+        return String(recordCount) + ' backup record' + (recordCount === 1 ? ' has' : 's have') + ' invalid verification metadata. Review the record before relying on its schedule.';
+      case 'overdue-verification':
+        return String(recordCount) + ' backup record' + (recordCount === 1 ? ' is' : 's are') + ' overdue for cold share verification.';
+      case 'unverified-records':
+        return String(recordCount) + ' backup record' + (recordCount === 1 ? ' has' : 's have') + ' never passed a cold reconstruction and remain incomplete.';
+      case 'unsupported-methods':
+        return String(recordCount) + ' record' + (recordCount === 1 ? ' uses' : 's use') + ' a method without an in-app reconstruction workflow; it remains incomplete.';
+      case 'missing-placement':
+        return String(recordCount) + ' record' + (recordCount === 1 ? ' has' : 's have') + ' neither a recorded location nor a custodian.';
+      case 'co-located-placement':
+        return 'Records for ' + String(subjectCount) + ' subject' + (subjectCount === 1 ? ' repeat' : 's repeat') + ' a location or custodian. The dashboard cannot prove that shares are separated.';
+      case 'placement-unproven':
+        return 'Placement diversity is not a threshold proof. The public record has no per-share placement map, so recoverability after a loss remains unproven.';
+      default:
+        return 'Review the Backup Lab records before relying on this backup plan.';
+    }
+  }
+
+  function backupHealthSubjectLabel(subject, evaluations) {
+    var matching = (evaluations || []).filter(function (evaluation) {
+      return evaluation.subjectId === subject.subjectId;
+    });
+    var labels = matching.map(function (evaluation) {
+      return evaluation.shareLabel;
+    }).filter(Boolean);
+    if (labels.length > 0) {
+      return labels[0];
+    }
+    return subject.subjectId ? 'Subject ' + subject.subjectId.slice(0, 8) : 'Subject not identified';
+  }
+
+  function backupHealthPlacementCopy(subject) {
+    var locations = String(subject.locationCount) + ' recorded location' + (subject.locationCount === 1 ? '' : 's');
+    var custodians = String(subject.custodianCount) + ' recorded custodian' + (subject.custodianCount === 1 ? '' : 's');
+    if (subject.placementStatus === 'distributed-unproven') {
+      return locations + ' · ' + custodians + ' · distributed, threshold-unproven';
+    }
+    if (subject.placementStatus === 'single-location') {
+      return locations + ' · ' + custodians + ' · single recorded placement';
+    }
+    return locations + ' · ' + custodians + ' · placement unknown';
+  }
+
+  function appendBackupHealthEmpty(node, text) {
+    var empty = document.createElement('p');
+    empty.className = 'backup-health-empty';
+    empty.textContent = text;
+    node.appendChild(empty);
+  }
+
+  function renderBackupHealth(records) {
+    if (!backupHealthLocked || !backupHealthWorkspace) {
+      return;
+    }
+    var available = Boolean(registryStore && vaultState === 'unlocked');
+    backupHealthLocked.hidden = available;
+    backupHealthWorkspace.hidden = !available;
+    if (!available) {
+      return;
+    }
+    if (!backupHealth || typeof backupHealth.summarize !== 'function') {
+      backupHealthWorkspace.setAttribute('data-health-state', 'invalid');
+      if (backupHealthHeadline) {
+        backupHealthHeadline.textContent = 'Backup health is unavailable; review the Backup Lab directly.';
+      }
+      return;
+    }
+    var summary = backupHealth.summarize(records, new Date());
+    backupHealthWorkspace.setAttribute('data-health-state', summary.state);
+    if (backupHealthHeadline) {
+      if (summary.state === 'empty') {
+        backupHealthHeadline.textContent = 'No backup records are being monitored yet.';
+      } else if (summary.invalidCount > 0) {
+        backupHealthHeadline.textContent = 'Backup metadata needs review before it can be trusted.';
+      } else if (summary.overdueCount > 0) {
+        backupHealthHeadline.textContent = 'Some backup checks are overdue.';
+      } else if (summary.unverifiedCount > 0) {
+        backupHealthHeadline.textContent = 'Some backups are still incomplete.';
+      } else if (summary.placementStatus !== 'distributed-unproven') {
+        backupHealthHeadline.textContent = 'Verification dates are current, but placement coverage is incomplete.';
+      } else {
+        backupHealthHeadline.textContent = 'Verification dates are current; threshold survivability remains unproven.';
+      }
+    }
+    clearRegistryNode(backupHealthMetrics);
+    if (backupHealthMetrics) {
+      appendBackupHealthMetric(backupHealthMetrics, summary.totalCount, 'Records', 'neutral');
+      appendBackupHealthMetric(backupHealthMetrics, summary.currentCount, 'Current', summary.currentCount > 0 ? 'current' : 'neutral');
+      appendBackupHealthMetric(backupHealthMetrics, summary.unverifiedCount, 'Unverified', summary.unverifiedCount > 0 ? 'warning' : 'current');
+      appendBackupHealthMetric(backupHealthMetrics, summary.overdueCount, 'Overdue', summary.overdueCount > 0 ? 'warning' : 'current');
+      appendBackupHealthMetric(backupHealthMetrics, summary.actionCount, 'Needs action', summary.actionCount > 0 ? 'warning' : 'current');
+    }
+    clearRegistryNode(backupHealthAlerts);
+    if (backupHealthAlerts) {
+      if (summary.alerts.length === 0) {
+        appendBackupHealthEmpty(backupHealthAlerts, 'No dashboard alerts. Physical placement still needs its own human check.');
+      } else {
+        summary.alerts.forEach(function (item) {
+          var alertNode = document.createElement('article');
+          alertNode.className = 'backup-health-alert';
+          alertNode.setAttribute('data-severity', item.severity);
+          var title = document.createElement('strong');
+          title.textContent = item.code.replace(/-/g, ' ');
+          var copy = document.createElement('p');
+          copy.textContent = backupHealthAlertCopy(item);
+          alertNode.appendChild(title);
+          alertNode.appendChild(copy);
+          backupHealthAlerts.appendChild(alertNode);
+        });
+      }
+    }
+    clearRegistryNode(backupHealthPlacement);
+    if (backupHealthPlacement) {
+      if (summary.subjects.length === 0) {
+        appendBackupHealthEmpty(backupHealthPlacement, 'No subject-linked placement data is available.');
+      } else {
+        summary.subjects.forEach(function (subject) {
+          var subjectNode = document.createElement('article');
+          subjectNode.className = 'backup-health-placement-item';
+          subjectNode.setAttribute('data-placement-state', subject.placementStatus);
+          subjectNode.setAttribute('data-privacy-sensitive', 'true');
+          var title = document.createElement('strong');
+          title.textContent = backupHealthSubjectLabel(subject, summary.evaluations);
+          var copy = document.createElement('p');
+          copy.textContent = backupHealthPlacementCopy(subject);
+          subjectNode.appendChild(title);
+          subjectNode.appendChild(copy);
+          backupHealthPlacement.appendChild(subjectNode);
+        });
+      }
+    }
+    clearRegistryNode(backupHealthRecords);
+    if (backupHealthRecords) {
+      if (summary.evaluations.length === 0) {
+        appendBackupHealthEmpty(backupHealthRecords, 'No backup records recorded yet.');
+      } else {
+        summary.evaluations.forEach(function (evaluation) {
+          var recordNode = document.createElement('article');
+          recordNode.className = 'backup-health-record';
+          recordNode.setAttribute('data-health-state', evaluation.state);
+          recordNode.setAttribute('data-privacy-sensitive', 'true');
+          var title = document.createElement('strong');
+          title.textContent = evaluation.shareLabel || evaluation.method || evaluation.recordId || 'Unlabeled backup';
+          var detail = document.createElement('p');
+          detail.textContent = [
+            evaluation.method,
+            evaluation.threshold ? String(evaluation.threshold) + ' required' : '',
+            evaluation.location || 'Location not recorded',
+            evaluation.custodian || 'Custodian not recorded'
+          ].filter(Boolean).join(' · ');
+          var status = document.createElement('p');
+          status.className = 'backup-health-record-status';
+          status.textContent = backupHealth.verificationLabel(evaluation);
+          recordNode.appendChild(title);
+          recordNode.appendChild(detail);
+          recordNode.appendChild(status);
+          backupHealthRecords.appendChild(recordNode);
+        });
+      }
+    }
+  }
+
   function registryButton(action, kind, id, label) {
     var button = document.createElement('button');
     button.type = 'button';
@@ -3150,10 +3353,21 @@ __COLDBOX_CONCEALMENT__
       var backupVerificationNode = document.createElement('p');
       backupVerificationNode.className = 'registry-record-verification';
       backupVerificationNode.textContent = backupVerificationLabel(record);
+      var healthEvaluation = backupHealth && typeof backupHealth.evaluate === 'function'
+        ? backupHealth.evaluate(record, new Date())
+        : null;
+      var healthVerificationState = healthEvaluation && healthEvaluation.state === 'current'
+        ? 'cold-verified'
+        : healthEvaluation && (healthEvaluation.state === 'overdue' || healthEvaluation.state === 'invalid')
+          ? 'cold-verified-stale'
+          : 'unverified';
       backupVerificationNode.setAttribute(
         'data-verification-state',
-        record.lastVerifiedAt ? 'cold-verified' : 'unverified'
+        healthVerificationState
       );
+      if (healthEvaluation) {
+        card.setAttribute('data-health-state', healthEvaluation.state);
+      }
       card.appendChild(backupVerificationNode);
     }
     card.setAttribute('data-privacy-sensitive', 'true');
@@ -3203,6 +3417,10 @@ __COLDBOX_CONCEALMENT__
   }
 
   function backupVerificationLabel(record) {
+    if (backupHealth && typeof backupHealth.evaluate === 'function'
+      && typeof backupHealth.verificationLabel === 'function') {
+      return backupHealth.verificationLabel(backupHealth.evaluate(record, new Date()));
+    }
     if (!record.lastVerifiedAt) {
       return 'Not verified — this backup is incomplete';
     }
@@ -3656,6 +3874,7 @@ __COLDBOX_CONCEALMENT__
     if (backupWorkspace) {
       backupWorkspace.hidden = !available;
     }
+    renderBackupHealth(available ? registryStore.list('backups', hiddenRegistryVisible) : []);
     renderAddressVerificationOptions();
     if (!available) {
       return;

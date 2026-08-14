@@ -100,7 +100,10 @@ Making a structural decision? Add an ADR in `docs/05-development/adr/`. Short: w
 - One logical change per PR — and for roadmap work, exactly one roadmap item.
 - Describe what breaks if you're wrong. Security-relevant PRs should state their threat-model impact explicitly.
 - Note bundle size impact.
-- Confirm you tested on at least one desktop and one mobile browser, from `file://`.
+- Confirm you tested on at least one desktop and one mobile browser, from
+  `file://`. An item-scoped maintainer deferral is allowed only under
+  [ADR-0043](docs/05-development/adr/0043-scoped-mobile-validation-deferral.md)
+  and never substitutes for the release device matrix or P0.19.
 - Include a PR packet per [pr-packet.md](docs/05-development/pr-packet.md).
 
 ### How review works

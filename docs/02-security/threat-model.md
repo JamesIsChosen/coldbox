@@ -105,7 +105,11 @@ Copy is opt-in per field with a visible 30-second auto-clear countdown, and a wa
 
 Backups are the most common cause of loss, and the failures are boring: never tested, all shares in one drawer, threshold unreachable because two shares were lost, nobody else knows the vault exists.
 
-Countered by a mandatory verify-your-shares step before a backup can be marked complete, co-location warnings, verification scheduling, survivability analysis, and the inheritance letter.
+Countered by the cold-only verify-your-shares step before a backup can be
+marked complete, plus the warm Backup Health dashboard's overdue, missing
+placement, and repeated-location/custodian warnings. The dashboard does not
+prove that a threshold survives a physical failure; individual share mapping,
+survivability analysis, and inheritance rehearsal remain human checks.
 
 ### Vault rollback
 

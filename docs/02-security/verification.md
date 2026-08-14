@@ -122,7 +122,7 @@ USB sticks and SD cards suffer silent bit corruption. Files that were fine when 
 sha256sum -c backup-manifest.txt
 ```
 
-The Backup Health dashboard tracks media-verification due dates alongside share-verification ones. Annual is reasonable.
+The Backup Health dashboard tracks BackupRecord share-verification due dates. Media-verification due dates belong to the future file-hasher workflow; keep the external manifest schedule separately until that record type exists.
 
 ---
 

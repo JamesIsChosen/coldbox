@@ -12,6 +12,25 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
+### Added - P2.7 Backup Health dashboard (2026-08-14)
+
+- Added a warm-only dashboard summary for public BackupRecords: current,
+  unverified, overdue, invalid, and unsupported-method states are visible with
+  direct links back to Backup Lab.
+- Added conservative placement checks for missing metadata and repeated
+  location/custodian labels. Different recorded locations are shown as
+  distributed but threshold-unproven; the dashboard never claims a numeric
+  survivability score or that individual shares survive a physical loss.
+- Added deterministic health-engine tests, Chromium/Firefox `file://` coverage,
+  the [Backup Health guide](docs/03-guides/backup-health.md), and
+  [ADR-0042](docs/05-development/adr/0042-conservative-backup-health.md).
+- Hardened health evaluation so future cold timestamps and due-date arithmetic
+  outside the JavaScript Date range fail closed as needs-review metadata.
+- Recorded the narrow, item-scoped mobile-validation deferral policy in
+  [ADR-0043](docs/05-development/adr/0043-scoped-mobile-validation-deferral.md):
+  P2.7 may remain mobile-unverified for item review, without changing the
+  release device matrix or P0.19 gate.
+
 ### Added - P2.6 BackupRecords and verify-your-shares (2026-08-13)
 
 - Added public BackupRecord metadata with method, threshold, location,

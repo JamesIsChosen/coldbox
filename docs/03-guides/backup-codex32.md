@@ -94,7 +94,7 @@ Annually, using the BIP-93 materials you preserved separately:
 1. Retrieve a share.
 2. Take out the BIP-93 lookup tables.
 3. Compute the checksum by hand — a few minutes once you're practised.
-4. Confirm it matches. The P2.2 app does not provide the printed worksheet; P2.7's Health dashboard is not implemented yet.
+4. Confirm it matches. The P2.2 app does not provide the printed worksheet. The [Backup Health dashboard](backup-health.md) can track the cold reconstruction schedule, but the hand check remains a separate assurance.
 
 You've now verified your backup is intact without trusting any software, any device, or any supply chain. Record the date in your separate offline backup log, or in a P2.6 BackupRecord after its cold reconstruction succeeds. The public record stores metadata only; the hand-check remains a separate assurance.
 

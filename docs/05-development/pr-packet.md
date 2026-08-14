@@ -87,6 +87,11 @@ Required for anything touching bootstrap, CSP, storage, or rendering.
 
 Untested platforms are marked untested. Never inferred from a similar one.
 
+An item-scoped mobile result may be marked **DEFERRED** only when a named
+maintainer decision and [ADR-0043](adr/0043-scoped-mobile-validation-deferral.md)
+cover the item. DEFERRED means unverified; it is not a mobile PASS and never
+satisfies the release device matrix or P0.19.
+
 ### 8. Assumptions made
 
 Every decision not settled by the spec. This is where a reviewer finds the real risk.

@@ -115,7 +115,10 @@ The failure everyone dreads: you need your backup, and it's wrong. Usually a tra
 
 **Match:** your backup is correct and will restore. **Mismatch:** your backup is wrong. Fix it now, while you still have the working device.
 
-Record the verification date in the Backup Health dashboard, which will remind you when it's due again.
+If this device also has a public BackupRecord, use the Backup Lab's **Verify
+shares** action to track its cold reconstruction schedule. Metal records are
+not reconstructable in this release, so their physical verification date must
+remain in your separate offline log until that workflow exists.
 
 ---
 

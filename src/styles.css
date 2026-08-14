@@ -1333,6 +1333,185 @@ samp {
   font-weight: 900;
 }
 
+.backup-health-dashboard {
+  margin-top: 1.25rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.7rem;
+  background: var(--surface-raised);
+}
+
+.backup-health-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.backup-health-heading h2 {
+  margin: 0.2rem 0 0;
+}
+
+.backup-health-lede {
+  max-width: 48rem;
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.backup-health-locked {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 1rem;
+  padding: 0.85rem;
+  border: 1px dashed var(--border);
+  border-radius: 0.55rem;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.backup-health-locked strong,
+.backup-health-headline {
+  color: var(--text);
+}
+
+.backup-health-headline {
+  margin: 1rem 0 0;
+  font-weight: 850;
+}
+
+.backup-health-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.8rem;
+}
+
+.backup-health-metric {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface-soft);
+}
+
+.backup-health-metric-value {
+  color: var(--text);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.backup-health-metric-label {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.backup-health-metric[data-health-state="current"] .backup-health-metric-value {
+  color: var(--success);
+}
+
+.backup-health-metric[data-health-state="warning"] .backup-health-metric-value {
+  color: var(--warning);
+}
+
+.backup-health-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.backup-health-subpanel {
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  background: var(--surface-soft);
+}
+
+.backup-health-subpanel h3 {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.backup-health-list {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.65rem;
+}
+
+.backup-health-alert,
+.backup-health-placement-item,
+.backup-health-record {
+  padding: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  background: var(--surface);
+}
+
+.backup-health-alert[data-severity="warning"],
+.backup-health-record[data-health-state="overdue"],
+.backup-health-record[data-health-state="unverified"],
+.backup-health-record[data-health-state="invalid"] {
+  border-color: color-mix(in srgb, var(--warning) 65%, var(--border));
+}
+
+.backup-health-alert[data-severity="critical"],
+.backup-health-record[data-health-state="invalid"] {
+  border-color: color-mix(in srgb, var(--danger) 70%, var(--border));
+}
+
+.backup-health-alert strong,
+.backup-health-placement-item strong,
+.backup-health-record strong {
+  color: var(--text);
+  font-size: 0.72rem;
+  text-transform: capitalize;
+}
+
+.backup-health-alert p,
+.backup-health-placement-item p,
+.backup-health-record p {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.backup-health-record-status {
+  color: var(--text) !important;
+  font-weight: 800;
+}
+
+.backup-health-record[data-health-state="current"] .backup-health-record-status {
+  color: var(--success) !important;
+}
+
+.backup-health-record[data-health-state="overdue"] .backup-health-record-status,
+.backup-health-record[data-health-state="unverified"] .backup-health-record-status,
+.backup-health-record[data-health-state="invalid"] .backup-health-record-status {
+  color: var(--warning) !important;
+}
+
+.backup-health-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.backup-health-records-panel {
+  margin-top: 1rem;
+}
+
 .registry-forms,
 .device-grid,
 .registry-lists,
@@ -2102,9 +2281,30 @@ samp {
   .backup-form-inline {
     grid-template-columns: 1fr;
   }
+
+  .backup-health-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .backup-health-columns {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 720px) {
+  .backup-health-heading {
+    display: block;
+  }
+
+  .backup-health-heading .vault-button {
+    display: inline-block;
+    margin-top: 0.8rem;
+  }
+
+  .backup-health-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .app-layout {
     display: block;
     min-height: 0;

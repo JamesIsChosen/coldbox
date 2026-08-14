@@ -276,6 +276,39 @@ __COLDBOX_STYLES__
             <p class="stage-cue" aria-hidden="true">▼ How the boundary is built ▼</p>
           </section>
 
+          <section class="backup-health-dashboard" id="dashboard-backup-health" aria-labelledby="dashboard-backup-health-title">
+            <div class="backup-health-heading">
+              <div>
+                <p class="panel-kicker">Backup Health / P2.7</p>
+                <h2 id="dashboard-backup-health-title">Can you still recover?</h2>
+                <p class="backup-health-lede">This warm-only view checks public verification dates and recorded placement metadata. It never receives share words or reconstructed secrets.</p>
+              </div>
+              <a class="vault-button" href="#backup">Open Backup Lab</a>
+            </div>
+            <div id="dashboard-backup-health-locked" class="backup-health-locked" aria-live="polite">
+              <strong>Unlock a vault to see backup health.</strong>
+              <span>Backup records live in the public compartment of the selected vault.</span>
+            </div>
+            <div id="dashboard-backup-health-workspace" hidden aria-live="polite">
+              <p id="dashboard-backup-health-headline" class="backup-health-headline" role="status">Backup health is waiting for records.</p>
+              <div id="dashboard-backup-health-metrics" class="backup-health-metrics" aria-label="Backup health counts"></div>
+              <div class="backup-health-columns">
+                <section class="backup-health-subpanel" aria-labelledby="dashboard-backup-health-alerts-title">
+                  <h3 id="dashboard-backup-health-alerts-title">What needs attention</h3>
+                  <div id="dashboard-backup-health-alerts" class="backup-health-list"></div>
+                </section>
+                <section class="backup-health-subpanel" aria-labelledby="dashboard-backup-health-placement-title">
+                  <h3 id="dashboard-backup-health-placement-title">Recorded placement</h3>
+                  <div id="dashboard-backup-health-placement" class="backup-health-list"></div>
+                </section>
+              </div>
+              <section class="backup-health-subpanel backup-health-records-panel" aria-labelledby="dashboard-backup-health-records-title">
+                <h3 id="dashboard-backup-health-records-title">Backup records</h3>
+                <div id="dashboard-backup-health-records" class="backup-health-list"></div>
+              </section>
+            </div>
+          </section>
+
           <div class="card-grid card-grid-three">
             <article class="info-card">
               <span class="card-icon" aria-hidden="true">01</span>

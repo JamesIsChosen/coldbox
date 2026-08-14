@@ -159,4 +159,7 @@ Every recovery scenario here is preventable:
 - Use metal, not paper
 - Verify a passphrase before funding anything
 
-The [Backup Health dashboard](../04-reference/hardware-wallet-matrix.md) exists to make the annual check something you're reminded about rather than something you intend to do.
+The [Backup Health dashboard](backup-health.md) can remind you about a public
+BackupRecord's annual share-reconstruction check. It does not replace reading
+the physical copy, checking a passphrase, or confirming that a location is
+reachable.
