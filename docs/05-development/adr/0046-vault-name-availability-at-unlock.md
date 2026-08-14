@@ -7,7 +7,9 @@
 
 [ADR-0025](0025-vault-identity-library-and-save-ux.md) placed vault naming in the warm shell: the user chooses a public name *before* creation, and the cold realm is gated by the strict payload-free `vault.create.prepare {}` message. ADR-0025 §2 is explicit that the message carries no fields, so that neither the name nor any other free-form value can hitch a ride across the boundary. [ADR-0026](0026-canonical-vault-save-and-live-transfer.md) then required that a different Vault ID cannot claim an already-known public name in the app-visible scope.
 
-[ADR-0045](0045-released-secret-model.md) moves vault creation wholly into the sealed realm, so that naming, unlock phrase, confirmation, KDF profile and keyfile sit on one screen. Splitting a single create action across a security boundary is the reason people mis-order it.
+The August 2026 design work proposes finishing a job ADR-0025 started. Creation's unlock phrase, confirmation, KDF profile and keyfile are **already** inside the sealed realm (ADR-0025 §1); only the **name** is chosen beforehand, in the warm shell (ADR-0025 §2). So a single create action is split across the security boundary for one field, which is the reason people mis-order it.
+
+This ADR — not [ADR-0045](0045-released-secret-model.md), which is about seed material and says nothing about vault creation — is what decides that the naming step joins the rest of creation in cold.
 
 That creates a problem ADR-0025 did not have to solve. The name is now chosen inside cold, but the set of names already in use is warm-side state, and **cold cannot see it**. Without something, the duplicate-name refusal that ADR-0025 §2 and ADR-0026 require either stops being enforced or gets enforced too late — after the user has entered a phrase, confirmed it, and benchmarked a KDF profile.
 
@@ -15,7 +17,9 @@ Two shapes were available. Warm supplies the list of names in use at unlock, or 
 
 ## Decision
 
-**Warm supplies the list of public vault names in use, to cold, once, as part of the existing unlock/session-start exchange.**
+**Vault naming moves into the sealed realm**, joining the unlock phrase, confirmation, KDF profile and keyfile already there under ADR-0025 §1. Creation becomes one screen on one side of the boundary. This amends ADR-0025 §2's placement of the naming step; everything else in §2 — that the name is public metadata, that it must not contain secrets, and that it never crosses cold → warm as free-form text — stands unchanged.
+
+**To make that safe, warm supplies the list of public vault names in use, to cold, once, as part of the existing unlock/session-start exchange.**
 
 The message is typed and narrow, in the manner [ADR-0031](0031-public-registry-mutation-boundary.md) already established for warm-to-cold public data:
 
@@ -42,7 +46,8 @@ Fail-closed behaviour is specified rather than left implicit: if the list is abs
 - [architecture.md](../../01-spec/architecture.md)'s message inventory and [csp-policy.md](../../02-security/csp-policy.md)'s boundary description are updated in the item that implements this, not here.
 - ADR-0025 §2's payload-free `vault.create.prepare {}` is superseded for the creation path only: gating the cold creation UI now also delivers the name list. The rest of ADR-0025 — that names are public warm metadata, that the Vault ID is a cold-generated UUID, that no free-form string returns from cold — stands unchanged.
 - Duplicate-name refusal becomes visible at the moment of typing rather than at save. This is the user-facing point of the decision and the acceptance criterion for it.
-- The disclosure is documented in the threat model rather than left to be discovered: cold knows the public names of the vaults in the library for the duration of a session.
+- The disclosure is recorded in [threat-model.md](../../02-security/threat-model.md) under *Not defended* rather than left to be discovered: cold knows the public names of the vaults in the library for the duration of a session.
+- **UI.10 owns the implementation of this ADR in full** — the typed message and its schema entry, element and list bounds, fail-closed behaviour on a missing or malformed list, teardown, the negative protocol tests, and the [architecture.md](../../01-spec/architecture.md) message-inventory and [csp-policy.md](../../02-security/csp-policy.md) updates. No part of it is left to be picked up incidentally by another item.
 
 ## Alternatives considered
 

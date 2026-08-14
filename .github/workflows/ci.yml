@@ -161,7 +161,7 @@ jobs:
             echo ""
             echo "\`build/coldbox.html\`: ${bytes} bytes (~${kib} KiB)"
             echo ""
-            echo "Budget per docs/05-development/dependencies.md: target ≤ 3 MB, hard cap 4.5 MB."
+            echo "Budget per docs/05-development/dependencies.md: target ≤ 4 MB, hard cap 4.5 MB."
           } >> "$GITHUB_STEP_SUMMARY"
           echo "Bundle size: ${bytes} bytes (~${kib} KiB)"
 

@@ -30,7 +30,11 @@ The existing one-shot hand-off between Entropy Lab and Seed Forge ([ADR-0023](00
 
 A secret is entered or generated **once**, and then **released**.
 
-**One entry point per realm.** In the sealed realm that is Seed Forge, which both generates a new phrase and validates an existing one. In the warm realm it is the vault unlock phrase, which is a different secret serving a different purpose and never becomes a released secret. No other tool in either realm has a phrase, mnemonic, or raw-secret input field. This is the negative property the whole decision rests on, and it is stated as a test rather than a convention — see Consequences.
+**One entry point for seed material, and it is in the sealed realm.** That is Seed Forge, which both generates a new phrase and validates an existing one. No other tool anywhere accepts a mnemonic or raw master-seed material.
+
+**The warm shell has no secret input of any kind, and gains none here.** An earlier draft of this ADR placed the vault unlock phrase "in the warm realm". That was wrong and contradicted the architecture: the vault passphrase is entered inside the sealed realm (`#cold-vault-passphrase`), `vault.open` carries ciphertext only, and [architecture.md](../../01-spec/architecture.md) states that the warm shell never receives a seed, private key, secret compartment, or vault passphrase. The correction matters beyond tidiness — an ADR that misplaces a passphrase is a document a future implementer could build the wrong boundary from.
+
+The vault passphrase is a *different kind of secret* from a released one: it authenticates a session, it is never a subject of derivation, and it never enters the registry. The distinction is the basis of the invariant below.
 
 **Release publishes to a session-scoped registry inside the cold document.** A released secret is an in-memory record holding the secret material, its derived public master fingerprint, and a user-visible label. It lives in the sealed frame only. It is never serialised, never written to a vault compartment, never logged, and never included in any message to the warm shell — the existing prohibition on secret material crossing the boundary is unchanged and unqualified by this decision.
 
@@ -58,7 +62,19 @@ Multiple released secrets are included deliberately rather than deferred. A sing
 
 - The registry and its switcher are the first thing built. Nothing else in the restructure can be tested without it.
 - Deleting the six fields above re-points `seed-forge.js`, `seed-xor.js`, `codex32.js`, `shamir.js` and `slip39.js` at the registry, and every test asserting on those element IDs changes with them. This is the largest mechanical cost of the decision and is expected to dominate the diff.
-- **A test asserts that exactly two secret-entry points exist in `src/`** — Seed Forge's and the vault unlock phrase. Finding a third means the model was not implemented, and the test says so in those terms. This is the negative acceptance criterion for every screen in the restructure.
+- **The invariant is a declared registry, not a count.** An earlier draft said "exactly two secret-entry points exist in `src/`". That is simply false and would have failed on the day it was written: the sealed realm legitimately holds around two dozen inputs that accept secret material — vault passphrase and confirmation, keyfile, recovery-share re-authentication, recovery-share entry, concealment re-authentication, secret notes, the separate BIP-39 passphrase fields, and every share-combine field that recovery requires. None of those are seed-loading, and none of them should disappear.
+
+  What the model actually requires is that **exactly one input anywhere accepts seed material** — a BIP-39 mnemonic or raw master-seed bytes — *for the purpose of loading a secret to operate on.* That is expressed as a registry in the test suite: every secret-accepting input in `src/` is declared with a category, and the test asserts three things. That no undeclared secret-accepting input exists, so adding one is a deliberate act with a review trail. That exactly one entry carries the category `seed-entry`. And that no entry changes category without the registry changing with it.
+
+  | Category | Meaning | Count |
+  |---|---|---|
+  | `seed-entry` | Accepts a mnemonic or raw master seed, to load a secret | **exactly 1** |
+  | `vault-auth` | Authenticates a vault session — passphrase, confirmation, keyfile, re-auth | unbounded |
+  | `bip39-passphrase` | The BIP-39 passphrase, a separate secret from the seed | unbounded |
+  | `share-input` | Share or recovery material being reconstructed | unbounded |
+  | `secret-note` | User-authored secret content | unbounded |
+
+  A count was the wrong shape because it conflates "how many places can I type a secret" with "how many places can I load *the* secret". Only the second is what this decision constrains.
 - New behavioural coverage is required, none of which the existing suite provides: that releasing updates every dependent view without re-entry; that lock, idle timeout and panic each clear the whole registry; that no send-to path writes secret material to the clipboard; and that concealment reveal does not survive a lock.
 - The idle timeout becomes user-visible in a way it was not before, because it now discards work the user can see. The empty state has to explain what happened and what to do, or it reads as a crash.
 - Focus is a security-relevant control. Acting on the wrong secret is a realistic failure mode, so the switcher is always visible wherever a lens is rendered, and on mobile it never collapses.

@@ -175,6 +175,14 @@ Screen recording, cameras, compromised GPU drivers. Masking helps against a pers
 
 Tor hides your IP but the query content still reveals interest in those addresses. Only a self-hosted node fully solves it.
 
+### Public vault names, from the sealed realm's point of view
+
+Vault names are public metadata: they appear in `.cbx` filenames on disk and in the vault library, so anything that can read the directory already has them. Under [ADR-0046](../05-development/adr/0046-vault-name-availability-at-unlock.md) the warm shell also passes the list of names in use *into* the sealed realm at unlock, so that in-realm vault creation can refuse a duplicate name while the user is typing it.
+
+The sealed realm therefore knows the public names of the vaults in your library for the duration of a session. That is a deliberate disclosure, in the safe direction — data moves inward, toward the side that cannot reach the network — and it is not confidentiality Coldbox claims. What is unchanged and still absolute: **no name, and no derivative of one, returns across the boundary**, and the list carries nothing but names.
+
+If you want a vault whose *name* is not observable, the name is the wrong place to put that requirement; the filename on disk already defeats it.
+
 ### Weak passphrases
 
 The strength meter is advisory. A memorable-but-weak passphrase defeats good cryptography.

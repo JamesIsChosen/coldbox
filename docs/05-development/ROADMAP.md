@@ -268,7 +268,7 @@ Inserted between P2.7 and P2.8 by UI.1, so that every item from P2.8 onward is b
 
 The IDs are lettered rather than numbered into Phase 2 because `P2.8` is referenced by roughly fifteen archived packets and review reports as "printable cards"; renumbering it would falsify that record.
 
-**Six of these nine are the handoff's own build order (UI.3–UI.8), and it is load-bearing.** The released-secret state has to exist before anything can be tested against it; the phrase fields cannot be deleted until it does; the floating menu is built once because forty-odd surfaces use it.
+**Six of these ten are the handoff's own build order (UI.3–UI.8), and it is load-bearing.** The released-secret state has to exist before anything can be tested against it; the phrase fields cannot be deleted until it does; the floating menu is built once because forty-odd surfaces use it.
 
 - [~] **UI.1 Design reconciliation**
   *Deps: P2.7*
@@ -289,7 +289,7 @@ The IDs are lettered rather than numbered into Phase 2 because `P2.8` is referen
 - [ ] **UI.4 Sealed-realm tool grouping and hub** 🌐
   *Deps: UI.3*
   Restructure `src/cold/index.html` into the six sealed groups and delete the six secret-entry fields, re-pointing each tool at the focused secret.
-  **Accept:** `#cold-seed-xor-source`, `#cold-codex32-secret-hex`, `#cold-shamir39-source`, `#cold-raw-sss-source` and `#cold-slip39-seed-source` no longer exist and their tools read the focused secret instead; `#cold-seed-forge-mnemonic-input` remains as the realm's single entry point; **a test asserts exactly two secret-entry points exist across `src/`** — Seed Forge's and the vault unlock phrase — and fails naming the offender if a third appears; every migrated tool renders from the focused secret with no input of its own; every secret value is masked on first paint; each tool's existing behaviour and test coverage is preserved, not reduced; the cold CSP is byte-identical to before the restructure and a test asserts cold still has no network capability.
+  **Accept:** `#cold-seed-xor-source`, `#cold-codex32-secret-hex`, `#cold-shamir39-source`, `#cold-raw-sss-source` and `#cold-slip39-seed-source` no longer exist and their tools read the focused secret instead; `#cold-seed-forge-mnemonic-input` remains as the realm's single entry point; **a test asserts the declared secret-input registry specified in [ADR-0045](adr/0045-released-secret-model.md) holds**: every input in `src/` that accepts secret material is declared with a category, no undeclared one exists, and **exactly one carries the category `seed-entry`**. The registry must enumerate the legitimate sealed inputs that are not seed entry — vault passphrase and confirmation, keyfile, recovery re-authentication, recovery-share entry, concealment re-authentication, secret notes, the BIP-39 passphrase fields, and the share-combine fields — none of which this item removes. A naive count of secret-accepting inputs is not an acceptable implementation of this criterion; it was tried in an earlier draft and was false on the day it was written; every migrated tool renders from the focused secret with no input of its own; every secret value is masked on first paint; each tool's existing behaviour and test coverage is preserved, not reduced; the cold CSP is byte-identical to before the restructure and a test asserts cold still has no network capability.
 
 - [ ] **UI.5 Shared shell chrome — app bar, nav rail, realm strip** 🌐
   *Deps: UI.4*
@@ -316,12 +316,17 @@ The IDs are lettered rather than numbered into Phase 2 because `P2.8` is referen
   A build step that compiles this file into the in-app tool map, the way [help-content.js](../../scripts/help-content.js) compiles `docs/`.
   **Accept:** the tool map's content is generated at build time from this file and no item status is transcribed by hand anywhere in `src/`; the build fails closed if this file cannot be parsed; the output is deterministic across two builds; `scripts/check-docs.js` covers the new relationship; a status changed here and nowhere else changes the app on the next build.
 
+- [ ] **UI.10 Vault creation and naming in the sealed realm** 🌐
+  *Deps: UI.4*
+  Implements [ADR-0046](adr/0046-vault-name-availability-at-unlock.md) end to end: the naming step joins the unlock phrase, confirmation, KDF profile and keyfile on one sealed creation screen, and warm supplies the public vault-name list inward so a duplicate can be refused while it is being typed.
+  **Accept:** naming, phrase, confirmation, KDF profile and keyfile are on one screen inside the sealed realm; a new typed warm → cold message carries a list of public vault-name strings **and nothing else** — no IDs, paths, save state, counts or timestamps — with its schema entry, per-element length bound and list-length bound; the payload is type-checked and rejected wholesale on any malformed element, and is never rendered as HTML; **a missing or malformed list fails closed** — the create screen refuses to proceed with a name and says why, rather than silently skipping the check; the list is session-scoped, is cleared by the same teardown that clears released secrets, and a test asserts it does not survive a lock; **no name and no derivative of one returns across the boundary**, asserted by a test; warm remains the authority and still refuses a duplicate at save; `test/protocol.test.js` gains negative cases for malformed elements, oversized list, wrong types and the never-arrived path; [architecture.md](../01-spec/architecture.md)'s message inventory and [csp-policy.md](../02-security/csp-policy.md) are updated in this item; the duplicate-name refusal is visible at the moment of typing.
+
 ## Phase 2 — Backup, continued
 
 Phase 2's last item resumes here, after the interface work, so that it is built once and in the new shell.
 
 - [ ] P2.8 Printable cards and hand-computation worksheets
-  *Deps: P2.7, UI.9*
+  *Deps: P2.7, UI.9, UI.10*
 
 ## Phase 3 — Portfolio and online
 
