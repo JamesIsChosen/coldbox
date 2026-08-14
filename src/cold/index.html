@@ -57,6 +57,36 @@ __COLDBOX_COLD_STYLES__
         <input id="cold-vault-keyfile-input" type="file" disabled>
         <p id="cold-vault-keyfile-status" role="status" aria-live="polite">No keyfile selected. This input and the file's bytes stay inside this sealed realm.</p>
       </section>
+      <section id="cold-vault-recovery" aria-label="Vault recovery shares">
+        <p class="eyebrow">Recovery shares / P2.5</p>
+        <p id="cold-vault-recovery-help">Recovery shares are an additional offline unlock route. The normal unlock phrase or keyfile still works. Coldbox never stores these share phrases in the vault and does not add a share passphrase; keep the printed shares separate from the encrypted file.</p>
+        <p id="cold-vault-recovery-status" role="status" aria-live="polite">No recovery-share set configured.</p>
+        <div id="cold-vault-recovery-configure-fields">
+          <label for="cold-vault-recovery-passphrase">Normal vault unlock phrase (required to generate or replace shares)</label>
+          <input id="cold-vault-recovery-passphrase" type="password" autocomplete="current-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <p id="cold-vault-recovery-reauth-help">Enter the normal vault unlock phrase again. If this vault uses a keyfile, keep the selected keyfile above. This re-authentication is used only inside the sealed realm and is cleared after the operation.</p>
+          <label for="cold-vault-recovery-group-threshold">Shares needed from this group</label>
+          <input id="cold-vault-recovery-group-threshold" type="number" min="1" max="16" step="1" value="2" inputmode="numeric" disabled>
+          <label for="cold-vault-recovery-group-count">Shares to create in this group</label>
+          <input id="cold-vault-recovery-group-count" type="number" min="1" max="16" step="1" value="3" inputmode="numeric" disabled>
+          <label id="cold-vault-recovery-replace-label" for="cold-vault-recovery-replace" hidden>
+            <input id="cold-vault-recovery-replace" type="checkbox" disabled>
+            Replace the existing recovery-share set (old shares stop working after save)
+          </label>
+          <button id="cold-vault-recovery-configure" type="button" disabled>Generate recovery shares</button>
+        </div>
+        <div id="cold-vault-recovery-generated" hidden>
+          <label for="cold-vault-recovery-output">New shares (keep these outside the vault file)</label>
+          <textarea id="cold-vault-recovery-output" rows="5" readonly spellcheck="false" autocomplete="off"></textarea>
+          <button id="cold-vault-recovery-reveal" type="button" disabled>Reveal shares for 30 seconds</button>
+        </div>
+        <div id="cold-vault-recovery-unlock-controls">
+          <label for="cold-vault-recovery-input">Recovery shares to unlock (one per line)</label>
+          <textarea id="cold-vault-recovery-input" rows="5" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" disabled></textarea>
+          <button id="cold-vault-recovery-unlock" type="button" disabled>Unlock with recovery shares</button>
+          <p id="cold-vault-recovery-unlock-help">Use enough shares for the threshold shown on the printed set. Recovery-share unlocking is available only while the warm shell has classified the device as offline.</p>
+        </div>
+      </section>
       <div id="cold-vault-actions">
         <button id="cold-vault-create" type="button" disabled>Create prepared vault</button>
         <button id="cold-vault-unlock" type="button" disabled>Unlock loaded vault</button>

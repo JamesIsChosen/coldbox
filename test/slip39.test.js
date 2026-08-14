@@ -58,12 +58,36 @@ const VECTOR_43 = [
   'enemy favorite academic acid cowboy phrase havoc level response walnut budget painting inside trash adjust froth kitchen learn tidy punish',
   'enemy favorite academic always academic sniff script carpet romp kind promise scatter center unfair training emphasis evening belong fake enforce'
 ];
+const VECTOR_45 = [
+  'western apart academic always artist resident briefing sugar woman oven coding club ajar merit pecan answer prisoner artist fraction amount desktop mild false necklace muscle photo wealthy alpha category unwrap spew losing making',
+  'western apart academic acid answer ancient auction flip image penalty oasis beaver multiple thunder problem switch alive heat inherit superior teaspoon explain blanket pencil numb lend punish endless aunt garlic humidity kidney observe'
+];
 
 test('SLIP-39 validates and recovers the official 128-bit no-sharing vector', () => {
   const slip39 = createContext().__coldboxSlip39;
   assert.equal(slip39.validate(VECTOR_1[0]), true);
   assert.equal(hex(slip39.recover(VECTOR_1, 'TREZOR')), 'bb54aac4b89dc868ba37d9cc21b2cece');
   assert.equal(slip39.validate(VECTOR_1[0].replace(/keyboard$/, 'kidney')), false);
+});
+
+test('SLIP-39 validates and recovers the official 256-bit extendable vector used by vault recovery', () => {
+  const slip39 = createContext().__coldboxSlip39;
+  assert.equal(slip39.validate(VECTOR_45[0]), true);
+  assert.equal(slip39.validate(VECTOR_45[1]), true);
+  assert.equal(
+    hex(slip39.recover(VECTOR_45, 'TREZOR')),
+    '8dc652d6d6cd370d8c963141f6d79ba440300f25c467302c1d966bff8f62300d'
+  );
+  const decoded = slip39.decode(VECTOR_45[0]);
+  assert.equal(decoded.identifier, 32065);
+  assert.equal(decoded.extendableBackupFlag, 1);
+  assert.equal(decoded.iterationExponent, 0);
+  assert.equal(decoded.groupIndex, 0);
+  assert.equal(decoded.groupThreshold, 1);
+  assert.equal(decoded.groupCount, 1);
+  assert.equal(decoded.memberIndex, 2);
+  assert.equal(decoded.memberThreshold, 2);
+  assert.equal(decoded.share.length, 32);
 });
 
 test('SLIP-39 recovers an independent 2-of-3 vector and refuses one share', () => {

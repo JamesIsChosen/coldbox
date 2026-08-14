@@ -238,8 +238,24 @@ Nothing above this phase is safe to build until the container is trustworthy.
   **Accept:** only 12-, 18-, and 24-word BIP-39 phrases are accepted; every generated part is independently valid BIP-39; deterministic output matches the published Coldcard construction and independent vectors; random output refuses missing `crypto.getRandomValues`; combine accepts all parts in any order but rejects missing, malformed, mismatched-length, or invalid-checksum parts; the source, parts, and combined phrase never cross the cold boundary or persist, are masked by default, and clear on teardown; docs state that Seed XOR is N-of-N and that any BIP-39 passphrase is separate.
 - [x] **P2.4 Shamir39 and raw SSS**
   *Deps: P1.3*
-- [ ] P2.5 Vault recovery shares
+- [x] **P2.5 Vault recovery shares**
   *Deps: P2.1*
+  An additional offline-only vault unlock route: a configured threshold of
+  SLIP-39 shares reconstructs the 32-byte vault DEK while the normal
+  passphrase or passphrase-plus-keyfile route remains available. The vault
+  stores only fixed public recovery metadata, never the printed share words.
+  **Accept:** method 3 has a versioned fixed binary record with exact bounds,
+  one normal record, and a recovery marker that makes pre-P2.5 readers reject
+  recovery-enabled files; generation and recovery are cold-only and always use
+  the empty SLIP-39 share passphrase; supplied shares must match every
+  recorded SLIP-39 field encoded by each mnemonic and member-index bound, with
+  exactly the required threshold groups/members supplied; malformed, duplicate,
+  insufficient, surplus, mixed, tampered, unknown, or unsupported inputs failing closed;
+  recovery metadata is authenticated with both encrypted compartments; the
+  normal unlock route continues to work; replacing an existing set requires an
+  explicit choice; share material never crosses the realm boundary or persists
+  outside the cold session; and tests include an independent official vector
+  plus a deterministic byte-exact method-data fixture.
 - [ ] P2.6 BackupRecords and verify-your-shares
   *Deps: P2.5*
 - [ ] P2.7 Backup Health dashboard

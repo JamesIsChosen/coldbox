@@ -19,7 +19,7 @@ Offset  Size    Field
 19      1       KDF parallelism          uint8
 20      1       Cipher id                1=AES-256-GCM, 2=XChaCha20-Poly1305
 21      32      KDF salt                 CSPRNG
-53      4       Wrapped-DEK block length uint32 BE
+53      4       Wrapped-DEK block length uint32 BE (high bit marks recovery; low 31 bits are length)
 57      4       Public compartment len   uint32 BE (ciphertext + tag)
 61      4       Secret compartment len   uint32 BE (ciphertext + tag)
 ------  ------  ----- header ends at 65; AAD = bytes 0..64 ---------
@@ -38,21 +38,32 @@ Without them the compartments can't be parsed apart. They're in the AAD so they 
 
 ### AAD
 
-Bytes 0–64 authenticate both compartments. Consequences: KDF parameters cannot be downgraded (an attacker can't rewrite `m=64MiB` to `m=1KiB` to make cracking cheap), the cipher can't be swapped, and compartment lengths can't be altered. Any edit to the header causes both compartments to fail authentication.
+Bytes 0–64 authenticate both compartments. A vault carrying method 3 also
+appends the exact method-3 method-data bytes to that AAD. Consequences:
+KDF parameters cannot be downgraded (an attacker can't rewrite `m=64MiB` to
+`m=1KiB` to make cracking cheap), the cipher and compartment lengths can't
+be altered, and recovery metadata cannot be changed without failing both
+compartments. Any edit to the header or recovery metadata causes
+authentication failure.
 
 ---
 
 ## Key hierarchy
 
 ```
-passphrase ─┐
-keyfile ────┼─→ Argon2id ─→ KEK ─→ unwraps ─→ DEK (256-bit, random)
-            │                                  │
-recovery ───┘                                  ├─ HKDF-SHA-512 "cbx/public/v1" → public subkey
-shares                                         └─ HKDF-SHA-512 "cbx/secret/v1" → secret subkey
+passphrase / keyfile ─→ Argon2id ─→ KEK ─→ unwraps ─┐
+                                                     ├─→ DEK (256-bit, random)
+recovery shares ───→ SLIP-39 reconstructs ──────────┘
+
+DEK ─→ HKDF-SHA-512 "cbx/public/v1" ─→ public subkey
+    └→ HKDF-SHA-512 "cbx/secret/v1" ─→ secret subkey
 ```
 
 The DEK is generated once at vault creation and never changes. Changing your passphrase rewraps 32 bytes rather than re-encrypting everything.
+
+Recovery shares bypass the passphrase KDF: SLIP-39 reconstructs that same DEK
+directly after the recorded metadata matches. The normal passphrase/keyfile
+route still unwraps the same DEK through Argon2id or the pinned fallback.
 
 **Compartment separation is cryptographic, not merely procedural.** Online, the secret subkey is never derived. There is no code path that produces it while a network connection is detected.
 
@@ -76,7 +87,23 @@ Per record:
 
 A vault created with a keyfile carries a method-2 record in place of a method-1 record, not alongside one — the keyfile is required, not an alternative unlock path. The v1 implementation refuses a keyfile larger than **64 MiB**, the same implementation ceiling as the whole vault file below, and refuses an empty (zero-byte) keyfile outright since it would add no protection while still carrying the "permanent loss" warning. The keyfile hint is capped at 255 UTF-8 bytes and silently truncated past that, since it is pure display metadata with no cryptographic role. Rationale for these four implementation choices, none of which are wire-format fields: [ADR-0014](../05-development/adr/0014-keyfile-unlock-implementation-limits.md).
 
-**Method 3** — the DEK is split via SLIP-39. Record data holds the group configuration and share metadata, never share material. Reconstructing a threshold yields the DEK directly. This is the inheritance path. *Phase 2.*
+**Method 3** — the DEK is split via SLIP-39. It is an additional record beside
+exactly one method-1 or method-2 record; it never replaces the normal unlock
+route and a method-3-only block is invalid. Its fixed binary method data is
+defined in [ADR-0040](../05-development/adr/0040-vault-recovery-share-record.md):
+version 1, DEK length 32, identifier, extendable flag, iteration exponent,
+group threshold/count, and one member threshold/count pair per group. The
+method-data length is exactly `8 + 2 * group count`, with at most 16 groups.
+Each member threshold is no greater than its count, and a one-share threshold
+cannot advertise multiple members. The stored member count is a Coldbox
+generation policy and bounds valid member indices; standard SLIP-39 mnemonics
+do not encode the total member count. Recovery therefore requires exactly the
+recorded group threshold of groups and exactly each selected group's member
+threshold of shares, while matching every SLIP-39 field the mnemonic encodes.
+The remaining 60 bytes in the record are reserved zero bytes. No mnemonic or
+share material is stored. Coldbox always uses the empty SLIP-39 share
+passphrase for this route, and the method data is authenticated as compartment
+AAD.
 
 ---
 
@@ -213,6 +240,13 @@ A failed AEAD tag means **"wrong passphrase *or* damaged file."** These are cryp
 
 Format version 1 is the baseline. Version bumps only for changes that break parsing.
 
+The high bit of the wrapped-block length at header offset 53 is reserved as
+the method-3 marker. The remaining 31 bits are the actual block length. A
+recovery-enabled file must carry the marker and one valid method-3 record; a
+file with either one without the other is rejected. Existing readers that do
+not implement this marker reject the field as an over-limit wrapped block,
+rather than silently ignoring method 3.
+
 An older reader encountering a newer version must refuse to open rather than guess — misparsing an encrypted file could silently destroy data on the next save.
 
-Any change to this format requires a test asserting that a vault written by the previous version still opens.
+Any change to this format requires a test asserting that a vault written by the previous version still opens. P2.5 additionally requires an independent SLIP-39 recovery vector, a byte-exact method-3 method-data fixture, and a byte-stable pre-P2.5 vault fixture.

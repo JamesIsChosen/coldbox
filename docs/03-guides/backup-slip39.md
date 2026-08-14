@@ -73,12 +73,31 @@ Powerful, and easy to overcomplicate. If you can't explain your configuration fr
 
 1. Backup Lab → SLIP-39 → enter your seed phrase.
 2. Choose your configuration.
-3. Optionally set a share passphrase — a second secret, needing its own backup.
+3. Optionally set a share passphrase — a second secret, needing its own backup. This option applies to seed-backup shares in the Backup Lab, not to vault recovery shares.
 4. Generate.
 
 Each share is 20 words (128-bit seed) or 33 words (256-bit), from SLIP-39's own 1024-word list. **These are not BIP-39 words** and are not interchangeable.
 
 Coldbox splits the entropy represented by the selected BIP-39 phrase. A BIP-39 passphrase is not part of that entropy and is never included in the shares; record it separately if the wallet uses one. Generated shares stay masked until you explicitly reveal them for transcription, and the reveal remasks automatically after 30 seconds.
+
+::: plain
+Vault recovery shares are a separate job. Open an offline vault, use its
+Recovery shares controls, and keep those shares separate from the `.cbx` file.
+They do not use an extra share passphrase, so the threshold printed on the
+cards is the complete recovery instruction.
+:::
+::: working
+Seed-backup SLIP-39 shares reconstruct BIP-39 entropy. Vault recovery shares
+reconstruct the vault's encryption key and are accepted only by the Coldbox
+vault recovery route. Do not mix the two kinds of shares or their labels.
+:::
+::: technical
+The vault route is method 3 in the v1 vault format and binds the recorded
+SLIP-39 metadata to the encrypted compartments. See
+[vault-format.md](../01-spec/vault-format.md) and
+[ADR-0040](../05-development/adr/0040-vault-recovery-share-record.md); this
+guide remains the canonical home for seed-backup SLIP-39 behavior.
+:::
 
 ---
 

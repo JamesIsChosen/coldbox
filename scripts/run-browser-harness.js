@@ -78,6 +78,68 @@ const FILE_READER_ORDER_CONTROL_SCRIPT = `(function () {
   };
 })();`;
 
+// P2.5 stale-completion coverage: hold the next cold AES-GCM encryption after
+// recovery configuration has begun. The harness can release that real
+// operation after forcing the warm shell online, proving that the
+// closed-session completion cannot repaint the UI as unlocked.
+const RECOVERY_CONFIGURATION_GATE_SCRIPT = `(function () {
+  var originalDefineProperty = Object.defineProperty;
+  var armed = false;
+  var held = null;
+  function wrapCryptoApi(api) {
+    var wrapped = Object.create(api);
+    originalDefineProperty(wrapped, 'aesGcm', {
+      configurable: true,
+      enumerable: true,
+      writable: false,
+      value: function () {
+        var result = api.aesGcm.apply(api, arguments);
+        if (!armed || arguments[0] !== 'encrypt') {
+          return result;
+        }
+        armed = false;
+        return Promise.resolve(result).then(function (bytes) {
+          return new Promise(function (resolve) {
+            held = { bytes: bytes, resolve: resolve };
+          });
+        });
+      }
+    });
+    return wrapped;
+  };
+  var cryptoApi = null;
+  originalDefineProperty(window, '__coldboxCrypto', {
+    configurable: true,
+    enumerable: false,
+    get: function () {
+      return cryptoApi;
+    },
+    set: function (value) {
+      cryptoApi = wrapCryptoApi(value);
+    }
+  });
+  Object.defineProperty(window, '__coldboxRecoveryConfigurationGate', {
+    configurable: false,
+    enumerable: false,
+    value: Object.freeze({
+      arm: function () {
+        armed = true;
+      },
+      held: function () {
+        return held !== null;
+      },
+      release: function () {
+        if (!held) {
+          throw new Error('recovery configuration gate is not holding an operation');
+        }
+        var pending = held;
+        held = null;
+        pending.resolve(pending.bytes);
+      }
+    })
+  });
+})();`;
+
 // P1.13 UI coverage: supplies deterministic permission and clipboard states
 // before the warm shell starts. This exercises the real form controls without
 // depending on an OS permission prompt or a user's physical clipboard.
@@ -3846,6 +3908,142 @@ async function verifyQrStudio(browser, engine) {
   }
 }
 
+async function verifyVaultRecoveryShares(browser, engine) {
+  const { page, reachability } = await openPage(browser, buildPath, 'reachable', {
+    initScript: RECOVERY_CONFIGURATION_GATE_SCRIPT
+  });
+  try {
+    const coldFrame = await getColdFrame(page, engine);
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+
+    reachability.setMode('unreachable');
+    await triggerReachabilityRound(page);
+    await triggerReachabilityRound(page);
+    await page.locator('html[data-reachability-state="unreachable"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('html[data-warm-network-online="false"]').waitFor({ state: 'attached', timeout: 5000 });
+
+    const normalPassphrase = 'P2.5 browser recovery phrase';
+    await createPreparedVault(page, coldFrame, normalPassphrase, 'P2.5 Browser Recovery');
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 15000 });
+    await coldFrame.locator('#cold-vault-recovery-passphrase').fill(normalPassphrase);
+    await coldFrame.locator('#cold-vault-recovery-configure').click();
+    await coldFrame.locator('#cold-vault-status').filter({ hasText: /Recovery shares generated/ }).waitFor({ state: 'visible', timeout: 15000 });
+    assert.equal(await coldFrame.locator('#cold-vault-recovery-generated').isHidden(), false, `${engine}: generated recovery output must be visible in the cold realm`);
+    assert.match(await coldFrame.locator('#cold-vault-recovery-output').inputValue(), /Masked recovery shares/);
+    assert.equal(await coldFrame.locator('#cold-vault-recovery-reveal').isDisabled(), false);
+    await coldFrame.locator('#cold-vault-recovery-reveal').click();
+    const firstShares = (await coldFrame.locator('#cold-vault-recovery-output').inputValue())
+      .split(/\r?\n/).map((share) => share.trim()).filter(Boolean);
+    assert.equal(firstShares.length, 3, `${engine}: browser generation must produce the configured 2-of-3 set`);
+    assert.ok(firstShares.every((share) => share.split(/\s+/).length >= 20), `${engine}: generated output must contain complete SLIP-39 mnemonics`);
+    await coldFrame.locator('#cold-vault-recovery-reveal').click();
+    assert.match(await coldFrame.locator('#cold-vault-recovery-output').inputValue(), /Masked recovery shares/);
+
+    await coldFrame.locator('#cold-vault-recovery-passphrase').fill(normalPassphrase);
+    await coldFrame.locator('#cold-vault-recovery-configure').click();
+    await coldFrame.locator('#cold-vault-status').filter({ hasText: /Check the replacement box/ }).waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-vault-recovery-replace-label').isHidden(), false, `${engine}: replacement must be an explicit UI choice`);
+    await coldFrame.locator('#cold-vault-recovery-replace').check();
+    await coldFrame.locator('#cold-vault-recovery-passphrase').fill(normalPassphrase);
+    await coldFrame.locator('#cold-vault-recovery-configure').click();
+    await coldFrame.locator('#cold-vault-status').filter({ hasText: /Recovery shares generated/ }).waitFor({ state: 'visible', timeout: 15000 });
+    await coldFrame.locator('#cold-vault-recovery-reveal').click();
+    const replacementShares = (await coldFrame.locator('#cold-vault-recovery-output').inputValue())
+      .split(/\r?\n/).map((share) => share.trim()).filter(Boolean);
+    assert.equal(replacementShares.length, 3, `${engine}: replacement must produce the configured 2-of-3 set`);
+    assert.notDeepEqual(replacementShares, firstShares, `${engine}: explicit replacement must produce a new share set`);
+    assert.equal(await page.evaluate(() => typeof window.__coldboxVault), 'undefined');
+    const warmHtml = await page.locator('html').evaluate((element) => element.outerHTML);
+    assert.equal(warmHtml.includes(firstShares[0]), false, `${engine}: generated share words must not enter the warm DOM`);
+    assert.equal(warmHtml.includes(replacementShares[0]), false, `${engine}: replacement share words must not enter the warm DOM`);
+    await coldFrame.locator('#cold-vault-recovery-reveal').click();
+
+    await page.locator('#app[data-vault-persistence="unsaved"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(await page.locator('#vault-save-download').isDisabled(), false, `${engine}: recovery configuration must enable the durable save action`);
+    const downloadPromise = page.waitForEvent('download');
+    // The harness page may not own browser focus after the cold-frame work;
+    // use the same DOM event a focused user click dispatches without making
+    // the test's save action itself trigger the focus-based reachability
+    // recheck and intentionally lock the offline session.
+    await page.locator('#vault-save-download').evaluate((button) => button.click());
+    const download = await downloadPromise;
+    await page.locator('#vault-status-label').filter({ hasText: /Saved.*unverified/ }).waitFor({ state: 'visible', timeout: 5000 });
+    const downloadedVaultPath = await download.path();
+    assert.ok(downloadedVaultPath, `${engine}: recovery flow needs the saved vault bytes for reload`);
+    const canonicalFilename = download.suggestedFilename();
+    const savedBytes = fs.readFileSync(downloadedVaultPath);
+
+    reachability.setMode('reachable');
+    await triggerReachabilityRound(page);
+    await page.locator('html[data-reachability-state="reachable"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('html[data-warm-network-online="true"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-vault-recovery-input').inputValue(), '', `${engine}: mode transition must clear entered recovery shares`);
+    assert.equal(await coldFrame.locator('#cold-vault-recovery-generated').isHidden(), true, `${engine}: mode transition must clear generated recovery output`);
+
+    await page.locator('#vault-file-input').setInputFiles({
+      name: canonicalFilename,
+      mimeType: 'application/octet-stream',
+      buffer: savedBytes
+    });
+    await page.locator('#vault-library-list [data-vault-library-index="0"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#vault-library-list [data-vault-library-index="0"]').click();
+    await page.locator('#vault-status[data-state="pending"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-vault-recovery-input').isDisabled(), true, `${engine}: recovery must be disabled while the warm shell is online`);
+
+    reachability.setMode('unreachable');
+    await triggerReachabilityRound(page);
+    await triggerReachabilityRound(page);
+    await page.locator('html[data-reachability-state="unreachable"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('html[data-warm-network-online="false"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-vault-recovery-input').isDisabled(), false, `${engine}: recovery must enable only after offline classification`);
+    await coldFrame.locator('#cold-vault-recovery-input').fill(firstShares[0]);
+
+    reachability.setMode('reachable');
+    await triggerReachabilityRound(page);
+    await page.locator('html[data-reachability-state="reachable"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('html[data-warm-network-online="true"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-vault-recovery-input').inputValue(), '', `${engine}: online transition must clear entered recovery shares while a vault is pending`);
+    assert.equal(await coldFrame.locator('#cold-vault-recovery-input').isDisabled(), true, `${engine}: pending recovery must disable online`);
+
+    reachability.setMode('unreachable');
+    await triggerReachabilityRound(page);
+    await triggerReachabilityRound(page);
+    await page.locator('html[data-reachability-state="unreachable"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('html[data-warm-network-online="false"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-vault-recovery-input').isDisabled(), false, `${engine}: recovery must enable only after offline classification`);
+
+    await coldFrame.locator('#cold-vault-recovery-input').fill(firstShares.slice(0, 2).join('\n'));
+    await coldFrame.locator('#cold-vault-recovery-unlock').click();
+    await coldFrame.locator('#cold-vault-status').filter({ hasText: /Recovery-share unlock failed/ }).waitFor({ state: 'visible', timeout: 10000 });
+    await coldFrame.locator('#cold-vault-recovery-input').fill(replacementShares.slice(0, 2).join('\n'));
+    await coldFrame.locator('#cold-vault-recovery-unlock').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 15000 });
+    assert.equal(await coldFrame.locator('#cold-vault-recovery-input').inputValue(), '', `${engine}: recovery input must clear after unlock`);
+    assert.equal(await coldFrame.locator('#cold-vault-recovery-generated').isHidden(), true, `${engine}: generated output must not survive recovery unlock`);
+
+    await coldFrame.locator('#cold-vault-recovery-replace').check();
+    await coldFrame.evaluate(() => window.__coldboxRecoveryConfigurationGate.arm());
+    await coldFrame.locator('#cold-vault-recovery-passphrase').fill(normalPassphrase);
+    await coldFrame.locator('#cold-vault-recovery-configure').click();
+    await coldFrame.waitForFunction(() => window.__coldboxRecoveryConfigurationGate.held(), null, { timeout: 15000 });
+    reachability.setMode('reachable');
+    await triggerReachabilityRound(page);
+    await page.locator('html[data-reachability-state="reachable"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('html[data-warm-network-online="true"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.evaluate(() => window.__coldboxRecoveryConfigurationGate.release());
+    await page.waitForTimeout(250);
+    assert.equal(await coldFrame.locator('#cold-vault-status[data-state="locked"]').isVisible(), true, `${engine}: stale recovery completion must not repaint the vault as unlocked`);
+    assert.equal(await coldFrame.locator('#cold-vault-recovery-generated').isHidden(), true, `${engine}: stale recovery completion must not restore generated shares`);
+    assert.equal(await coldFrame.locator('#cold-vault-recovery-output').inputValue(), '', `${engine}: stale recovery completion must not restore share text`);
+    console.log(`${engine}: P2.5 recovery generation, stale-completion lockout, explicit replacement, saved-vault reload, online refusal, stale-share rejection, and threshold recovery passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyDevOnlyDependency() {
   const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
   assert.equal(packageJson.dependencies?.playwright, undefined);
@@ -3897,6 +4095,7 @@ async function run() {
     const browser = await browserType.launch({ headless: true });
     try {
       await verifyBuiltFile(browser, engine);
+      await verifyVaultRecoveryShares(browser, engine);
       await verifyStaleReachabilityOnlineSafety(browser, engine);
       await verifyVaultLibrary(browser, engine);
       await verifyNotesAndConcealment(browser, engine);

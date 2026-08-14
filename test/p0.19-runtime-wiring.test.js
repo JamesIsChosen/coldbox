@@ -183,3 +183,52 @@ test('P0.19 browser harness observes duplicate-name refusal on the vault status 
   assert.match(libraryFlow, /duplicateNameNotice\.filter\(\{ hasText: \/different vault already uses that public name\/i \}\)/);
   assert.doesNotMatch(libraryFlow, /#vault-dirty-notice.*different vault already uses that public name/i);
 });
+
+test('P2.5 recovery shares stay cold-only and the offline mode refreshes their controls', () => {
+  assert.match(coldHtml, /id="cold-vault-recovery"/);
+  assert.match(coldHtml, /id="cold-vault-recovery-passphrase"/);
+  assert.match(coldHtml, /additional offline unlock route/);
+  assert.match(coldHtml, /does not add a share passphrase/);
+  assert.match(vaultSource, /METHOD_RECOVERY_SHARES/);
+  assert.match(vaultSource, /function compartmentAad\(/);
+  assert.match(vaultSource, /recoveryHeaderMarker/);
+  assert.match(vaultSource, /operationInFlight/);
+  assert.match(vaultSource, /suppliedGroupIndexes\.length !== metadata\.groupThreshold/);
+  assert.doesNotMatch(vaultSource, /state\.dek\s*=|state\.wrappingKey\s*=/);
+
+  const configure = extractFunction(coldSource, 'configureVaultRecoveryShares');
+  assert.match(configure, /normalPassphrase/);
+  assert.match(configure, /operationSession/);
+  assert.match(configure, /operationGeneration/);
+  assert.match(configure, /operationGeneration !== vaultSessionGeneration/);
+  assert.match(configure, /postVaultMessage\([^;]*'vault\.dirty', \{ dirty: true \}\)/);
+  assert.doesNotMatch(configure, /postVaultMessage\([^;]*shares/);
+
+  const recoveryBrowserFlow = extractFunction(
+    fs.readFileSync(path.join(projectRoot, 'scripts', 'run-browser-harness.js'), 'utf8'),
+    'verifyVaultRecoveryShares'
+  );
+  assert.match(recoveryBrowserFlow, /__coldboxRecoveryConfigurationGate\.arm\(\)/);
+  assert.match(recoveryBrowserFlow, /__coldboxRecoveryConfigurationGate\.held\(\)/);
+  assert.match(recoveryBrowserFlow, /__coldboxRecoveryConfigurationGate\.release\(\)/);
+  assert.match(recoveryBrowserFlow, /stale recovery completion must not repaint/);
+
+  const recoveryUnlock = extractFunction(coldSource, 'unlockLoadedVaultWithRecoveryShares');
+  assert.match(recoveryUnlock, /openSession\(bytes, undefined, 'offline', null, shares\)/);
+  assert.doesNotMatch(recoveryUnlock, /keyfileBytes/);
+
+  assert.match(
+    coldSource,
+    /message\.type === 'mode\.set'[\s\S]*updateVaultControls\(\)/,
+    'mode changes must refresh the recovery controls for a pending vault'
+  );
+  assert.match(warmSource, /message\.type === 'vault\.dirty'[\s\S]*setVaultPersistenceState\('unsaved'\)/);
+  assert.doesNotMatch(warmSource, /vaultRecoveryShareText|recoveryShares/);
+
+  const harness = fs.readFileSync(path.join(projectRoot, 'scripts', 'run-browser-harness.js'), 'utf8');
+  const recoveryFlow = extractFunction(harness, 'verifyVaultRecoveryShares');
+  assert.match(recoveryFlow, /#cold-vault-recovery-passphrase/);
+  assert.match(recoveryFlow, /#cold-vault-recovery-replace/);
+  assert.match(recoveryFlow, /slice\(0, 2\)/);
+  assert.match(recoveryFlow, /Saved\.\*unverified/);
+});

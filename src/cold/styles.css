@@ -310,6 +310,105 @@ body {
   line-height: 1.4;
 }
 
+#cold-vault-recovery {
+  margin-top: 0.65rem;
+  padding-top: 0.6rem;
+  border-top: 0.13rem solid var(--cold-outline);
+}
+
+#cold-vault-recovery-help,
+#cold-vault-recovery-reauth-help,
+#cold-vault-recovery-unlock-help,
+#cold-vault-recovery-status {
+  max-width: 48rem;
+  margin: 0.3rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+#cold-vault-recovery-status {
+  color: var(--cold-yellow);
+  font-weight: 800;
+}
+
+#cold-vault-recovery-configure-fields label,
+#cold-vault-recovery-generated label,
+#cold-vault-recovery-unlock-controls label {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--cold-text);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+#cold-vault-recovery-configure-fields input[type="number"] {
+  width: 5rem;
+  margin-top: 0.25rem;
+  padding: 0.35rem 0.45rem;
+  border: 0.14rem solid var(--cold-outline);
+  border-radius: 0.3rem;
+  background: var(--cold-bg);
+  color: var(--cold-text);
+  font: inherit;
+}
+
+#cold-vault-recovery-passphrase {
+  display: block;
+  width: min(100%, 24rem);
+  margin-top: 0.25rem;
+  padding: 0.35rem 0.45rem;
+  border: 0.14rem solid var(--cold-outline);
+  border-radius: 0.3rem;
+  background: var(--cold-bg);
+  color: var(--cold-text);
+  font: inherit;
+}
+
+#cold-vault-recovery-output,
+#cold-vault-recovery-input {
+  display: block;
+  width: min(100%, 48rem);
+  margin-top: 0.25rem;
+  padding: 0.45rem 0.55rem;
+  border: 0.14rem solid var(--cold-outline);
+  border-radius: 0.3rem;
+  background: var(--cold-bg);
+  color: var(--cold-text);
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
+#cold-vault-recovery-output[readonly] {
+  user-select: none;
+}
+
+#cold-vault-recovery-configure,
+#cold-vault-recovery-reveal,
+#cold-vault-recovery-unlock {
+  margin-top: 0.45rem;
+  padding: 0.35rem 0.7rem;
+  border: 0.13rem solid var(--cold-drop);
+  border-radius: 0.3rem;
+  background: var(--cold-green);
+  box-shadow: 0.15rem 0.15rem 0 var(--cold-drop);
+  color: var(--cold-ink);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+#cold-vault-recovery-configure:disabled,
+#cold-vault-recovery-reveal:disabled,
+#cold-vault-recovery-unlock:disabled {
+  background: #8e8e9c;
+  box-shadow: none;
+  color: var(--cold-ink);
+  cursor: not-allowed;
+}
+
 #cold-vault-actions {
   display: flex;
   flex-wrap: wrap;

@@ -104,6 +104,7 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 | `publicData.updated` | `{ publicCompartment }` | Acknowledges a successful public registry replacement; schema-validated public records only |
 | `concealment.revealed` | `{ revealed: bool }` | Reports only whether the cold realm re-authenticated the session; no phrase or note body crosses |
 | `secretData.updated` | `{ dirty: true }` | Signals that cold-local secret notes changed; carries no secret plaintext |
+| `vault.dirty` | `{ dirty: true }` | Signals that cold-local recovery-share settings changed; carries no share material or secret plaintext |
 | `status` | `{ locked, mode, warnings[] }` | |
 | `address.verifyResult` | `{ addressId, outcome, divergenceIndex, verificationState, verifiedAt, xpubFingerprint }` | `outcome` and `verificationState` are **enum codes, never prose** — see below. `divergenceIndex` is an integer |
 | `error` | `{ code, message }` | Never includes secret material in the message |
