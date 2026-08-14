@@ -4108,7 +4108,7 @@ __COLDBOX_CONCEALMENT__
       return 'Threshold reconstruction succeeded in the sealed realm. This backup is now marked cold verified.';
     }
     if (outcome === 'invalid') {
-      return 'The share set did not reconstruct successfully. The backup remains incomplete.';
+      return 'The share set did not reconstruct for the selected subject. The backup remains incomplete.';
     }
     if (outcome === 'unsupported') {
       return 'This backup method has no cold reconstruction workflow yet. The record remains incomplete.';

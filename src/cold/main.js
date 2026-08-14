@@ -2500,7 +2500,7 @@ __COLDBOX_QR_ENCODER__
       if (outcome !== 'unsupported') {
         var verifiedAt = new Date().toISOString();
         currentVaultSession.markBackupVerified(record.id, record.method, recoveredBytes, verifiedAt);
-        setBackupVerificationStatus('valid', 'Reconstruction succeeded. The public record is now cold verified; save the vault to make the timestamp durable.');
+        setBackupVerificationStatus('valid', 'Subject-bound reconstruction succeeded. The public record is now cold verified; save the vault to make the timestamp durable.');
         sendBackupVerificationResult('verified', verifiedAt);
       } else {
         setBackupVerificationStatus('error', 'This backup method has no reconstruction workflow in this release. The record remains incomplete.');

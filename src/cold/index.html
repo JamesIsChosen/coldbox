@@ -614,7 +614,7 @@ __COLDBOX_COLD_STYLES__
     <section id="cold-backup-verification" aria-label="Cold-only BackupRecord verification" data-state="locked" hidden>
       <p class="eyebrow">Backup Records / P2.6</p>
       <h2>Verify a recorded backup</h2>
-      <p id="cold-backup-verification-help">This control is opened by a public BackupRecord. Type shares from the physical copies into this sealed frame; the warm shell receives only a success or failure code. A successful reconstruction writes the public verification timestamp, never the reconstructed secret.</p>
+      <p id="cold-backup-verification-help">This control is opened by a public BackupRecord. Type shares from the physical copies into this sealed frame; the warm shell receives only a success or failure code. Only a reconstruction that matches the selected subject writes the public verification timestamp; an unresolved or different subject remains incomplete. The reconstructed secret never leaves this frame.</p>
       <dl class="cold-backup-verification-target">
         <div><dt>Record</dt><dd id="cold-backup-verification-label">No record selected.</dd></div>
         <div><dt>Method</dt><dd id="cold-backup-verification-method">Not selected</dd></div>
