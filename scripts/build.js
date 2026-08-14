@@ -234,6 +234,7 @@ function assemble() {
   mainScript = injectOnce(mainScript, '__COLDBOX_CLIPBOARD_CANARY__', readSource('clipboard-canary.js'));
   mainScript = injectOnce(mainScript, '__COLDBOX_PROTOCOL__', protocolSource);
   mainScript = injectOnce(mainScript, '__COLDBOX_REGISTRY__', registrySource);
+  mainScript = injectOnce(mainScript, '__COLDBOX_BACKUP_HEALTH__', readSource('backup-health.js'));
   mainScript = injectOnce(mainScript, '__COLDBOX_CONCEALMENT__', concealmentSource);
   mainScript = injectOnce(mainScript, '__COLDBOX_AIRGAP__', airgapSource);
   mainScript = injectOnce(mainScript, '__COLDBOX_CAPABILITIES__', capabilitiesSource);
@@ -302,7 +303,8 @@ function assemble() {
     '__COLDBOX_HELP_CONTENT__',
     '__COLDBOX_LICENSE_TEXT__',
     '__COLDBOX_ADDRESS_VERIFICATION__',
-    '__COLDBOX_CLIPBOARD_CANARY__'
+    '__COLDBOX_CLIPBOARD_CANARY__',
+    '__COLDBOX_BACKUP_HEALTH__'
   ]) {
     if (document.includes(placeholder)) {
       throw new Error(`Unresolved source placeholder in assembled document: ${placeholder}`);
