@@ -117,7 +117,11 @@ Check the changelog for security fixes, confirm test vectors still pass, and con
 
 ## Bundle budget
 
-Target ≤ 3 MB, hard cap 4.5 MB. Current estimate ≈ 1.7 MB.
+Target ≤ 4 MB, hard cap 4.5 MB.
+
+**Last measured: 2,597,956 bytes (≈ 2.60 MB)** — `build/coldbox.html`, SHA-256 `4d1a923547be0c0056bf6d36e8c332f06bd511126ff6b782f441f318e3fb6a80`, built 2026-08-14 18:54 UTC. That artifact predates the P2.7 merge commit `94cf73b`, so it is a floor rather than the current figure; the next build to run records the exact number here.
+
+The target moved from 3 MB to 4 MB in UI.1. The old figure sat below the artifact that already existed, which is the worst state for a budget to be in — it reads as headroom that is not there. 4 MB leaves genuine room for Phases 3–5 while keeping the 4.5 MB hard cap meaningful. The estimate table below is the original per-component projection and is retained for its shape, not its total; it under-counts and has not been re-derived.
 
 | Component | Est. |
 |---|---|
@@ -137,6 +141,8 @@ Target ≤ 3 MB, hard cap 4.5 MB. Current estimate ≈ 1.7 MB.
 For comparison, the Ian Coleman BIP39 standalone is 4.55 MB on its own.
 
 Every PR states its size impact. The budget exists because this file must open quickly on a phone.
+
+The size is reported by CI but not enforced by it ([ADR-0017](adr/0017-ci-workflow-structure.md)). Making the hard cap a failing gate is worth doing and is not yet a roadmap item; until it is, the cap is honoured by review.
 
 ---
 

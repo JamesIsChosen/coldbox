@@ -181,7 +181,7 @@ Note the vault-save nuance: in Warm Mode the secret compartment is copied throug
 ### 5.1 Files
 
 ```
-coldbox-v1.0.0.html        ~1.7 MB   the application. Never changes.
+coldbox-v1.0.0.html        ~2.6 MB   the application. Never changes.
 coldbox-v1.0.0.html.sha256 ~100 B    published hash
 coldbox-v1.0.0.html.asc    ~1 KB     detached GPG signature
 my-vault.cbx               variable  your encrypted data
@@ -920,9 +920,9 @@ Zero runtime dependencies. Everything vendored, pinned, listed in Provenance wit
 | Portfolio engine + charts | lots, PnL, SVG charts | 60 KB |
 | Price/balance adapters | 5 price + 5 chain sources | 35 KB |
 | App code + CSS + icons | | 450 KB |
-| **Total** | | **≈ 1.9 MB** (revised for the measured help-content figure; every other row remains a pre-implementation estimate) |
+| **Total** | | *(projection only — see below)* |
 
-Comfortably under budget. The existing Ian Coleman standalone is 4.55 MB by itself.
+**The table above is a pre-implementation projection and its total is not the artifact size.** The measured figure, the target and the hard cap have one canonical home: [dependencies.md](../05-development/dependencies.md#bundle-budget). At the last measurement the built artifact was ≈ 2.60 MB against a 4 MB target and a 4.5 MB hard cap, so the projection under-counts by a wide margin and should not be quoted as a size. For comparison, the existing Ian Coleman standalone is 4.55 MB by itself.
 
 **Help content row, measured (2026-08-07, full P0.17 backfill):** P0.17's compiled `HELP_CONTENT` (the complete glossary and all nine guides, JSON-embedded per-depth HTML) measures **≈ 344 KB**, not the 180 KB estimated above. Most of the gap is the existing build-time JSON-escaping helper (`jsonScriptLiteral()`, shared with `PROVENANCE_LIBRARIES` and the cold-realm document) expanding every `<`/`>` in the compiled HTML to a 6-character `\uXXXX` escape — an earlier draft also duplicated a full plain-text copy of every depth for search, which alone cost roughly another third; deriving search text from the already-embedded HTML at runtime instead (see [ADR-0016](../05-development/adr/0016-help-content-compiler-and-search.md)) removed that. Flagged here rather than silently reconciled, per doc-hygiene.md rule 4 — this line item, and the total, are updated to the real measured figure rather than the original estimate.
 

@@ -55,6 +55,8 @@ All defined in `src/styles.css` on `:root` (dark) and `html[data-theme="light"]`
 | `--surface-raised` | `#2b2b3d` | `#ffffff` | Emphasised panel |
 | `--surface-soft` | `#1e1e2b` | `#fff6dc` | Recessed chips, hover states |
 
+The August 2026 design handoff proposed a light map differing from the shipped values at three tokens — `--bg` `#efece2`, `--bg-dot` `#d8d2c2`, `--surface-soft` `#ffffff`. **The shipped values above win**, and the handoff's map is superseded on those three. They are warmer, they are already measured against §9, and nothing in the handoff argued for the cooler set beyond it being written down first. Recorded here so it is not re-proposed. The handoff's remaining light-mode advice was already satisfied: `--success` light is `#0f6b45` and the reveal border stays `--fill-red` `#e02020`.
+
 ### Ink
 
 The outline and its shadow are separate tokens because they diverge by theme. On light, the outline is black and the shadow is black. On dark, a black outline would disappear into the panel, so the outline inverts to bone while the shadow stays black.
@@ -206,6 +208,22 @@ Red fill, yellow display type, rotated ~9°, overlapping the panel corner. Yello
 
 Barred entirely from security surfaces (§6). One per screen at most; two stickers is a carnival.
 
+### Realm strip — `.realm-strip`
+
+The diagonally striped band under the app bar that names which realm you are in. Because both realms now share one shell, something has to state the boundary without shouting, and this is the only element that changes unmistakably at it.
+
+Fixed here so it cannot drift into decoration:
+
+| Property | Value |
+|---|---|
+| Stripe angle | `45°` |
+| Band width | `14px` |
+| Warm palette | `--fill-cyan` on `--fill-ink` |
+| Cold palette | `--fill-pink` on `--fill-ink` |
+| Realm name | Solid pill, `--fill-ink` text, full outline |
+
+It is chrome and never renders a secret, so §6 clause 1 does not reach it — but it reports boundary state, so clause 2 does. **The stripes never move**, and the strip is listed under Permanently calm in §6. A barber-pole animation here would be the single most tempting and least defensible motion in the app.
+
 ### The stage — `.stage`
 
 The dashboard's 3D panel arrangement: three comic-paper cards in perspective, the centre one pushed forward on the Z axis and the outer two rotated ±24° inward. The scene tilts up to ±7° following the pointer, and the cards drift vertically as the stage crosses the fold.
@@ -224,22 +242,39 @@ Cards use the paper tokens, not the shell surface tokens, and carry `--paper-ink
 
 ## 6. The calm rule
 
-> **Security surfaces get the comic shell and none of the comic behaviour.**
+> **A calm panel gets the comic shell and none of the comic behaviour.**
 
-A surface is a security surface if it **reports the live state of a security boundary**, or if it renders, accepts, or is adjacent to secret material.
+The rule attaches to the **panel**, not to the realm. Rationale and the alternatives considered are in [ADR-0044](../05-development/adr/0044-panel-scoped-calm-rule.md).
+
+A panel is calm when either clause holds:
+
+1. It **renders, accepts, or is immediately adjacent to secret material.**
+2. It **reports the live state of a security boundary.**
+
+Everything else is chrome and carries the full comic language, in both realms: hubs, navigation, page furniture, empty states, share decks, explanatory bubbles, the app bar, the dashboard stage.
 
 The distinction that does the work is *reporting state* versus *explaining the design*. The network/sealed-realm status surface reports: it tells you, right now, both the warm-shell reachability classification and whether the cold guard is healthy. The dashboard stage explains: it describes how the two realms are arranged and renders nothing that can change. Explaining may be lively. Reporting may not — because the moment a reporting surface fails, any whimsy on it reads as the interface not taking the failure seriously.
 
-Today the security surfaces are:
+**Where the clauses are ambiguous, the tiebreaker is: whimsy is permitted only where nothing is being asserted about security and nothing secret is rendered. If in doubt, the panel is calm.**
+
+### Permanently calm
+
+These report boundary state, so they stay calm whether or not a secret is on screen. A tilting panel that reports `connect-src 'none'` undermines the claim it is making.
 
 - `.realm-status` — sealed realm bootstrap
 - `.airgap-banner` — airgap guard
 - `.capability-panel` and every `.capability-row`
 - `.realm-status-failure`, `.protocol-warning`
-- Everything inside the sealed realm (`src/cold/`)
-- **Everything Phase 1 and later adds to Vault, Entropy Lab, Seed Forge, Derivation, Backup Lab, QR Studio, and Recovery.**
+- `.realm-strip` — the boundary strip (§5); its stripes never move
+- The vault unlock screen, and the panic screen
 
-On these surfaces:
+### Calm while a secret is present
+
+Any panel that renders, accepts or sits immediately beside secret material, wherever it lives. In practice that is most of Entropy Lab, Seed Forge, Derivation, Split lab, QR Studio, Recovery and Verify Bench — but it is the panel that qualifies, not the screen and not the directory.
+
+**Calm arrives on the same frame the plaintext does.** It is a state, not a transition. A panel about to reveal a secret straightens, drops any sticker and takes the red reveal border *before* the plaintext paints. A panel still rotating when a seed word appears has failed this rule even if it settles 200 ms later.
+
+### On any calm panel
 
 | Allowed | Forbidden |
 |---|---|
@@ -251,13 +286,13 @@ On these surfaces:
 
 The reasoning is worth stating plainly, because it is the one rule most likely to be argued with: a rotating sticker reading *KABOOM! SAFE!* is funny right up until the airgap check fails, at which point the interface is making a joke at the exact moment the user needs to believe it. The style earns its place by knowing when to stop.
 
-Everywhere else — Dashboard, Portfolio, Prices, Registry, Devices, Verify Bench, Reference, Learn, and all navigation chrome — the full language applies.
+A panel that is lively today because it renders no value does not stay lively by default. If it acquires one, re-check it against this section — §10 step 1 says so, and `.stage` in §5 is the worked example.
 
 ### Motion
 
-On non-security surfaces, transitions are ≤ 420 ms and limited to transform, box-shadow, background-color, border-color, and color. Looping animation is permitted only as a navigational affordance — currently one instance, the scroll cue under the stage — and never as decoration or emphasis.
+On lively panels, transitions are ≤ 420 ms and limited to transform, box-shadow, background-color, border-color, and color. Looping animation is permitted only as a navigational affordance — currently one instance, the scroll cue under the stage — and never as decoration or emphasis.
 
-On security surfaces there is no animation and no transition that moves anything: state changes swap colour and text, and that is all.
+On calm panels there is no animation and no transition that moves anything: state changes swap colour and text, and that is all.
 
 `prefers-reduced-motion: reduce` collapses every duration to `0.01ms`, removes every hover transform, stops the scroll cue, and causes `startStageMotion()` to return before attaching a listener. Reduced motion must be honoured in JS as well as CSS — a listener that keeps firing is still a battery cost even when the transform is suppressed.
 
@@ -270,7 +305,9 @@ On security surfaces there is no animation and no transition that moves anything
 Two reasons:
 
 1. Every byte of that document sits inside the security boundary and is hash-pinned into the parent's `script-src`/`style-src`. Smaller is more reviewable, and 83 KB of base64 font is not worth reviewing twice.
-2. The realm renders secrets. Under §6 it is a calm surface throughout, and the display face is barred from data regardless — so the face would buy almost nothing.
+2. The display face is barred from data regardless (§4), so on the panels that render values it would buy nothing.
+
+Under [ADR-0044](../05-development/adr/0044-panel-scoped-calm-rule.md) the sealed realm is **no longer calm throughout** — its hub, navigation and empty states are chrome and may carry the full language. The face still stays out, on reason 1 alone. The consequence is deliberate and worth stating: the sealed hub uses the system stack and reads plainer than the warm shell. Revisit only if a cold screen turns out to need heading hierarchy that the system stack cannot carry.
 
 The realm stays dark under both parent themes. It is a separate document with a separate policy, and looking separate is accurate rather than a defect. Revisit if a Phase 1+ cold-realm screen turns out to need substantial heading hierarchy.
 
@@ -287,7 +324,7 @@ Fonts are treated exactly like cryptographic dependencies, because the constrain
 
 **Google Fonts, or any CDN, is not an option and never will be.** It fails three separate rules simultaneously: `scripts/lint.js` rejects external URLs, the CSP is `font-src data:` only, and [AGENTS.md](../../AGENTS.md) forbids fetching anything at build or run time.
 
-Cost: three faces, ~83 KB base64 in `build/coldbox.html`. Comfortably inside the 1.7 MB budget in [SPEC.md §16](SPEC.md).
+Cost: three faces, ~83 KB base64 in `build/coldbox.html`. Inside the budget recorded in [dependencies.md](../05-development/dependencies.md#bundle-budget), which is the canonical home for the figure.
 
 To add a face: vendor the tarball, add it to the manifest and `requiredPackages`, add an entry to `FONT_FACES` in `scripts/font-bundle.js`, record the licence in [dependencies.md](../05-development/dependencies.md). Do not add a face without a use that the existing two cannot serve.
 
@@ -330,7 +367,7 @@ Also required, and not testable by contrast alone:
 
 ## 10. Adding a surface
 
-1. Decide whether it is a security surface under §6. If in doubt, it is.
+1. Decide whether it is a calm panel under §6. If in doubt, it is. Re-check this whenever the panel starts rendering a value it did not render before.
 2. Use existing tokens. If a value is missing, add a token — do not inline a hex.
 3. Caption box at the top, outline and hard shadow on the panel.
 4. Headings in the display face; every value, address, or word in mono.
