@@ -1,6 +1,6 @@
 # ADR-0026: One canonical vault file; animated QR is live device-to-device transfer only
 
-**Status:** Accepted
+**Status:** Accepted · canonical filename amended by [ADR-0046](0046-vault-name-availability-at-unlock.md)
 **Date:** 2026-08-08
 
 ## Context

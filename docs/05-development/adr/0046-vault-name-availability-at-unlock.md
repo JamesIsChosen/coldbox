@@ -1,60 +1,61 @@
-# ADR-0046: Warm supplies the public vault-name list to cold at unlock
+# ADR-0046: Vault naming moves into the sealed realm, and the name leaves the filesystem
 
-**Status:** Accepted · amends [ADR-0025](0025-vault-identity-library-and-save-ux.md)
+**Status:** Accepted · amends [ADR-0025](0025-vault-identity-library-and-save-ux.md) §2 and [ADR-0026](0026-canonical-vault-save-and-live-transfer.md) §1
 **Date:** 2026-08-14
 
 ## Context
 
-[ADR-0025](0025-vault-identity-library-and-save-ux.md) placed vault naming in the warm shell: the user chooses a public name *before* creation, and the cold realm is gated by the strict payload-free `vault.create.prepare {}` message. ADR-0025 §2 is explicit that the message carries no fields, so that neither the name nor any other free-form value can hitch a ride across the boundary. [ADR-0026](0026-canonical-vault-save-and-live-transfer.md) then required that a different Vault ID cannot claim an already-known public name in the app-visible scope.
+[ADR-0025](0025-vault-identity-library-and-save-ux.md) §1 already puts vault creation's unlock phrase, confirmation, KDF profile and keyfile inside the sealed realm. Only the **name** is chosen beforehand, in the warm shell (§2). So a single create action is split across the security boundary for exactly one field, and splitting a create action is the reason people mis-order it.
 
-The August 2026 design work proposes finishing a job ADR-0025 started. Creation's unlock phrase, confirmation, KDF profile and keyfile are **already** inside the sealed realm (ADR-0025 §1); only the **name** is chosen beforehand, in the warm shell (ADR-0025 §2). So a single create action is split across the security boundary for one field, which is the reason people mis-order it.
+The obvious fix — move naming into cold — is **structurally impossible as long as the name is filesystem metadata**, and two earlier drafts of this ADR failed to notice that. Independent review caught it twice:
 
-This ADR — not [ADR-0045](0045-released-secret-model.md), which is about seed material and says nothing about vault creation — is what decides that the naming step joins the rest of creation in cold.
+- [ADR-0026](0026-canonical-vault-save-and-live-transfer.md) §1 makes the canonical file `<public-name>--<id8>.cbx`, and the warm shell owns saving and the library. Warm therefore needs the name.
+- [architecture.md](../../01-spec/architecture.md) states flatly that **vault names do not cross cold → warm**, because arbitrary prose cannot be distinguished from a secret by regex and a user could type a passphrase into a name field by mistake. ADR-0025 rejected putting the name in a Cold → Warm message for exactly this reason.
 
-That creates a problem ADR-0025 did not have to solve. The name is now chosen inside cold, but the set of names already in use is warm-side state, and **cold cannot see it**. Without something, the duplicate-name refusal that ADR-0025 §2 and ADR-0026 require either stops being enforced or gets enforced too late — after the user has entered a phrase, confirmed it, and benchmarked a KDF profile.
+A name typed in cold can never reach warm; warm needs the name to name the file. Any design that moves naming into cold while leaving the name in the filename is incoherent, and the first draft of this ADR was such a design. Its second draft compounded the error by introducing a warm → cold name-list message to solve duplicate detection — solving a downstream symptom of a contradiction that was still there.
 
-Two shapes were available. Warm supplies the list of names in use at unlock, or cold posts a candidate name outward and warm answers taken/free.
+The contradiction dissolves once the real question is asked: **why is a user-chosen string in the filename at all?**
 
 ## Decision
 
-**Vault naming moves into the sealed realm**, joining the unlock phrase, confirmation, KDF profile and keyfile already there under ADR-0025 §1. Creation becomes one screen on one side of the boundary. This amends ADR-0025 §2's placement of the naming step; everything else in §2 — that the name is public metadata, that it must not contain secrets, and that it never crosses cold → warm as free-form text — stands unchanged.
+**1. The vault name is entered in the sealed realm at creation** and stored inside the vault's encrypted public compartment, written by cold and authenticated with everything else in it. It is cold-owned. It never crosses to warm, in any message, in any form.
 
-**To make that safe, warm supplies the list of public vault names in use, to cold, once, as part of the existing unlock/session-start exchange.**
+**2. The canonical filename carries no user-chosen text.** It becomes `coldbox--<id8>.cbx`, replacing ADR-0026 §1's `<public-name>--<id8>.cbx`. The `id8` prefix of the authenticated Vault ID remains, and remains advisory until the vault opens and its authenticated ID is checked, exactly as ADR-0026 already requires.
 
-The message is typed and narrow, in the manner [ADR-0031](0031-public-registry-mutation-boundary.md) already established for warm-to-cold public data:
+**3. The warm library identifies a vault by `id8` plus an optional device-local nickname.** The nickname is typed in the warm shell, stored in warm-side local state keyed by Vault ID, and is **not** the vault name: it is never sent to cold, never written into the vault, and never appears in a filename. It exists so a picker showing four hex strings is legible.
 
-- **Direction is warm → cold only.** No name, and no derivative of one, is ever returned across the boundary. The prohibition ADR-0025 §2 established — no free-form cold → warm text — is untouched, and this decision does not relax it in any way.
-- **The payload is a list of strings and nothing else.** It carries no Vault IDs, no file paths, no save state, no counts, no timestamps. A name is public metadata by ADR-0025 §2; it is not, and must never become, a channel for anything else.
-- **It is validated on entry to cold like any untrusted input**: type-checked, length-bounded per element, list-length-bounded, rejected wholesale on any malformed element. Cold treats the list as data to compare against, never as markup, and never renders an element as HTML.
-- **It is session-scoped and non-authoritative.** Cold holds it only to answer "is this name already taken?" while the create screen is open, discards it on teardown with everything else, and never persists it or writes it into a vault compartment.
-- **Warm remains the authority.** Cold's check is a fast local answer that prevents the user wasting a creation flow. It does not replace warm's own refusal at save time, which stays exactly as ADR-0025 and ADR-0026 specify. If the two ever disagree, warm wins and the save is refused.
+**4. Renaming is supported on both, and neither is expensive.** The real name is edited in the sealed realm while the vault is unlocked and is re-encrypted with the compartment that a save already rewrites. The device-local nickname is edited in warm at any time, unlocked or not. Neither requires writing a new file, which is a strict improvement on the status quo, where the name *is* the filename and renaming means a new canonical file.
+
+**5. No new message type is introduced, in either direction.** This is the decisive property. Cold needs nothing from warm to name a vault, and warm needs nothing from cold to list one. The second draft's warm → cold name-list message is withdrawn entirely; it existed only to serve a design that could not work.
+
+**6. Duplicate-name refusal is retired rather than violated.** ADR-0026 §37 required that a second vault could not silently reuse an already-known public name, and ADR-0025 §2 carried the same expectation. Neither is enforceable once names are encrypted inside their own vaults, and neither is needed: the requirement existed to prevent look-alike confusion between vaults, and the discriminator visible at selection time is now `id8`, which derives from the authenticated Vault ID rather than from user-chosen text. A confusion attack cannot be mounted with a name nobody can see.
 
 ## Rationale
 
-The two options differ in what cold learns, not in what warm learns — warm learns nothing new either way, and no secret moves in either.
+**This is a privacy improvement, not a trade.** Today the vault name is written into a filename, which discloses it to every process and service that can list the directory — cloud sync, backup software, file indexers, anything reading the disk, and anyone glancing at a file manager. [threat-model.md](../../02-security/threat-model.md) already treats this class of metadata as a targeting risk: it records portfolio data as a physical-security risk and backup locations as a burglary map. A vault named `retirement-cold-storage` is the same kind of signal, and it is currently emitted whether or not the user ever opens the file. Moving the name inside the encrypted container removes that disclosure completely.
 
-Supplying the list costs cold knowing the user's vault names for the duration of a session. That is a real disclosure and worth stating plainly, but it is a disclosure of data that is already public by ADR-0025 §2: these names appear in filenames on disk, in the vault library, and to anyone who can see the filesystem. Cold learning them adds no exposure that the threat model cares about, because cold is the side that cannot talk to anything.
+**The boundary gets simpler, not more complex.** Both earlier drafts of this ADR added protocol surface — one by moving a name outward, one by moving a list inward. This adds neither. The invariant that names do not cross cold → warm is not merely preserved; it becomes trivially true, because nothing on the warm side ever wants the name.
 
-The ask-and-answer alternative keeps cold ignorant of the library, which is a genuine and attractive property. It was rejected on three counts. It adds a request/response round-trip on the boundary, executed while the user is typing, which is more protocol surface to specify, test and review than a one-shot list. It creates a per-keystroke or per-submit signalling channel from cold to warm — a low-bandwidth one, but the existing invariant is that cold initiates nothing free-form outward, and a stream of candidate names is closer to violating that than a silent inbound list is. And it fails less well: if the answer is slow or lost, the create screen either blocks or proceeds unchecked, whereas a list that failed to arrive is an unambiguous state cold can fail closed on.
+**The cost is real and it is not attacker-facing.** Before unlock, the warm picker can show only `id8` and file metadata. The failure mode that creates is a user selecting or overwriting the wrong vault — an integrity and availability risk, not a disclosure one. The device-local nickname exists precisely to bound it, and it bounds it without moving a single byte across the boundary.
 
-Fail-closed behaviour is specified rather than left implicit: if the list is absent or malformed, the cold create screen refuses to proceed with a name and says why. It does not silently skip the check.
+**Renaming was the unlock.** Considering rename support is what exposed that a name in a filename is a poor place for a mutable label: renaming means writing a new canonical file, which collides with ADR-0026's whole one-vault-one-file premise. Separating the durable name (inside, cold-owned) from the local label (outside, warm-owned) makes both mutable and cheap.
 
 ## Consequences
 
-- A new typed warm → cold message and its schema entry, with the strict-validation and unknown-field-stripping behaviour the existing protocol already applies. `test/protocol.test.js` gains negative cases: malformed elements, oversized list, wrong types, and the fail-closed path when the list never arrives.
-- Cold gains a session-scoped list of public strings. It is included in the teardown that [ADR-0045](0045-released-secret-model.md) specifies, and a test asserts it does not survive a lock.
-- [architecture.md](../../01-spec/architecture.md)'s message inventory and [csp-policy.md](../../02-security/csp-policy.md)'s boundary description are updated in the item that implements this, not here.
-- ADR-0025 §2's payload-free `vault.create.prepare {}` is superseded for the creation path only: gating the cold creation UI now also delivers the name list. The rest of ADR-0025 — that names are public warm metadata, that the Vault ID is a cold-generated UUID, that no free-form string returns from cold — stands unchanged.
-- Duplicate-name refusal becomes visible at the moment of typing rather than at save. This is the user-facing point of the decision and the acceptance criterion for it.
-- The disclosure is recorded in [threat-model.md](../../02-security/threat-model.md) under *Not defended* rather than left to be discovered: cold knows the public names of the vaults in the library for the duration of a session.
-- **UI.10 owns the implementation of this ADR in full** — the typed message and its schema entry, element and list bounds, fail-closed behaviour on a missing or malformed list, teardown, the negative protocol tests, and the [architecture.md](../../01-spec/architecture.md) message-inventory and [csp-policy.md](../../02-security/csp-policy.md) updates. No part of it is left to be picked up incidentally by another item.
+- ADR-0025 §2 is amended: the name is no longer "public warm-shell metadata". It is cold-owned encrypted metadata. Everything else in §2 stands — the name must still not contain secrets, and it still never crosses cold → warm.
+- ADR-0026 §1 is amended for the filename form. Historical filenames — `<name>--<id8>--0047.cbx`, `<name>--<id8>.cbx` and `coldbox-vault-0047.cbx` — remain readable, per ADR-0026 §5. **Existing vaults are not rewritten and need no migration to open.**
+- The public compartment gains a bounded name field. **Whether that requires a vault-format version bump is not decided here and must not be decided silently**: UI.10 determines it against [vault-format.md](../../01-spec/vault-format.md) and records the answer with its reasoning. A schema addition that changes the format without a version marker would be a defect.
+- [threat-model.md](../../02-security/threat-model.md) records the change in what the filesystem discloses, replacing the disclosure the second draft of this ADR described.
+- Warm gains device-local nickname state. It is display-only, per-device, and does not travel with a copied `.cbx`. That is a stated limitation, not an oversight: the durable name travels inside the file and is visible once unlocked.
+- **UI.10 owns implementation in full** — the sealed create screen, the compartment field and its bounds, the filename change, the warm nickname store, rename on both sides, the format-version determination, and the [architecture.md](../../01-spec/architecture.md) and [vault-format.md](../../01-spec/vault-format.md) updates.
+- Pre-unlock legibility is reduced on any device that has not set a nickname. Accepted.
 
 ## Alternatives considered
 
-**Cold posts the candidate name out; warm answers taken/free.** Rejected for the round-trip, outbound-signalling and failure-mode reasons above. Reconsider if the name list ever stops being purely public — if it grew IDs, paths or counts, the calculus inverts and the narrow question becomes the safer shape.
+**Move naming to cold and send the name back out under a validator.** Rejected, and it was the first draft of this ADR. It reverses an explicit architecture invariant, and it revives an alternative ADR-0025 already rejected on the grounds that the validator cannot work — arbitrary prose is not distinguishable from a passphrase by pattern matching. That reasoning has not changed.
 
-**Leave naming in the warm shell and keep creation split.** Rejected by [ADR-0045](0045-released-secret-model.md), which moves creation into cold precisely because splitting it is what causes mis-ordering. Keeping the split to avoid one narrow public message would be trading a real usability defect for a theoretical one.
+**Move naming to cold and pass a warm → cold list of names in use for duplicate checking.** Rejected, and it was the second draft. It leaves the outbound problem completely unsolved — warm still cannot name the file — while adding a new inbound message, new validation surface, a new fail-closed path, and a session-scoped disclosure of the user's vault names to the sealed realm. It answered a question that only arose because the design underneath it was broken.
 
-**Let cold skip the check and rely on warm refusing at save.** Rejected. It is the current behaviour by accident rather than design, and it means a user can complete naming, phrase entry, confirmation and a KDF benchmark before being told the name was never available. Fail-closed on a missing list is the same amount of code and strictly better behaviour.
+**Leave naming in the warm shell and keep creation split.** Viable, and the honest fallback if the pre-unlock legibility cost proves unacceptable in use. Rejected because it preserves both defects this ADR removes — a create action split across a security boundary for one field, and a user-chosen string permanently disclosed in a filename. Note that it is *not* rejected on the authority of [ADR-0045](0045-released-secret-model.md), which is about seed material and says nothing about vault creation; an earlier draft of this ADR wrongly attributed the decision there.
 
-**Send a set of salted hashes of the names rather than the names.** Rejected as security theatre. The name set is small, low-entropy and user-chosen, so hashes are trivially recoverable by the side that already holds the candidate; it would add a construction to review while disclosing effectively the same information.
+**Keep the name in the filename but encrypt or hash it.** Rejected as theatre. A hashed filename is unreadable to the user while remaining a stable per-vault identifier to an observer, so it costs all of the legibility and buys almost none of the privacy — `id8` already serves as the stable identifier and is honest about being one.

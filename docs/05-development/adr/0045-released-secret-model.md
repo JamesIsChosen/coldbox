@@ -38,7 +38,9 @@ The vault passphrase is a *different kind of secret* from a released one: it aut
 
 **Release publishes to a session-scoped registry inside the cold document.** A released secret is an in-memory record holding the secret material, its derived public master fingerprint, and a user-visible label. It lives in the sealed frame only. It is never serialised, never written to a vault compartment, never logged, and never included in any message to the warm shell — the existing prohibition on secret material crossing the boundary is unchanged and unqualified by this decision.
 
-**Every other cold tool becomes a lens on the focused secret.** Split lab, SeedQR Studio, derivation, addresses, child seeds, verification and recovery read the focused secret from the registry and render from it. They gain no input of their own. Eleven entry points collapse to one.
+**Every other cold tool becomes a lens on the focused secret.** Split lab, SeedQR Studio, derivation, addresses, child seeds, verification and recovery read the focused secret from the registry and render from it.
+
+Precisely: **they lose their seed/source-loading input, and only that.** The six fields listed above collapse to one. They keep every input that does a different job — share and recovery material being reconstructed, the separate BIP-39 passphrase, vault authentication and re-authentication, secret notes. A recovery tool that could not accept share words would not be a recovery tool. An earlier draft of this ADR said "eleven entry points collapse to one" and that tools "gain no input of their own"; both were over-broad, the number was unsupported, and neither described what this decision actually removes.
 
 **Several secrets may be released; exactly one is focused.** Switching focus re-points every panel. This is what makes a 2-of-3 multisig workable — three fingerprints have to be comparable side by side, not one at a time.
 
@@ -50,7 +52,7 @@ The vault passphrase is a *different kind of secret* from a released one: it aut
 
 ## Rationale
 
-The retyping is the vulnerability. Every existing phrase field is individually correct; the risk lives in the *count* of them, which is a property no single field's implementation can fix. Reducing eleven entry points to one reduces the attack surface, the misuse surface and the review surface at the same time, and it does so without weakening any existing control.
+The retyping is the vulnerability. Every existing seed field is individually correct; the risk lives in the *count* of them, which is a property no single field's implementation can fix. Reducing six seed-loading entry points to one reduces the attack surface, the misuse surface and the review surface at the same time, and it does so without weakening any existing control or removing any input that serves another purpose.
 
 Consolidating the masked-input contract into one place also makes it auditable. Today, "is every secret field masked by default and cleared on teardown?" is answered by reading six implementations. After this, it is answered by reading one, plus a test asserting the other five do not exist.
 

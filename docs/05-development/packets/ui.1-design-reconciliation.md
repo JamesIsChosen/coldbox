@@ -3,11 +3,43 @@
 **Branch:** `ui.1-design-reconciliation` · **PR:** #55
 **Base:** `main` @ `94cf73b` (Merge PR #54: P2.7 Backup Health dashboard)
 **Roadmap item:** [UI.1 Design reconciliation](../ROADMAP.md) — Phase UI
-**Date:** 2026-08-14 · **Revision 2** (remediation of the FAIL at `ce4bba4`)
+**Date:** 2026-08-14 · **Revision 3** (remediation of the round-2 FAIL at `53f8ae6`)
 
 ---
 
-## 0. Remediation of review round 1
+## 0. Remediation of review round 2
+
+Round 2 returned **FAIL with 5 findings** at `53f8ae6`. The handoff is preserved separately at [`ui.1-design-reconciliation.review-2.md`](ui.1-design-reconciliation.review-2.md); round 1's FAIL is preserved unedited at [`ui.1-design-reconciliation.review.md`](ui.1-design-reconciliation.review.md), as the reviewer directed. Only the reviewer's handoff block was available for transcription in round 2, and that limitation is stated in the file rather than papered over.
+
+**R2-F3 was a structural error, and it is the important one.** Two successive drafts of ADR-0046 proposed something that could not work.
+
+| # | Finding | Response |
+|---|---|---|
+| R2-F1 | UI.1's bundle criterion contradicted the single-canonical-home design it had just created — it required SPEC to carry a measured size, while the implementation deliberately made SPEC carry none | **Fixed.** The criterion now requires `dependencies.md` to be the single home and SPEC to restate nothing, and is checkable by grep |
+| R2-F2 | ADR-0045, UI.4 and CHANGELOG claimed more than the decision removes — "eleven entry points", "no input of their own" | **Fixed.** All three now say six seed/source-loading fields collapse to one, and state explicitly that share entry, recovery entry, BIP-39 passphrase, vault authentication and secret notes all stay. "Eleven" was an unsupported number carried over from the design handoff |
+| R2-F3 | ADR-0046's vault-name lifecycle was structurally incoherent | **Redesigned.** See below |
+| R2-F4 | ADR-0046 still credited the rejection of an alternative to ADR-0045 | **Fixed.** The stale attribution is gone and the alternative now carries a note that ADR-0045 says nothing about vault creation |
+| R2-F5 | Reviewer environment still could not clone | **Not fixable here.** Open, and it needs an environment rather than an edit |
+
+### On R2-F3
+
+The contradiction: [ADR-0026](../adr/0026-canonical-vault-save-and-live-transfer.md) §1 makes the canonical file `<public-name>--<id8>.cbx` with warm owning saving and the library, so warm needs the name — while [architecture.md](../../01-spec/architecture.md) states that **vault names do not cross cold → warm**, because arbitrary prose cannot be distinguished from a secret by regex. A name typed in cold can never reach warm. Warm cannot name the file without it.
+
+Draft 1 moved naming into cold and ignored the outbound problem. Draft 2 added a warm → cold name-list message, which solved duplicate detection — a downstream symptom — while leaving the contradiction untouched. Both were incoherent, and the second was worse for looking more thorough.
+
+The resolution came from asking why a user-chosen string is in a filename at all. **The name now lives inside the encrypted container, the canonical filename becomes `coldbox--<id8>.cbx`, and the warm picker identifies a vault by `id8` plus a device-local nickname that never leaves warm.** Consequences worth stating plainly:
+
+- **No new message type, in either direction.** Draft 2's inbound list is withdrawn. Cold needs nothing from warm to name a vault; warm needs nothing from cold to list one. The boundary gets simpler than it was before this PR started.
+- **It is a privacy improvement.** A name in a filename is disclosed to cloud sync, backup software, file indexers and anyone reading the directory, whether or not the vault is opened. That disclosure is removed.
+- **The cost is not attacker-facing.** Pre-unlock the picker shows `id8` and file metadata, so the risk is a user selecting or overwriting the wrong vault — integrity and availability, not confidentiality. The device-local nickname bounds it without moving a byte across the boundary.
+- **Duplicate-name refusal is retired, not violated.** ADR-0026 §37 exists to prevent look-alike confusion; the visible discriminator is now `id8`, derived from the authenticated Vault ID rather than user-chosen text, and a name nobody can see cannot be used to confuse anyone.
+- **One thing is deliberately left open, with a named owner.** Adding a bounded name field to the public compartment may or may not require a vault-format version bump. UI.10 must determine that against `vault-format.md` and record the reasoning; changing the format silently would be a defect. I did not guess.
+
+**How this got through twice.** Draft 1 was mine. Draft 2 was written while remediating a FAIL, which is exactly when the temptation to patch the cited symptom rather than re-examine the design is strongest — the round-1 reviewer asked me to give ADR-0046 an implementation owner, and I gave it one without asking whether the thing being owned was possible. The maintainer's question about rename support is what surfaced the real answer.
+
+---
+
+## 0b. Remediation of review round 1
 
 Round 1 returned **FAIL with 7 findings** at `ce4bba40bd1df404f32148104fbf8d451866cf2c`. The report is preserved verbatim at [`ui.1-design-reconciliation.review.md`](ui.1-design-reconciliation.review.md), committed by me rather than the reviewer only because their integration was refused write access with HTTP 403; **no finding was reworded, softened or removed**, and that file is the reviewer's record, not mine to revise.
 
@@ -76,7 +108,7 @@ Documentation hygiene check passed: 214 markdown file(s) checked, 0 warning(s).
 
 ## 5. Security impact
 
-Realm boundary, message schema, CSP, vault format, derivation, randomness: **none touched by this PR.** No new `connect-src` host. No message type ships here. ADR-0046 *decides* a future boundary change; **UI.10** implements it.
+Realm boundary, message schema, CSP, vault format, derivation, randomness: **none touched by this PR.** No new `connect-src` host, and — after the R2-F3 redesign — **no future message type is authorised either, in either direction.** ADR-0046 as it now stands adds no protocol surface at all. It does decide a future *vault-format* addition (a bounded name field in the public compartment) whose version-bump question is explicitly left to UI.10 rather than guessed at here.
 
 **What an attacker gains if the decisions recorded here are wrong.**
 
@@ -86,7 +118,13 @@ Realm boundary, message schema, CSP, vault format, derivation, randomness: **non
 
 **ADR-0045's substance** reduces seed-entry points from six to one, which I believe is a net improvement over a status quo in which the same phrase is retyped up to six times. It accepts two costs, both stated in the ADR: a secret resides in a session registry for longer than one tool's use, and a multi-secret switcher introduces acting-on-the-wrong-secret as a new failure mode. UI.3 must therefore show the focused fingerprint on any panel that splits, exports or destroys.
 
-**ADR-0046 authorises a warm → cold data flow.** Direction is why it is acceptable: the invariant that matters is that no secret leaves cold, and this moves public data inward. [ADR-0031](../adr/0031-public-registry-mutation-boundary.md) is the precedent. The disclosure it accepts — cold learns the public names of your vaults for a session — is now recorded in [threat-model.md](../../02-security/threat-model.md) under *Not defended*, which is where F5 correctly said it belonged. What it adds is a new *input* path into the sealed realm, so validation quality at UI.10 is where the real risk sits: bounds, wholesale rejection of malformed elements, never rendering a name as HTML, and fail-closed on a missing list are all specified as acceptance criteria rather than left to judgement.
+**ADR-0046, after R2-F3, reduces exposure rather than adding it.** Both earlier drafts added protocol surface — one moving a name outward through a validator that ADR-0025 had already shown cannot work, one moving a list of names inward. Neither survives. The name now lives inside the encrypted container and no message carries it in either direction, so the invariant that vault names do not cross cold → warm stops depending on a filter and becomes trivially true.
+
+The change is a net privacy gain: a name in a filename is disclosed to cloud sync, backup software, file indexers and anything reading the directory, whether or not the vault is ever opened, and that disclosure is removed. What remains observable is the file's existence, size, modification time and `id8`.
+
+The residual risk is not confidentiality but **integrity and availability**: a picker showing hex strings is a picker in which someone overwrites the wrong vault. The device-local nickname bounds it. If that proves insufficient in real use, the fallback is recorded in ADR-0046's alternatives — leave naming in warm — and it costs no security to take.
+
+The one thing I deliberately did not settle is whether the compartment addition needs a vault-format version bump. UI.10 must determine it against `vault-format.md` and record the reasoning, because a silent format change is a defect and guessing at a format question is exactly what AGENTS.md §4 forbids.
 
 ## 6. Test evidence
 
@@ -124,7 +162,7 @@ No new tests: this PR adds records and criteria, not behaviour. The tests the de
 
 **ADR-0044 as a whole.** Read it as someone who thinks relaxing a security rule to accommodate a visual design is backwards; that position nearly won. The specific question: is the two-clause test decidable at authoring time, or will it collapse into "everything is chrome until someone complains"?
 
-**ADR-0046's direction argument.** I am confident warm → cold public data is the safe direction and that ADR-0031 is the right precedent. I am less confident that "vault names are already public, so cold learning them costs nothing" is complete — true of the filesystem, but cold is a different trust context and I may be under-thinking a correlation I have not imagined.
+**ADR-0046's redesign, hardest — it has now been wrong twice.** The specific things to test it against: does anything else in the repository still assume a user-chosen name is present in a filename or reachable by warm? I checked ADR-0025, ADR-0026 and architecture.md, and amended the first two. If a fourth place exists, this is wrong a third time. Also worth challenging: I retired ADR-0026 §37's duplicate-name refusal on the reasoning that a name nobody can see cannot cause look-alike confusion. If §37 was protecting against something else I have not identified, retiring it is a regression rather than a simplification.
 
 **Whether UI.10 belongs where I put it.** It is placed after UI.9 in document order with `Deps: UI.4`, so ordering rests on the dependency line rather than position. If the roadmap's read-top-to-bottom convention should dominate, it is in the wrong place.
 
@@ -140,7 +178,10 @@ No new tests: this PR adds records and criteria, not behaviour. The tests the de
 
 - Did not run the full suite, build, or reproducibility check (§6). Environmental, and it is why F1 existed: I quoted a local artifact because I could not produce a real one.
 - Did not file the bundle-cap CI gate as a roadmap item. F2 permits it as future work; filing it is a roadmap change beyond this item's mandate. **Recommend it be filed.**
-- Did not update `architecture.md`'s message inventory or `csp-policy.md` for ADR-0046. Deliberate — no message exists yet, and documenting one that does not exist is how docs start lying. UI.10 owns it and says so explicitly, which is what F5 asked for.
+- Did not update `architecture.md`'s message inventory or `csp-policy.md` for ADR-0046 — and after R2-F3 there is nothing to add to either, because the redesign introduces no message. `architecture.md`'s existing statement that vault names do not cross cold → warm remains correct and becomes stronger. UI.10 still owns the `vault-format.md` and `architecture.md` updates that the compartment field does require.
+- **Swept for every document assuming a name-bearing filename**, after first writing this bullet as a caveat. It found seven beyond the three I had amended: `quick-start.md`, `SPEC.md`, `vault-format.md`, `threat-model.md`, `testing.md`, `ADR-0013`, and an assertion in `test/p0.19-doc-semantics.test.js`. **None is changed here, deliberately** — ADR-0046 is a decision and UI.10 is the implementation, so until UI.10 ships those documents correctly describe what the product does today. Changing them now would make the docs lie about shipped behaviour. They are instead enumerated by name in UI.10's acceptance criteria so none can be missed, and the test asserts against an *archived packet*, so it must keep passing unchanged rather than being updated.
+- **A regression I introduced was caught by an existing test, not by me.** Enumerating the historical filename forms verbatim in UI.10's criteria tripped `test/p0.19-doc-semantics.test.js`, which forbids canonical-filename text near a generation suffix in `ROADMAP.md` — precisely the drift P0.19 fought. Fixed by referencing ADR-0026 §5 rather than restating its list, which is better doc-hygiene anyway. Worth recording because it is the third defect in this branch found by something other than my own review.
+- `threat-model.md`'s new section was initially written in the present tense, describing the post-UI.10 filename as though it had shipped. Corrected in the same pass: it now states today's behaviour first, marks the change as decided-not-shipped, and names UI.10 as the item that lands it.
 
 **Known limitations shipping with this change.** Ten roadmap items whose criteria have never met an implementation. Phase UI's ordering is load-bearing and enforced only by document order plus `Deps:` lines. F7 remains open and needs an environment, not an edit.
 

@@ -30,19 +30,27 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 - Added [ADR-0045](docs/05-development/adr/0045-released-secret-model.md): a secret is
   entered or generated once and released into a session-scoped registry inside the
   sealed frame; every other cold tool becomes a lens on the focused secret and has no
-  secret input of its own. Eleven entry points collapse to one. Amends ADR-0023 and
-  ADR-0028, which keep their contracts.
+  seed-loading input of its own. Six seed/source-loading fields collapse to one. Every
+  input that does a different job stays — share and recovery entry, the separate BIP-39
+  passphrase, vault authentication and re-authentication, and secret notes. Amends
+  ADR-0023 and ADR-0028, which keep their contracts.
 - Added [ADR-0046](docs/05-development/adr/0046-vault-name-availability-at-unlock.md):
   vault naming moves into the sealed realm, joining the unlock phrase, confirmation and
-  KDF profile already there, and warm supplies the list of public vault names inward at
-  unlock as typed public data so that creation can refuse a duplicate name at the moment
-  of typing. No secret moves, no free-form string returns from cold, and a missing or
-  malformed list fails closed. Amends ADR-0025 §2's placement of the naming step only.
-- Recorded the disclosure that follows from it in
-  [threat-model.md](docs/02-security/threat-model.md) under *Not defended*: the sealed
-  realm knows the public names of the vaults in your library for the duration of a
-  session. Those names are already visible in `.cbx` filenames on disk, the direction of
-  travel is inward, and no name or derivative of one returns across the boundary.
+  KDF profile already there, and the name is stored inside the encrypted container rather
+  than in the filename. The canonical file becomes `coldbox--<id8>.cbx`, carrying no
+  user-chosen text. **No new message type is added in either direction** — cold needs
+  nothing from warm to name a vault, and warm needs nothing from cold to list one. The
+  warm picker identifies a vault by `id8` plus an optional device-local nickname that is
+  never sent to cold, never written into the vault and never placed in a filename.
+  Renaming works on both and neither requires writing a new file. Amends ADR-0025 §2's
+  placement of the naming step and ADR-0026 §1's filename; existing vaults open without
+  migration and historical filenames remain readable.
+- Recorded the resulting change in what the filesystem discloses in
+  [threat-model.md](docs/02-security/threat-model.md): a vault name is no longer written
+  into a filename, so it is no longer disclosed to cloud sync, backup software, file
+  indexers or anyone reading the directory. What remains visible is the file's existence,
+  size, modification time, and `id8` — a fragment of a random identifier that reveals
+  nothing about the contents.
 - Added `.realm-strip` to design-system.md §5 as a named component with its stripe angle,
   band width, both realm palettes and the pill treatment fixed, and with motion barred.
 - Resolved a light-mode token conflict in favour of the shipped values: `--bg`,

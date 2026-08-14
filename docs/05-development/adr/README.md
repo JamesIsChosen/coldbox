@@ -33,7 +33,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0023](0023-entropy-lab-seed-forge-boundary.md) | Entropy Lab's deliverable is raw entropy bytes, not a hand-off to Seed Forge | Accepted · amended by 0045 |
 | [0024](0024-warm-reachability-monitor.md) | Warm-shell active reachability monitoring does not change the cold airgap boundary | Accepted |
 | [0025](0025-vault-identity-library-and-save-ux.md) | Vault identity is portable and random; names/library/save UX stay in the warm shell | Accepted · amended by 0026/0046 |
-| [0026](0026-canonical-vault-save-and-live-transfer.md) | One canonical vault file; animated QR is live device-to-device transfer only | Accepted |
+| [0026](0026-canonical-vault-save-and-live-transfer.md) | One canonical vault file; animated QR is live device-to-device transfer only | Accepted · filename amended by 0046 |
 | [0027](0027-entropy-health-statistical-diagnostics.md) | Entropy Health uses advisory finite-sample statistical diagnostics | Accepted |
 | [0028](0028-cold-only-bip39-seed-forge.md) | Cold-only BIP-39 Seed Forge and master fingerprint | Accepted · amended by 0045 |
 | [0029](0029-cold-only-bitcoin-derivation-engine.md) | Cold-only Bitcoin BIP-32 derivation engine and script encodings | Accepted |
@@ -53,7 +53,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0043](0043-scoped-mobile-validation-deferral.md) | Scoped mobile-validation deferral for item review | Accepted |
 | [0044](0044-panel-scoped-calm-rule.md) | The calm rule is scoped to the panel, not the realm | Accepted |
 | [0045](0045-released-secret-model.md) | One released secret per session, and every cold tool is a lens on it | Accepted |
-| [0046](0046-vault-name-availability-at-unlock.md) | Warm supplies the public vault-name list to cold at unlock | Accepted |
+| [0046](0046-vault-name-availability-at-unlock.md) | Vault naming moves into the sealed realm, and the name leaves the filesystem | Accepted |
 
 ## When to write one
 
