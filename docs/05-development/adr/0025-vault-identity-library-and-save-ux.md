@@ -1,6 +1,6 @@
 # ADR-0025: Vault identity is portable and random; names/library/save UX stay in the warm shell
 
-**Status:** Accepted · save/QR portions amended by [ADR-0026](0026-canonical-vault-save-and-live-transfer.md)
+**Status:** Accepted · save/QR portions amended by [ADR-0026](0026-canonical-vault-save-and-live-transfer.md) · creation-path naming amended by [ADR-0046](0046-vault-name-availability-at-unlock.md)
 **Date:** 2026-08-08
 
 ## Context

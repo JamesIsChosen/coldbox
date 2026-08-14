@@ -1,6 +1,6 @@
 # ADR-0009: Comic visual language, with security surfaces exempted
 
-**Status:** Accepted
+**Status:** Accepted · scope amended by [ADR-0044](0044-panel-scoped-calm-rule.md)
 **Date:** 2026-08-04
 
 ---

@@ -16,7 +16,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0006](0006-companion-not-replacement.md) | A companion to hardware wallets, not a replacement | Accepted |
 | [0007](0007-headless-browser-harness.md) | Headless browser harness as a dev dependency | Accepted |
 | [0008](0008-csp-blocked-network-signals.md) | CSP-blocked network signals are not a throw contract | Accepted |
-| [0009](0009-comic-visual-language.md) | Comic visual language, with security surfaces exempted | Accepted |
+| [0009](0009-comic-visual-language.md) | Comic visual language, with security surfaces exempted | Accepted · amended by 0044 |
 | [0010](0010-ios-local-html-execution.md) | iOS local-HTML execution is a portability gate, not a preview-equivalence claim | Accepted |
 | [0011](0011-wasm-secp256k1-for-recovery.md) | WASM secp256k1 for the recovery search, with `@noble` as the authority | Accepted |
 | [0012](0012-recovery-checkpoint.md) | Recovery checkpoints are a separate encrypted file, not vault records | Accepted |
@@ -30,12 +30,12 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0020](0020-injected-providers-rejected-and-neutered.md) | Injected wallet providers — rejected as a feature, neutered as a threat | Accepted |
 | [0021](0021-clipboard-address-verification.md) | Clipboard address verification — warm clipboard, cold authority, two separate claims | Accepted |
 | [0022](0022-entropy-lab-mixing.md) | Entropy Lab accumulation and mixing — integer accounting, XOR-then-hash | Accepted |
-| [0023](0023-entropy-lab-seed-forge-boundary.md) | Entropy Lab's deliverable is raw entropy bytes, not a hand-off to Seed Forge | Accepted |
+| [0023](0023-entropy-lab-seed-forge-boundary.md) | Entropy Lab's deliverable is raw entropy bytes, not a hand-off to Seed Forge | Accepted · amended by 0045 |
 | [0024](0024-warm-reachability-monitor.md) | Warm-shell active reachability monitoring does not change the cold airgap boundary | Accepted |
-| [0025](0025-vault-identity-library-and-save-ux.md) | Vault identity is portable and random; names/library/save UX stay in the warm shell | Accepted · amended by 0026 |
+| [0025](0025-vault-identity-library-and-save-ux.md) | Vault identity is portable and random; names/library/save UX stay in the warm shell | Accepted · amended by 0026/0046 |
 | [0026](0026-canonical-vault-save-and-live-transfer.md) | One canonical vault file; animated QR is live device-to-device transfer only | Accepted |
 | [0027](0027-entropy-health-statistical-diagnostics.md) | Entropy Health uses advisory finite-sample statistical diagnostics | Accepted |
-| [0028](0028-cold-only-bip39-seed-forge.md) | Cold-only BIP-39 Seed Forge and master fingerprint | Accepted |
+| [0028](0028-cold-only-bip39-seed-forge.md) | Cold-only BIP-39 Seed Forge and master fingerprint | Accepted · amended by 0045 |
 | [0029](0029-cold-only-bitcoin-derivation-engine.md) | Cold-only Bitcoin BIP-32 derivation engine and script encodings | Accepted |
 | [0030](0030-cold-only-evm-and-arbitrary-path-derivation.md) | Cold-only EVM and generic arbitrary-path derivation | Accepted |
 | [0031](0031-public-registry-mutation-boundary.md) | Public registry mutations use a typed warm-to-cold replacement | Accepted |
@@ -51,6 +51,9 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0041](0041-backup-record-verification-boundary.md) | BackupRecord verification metadata is public, but completion authority stays cold-owned | Accepted |
 | [0042](0042-conservative-backup-health.md) | Conservative Backup Health from public metadata | Accepted |
 | [0043](0043-scoped-mobile-validation-deferral.md) | Scoped mobile-validation deferral for item review | Accepted |
+| [0044](0044-panel-scoped-calm-rule.md) | The calm rule is scoped to the panel, not the realm | Accepted |
+| [0045](0045-released-secret-model.md) | One released secret per session, and every cold tool is a lens on it | Accepted |
+| [0046](0046-vault-name-availability-at-unlock.md) | Warm supplies the public vault-name list to cold at unlock | Accepted |
 
 ## When to write one
 

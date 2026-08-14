@@ -1,6 +1,6 @@
 # ADR-0023: Entropy Lab's deliverable is raw entropy bytes, not a hand-off to Seed Forge
 
-**Status:** Accepted
+**Status:** Accepted · amended by [ADR-0045](0045-released-secret-model.md)
 **Date:** 2026-08-07
 
 ## Context
