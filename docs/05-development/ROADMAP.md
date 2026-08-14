@@ -238,7 +238,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
   **Accept:** only 12-, 18-, and 24-word BIP-39 phrases are accepted; every generated part is independently valid BIP-39; deterministic output matches the published Coldcard construction and independent vectors; random output refuses missing `crypto.getRandomValues`; combine accepts all parts in any order but rejects missing, malformed, mismatched-length, or invalid-checksum parts; the source, parts, and combined phrase never cross the cold boundary or persist, are masked by default, and clear on teardown; docs state that Seed XOR is N-of-N and that any BIP-39 passphrase is separate.
 - [x] **P2.4 Shamir39 and raw SSS**
   *Deps: P1.3*
-- [~] **P2.5 Vault recovery shares**
+- [x] **P2.5 Vault recovery shares**
   *Deps: P2.1*
   An additional offline-only vault unlock route: a configured threshold of
   SLIP-39 shares reconstructs the 32-byte vault DEK while the normal
