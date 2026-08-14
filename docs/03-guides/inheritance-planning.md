@@ -199,7 +199,10 @@ This will reveal that your instructions are less clear than you believed. Everyo
 - [ ] Will references the plan without containing secrets
 - [ ] **Rehearsal completed with a real heir**
 
-The Backup Health dashboard tracks most of this and flags what's overdue.
+The Backup Health dashboard tracks public BackupRecord verification schedules
+and placement labels. It does not verify device reachability, legal documents,
+custodian availability, or the full inheritance rehearsal; keep those checks
+in the instruction letter and your offline review.
 
 ---
 

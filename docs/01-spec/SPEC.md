@@ -158,7 +158,7 @@ Note the vault-save nuance: in Warm Mode the secret compartment is copied throug
 | Shoulder surfing | Masked by default, hold-to-reveal, privacy blur, panic hotkey, idle lock |
 | Clipboard scraping | Opt-in per field, auto-clear after 30 s, explicit warning about clipboard managers |
 | Browser text exfiltration | `spellcheck="off"` on every secret field — browser spellcheck can transmit typed text to vendor servers |
-| Backup single-point-of-failure | Health dashboard flags shares co-located, unverified, or overdue |
+| Backup single-point-of-failure | Health dashboard flags unverified, overdue, missing-placement, and repeated public placement labels; it does not prove individual share co-location |
 | Vault rollback | Monotonic save counter + last-modified shown on unlock |
 | Tampered copy of the app | Drag-and-drop self-hash verifier + published SHA-256 + detached GPG signature |
 | Address↔IP correlation | Balance lookups are opt-in per address, never automatic, with Tor/VPN guidance (§7.4) |

@@ -258,7 +258,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
   plus a deterministic byte-exact method-data fixture.
 - [x] P2.6 BackupRecords and verify-your-shares
   *Deps: P2.5*
-- [ ] P2.7 Backup Health dashboard
+- [~] P2.7 Backup Health dashboard
   *Deps: P2.6*
 - [ ] P2.8 Printable cards and hand-computation worksheets
   *Deps: P2.7*

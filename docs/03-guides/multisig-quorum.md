@@ -139,7 +139,7 @@ That last one will show you your instructions are less clear than you think. Eve
 
 **Every few years:** actually perform a recovery drill on a test wallet.
 
-The Backup Health dashboard tracks all of this and flags what's overdue.
+The Backup Health dashboard currently tracks public BackupRecord verification schedules and placement labels. It does not yet verify device reachability, descriptors, or multisig quorum survivability; keep this analysis as a separate human review.
 
 ---
 

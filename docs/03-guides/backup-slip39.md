@@ -165,7 +165,7 @@ The whole point is that shares live in different places.
 1. Never store threshold-many shares in one place. Two of three in the same house is a house fire away from total loss, and a burglary away from total compromise.
 2. Consider jurisdictions if that matters to you.
 3. Tell holders what they have — not what it protects. "Keep this sealed, give it to my executor" is enough.
-4. Keep the physical locations and custodians separate enough that one incident cannot reach the threshold. P2.6 BackupRecords can store public location and custodian metadata, but the P2.7 Health dashboard is not implemented yet.
+4. Keep the physical locations and custodians separate enough that one incident cannot reach the threshold. Record those public labels, then use the [Backup Health dashboard](backup-health.md) as a reminder. It can flag repeated locations and missing metadata, but it cannot prove individual share placement or threshold survivability.
 
 ---
 
@@ -185,13 +185,13 @@ The whole point is that shares live in different places.
 
 ## Maintenance
 
-**Annually:** confirm each share is where it should be, still legible, and the holder still has it. A P2.6 BackupRecord stores a verification interval and the last cold reconstruction date; the P2.7 Health dashboard is not implemented yet.
+**Annually:** confirm each share is where it should be, still legible, and the holder still has it. A BackupRecord stores a verification interval and the last cold reconstruction date; the [Backup Health dashboard](backup-health.md) flags records that are unverified or overdue.
 
 **Every few years:** actually reconstruct from a threshold subset. Confirming a share exists is not confirming it's correct.
 
 **Regenerate when:** a share is lost or compromised, a custodian relationship changes, or your configuration no longer fits your life. Regenerating produces an entirely new share set — destroy the old ones, or you'll have two valid sets in circulation and no idea which is which.
 
-The P2.1 SLIP-39 lab itself does not print cards or create public records. P2.6 adds the public BackupRecord and cold-only **Verify shares** action; printable worksheets and the Health dashboard remain later roadmap items.
+The P2.1 SLIP-39 lab itself does not print cards or create public records. P2.6 adds the public BackupRecord and cold-only **Verify shares** action; printable worksheets remain a later roadmap item.
 
 ---
 

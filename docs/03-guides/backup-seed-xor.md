@@ -92,6 +92,8 @@ shell receives only the closed success or failure result.
 
 ## Related standards and references
 
+- [Backup Health](backup-health.md) — public verification schedules and conservative placement warnings.
+
 - [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) —
   mnemonic entropy and checksums.
 - [Coldcard Seed XOR guide](https://github.com/Coldcard/firmware/blob/master/docs/seed-xor.md)

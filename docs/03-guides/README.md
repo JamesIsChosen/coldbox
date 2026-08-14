@@ -24,6 +24,7 @@ Step-by-step for the flows where mistakes are expensive. These compile into the 
 | [codex32](backup-codex32.md) | Shares verifiable by hand, no computer |
 | [Shamir39 and raw SSS](backup-shamir.md) | Non-standard threshold shares for BIP-39 phrases or raw hexadecimal secrets |
 | [Seed XOR](backup-seed-xor.md) | Coldcard-compatible N-of-N seed splitting |
+| [Backup Health](backup-health.md) | Verification schedules and conservative placement warnings |
 | [Recover a damaged seed](recover-a-seed.md) | Missing words, typos, wrong order |
 
 ## Planning
