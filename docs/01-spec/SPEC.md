@@ -741,7 +741,7 @@ Caveat shown before use: wallet adoption remains limited (a Bitcoin Core import 
 
 **Practice, built in rather than footnoted:**
 
-- **Verify-your-shares workflow:** after generating, the app makes you reconstruct the secret from a threshold subset *before* it will mark the backup complete. Untested backups are the most common cause of loss.
+- **Verify-your-shares workflow:** a public BackupRecord starts incomplete. From its warm metadata card, the user asks the sealed realm to reconstruct a threshold subset typed from physical copies; only the closed result code and, on success, a public timestamp return to the warm shell. The reconstructed secret never crosses the boundary. Untested backups are the most common cause of loss. See [ADR-0041](../05-development/adr/0041-backup-record-verification-boundary.md).
 - **Geographic distribution** prompts and co-location warnings.
 - **Verification scheduling** with a due date per BackupRecord.
 - **Naive-split warnings:** this folder's "Seed and Pass Phrase Split (Homemade Method)" is documented alongside why splitting 24 words into two halves leaks far more than people expect and badly weakens brute-force resistance.

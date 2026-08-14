@@ -256,7 +256,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
   explicit choice; share material never crosses the realm boundary or persists
   outside the cold session; and tests include an independent official vector
   plus a deterministic byte-exact method-data fixture.
-- [ ] P2.6 BackupRecords and verify-your-shares
+- [~] P2.6 BackupRecords and verify-your-shares
   *Deps: P2.5*
 - [ ] P2.7 Backup Health dashboard
   *Deps: P2.6*

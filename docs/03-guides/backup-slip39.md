@@ -103,7 +103,7 @@ guide remains the canonical home for seed-backup SLIP-39 behavior.
 
 ## Verify before you trust — mandatory
 
-After generation, use **Recovery** to enter at least the threshold number of shares. Coldbox reconstructs the phrase entropy locally and reports whether it matches the selected Seed Forge phrase. A mismatch is a stop condition: do not distribute the shares until you have investigated it. The P2.1 lab does not create a completion record or display a fingerprint.
+After generation, use **Recovery** to enter at least the threshold number of shares. Coldbox reconstructs the phrase entropy locally and reports whether it matches the selected Seed Forge phrase. A mismatch is a stop condition: do not distribute the shares until you have investigated it. This local P2.1 check is separate from the public BackupRecord workflow described below.
 
 1. Set the generated shares aside.
 2. Recovery → SLIP-39 → enter exactly T shares, typed from your written copies.
@@ -112,6 +112,17 @@ After generation, use **Recovery** to enter at least the threshold number of sha
 **Type them from your physical copies, not copy-paste.** The point is to verify what you wrote down, not what the app already knows. This step is where transcription errors surface — which is the whole reason it exists.
 
 Test a different subset too. Shares 1+2 working doesn't prove 1+3 does.
+
+### Marking a BackupRecord verified
+
+If you have created a public BackupRecord for this share set, choose **Verify
+shares** on its warm metadata card. The sealed realm opens a cold-only input,
+where you type a threshold subset from the physical copies. On success, Coldbox
+records only a public `lastVerifiedAt` timestamp; the share words and recovered
+entropy never enter the warm shell. A new record starts incomplete, and editing
+the subject, method, threshold, or group configuration clears its completion
+timestamp. A BIP-39 passphrase remains separate backup material and is not
+tested by this reconstruction check.
 
 ---
 
@@ -150,7 +161,7 @@ The whole point is that shares live in different places.
 1. Never store threshold-many shares in one place. Two of three in the same house is a house fire away from total loss, and a burglary away from total compromise.
 2. Consider jurisdictions if that matters to you.
 3. Tell holders what they have — not what it protects. "Keep this sealed, give it to my executor" is enough.
-4. Keep the physical locations and custodians separate enough that one incident cannot reach the threshold. P2.1 does not maintain a Registry record or a Health dashboard; keep any location record in your separate offline operational process.
+4. Keep the physical locations and custodians separate enough that one incident cannot reach the threshold. P2.6 BackupRecords can store public location and custodian metadata, but the P2.7 Health dashboard is not implemented yet.
 
 ---
 
@@ -170,13 +181,13 @@ The whole point is that shares live in different places.
 
 ## Maintenance
 
-**Annually:** confirm each share is where it should be, still legible, and the holder still has it. P2.1 does not provide review reminders or a Health dashboard.
+**Annually:** confirm each share is where it should be, still legible, and the holder still has it. A P2.6 BackupRecord stores a verification interval and the last cold reconstruction date; the P2.7 Health dashboard is not implemented yet.
 
 **Every few years:** actually reconstruct from a threshold subset. Confirming a share exists is not confirming it's correct.
 
 **Regenerate when:** a share is lost or compromised, a custodian relationship changes, or your configuration no longer fits your life. Regenerating produces an entirely new share set — destroy the old ones, or you'll have two valid sets in circulation and no idea which is which.
 
-The completion records, printable worksheets, Registry, and Health dashboard described for later roadmap items are not part of the P2.1 SLIP-39 lab.
+The P2.1 SLIP-39 lab itself does not print cards or create public records. P2.6 adds the public BackupRecord and cold-only **Verify shares** action; printable worksheets and the Health dashboard remain later roadmap items.
 
 ---
 

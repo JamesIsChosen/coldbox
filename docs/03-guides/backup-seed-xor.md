@@ -68,6 +68,12 @@ independent backup record. If the original phrase used a BIP-39 passphrase,
 keep that passphrase as a separate backup item; Seed XOR does not split or
 recover it.
 
+If you have a public BackupRecord, choose **Verify shares** on that record and
+type every written part into the sealed realm. P2.6 records a cold-owned
+`lastVerifiedAt` only after all parts reconstruct successfully. The parts,
+combined phrase, and any passphrase remain cold-local; the warm shell receives
+only the closed success or failure result.
+
 ## Important limitations
 
 - All parts are required. There is no threshold, repair, or “one part is

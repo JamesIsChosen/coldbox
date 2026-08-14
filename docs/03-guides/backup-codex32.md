@@ -81,7 +81,7 @@ This is the strongest key generation available to an ordinary person. It is also
 
 ## Verify before you trust — mandatory
 
-As with any scheme, reconstruct from a threshold subset before relying on the backup. Type the shares from your written copies, not copy-paste. The P2.2 app reports recovery status and keeps the recovered value masked; it does not create a completion record or display a fingerprint.
+As with any scheme, reconstruct from a threshold subset before relying on the backup. Type the shares from your written copies, not copy-paste. The P2.2 app reports recovery status and keeps the recovered value masked. If you have a public BackupRecord, use its **Verify shares** action to run the same reconstruction inside the sealed realm; P2.6 records only a cold-owned public verification timestamp, never the recovered value.
 
 **Then verify the checksum by hand at least once**, using the printed worksheet. That's the capability you chose this format for — confirm you can actually use it before relying on it.
 
@@ -94,9 +94,9 @@ Annually, using the BIP-93 materials you preserved separately:
 1. Retrieve a share.
 2. Take out the BIP-93 lookup tables.
 3. Compute the checksum by hand — a few minutes once you're practised.
-4. Confirm it matches. The P2.2 app does not provide the printed worksheet or a Health dashboard.
+4. Confirm it matches. The P2.2 app does not provide the printed worksheet; P2.7's Health dashboard is not implemented yet.
 
-You've now verified your backup is intact without trusting any software, any device, or any supply chain. Record the date in your separate offline backup log; the P2.2 app does not provide a Health dashboard.
+You've now verified your backup is intact without trusting any software, any device, or any supply chain. Record the date in your separate offline backup log, or in a P2.6 BackupRecord after its cold reconstruction succeeds. The public record stores metadata only; the hand-check remains a separate assurance.
 
 ---
 
