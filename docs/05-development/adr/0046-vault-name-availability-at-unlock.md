@@ -30,6 +30,13 @@ The contradiction dissolves once the real question is asked: **why is a user-cho
 
 **6. Duplicate-name refusal is retired rather than violated.** ADR-0026 §37 required that a second vault could not silently reuse an already-known public name, and ADR-0025 §2 carried the same expectation. Neither is enforceable once names are encrypted inside their own vaults, and neither is needed: the requirement existed to prevent look-alike confusion between vaults, and the discriminator visible at selection time is now `id8`, which derives from the authenticated Vault ID rather than from user-chosen text. A confusion attack cannot be mounted with a name nobody can see.
 
+**7. The name is cold-owned state that `publicData.replace` cannot reach.** The public compartment is written by cold, but warm may request a replacement of the public projection after a registry mutation — and warm, by design, does not know the name. Without an explicit rule the name is destroyed the first time a user edits a label. Two halves, and both are required:
+
+- **Outbound:** cold **omits the name from the public projection it hands warm.** This is what keeps [architecture.md](../../01-spec/architecture.md)'s "vault names do not cross cold → warm" true under this ADR, and it is why *projection* is the right word — warm holds a strict subset of the compartment, not a copy of it.
+- **Inbound:** when cold re-encrypts after a `publicData.replace`, it **carries its own stored name forward**. A name field present in an inbound replace payload is **rejected and the message fails closed** — not merged, and not silently stripped, because warm has no legitimate reason to send one and its presence means either a defect or an attempt to write cold-owned state from outside the boundary.
+
+This is not a new pattern. [architecture.md](../../01-spec/architecture.md) already requires the authenticated Vault ID to remain unchanged across a warm replace, and already reconciles address provenance against cold's own authenticated projection — a warm replacement may carry an existing `cold-verified` record forward but may not elevate one. The vault name joins that set of cold-owned fields, and is the strictest member of it: warm may not create it, change it, or clear it.
+
 ### The complete name lifecycle
 
 Stated as a table because the finding that forced this redesign was, precisely, that no earlier draft specified the whole lifecycle. Every row names the owner, and no row requires a channel that does not already exist.
@@ -45,6 +52,7 @@ Stated as a table because the finding that forced this redesign was, precisely, 
 | Read the name back | **Cold** | Displayed after unlock, from the compartment cold decrypted | Nothing |
 | Rename the name | **Cold** | Edited while unlocked; re-encrypted with a compartment the save already rewrites. No new file | Nothing |
 | Rename the nickname | **Warm** | Edited any time, unlocked or not. Never sent to cold | Nothing |
+| Survive a warm registry edit | **Cold** | Cold carries its stored name forward when re-encrypting after `publicData.replace`; a name field in an inbound payload is rejected and the message fails closed | Nothing — the name is omitted from the outbound projection |
 
 **The channel question is answered by there being no channel to add.** Warm needs the Vault ID to name a file, and it already has the Vault ID. It never needed the name — it only appeared to, because the filename convention put one there.
 
@@ -67,7 +75,8 @@ Warm remains the authority over saving and over its own library. What it stops b
 - The public compartment gains a bounded name field. **Whether that requires a vault-format version bump is not decided here and must not be decided silently**: UI.10 determines it against [vault-format.md](../../01-spec/vault-format.md) and records the answer with its reasoning. A schema addition that changes the format without a version marker would be a defect.
 - [threat-model.md](../../02-security/threat-model.md) records the change in what the filesystem discloses, replacing the disclosure the second draft of this ADR described.
 - Warm gains device-local nickname state. It is display-only, per-device, and does not travel with a copied `.cbx`. That is a stated limitation, not an oversight: the durable name travels inside the file and is visible once unlocked.
-- **UI.10 owns implementation in full** — the sealed create screen, the compartment field and its bounds, the filename change, the warm nickname store, rename on both sides, the format-version determination, and the [architecture.md](../../01-spec/architecture.md) and [vault-format.md](../../01-spec/vault-format.md) updates.
+- **UI.10 owns implementation in full** — the sealed create screen, the compartment field and its bounds, the filename change, the warm nickname store, rename on both sides, the `publicData.replace` ownership rule in both directions, the format-version determination, and the [architecture.md](../../01-spec/architecture.md) and [vault-format.md](../../01-spec/vault-format.md) updates.
+- `publicData.replace`'s documented contract gains the name alongside the Vault ID as a field a warm replacement cannot alter. Without that, the first registry edit after creation silently erases the vault's name — a data-loss bug that no test would catch unless it is written for it, which is why UI.10 requires one.
 - Pre-unlock legibility is reduced on any device that has not set a nickname. Accepted.
 
 ## Alternatives considered

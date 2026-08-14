@@ -42,9 +42,13 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
   nothing from warm to name a vault, and warm needs nothing from cold to list one. The
   warm picker identifies a vault by `id8` plus an optional device-local nickname that is
   never sent to cold, never written into the vault and never placed in a filename.
-  Renaming works on both and neither requires writing a new file. Amends ADR-0025 §2's
-  placement of the naming step and ADR-0026 §1's filename; existing vaults open without
-  migration and historical filenames remain readable.
+  Renaming works on both and neither requires writing a new file. The name is cold-owned
+  state that warm's `publicData.replace` write path cannot create, change or clear: cold
+  omits it from the outbound public projection, carries its stored value forward when
+  re-encrypting, and fails closed on any inbound payload carrying a name field — the same
+  treatment the authenticated Vault ID already receives. Amends ADR-0025 §2's placement of
+  the naming step and ADR-0026 §1's filename; existing vaults open without migration and
+  historical filenames remain readable.
 - Recorded the resulting change in what the filesystem discloses in
   [threat-model.md](docs/02-security/threat-model.md): a vault name is no longer written
   into a filename, so it is no longer disclosed to cloud sync, backup software, file

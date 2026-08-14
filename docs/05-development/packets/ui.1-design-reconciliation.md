@@ -3,11 +3,37 @@
 **Branch:** `ui.1-design-reconciliation` · **PR:** #55
 **Base:** `main` @ `94cf73b` (Merge PR #54: P2.7 Backup Health dashboard)
 **Roadmap item:** [UI.1 Design reconciliation](../ROADMAP.md) — Phase UI
-**Date:** 2026-08-14 · **Revision 4** (round-2 remediation, completed against the full finding text)
+**Date:** 2026-08-14 · **Revision 5** (remediation of the round-3 FAIL at `86685d7`)
 
 ---
 
-## 0. Remediation of review round 2
+## 0. Remediation of review round 3
+
+Round 3 returned **FAIL with 4 findings** at `86685d7`, preserved at [`ui.1-design-reconciliation.review-3.md`](ui.1-design-reconciliation.review-3.md). Rounds 1 and 2 are preserved unedited.
+
+| # | Finding | Response |
+|---|---|---|
+| R3-F1 | ADR-0025/0026 still contained unqualified old naming-model statements | **Fixed.** Round 2 annotated ADR-0025 §2, ADR-0026 §4 and ADR-0026's duplicate-name consequence but missed three more: ADR-0025 §5, ADR-0025's Consequences line on filenames being public metadata, and ADR-0026 §1 itself. All three now carry inline amendment, reversal or retirement notes |
+| R3-F2 | The packet was stale against exact-tip CI and current ROADMAP wording — it still read "This revision has not yet been through CI" | **Fixed.** §3 now leads with the reviewer's own fresh-clone run at `86685d7`, §4's bundle row quotes the criterion as it currently reads, and §11 carries the reviewer-confirmed figure |
+| R3-F3 | ADR-0046/UI.10 needed an explicit rule preserving the cold-owned name across warm `publicData.replace` | **Fixed, and it was a data-loss bug in waiting.** See below |
+| R3-F4 | Reviewer-owned verification | **Mostly closed by the reviewer's own run.** Fresh clone, alternate path, pinned Node, clean gates, reproducibility and both browsers are now demonstrated at this tip. Only the deliberate-corruption check remains, blocked by a runner-side selector bug the reviewer identified as theirs |
+
+### On R3-F3
+
+The finding is exactly right and I had missed it twice. `publicData.replace` is warm's write path into the public compartment, used after any registry mutation. Under ADR-0046 the vault name lives in that compartment and warm does not know it — **so the first time a user edited a label, the replacement payload would have carried no name and the vault's name would have been silently erased.** No existing test would have caught it, because no existing test knows the field exists.
+
+The fix mirrors patterns already in `architecture.md` rather than inventing one. The Vault ID already must remain unchanged across a warm replace; address provenance is already reconciled against cold's own authenticated projection. The name joins that set, as its strictest member:
+
+- **Outbound**, cold omits the name from the projection it hands warm — which is what keeps "vault names do not cross cold → warm" true under this ADR, and is why *projection* rather than *copy* is the accurate word.
+- **Inbound**, cold carries its stored name forward when re-encrypting, and a name field present in a replace payload is **rejected with the message failing closed** — not merged, not silently stripped, because warm has no legitimate reason to send one.
+
+UI.10 gains both a positive test (a full registry round-trip leaves the stored name byte-identical) and a negative one (an injected name field is refused).
+
+**Why this kept being missed.** Each round I checked ADR-0046 against the documents it amends, and each round the gap was in a document it *doesn't* amend — first ADR-0026's filename requirement, now `architecture.md`'s write path. Moving a field into the public compartment means auditing every party that writes to the public compartment, and I was auditing every party that reads the name. That is the generalisable lesson and it is worth stating for whoever implements UI.10.
+
+---
+
+## 0b. Remediation of review round 2
 
 Round 2 returned **FAIL with 5 findings** at `53f8ae6`, preserved at [`ui.1-design-reconciliation.review-2.md`](ui.1-design-reconciliation.review-2.md). Round 1's FAIL is preserved unedited at [`ui.1-design-reconciliation.review.md`](ui.1-design-reconciliation.review.md), as the reviewer directed.
 
@@ -43,7 +69,7 @@ The resolution came from asking why a user-chosen string is in a filename at all
 
 ---
 
-## 0b. Remediation of review round 1
+## 0c. Remediation of review round 1
 
 Round 1 returned **FAIL with 7 findings** at `ce4bba40bd1df404f32148104fbf8d451866cf2c`. The report is preserved verbatim at [`ui.1-design-reconciliation.review.md`](ui.1-design-reconciliation.review.md), committed by me rather than the reviewer only because their integration was refused write access with HTTP 403; **no finding was reworded, softened or removed**, and that file is the reviewer's record, not mine to revise.
 
@@ -79,9 +105,18 @@ Makes the August 2026 sealed-realm reorganisation legal to build. It lands three
 
 ## 3. How to verify
 
-**Reviewer-grade evidence, exact tip `ce4bba4` (round 1 CI, not run by me).** 378/378 tests · upstream vendor verification · lint and docs checks · Windows and Ubuntu builds · cross-OS reproducibility · Chromium and Firefox harness. Artifact **2,597,939 bytes**, SHA-256 `73ce748f871166f717de4c22d31dcb4c6b8d048337a0eea78f1e4a7b676aafc1`, **identical to the P2.7 product artifact** — which is what independently confirms this PR's zero-byte bundle claim.
+**Reviewer-owned verification at tip `86685d7` (round 3, run by the reviewer, not by me).** A fresh clone from GitHub into a new temp path with head and base confirmed, on the pinned **Node 24.16.0**: `npm ci` · real-upstream vendor verification · lint, docs and tests · **two builds under different caller timezone and locale** · Chromium and Firefox. Both builds identical at
 
-**This revision has not yet been through CI**, and its changes are documentation plus one CI summary string. Re-run the full gate on the new tip.
+```
+73ce748f871166f717de4c22d31dcb4c6b8d048337a0eea78f1e4a7b676aafc1
+2,597,939 bytes
+```
+
+and the repository clean afterwards. This is the protocol's reviewer-owned fresh-clone check, which rounds 1 and 2 could not perform, and it now exists at the current tip.
+
+**Hosted CI at `ce4bba4` agrees**: 378/378 tests, Windows and Ubuntu builds, cross-OS reproducibility, both browsers — same artifact, same hash. That hash is **identical to the P2.7 product artifact**, which is what independently confirms this PR's zero-byte bundle claim across every revision of it.
+
+**What is not yet verified on the current tip:** the reviewer-owned deliberate-corruption check. Round 3 could not execute it — the runner's corruption-target selector failed to find a tracked `vendor/**/package.tgz` although ten exist, which the reviewer identified as a bug in the runner and explicitly declined to charge against UI.1. It remains the one outstanding protocol check.
 
 **Author-run, this revision.** These are the only commands I can execute; see §6 for why.
 
@@ -106,7 +141,7 @@ Documentation hygiene check passed: 214 markdown file(s) checked, 0 warning(s).
 | §7's superseded second reason is corrected | Reason 2 no longer claims the realm is calm throughout; it rests on the display face being barred from data, and states the consequence | diff §7 |
 | `.realm-strip` is specified with angle, band width, both palettes and the no-motion requirement | New §5 component: 45°, 14px, `--fill-cyan`/`--fill-pink` on `--fill-ink`, pill; listed under §6 Permanently calm | diff §5, §6 |
 | The three conflicting light tokens are resolved in favour of the shipped values with the decision recorded | Note under §3 Surfaces; competing map recorded as superseded | diff §3 |
-| dependencies.md and SPEC.md carry a measured artifact size with its provenance rather than an estimate | **Now met (was F1).** `dependencies.md` carries 2,597,939 bytes, `73ce748f…`, and its CI provenance; SPEC restates none of it and links instead | diff both; compare against CI artifact |
+| `dependencies.md` is the single home for the measured artifact size, target and hard cap, and carries a real measurement with its provenance rather than an estimate, while SPEC restates none of those figures anywhere and links to it instead — a grep for the size, the target or the cap outside `dependencies.md` returns only historical records | **Met.** `dependencies.md` carries 2,597,939 bytes, `73ce748f…` and its provenance; SPEC §5.1, the platform-constraints table and §16 all link rather than restate | `grep -rn "≤ 3 MB\|≤ 4 MB\|2,597,939" docs/ .github/` → matches only in `dependencies.md`, the packet, and archived packets. Reviewer-confirmed measurement at `86685d7` |
 | ADR-0009, 0023, 0025, 0028 carry amendment markers pointing at the new records | Status line in each, plus the Status column in `adr/README.md` | diff four files |
 | No file under `src/` is modified | — | `git diff --name-only main...HEAD -- src/ scripts/ vendor/` → empty |
 
@@ -193,7 +228,7 @@ No new tests: this PR adds records and criteria, not behaviour. The tests the de
 
 ## 11. Bundle impact
 
-**0 bytes**, confirmed empirically rather than argued: round-1 CI at `ce4bba4` produced **2,597,939 bytes** / `73ce748f871166f717de4c22d31dcb4c6b8d048337a0eea78f1e4a7b676aafc1`, byte-identical to the P2.7 product artifact. No `src/`, `scripts/` or `vendor/` path is touched; `.github/` is not a build input.
+**0 bytes**, confirmed empirically rather than argued, and now twice independently: hosted CI at `ce4bba4` and the reviewer's own fresh-clone run at `86685d7` both produced **2,597,939 bytes** / `73ce748f871166f717de4c22d31dcb4c6b8d048337a0eea78f1e4a7b676aafc1`, byte-identical to the P2.7 product artifact. The reviewer's run built twice under differing caller timezone and locale and got the same hash both times. No `src/`, `scripts/` or `vendor/` path is touched; `.github/` is not a build input.
 
 Budget status, now canonical in one place: **2,597,939 bytes measured** against a **4 MB target** (raised from 3 MB here) and an unchanged **4.5 MB hard cap**. The estimate this replaced — ≈ 1.7 MB — sat below the artifact that already existed.
 
