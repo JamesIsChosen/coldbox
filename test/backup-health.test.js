@@ -45,6 +45,15 @@ test('Backup Health evaluates current, overdue, and incomplete verification with
   assert.equal(overdue.state, 'overdue');
   assert.match(health.verificationLabel(overdue), /overdue since 2026-08-13/);
 
+  const dueBoundary = health.evaluate(record({ lastVerifiedAt: '2025-08-14T00:00:00.000Z' }), NOW);
+  assert.equal(dueBoundary.state, 'overdue');
+  assert.equal(dueBoundary.dueDate, '2026-08-14');
+
+  const future = health.evaluate(record({ lastVerifiedAt: '2026-08-14T00:00:00.001Z' }), NOW);
+  assert.equal(future.state, 'invalid');
+  assert.ok(future.issues.includes('future-last-verified-at'));
+  assert.match(health.verificationLabel(future), /metadata is not valid/);
+
   const incomplete = health.evaluate(record({ location: 'Home safe' }), NOW);
   assert.equal(incomplete.state, 'unverified');
   assert.equal(incomplete.dueAt, null);
@@ -79,6 +88,15 @@ test('Backup Health fails closed on malformed schedule, dates, and unsupported m
 
   const invalidThreshold = Object.assign(record({ lastVerifiedAt: NOW }), { threshold: 0 });
   assert.equal(health.evaluate(invalidThreshold, NOW).state, 'invalid');
+
+  const maximumTimestamp = new Date(8640000000000000).toISOString();
+  let overflow;
+  assert.doesNotThrow(() => {
+    overflow = health.evaluate(record({ lastVerifiedAt: maximumTimestamp, verifyEveryDays: 1 }), maximumTimestamp);
+  });
+  assert.equal(overflow.state, 'invalid');
+  assert.ok(overflow.issues.includes('invalid-due-at'));
+  assert.equal(overflow.dueAt, null);
 });
 
 test('Backup Health reports co-location and conservative placement status per subject', () => {

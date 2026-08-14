@@ -27,11 +27,22 @@
     if (typeof value === 'number' && Number.isFinite(value)) {
       return value;
     }
+    if (typeof value === 'string') {
+      var parsed = dateTime(value);
+      return parsed === null ? Date.now() : parsed;
+    }
     return Date.now();
   }
 
+  function dateRepresentable(value) {
+    if (!Number.isFinite(value)) {
+      return false;
+    }
+    return Number.isFinite(new Date(value).getTime());
+  }
+
   function isoDate(value) {
-    return Number.isFinite(value) ? new Date(value).toISOString().slice(0, 10) : '';
+    return dateRepresentable(value) ? new Date(value).toISOString().split('T')[0] : '';
   }
 
   function hasMethod(method) {
@@ -76,9 +87,19 @@
       issues.push('invalid-last-verified-at');
     }
 
+    var evaluationTime = nowTime(now);
     if (verifiedAt !== null && Number.isInteger(interval) && interval >= 1 && interval <= 3650) {
-      dueAt = verifiedAt + interval * DAY_MS;
-      state = nowTime(now) >= dueAt ? 'overdue' : 'current';
+      var candidateDueAt = verifiedAt + interval * DAY_MS;
+      if (!dateRepresentable(candidateDueAt)) {
+        issues.push('invalid-due-at');
+      } else {
+        dueAt = candidateDueAt;
+        if (verifiedAt > evaluationTime) {
+          issues.push('future-last-verified-at');
+        } else {
+          state = evaluationTime >= dueAt ? 'overdue' : 'current';
+        }
+      }
     }
 
     if (!hasMethod(method)) {
@@ -88,6 +109,8 @@
     if (issues.indexOf('invalid-created-at') !== -1
       || issues.indexOf('invalid-verify-interval') !== -1
       || issues.indexOf('invalid-last-verified-at') !== -1
+      || issues.indexOf('invalid-due-at') !== -1
+      || issues.indexOf('future-last-verified-at') !== -1
       || issues.indexOf('invalid-threshold') !== -1
       || issues.indexOf('missing-id') !== -1
       || issues.indexOf('missing-subject') !== -1
