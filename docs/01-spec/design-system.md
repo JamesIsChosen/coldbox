@@ -249,7 +249,9 @@ The rule attaches to the **panel**, not to the realm. Rationale and the alternat
 A panel is calm when either clause holds:
 
 1. It **renders, accepts, or is immediately adjacent to secret material.**
-2. It **reports the live state of a security boundary.**
+2. It **reports the live state of a security boundary**, or is immediately adjacent to a panel that does.
+
+Adjacency binds both clauses. A lively panel may not sit immediately beside one that is reporting boundary state, for the same reason it may not sit beside a revealed seed word: it undercuts its neighbour.
 
 Everything else is chrome and carries the full comic language, in both realms: hubs, navigation, page furniture, empty states, share decks, explanatory bubbles, the app bar, the dashboard stage.
 

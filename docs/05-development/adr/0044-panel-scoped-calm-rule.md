@@ -20,7 +20,9 @@ The calm rule attaches to the **panel**, not to the realm.
 A panel is calm when either clause holds:
 
 1. It renders, accepts, or is immediately adjacent to secret material.
-2. It reports the live state of a security boundary.
+2. It reports the live state of a security boundary, or is immediately adjacent to a panel that does.
+
+**Both clauses carry the adjacency provision, deliberately.** An earlier draft attached it to clause 1 only, which would have permitted a tilting hub card immediately beside the airgap guard. Adjacency is doing the same work in both cases — a lively neighbour undercuts the panel next to it whether that panel is showing a seed word or reporting `connect-src 'none'`.
 
 Chrome that does neither — hub, navigation, page furniture, empty states, share decks, explanatory bubbles — carries the full comic language, in both realms.
 
@@ -46,7 +48,8 @@ The second carve-out exists because an animation is a promise about timing, and 
 
 ## Consequences
 
-- §6's surface list stops being realm-scoped and is re-enumerated by behaviour. `.realm-status`, `.airgap-banner`, `.capability-panel`, `.capability-row`, `.realm-status-failure` and `.protocol-warning` remain calm and additionally become permanently calm under the first carve-out.
+- §6's surface list stops being realm-scoped and is re-enumerated by behaviour. `.realm-status`, `.airgap-banner`, `.capability-panel`, `.capability-row`, `.realm-status-failure` and `.protocol-warning` are unaffected: the old §6 already made anything reporting boundary state calm regardless of secret presence, and named these explicitly. That protection is carried forward, not invented here — the first carve-out restates it so it survives the rewrite rather than depending on a list that no longer exists.
+- What is genuinely new, and is the whole of this decision's added protection: calm must arrive on the same frame as the plaintext rather than at the end of a transition; the tiebreaker defaults to calm where the clauses are ambiguous; adjacency binds clause 2 as well as clause 1; and the panic screen is named, which no previous list did.
 - §7's second stated reason for keeping the vendored display face out of the sealed realm — "Under §6 it is a calm surface throughout" — is no longer true and is corrected in the same change. The face still stays out, on the first reason alone (hash-pinned bytes inside the boundary should be few and reviewable). The sealed-realm hub therefore uses the system stack and will read plainer than the warm shell. That is an accepted cost, not an oversight.
 - Reviewers gain a harder question to ask and an easier one to answer: not "is this file under `src/cold/`?" but "does this panel assert anything, or show anything secret?"
 - The risk this decision accepts is drift: a panel that is calm today because it renders no secret can acquire one later. §10's checklist gains the corresponding step, and any panel that starts rendering a value must be re-checked against §6.

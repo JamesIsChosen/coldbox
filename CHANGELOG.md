@@ -20,9 +20,13 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
   chrome and carries the full visual language in both realms. Rationale and rejected
   alternatives in [ADR-0044](docs/05-development/adr/0044-panel-scoped-calm-rule.md).
   The ban on motion, stickers and speech bubbles is unchanged in strength on any panel
-  it still covers, and gains a permanence carve-out the old wording did not have: the
-  airgap guard, capability self-check, vault unlock and panic screens stay calm whether
-  or not a secret is on screen.
+  it still covers. The old §6 already made anything reporting boundary state calm
+  regardless of secret presence, and that is carried forward rather than newly added.
+  What the rewrite adds is narrower and stated precisely: calm must arrive on the same
+  frame as the plaintext rather than at the end of a transition; the tiebreaker defaults
+  to calm where the two clauses are ambiguous; adjacency binds the boundary-reporting
+  clause as well as the secret-material clause, so a lively panel may not sit beside one
+  reporting boundary state; and the panic screen is named, which no previous list did.
 - Added [ADR-0045](docs/05-development/adr/0045-released-secret-model.md): a secret is
   entered or generated once and released into a session-scoped registry inside the
   sealed frame; every other cold tool becomes a lens on the focused secret and has no
