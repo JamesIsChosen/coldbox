@@ -417,6 +417,18 @@ __COLDBOX_QR_ENCODER__
     return hex;
   }
 
+  function hexToBytes(value) {
+    if (typeof value !== 'string' || value.length === 0 || value.length % 2 !== 0
+      || !/^[0-9a-f]+$/i.test(value)) {
+      throw new Error('The reconstructed hexadecimal secret is invalid.');
+    }
+    var bytes = new Uint8Array(value.length / 2);
+    for (var index = 0; index < bytes.length; index += 1) {
+      bytes[index] = Number.parseInt(value.slice(index * 2, index * 2 + 2), 16);
+    }
+    return bytes;
+  }
+
   // --- codex32 (P2.2) ------------------------------------------------------
   //
   // Codex32 strings are secret material. Keep all display state in this
@@ -2481,12 +2493,13 @@ __COLDBOX_QR_ENCODER__
         if (!rawRecovered || typeof rawRecovered.hex !== 'string' || rawRecovered.hex.length === 0) {
           throw new Error('The raw share result was empty.');
         }
+        recoveredBytes = hexToBytes(rawRecovered.hex);
       } else {
         outcome = 'unsupported';
       }
       if (outcome !== 'unsupported') {
         var verifiedAt = new Date().toISOString();
-        currentVaultSession.markBackupVerified(record.id, verifiedAt);
+        currentVaultSession.markBackupVerified(record.id, record.method, recoveredBytes, verifiedAt);
         setBackupVerificationStatus('valid', 'Reconstruction succeeded. The public record is now cold verified; save the vault to make the timestamp durable.');
         sendBackupVerificationResult('verified', verifiedAt);
       } else {

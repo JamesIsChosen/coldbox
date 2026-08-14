@@ -264,7 +264,8 @@ test('P2.6 BackupRecords keep verification metadata public while reconstruction 
   assert.match(run, /sendBackupVerificationResult\('verified'/);
   assert.doesNotMatch(run, /postVaultMessage\([^;]*(?:lines|recoveredBytes|mnemonic|secret)/i);
 
-  assert.match(vaultSource, /function markBackupVerified\(backupId, verifiedAt\)/);
+  assert.match(vaultSource, /function markBackupVerified\(backupId, method, candidateBytes, verifiedAt\)/);
+  assert.match(vaultSource, /backupCandidateMatchesSubject\(backup, method, candidateBytes\)/);
   assert.match(vaultSource, /sameBackupIdentity/);
   assert.match(vaultSource, /lastVerifiedAt/);
 

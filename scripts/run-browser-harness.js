@@ -3705,15 +3705,15 @@ async function verifyBackupRecordVerification(browser, engine) {
     await coldFrame.locator('#cold-backup-verification:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
     await coldFrame.locator('#cold-backup-verification-input').fill([shares[0], shares[2]].join('\n'));
     await coldFrame.locator('#cold-backup-verification-run').click();
-    await page.locator('#backup-status').filter({ hasText: /marked cold verified/ }).waitFor({ state: 'visible', timeout: 10000 });
-    assert.match(await page.locator('#backup-list').textContent(), /Cold verified/);
+    await page.locator('#backup-status').filter({ hasText: /backup remains incomplete/ }).waitFor({ state: 'visible', timeout: 10000 });
+    assert.match(await page.locator('#backup-list').textContent(), /Not verified/);
     assert.equal((await page.locator('html').evaluate((element) => element.outerHTML)).includes(shares[0]), false, `${engine}: BackupRecord verification shares must never enter the warm DOM`);
     assert.equal(await coldFrame.locator('#cold-backup-verification-input').inputValue(), '', `${engine}: BackupRecord verification input must clear after reconstruction`);
 
     await coldFrame.locator('body').press('Escape');
     await coldFrame.locator('body').press('Escape');
     await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
-    console.log(`${engine}: public BackupRecord creation, cold-only SLIP-39 verification, warm isolation, and teardown passed`);
+    console.log(`${engine}: unresolved BackupRecord subject failed closed, share input stayed cold-only, and teardown passed`);
   } finally {
     await closePage(page);
   }

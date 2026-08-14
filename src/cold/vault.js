@@ -1139,6 +1139,122 @@
       return null;
     }
 
+    function byteSequencesEqual(left, right) {
+      if (!isBytes(left) || !isBytes(right)) {
+        return false;
+      }
+      var leftBytes = left instanceof Uint8Array ? left : new Uint8Array(left);
+      var rightBytes = right instanceof Uint8Array ? right : new Uint8Array(right);
+      var difference = leftBytes.length ^ rightBytes.length;
+      var length = Math.max(leftBytes.length, rightBytes.length);
+      for (var index = 0; index < length; index += 1) {
+        difference |= (leftBytes[index] || 0) ^ (rightBytes[index] || 0);
+      }
+      return difference === 0;
+    }
+
+    function backupSubjectSeed(backup) {
+      if (!isRecord(backup) || typeof backup.subjectId !== 'string'
+        || !state.secretData || !Array.isArray(state.secretData.seeds)) {
+        return null;
+      }
+      var references = [];
+      function addReference(value) {
+        if (typeof value === 'string' && references.indexOf(value) === -1) {
+          references.push(value);
+        }
+      }
+      if (state.secretData.seeds.some(function (seed) {
+        return isRecord(seed) && seed.id === backup.subjectId;
+      })) {
+        addReference(backup.subjectId);
+      }
+      [
+        { records: state.publicData && state.publicData.seeds, kind: 'seed' },
+        { records: state.publicData && state.publicData.wallets, kind: 'wallet' }
+      ].forEach(function (source) {
+        var records = source.records;
+        if (!Array.isArray(records)) {
+          return;
+        }
+        records.forEach(function (record) {
+          if (!isRecord(record) || record.id !== backup.subjectId) {
+            return;
+          }
+          if (typeof record.seedId === 'string') {
+            addReference(record.seedId);
+          } else if (source.kind === 'seed') {
+            addReference(record.id);
+          }
+        });
+      });
+      if (references.length !== 1) {
+        return null;
+      }
+      var matches = state.secretData.seeds.filter(function (seed) {
+        return isRecord(seed) && seed.id === references[0];
+      });
+      return matches.length === 1 ? matches[0] : null;
+    }
+
+    function backupCandidateMatchesSubject(backup, method, candidateBytes) {
+      if (!isRecord(backup) || backup.method !== method || !isBytes(candidateBytes)
+        || candidateBytes.length === 0 || state.mode !== 'offline') {
+        return false;
+      }
+      var seedRecord = backupSubjectSeed(backup);
+      var storedSecret = seedRecord && seedRecord.storedSecret;
+      var seedForge = global.__coldboxSeedForge;
+      if (!isRecord(storedSecret) || typeof storedSecret.mnemonic !== 'string'
+        || (storedSecret.passphrase !== undefined
+          && typeof storedSecret.passphrase !== 'string')
+        || !seedForge || !Array.isArray(seedForge.languages)
+        || typeof seedForge.mnemonicToEntropy !== 'function'
+        || typeof seedForge.mnemonicToSeed !== 'function') {
+        return false;
+      }
+      var entropyMethods = ['slip39', 'seedxor', 'shamir39', 'sss'];
+      var masterSeedMethods = ['codex32', 'sss'];
+      var compareEntropy = entropyMethods.indexOf(method) !== -1;
+      var compareMasterSeed = masterSeedMethods.indexOf(method) !== -1;
+      if (!compareEntropy && !compareMasterSeed) {
+        return false;
+      }
+      var passphrase = storedSecret.passphrase === undefined ? '' : storedSecret.passphrase;
+      var matched = false;
+      for (var languageIndex = 0;
+        languageIndex < seedForge.languages.length && !matched;
+        languageIndex += 1) {
+        var language = seedForge.languages[languageIndex];
+        var expected = null;
+        try {
+          if (compareEntropy) {
+            expected = new Uint8Array(seedForge.mnemonicToEntropy(
+              storedSecret.mnemonic,
+              language.id
+            ));
+            matched = byteSequencesEqual(candidateBytes, expected);
+          }
+          if (!matched && compareMasterSeed) {
+            zeroBytes(expected);
+            expected = new Uint8Array(seedForge.mnemonicToSeed(
+              storedSecret.mnemonic,
+              passphrase,
+              language.id
+            ));
+            matched = byteSequencesEqual(candidateBytes, expected);
+          }
+        } catch (error) {
+          // A subject with no valid cold mnemonic representation is unresolved.
+          matched = false;
+        } finally {
+          zeroBytes(expected);
+        }
+      }
+      passphrase = '';
+      return matched;
+    }
+
     function resetVerification(address, stateName) {
       address.verificationState = stateName === 'unverifiable' ? 'unverifiable' : 'unverified';
       delete address.lastColdVerifiedAt;
@@ -1276,9 +1392,11 @@
       return getPublicData();
     }
 
-    function markBackupVerified(backupId, verifiedAt) {
+    function markBackupVerified(backupId, method, candidateBytes, verifiedAt) {
       if (closed || saving || operationInFlight || !state.publicData
-        || typeof backupId !== 'string' || typeof verifiedAt !== 'string') {
+        || typeof backupId !== 'string' || typeof method !== 'string'
+        || !isBytes(candidateBytes) || candidateBytes.length === 0
+        || typeof verifiedAt !== 'string') {
         throw serializationError();
       }
       requireVaultHealth(serializationError);
@@ -1289,7 +1407,7 @@
       }
       var nextPublicData = clonePublicData(state.publicData);
       var backup = findRecord(nextPublicData.backups, backupId);
-      if (!backup) {
+      if (!backup || !backupCandidateMatchesSubject(backup, method, candidateBytes)) {
         throw serializationError();
       }
       backup.lastVerifiedAt = verifiedAt;
