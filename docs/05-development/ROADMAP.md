@@ -261,8 +261,67 @@ Nothing above this phase is safe to build until the container is trustworthy.
 - [x] P2.7 Backup Health dashboard
   *Deps: P2.6*
   **Validation policy (recorded 2026-08-14):** Under [ADR-0043](adr/0043-scoped-mobile-validation-deferral.md), the maintainer-approved physical-mobile `file://` validation deferral is non-blocking for this warm-only item-level review. The packet records the mobile rows as `DEFERRED`; this does not claim mobile support, alter the release device gate, or close P0.19.
-- [ ] P2.8 Printable cards and hand-computation worksheets
+
+## Phase UI — Interface restructure
+
+Inserted between P2.7 and P2.8 by UI.1, so that every item from P2.8 onward is built inside the new interface rather than built twice. The design is the August 2026 sealed-realm reorganisation handoff; the decisions it depends on are [ADR-0044](adr/0044-panel-scoped-calm-rule.md), [ADR-0045](adr/0045-released-secret-model.md) and [ADR-0046](adr/0046-vault-name-availability-at-unlock.md).
+
+The IDs are lettered rather than numbered into Phase 2 because `P2.8` is referenced by roughly fifteen archived packets and review reports as "printable cards"; renumbering it would falsify that record.
+
+**Six of these nine are the handoff's own build order (UI.3–UI.8), and it is load-bearing.** The released-secret state has to exist before anything can be tested against it; the phrase fields cannot be deleted until it does; the floating menu is built once because forty-odd surfaces use it.
+
+- [~] **UI.1 Design reconciliation**
   *Deps: P2.7*
+  Land the three ADRs, rewrite [design-system.md](../01-spec/design-system.md) §6 from realm-scoped to panel-scoped, add `.realm-strip` as a named component, reconcile the light-mode token conflict, correct the stale bundle-size figures, and create this phase. No `src/` change.
+  **Accept:** ADR-0044, ADR-0045 and ADR-0046 exist, are indexed, and are linked from every document whose behaviour they change; §6 no longer contains a realm-scoped surface entry; §7's superseded second reason is corrected; `.realm-strip` is specified with angle, band width, both palettes and the no-motion requirement; the three conflicting light tokens are resolved in favour of the shipped values with the decision recorded; [dependencies.md](dependencies.md#bundle-budget) and [SPEC.md](../01-spec/SPEC.md) carry a measured artifact size with its provenance rather than an estimate; ADR-0009, ADR-0023, ADR-0025 and ADR-0028 carry amendment markers pointing at the new records; no file under `src/` is modified.
+
+- [ ] **UI.2 Brand assets — wordmark and favicons**
+  *Deps: UI.1*
+  Replace the CSS text wordmark in `.app-bar` with the supplied Coldbox logo, and add favicons. Both embedded, both offline, both reproducible.
+  **Source assets:** `coldbox-logo.png` (1494×514 RGBA, two flat colours) and `favicon-c-lower-{16,32,48}x{...}.png`, supplied by the maintainer 2026-08-14. The wordmark ships as SVG traced from the PNG with `potrace --flat -O 1.0 -t 8 -a 1.3 -u 10` over a black mask and a cyan mask, combined into one two-path document — 419,715 bytes of PNG becomes ~25 KB of SVG, against ~560 KB had the PNG been embedded as base64. The traced SVG is committed as a source asset; it is not re-traced at build time.
+  **Accept:** the wordmark is an inline SVG carrying `--fill-cyan` and `--fill-ink` rather than literal hex, so it follows the theme and §3's no-inline-hex rule; it renders legibly at app-bar height and at 320px viewport width; it carries an accessible name of `Coldbox`; the favicons are `data:` URIs at 16, 32 and 48 px and resolve with no network and no sibling file from `file://`; `scripts/lint.js` passes, which means no external URL and no fetched asset; the build remains reproducible across two runs; the size delta is recorded against [dependencies.md](dependencies.md#bundle-budget); [design-system.md](../01-spec/design-system.md) §5 `.app-bar` is updated to describe the logo rather than the five-layer text-shadow wordmark it replaces; the `Pre-release · Not audited` badge and §2's copy rules are untouched.
+
+- [ ] **UI.3 Released-secret state and the secret switcher** 🌐
+  *Deps: UI.1*
+  The session-scoped registry from [ADR-0045](adr/0045-released-secret-model.md), in `src/cold/main.js`, plus the switcher strip. Nothing else in this phase can be tested without it.
+  **Accept:** a secret released from Seed Forge appears in the switcher with its label and public master fingerprint; several secrets can be released and exactly one is focused; changing focus re-points every dependent panel with no reload and no re-entry; the registry is cleared and its buffers zeroized by each of vault lock, idle timeout, panic and realm teardown, each covered by a test; no released secret, and no derivative of one, appears in any message to the warm shell; the empty registry renders a designed empty state that explains what cleared it; nothing is persisted to any vault compartment or storage.
+
+- [ ] **UI.4 Sealed-realm tool grouping and hub** 🌐
+  *Deps: UI.3*
+  Restructure `src/cold/index.html` into the six sealed groups and delete the six secret-entry fields, re-pointing each tool at the focused secret.
+  **Accept:** `#cold-seed-xor-source`, `#cold-codex32-secret-hex`, `#cold-shamir39-source`, `#cold-raw-sss-source` and `#cold-slip39-seed-source` no longer exist and their tools read the focused secret instead; `#cold-seed-forge-mnemonic-input` remains as the realm's single entry point; **a test asserts exactly two secret-entry points exist across `src/`** — Seed Forge's and the vault unlock phrase — and fails naming the offender if a third appears; every migrated tool renders from the focused secret with no input of its own; every secret value is masked on first paint; each tool's existing behaviour and test coverage is preserved, not reduced; the cold CSP is byte-identical to before the restructure and a test asserts cold still has no network capability.
+
+- [ ] **UI.5 Shared shell chrome — app bar, nav rail, realm strip** 🌐
+  *Deps: UI.4*
+  One shell across both realms: masthead, ten-group nav rail, and the `.realm-strip` specified in [design-system.md](../01-spec/design-system.md) §5.
+  **Accept:** the rail reaches every built surface in both realms, including sealed tools, without scrolling the document; **groups render their unbuilt items disabled and labelled with roadmap ID and phase**, and a disabled item is not focusable as a control and is announced as unavailable; the realm strip changes unmistakably at the boundary and its stripes do not animate under any state, including `prefers-reduced-motion` being absent; the rail collapses to a five-slot bottom bar plus a More sheet below the phone breakpoint; 44px minimum touch targets hold; both realms stay hash-pinned into the parent CSP exactly as before.
+
+- [ ] **UI.6 Floating record menu** 🌐
+  *Deps: UI.5*
+  One component, built once, used by every surface that holds a record.
+  **Accept:** opening a record shows the complete record — all fields, tags, concealment state and provenance — not a summary; a QR appears for every public address, xpub, descriptor or npub; **no QR is offered for secret material from this component**, which remains SeedQR Studio's job behind its own plaintext acknowledgement; the panel is calm per §6 whenever it renders a secret; it is fully keyboard-navigable with a visible focus ring and returns focus on close; it is one implementation, and a reviewer can confirm that by finding one.
+
+- [ ] **UI.7 Send-to routing** 🌐
+  *Deps: UI.6*
+  The typed routes that replace copy-paste between tools.
+  **Accept:** every value that has a consumer offers a Send to row into it; **no send-to path writes secret material to the clipboard**, asserted by a test; where copy still exists for public values it runs the existing P1.12 clipboard round-trip check; a send-to into a cold tool never round-trips through the warm shell; routes are enumerable and each one is covered.
+
+- [ ] **UI.8 Warm-realm workspaces**
+  *Deps: UI.7*
+  Regroup the warm shell into the four warm groups. Additive; breaks nothing.
+  **Accept:** Records, Money, Vault files and Reference each reach their built surfaces; existing warm behaviour and routes are preserved or explicitly redirected; no warm surface gains access to anything sealed.
+
+- [ ] **UI.9 Tool map compiled from ROADMAP.md**
+  *Deps: UI.5*
+  A build step that compiles this file into the in-app tool map, the way [help-content.js](../../scripts/help-content.js) compiles `docs/`.
+  **Accept:** the tool map's content is generated at build time from this file and no item status is transcribed by hand anywhere in `src/`; the build fails closed if this file cannot be parsed; the output is deterministic across two builds; `scripts/check-docs.js` covers the new relationship; a status changed here and nowhere else changes the app on the next build.
+
+## Phase 2 — Backup, continued
+
+Phase 2's last item resumes here, after the interface work, so that it is built once and in the new shell.
+
+- [ ] P2.8 Printable cards and hand-computation worksheets
+  *Deps: P2.7, UI.9*
 
 ## Phase 3 — Portfolio and online
 

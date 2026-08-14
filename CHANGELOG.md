@@ -12,6 +12,47 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
+### Changed - UI.1 Design reconciliation for the interface restructure (2026-08-14)
+
+- The calm rule in [design-system.md](docs/01-spec/design-system.md) §6 is now scoped
+  to the **panel** rather than to the realm. A panel is calm if it renders or accepts
+  secret material, or if it reports live security-boundary state; everything else is
+  chrome and carries the full visual language in both realms. Rationale and rejected
+  alternatives in [ADR-0044](docs/05-development/adr/0044-panel-scoped-calm-rule.md).
+  The ban on motion, stickers and speech bubbles is unchanged in strength on any panel
+  it still covers, and gains a permanence carve-out the old wording did not have: the
+  airgap guard, capability self-check, vault unlock and panic screens stay calm whether
+  or not a secret is on screen.
+- Added [ADR-0045](docs/05-development/adr/0045-released-secret-model.md): a secret is
+  entered or generated once and released into a session-scoped registry inside the
+  sealed frame; every other cold tool becomes a lens on the focused secret and has no
+  secret input of its own. Eleven entry points collapse to one. Amends ADR-0023 and
+  ADR-0028, which keep their contracts.
+- Added [ADR-0046](docs/05-development/adr/0046-vault-name-availability-at-unlock.md):
+  warm supplies the list of public vault names to cold at unlock, as typed warm-to-cold
+  public data, so that in-realm vault creation can refuse a duplicate name at the moment
+  of typing. No secret moves, no free-form string returns from cold, and a missing or
+  malformed list fails closed. Amends ADR-0025's creation path only.
+- Added `.realm-strip` to design-system.md §5 as a named component with its stripe angle,
+  band width, both realm palettes and the pill treatment fixed, and with motion barred.
+- Resolved a light-mode token conflict in favour of the shipped values: `--bg`,
+  `--bg-dot` and `--surface-soft` keep their current light values, and the competing
+  proposal is recorded as superseded so it is not re-proposed.
+- Corrected design-system.md §7, whose second reason for keeping the display face out
+  of the sealed realm ("under §6 it is a calm surface throughout") is no longer true.
+  The face still stays out, on the hash-pinned-bytes reason alone.
+- Corrected the bundle budget. The measured artifact is 2,597,956 bytes (≈ 2.60 MB),
+  against a documented estimate of ≈ 1.7 MB that had fallen below the artifact it
+  described. The target moves from 3 MB to 4 MB, the 4.5 MB hard cap is unchanged, and
+  [dependencies.md](docs/05-development/dependencies.md#bundle-budget) is now the single
+  canonical home for the figure; SPEC §3 and §16 link to it rather than restating it.
+- Added Phase UI to [the roadmap](docs/05-development/ROADMAP.md) — nine items between
+  P2.7 and P2.8, so that everything from P2.8 onward is built inside the new interface
+  rather than built twice. P2.8 gains a dependency on UI.9.
+
+No file under `src/` is modified by this entry, and no application behaviour changes.
+
+
 ### Added - P2.7 Backup Health dashboard (2026-08-14)
 
 - Added a warm-only dashboard summary for public BackupRecords: current,
