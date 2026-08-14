@@ -1,12 +1,15 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const test = require('node:test');
+const { createCryptoVendorSource } = require('../scripts/crypto-bundle.js');
 
 const projectRoot = path.resolve(__dirname, '..');
+const slip39Source = fs.readFileSync(path.join(projectRoot, 'src', 'cold', 'slip39.js'), 'utf8');
 const SAFE_ID = '550e8400-e29b-41d4-a716-446655440000';
 const SAFE_FINGERPRINT = 'deadbeef';
 const SAFE_XPUB = `xpub${'1'.repeat(107)}`;
@@ -14,6 +17,7 @@ const SAFE_ADDRESS = `bc1q${'q'.repeat(56)}`;
 // Independent public fixtures. These are the same published vectors used by
 // the cold combiners; they are boundary probes only and are never logged.
 const OFFICIAL_SLIP39_20 = 'duckling enlarge academic academic agency result length solution fridge kidney coal piece deal husband erode duke ajar critical decision keyboard';
+const OFFICIAL_SLIP39_20_OMITTED_WORD = 'enemy favorite academic acid cowboy phrase havoc level response walnut budget painting inside trash adjust froth kitchen learn tidy punish';
 const OFFICIAL_SLIP39_33 = 'western apart academic always artist resident briefing sugar woman oven coding club ajar merit pecan answer prisoner artist fraction amount desktop mild false necklace muscle photo wealthy alpha category unwrap spew losing making';
 const OFFICIAL_CODEX32 = 'MS12NAMEA320ZYXWVUTSRQPNMLKJHGFEDCAXRPP870HKKQRM';
 const OFFICIAL_SHAMIR39 = 'shamir39-p1 army abandon ability abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
@@ -25,6 +29,36 @@ function loadProtocol() {
   const window = {};
   vm.runInNewContext(source, { window }, { filename: 'src/protocol.js' });
   return window.__coldboxProtocol;
+}
+
+function loadPublicSlip39WordList() {
+  const source = fs.readFileSync(path.join(projectRoot, 'src', 'protocol.js'), 'utf8');
+  const startMarker = 'var SLIP39_WORD_SET = makeSet(';
+  const endMarker = '.split(/\\s+/));';
+  const start = source.indexOf(startMarker);
+  const end = source.indexOf(endMarker, start);
+  assert.notEqual(start, -1, 'public SLIP-39 word set was not found');
+  assert.notEqual(end, -1, 'public SLIP-39 word set terminator was not found');
+  const expression = source.slice(start + startMarker.length, end);
+  return vm.runInNewContext(expression).trim().split(/\s+/);
+}
+
+function loadCanonicalSlip39WordList() {
+  const context = {
+    ArrayBuffer,
+    TextDecoder,
+    TextEncoder,
+    Uint8Array,
+    WebAssembly,
+    atob,
+    crypto: crypto.webcrypto,
+    console
+  };
+  context.window = context;
+  context.self = context;
+  vm.runInNewContext(createCryptoVendorSource(projectRoot), context);
+  vm.runInNewContext(slip39Source, context, { filename: 'src/cold/slip39.js' });
+  return Array.from(context.__coldboxSlip39.wordList);
 }
 
 function containsSensitiveKey(value) {
@@ -678,11 +712,22 @@ test('BackupRecords are public metadata and verification results carry no share 
   }), null);
 });
 
+test('public SLIP-39 guard mechanically covers the canonical 1024-word list', () => {
+  const protocol = loadProtocol();
+  const canonicalWords = loadCanonicalSlip39WordList();
+  const publicWords = loadPublicSlip39WordList();
+  assert.equal(canonicalWords.length, 1024);
+  assert.equal(new Set(canonicalWords).size, 1024);
+  assert.deepEqual(publicWords, canonicalWords);
+  assert.equal(protocol.isSecretContent(OFFICIAL_SLIP39_20_OMITTED_WORD), true);
+});
+
 test('public BackupRecord text rejects every supported share encoding in both directions', () => {
   const protocol = loadProtocol();
   const subjectId = '550e8400-e29b-41d4-a716-446655440001';
   const shares = [
     OFFICIAL_SLIP39_20,
+    OFFICIAL_SLIP39_20_OMITTED_WORD,
     OFFICIAL_SLIP39_33,
     OFFICIAL_CODEX32,
     OFFICIAL_SHAMIR39,

@@ -28,6 +28,10 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
   BackupRecord text carrier, including both standard SLIP-39 lengths, and
   rejected impossible `groupThreshold > groups.length` metadata. Added
   independent-vector regression coverage for the boundary.
+- Mechanically verified the public SLIP-39 detector against the canonical
+  1,024-word list and added the official boundary vector that exposed the prior
+  omission; the share remains rejected from every public text carrier in both
+  projection directions.
 
 ### Added - P2.5 vault recovery shares (2026-08-13)
 

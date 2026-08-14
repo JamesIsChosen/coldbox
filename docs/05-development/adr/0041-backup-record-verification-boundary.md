@@ -43,11 +43,12 @@ without turning the record into a secret transport or a second vault format.
    configuration, not for a label or location record in the abstract.
 7. Every public BackupRecord text carrier is passed through a shared
    share-material guard before either realm accepts the public projection. The
-   guard recognizes the public SLIP-39 word list at both standard 20- and
+   guard recognizes the exact canonical 1,024-word SLIP-39 list at both standard 20- and
    33-word lengths, codex32 `ms1` framing, Shamir39 version framing, raw SSS
    framing, and BIP-39-shaped mnemonic text used by Seed XOR. It rejects
-   matching candidates without decoding or logging them; actual format
-   validation remains cold-only.
+   matching candidates without decoding or logging them; `test/protocol.test.js`
+   mechanically compares the public list with the canonical cold SLIP-39 list
+   and asserts 1,024 unique words. Actual format validation remains cold-only.
 8. When `groupConfig.groups` is present, an explicit `groupThreshold` must not
    exceed the number of configured groups. A public record cannot describe a
    group quorum that no SLIP-39 share set could satisfy.
