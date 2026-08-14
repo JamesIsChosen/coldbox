@@ -24,6 +24,10 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
   explicitly unsupported until their workflows exist.
 - Added Chromium and Firefox `file://` coverage for public record creation,
   cold reconstruction, warm-shell isolation, and teardown. See [ADR-0041](docs/05-development/adr/0041-backup-record-verification-boundary.md).
+- Hardened the public projection against supported share text in every
+  BackupRecord text carrier, including both standard SLIP-39 lengths, and
+  rejected impossible `groupThreshold > groups.length` metadata. Added
+  independent-vector regression coverage for the boundary.
 
 ### Added - P2.5 vault recovery shares (2026-08-13)
 

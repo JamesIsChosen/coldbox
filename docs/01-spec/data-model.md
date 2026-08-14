@@ -160,6 +160,11 @@ shareMaterial 🔒, notes
 
 Locations and schedules are public so the Backup Health dashboard works online. Actual share material is secret and, as with seeds, optional; P2.6 does not store or transmit it and only records a cold-local reconstruction result.
 
+The public text fields are not a place to paste shares. The shared protocol
+guard rejects recognizable supported share encodings, including standard
+20-word and 33-word SLIP-39, codex32, Shamir39, raw SSS, and mnemonic-shaped
+Seed XOR material, in both public-compartment directions. See [ADR-0041](../05-development/adr/0041-backup-record-verification-boundary.md) for the boundary rule and its conservative false-positive tradeoff.
+
 ### Contact 🔵
 
 ```

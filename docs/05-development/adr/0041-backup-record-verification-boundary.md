@@ -41,6 +41,16 @@ without turning the record into a secret transport or a second vault format.
    Changing any of those identity fields clears the timestamp in the cold
    session. The completion is therefore evidence for a specific backup
    configuration, not for a label or location record in the abstract.
+7. Every public BackupRecord text carrier is passed through a shared
+   share-material guard before either realm accepts the public projection. The
+   guard recognizes the public SLIP-39 word list at both standard 20- and
+   33-word lengths, codex32 `ms1` framing, Shamir39 version framing, raw SSS
+   framing, and BIP-39-shaped mnemonic text used by Seed XOR. It rejects
+   matching candidates without decoding or logging them; actual format
+   validation remains cold-only.
+8. When `groupConfig.groups` is present, an explicit `groupThreshold` must not
+   exceed the number of configured groups. A public record cannot describe a
+   group quorum that no SLIP-39 share set could satisfy.
 
 The first implementation supports cold reconstruction for SLIP-39, codex32,
 Seed XOR, Shamir39, and raw SSS. SeedQR, metal, paper, and encrypted-file
@@ -58,6 +68,13 @@ realm boundary. A closed result enum avoids using cold-origin prose as an
 unbounded message field. Keeping the timestamp update in the cold session
 matches the existing cold-owned address verification rule and prevents a warm
 caller from turning an unverified record into a completed one.
+
+The public share-material guard is deliberately conservative. The SLIP-39
+word list is public format metadata, so its membership check can run in the
+shared protocol without importing cold cryptographic code into the warm shell.
+False positives fail closed in a public label, location, custodian, or notes
+field; a false negative would be a boundary leak. The guard is not a checksum
+or reconstruction oracle and therefore never replaces cold verification.
 
 Preserving the timestamp across unrelated public edits avoids forcing a user to
 retest a backup merely because its location note changed. Clearing it when the

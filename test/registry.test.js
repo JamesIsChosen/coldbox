@@ -10,6 +10,7 @@ const VAULT_ID = '550e8400-e29b-41d4-a716-446655440000';
 const XPUB = `xpub${'1'.repeat(107)}`;
 const NEXT_XPUB = `xpub${'2'.repeat(107)}`;
 const ADDRESS = `bc1q${'q'.repeat(56)}`;
+const OFFICIAL_SLIP39_SHARE = 'duckling enlarge academic academic agency result length solution fridge kidney coal piece deal husband erode duke ajar critical decision keyboard';
 
 function loadRegistry(disableRandomness = false) {
   const window = {
@@ -333,6 +334,21 @@ test('backup registry records stay public, start unverified, and accept only col
       lastVerifiedAt: '2026-08-13T12:00:00.000Z'
     }),
     /sealed realm/
+  );
+  assert.throws(
+    () => store.createBackup({
+      subjectId: VAULT_ID,
+      method: 'slip39',
+      shareLabel: OFFICIAL_SLIP39_SHARE,
+      threshold: 1,
+      createdAt: '2026-08-13T00:00:00.000Z',
+      verifyEveryDays: 365
+    }),
+    /public registry rejected/
+  );
+  assert.throws(
+    () => store.updateBackup(backup.id, { location: OFFICIAL_SLIP39_SHARE }),
+    /public registry rejected/
   );
   const completed = store.recordColdBackupVerification(backup.id, '2026-08-13T12:00:00.000Z');
   assert.equal(completed.lastVerifiedAt, '2026-08-13T12:00:00.000Z');
