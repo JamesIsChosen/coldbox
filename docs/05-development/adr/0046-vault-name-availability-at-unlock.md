@@ -30,6 +30,26 @@ The contradiction dissolves once the real question is asked: **why is a user-cho
 
 **6. Duplicate-name refusal is retired rather than violated.** ADR-0026 §37 required that a second vault could not silently reuse an already-known public name, and ADR-0025 §2 carried the same expectation. Neither is enforceable once names are encrypted inside their own vaults, and neither is needed: the requirement existed to prevent look-alike confusion between vaults, and the discriminator visible at selection time is now `id8`, which derives from the authenticated Vault ID rather than from user-chosen text. A confusion attack cannot be mounted with a name nobody can see.
 
+### The complete name lifecycle
+
+Stated as a table because the finding that forced this redesign was, precisely, that no earlier draft specified the whole lifecycle. Every row names the owner, and no row requires a channel that does not already exist.
+
+| Stage | Owner | How it works | What crosses the boundary |
+|---|---|---|---|
+| Choose the name | **Cold** | Typed on the sealed creation screen, beside phrase, confirmation, KDF profile and keyfile | Nothing |
+| Store it | **Cold** | Written into the encrypted public compartment as a bounded typed field, authenticated with the rest of it | Nothing |
+| Duplicate check | **Nobody — retired** | Names live inside their own encrypted vaults, so no party can compare them. Retires ADR-0026 §37; see the Decision above for why it is not needed | Nothing |
+| Generate the filename | **Warm** | `coldbox--<id8>.cbx`. `id8` derives from the Vault ID, which warm **already** receives as the authenticated `publicCompartment.id` in the existing public projection — no name and no new message is involved | The Vault ID, exactly as today |
+| Library bookkeeping | **Warm** | Keyed by Vault ID, displayed as `id8` plus an optional device-local nickname that warm owns outright | Nothing new |
+| Save | **Warm** | Writes the canonical file it can already name, and remains the save-time authority over its own filesystem | Encrypted bytes, exactly as today |
+| Read the name back | **Cold** | Displayed after unlock, from the compartment cold decrypted | Nothing |
+| Rename the name | **Cold** | Edited while unlocked; re-encrypted with a compartment the save already rewrites. No new file | Nothing |
+| Rename the nickname | **Warm** | Edited any time, unlocked or not. Never sent to cold | Nothing |
+
+**The channel question is answered by there being no channel to add.** Warm needs the Vault ID to name a file, and it already has the Vault ID. It never needed the name — it only appeared to, because the filename convention put one there.
+
+Warm remains the authority over saving and over its own library. What it stops being is the authority over a *name*, because after this decision the name is not warm's data.
+
 ## Rationale
 
 **This is a privacy improvement, not a trade.** Today the vault name is written into a filename, which discloses it to every process and service that can list the directory — cloud sync, backup software, file indexers, anything reading the disk, and anyone glancing at a file manager. [threat-model.md](../../02-security/threat-model.md) already treats this class of metadata as a targeting risk: it records portfolio data as a physical-security risk and backup locations as a burglary map. A vault named `retirement-cold-storage` is the same kind of signal, and it is currently emitted whether or not the user ever opens the file. Moving the name inside the encrypted container removes that disclosure completely.

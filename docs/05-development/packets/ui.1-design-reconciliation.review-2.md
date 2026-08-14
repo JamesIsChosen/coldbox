@@ -3,21 +3,44 @@
 **VERDICT: FAIL**
 
 Findings: 5 (4 must-fix on the branch, 1 review-coverage gap)
-Reviewed commit: `53f8ae6` (round-2 tip)
+Reviewed commit: `53f8ae6`
 Reviewed by: independent agent reviewer
 Date: 2026-08-14
 
 > **Provenance note, added by the author, not the reviewer.** As in round 1, the
-> reviewing session could not write to the branch or the PR. The text below is the
-> reviewer's handoff block, transcribed verbatim by the UI.1 author so the round-2
-> FAIL is preserved separately from round 1's, as the reviewer directed.
->
-> **This is the handoff block only.** The full round-2 finding text was not
-> available to the author at transcription time; if it exists, it should be
-> appended here verbatim by whoever holds it, and this note updated. The author's
-> response is in the packet, not here. Round 1's FAIL at
+> reviewing session could not write to the branch or the PR, so this file is
+> transcribed by the UI.1 author. It records round 2 separately from round 1, as
+> the reviewer directed; round 1's FAIL at
 > [`ui.1-design-reconciliation.review.md`](ui.1-design-reconciliation.review.md)
-> is preserved unedited, as required.
+> is preserved unedited.
+>
+> **Transcription history.** An earlier version of this file contained only the
+> reviewer's handoff block, which was all the author had at the time, and said so.
+> The full finding text below was supplied afterwards and replaces it. Nothing has
+> been reworded, softened, merged or removed. The author's response is in the
+> packet, not here.
+
+---
+
+## Findings
+
+There are 5 remaining findings:
+
+**1. R2-F1 — Blocking: UI.1's own acceptance criterion is now unmet verbatim.** ROADMAP still requires both `dependencies.md` and SPEC to "carry a measured artifact size with its provenance." The remediation correctly removed SPEC's duplicate number and made it link to the canonical `dependencies.md` figure instead. That is the better documentation design, but under the review protocol acceptance criteria cannot be reinterpreted after the fact. Required: change the criterion itself to require the canonical measurement/provenance in `dependencies.md` and a link from SPEC.
+
+**2. R2-F2 — Blocking: ADR-0045 still contradicts its new input registry.** It now correctly preserves legitimate `share-input`, `vault-auth`, `bip39-passphrase`, and `secret-note` inputs, but elsewhere still says every other cold tool — including recovery — "gain[s] no input of [its] own." UI.4 similarly preserves recovery/share inputs and then says every migrated tool has no input of its own. Required: narrow the claim everywhere to no additional seed/source-loading input, and reconcile the "eleven entry points collapse to one" wording.
+
+**3. R2-F3 — Blocking: ADR-0046's vault-name lifecycle is structurally impossible as written.** The user chooses the new name only inside cold; ADR-0046 says no name or derivative may return cold→warm; yet warm remains save-time duplicate authority. Existing ADR-0025/0026 require warm to manage the public name, canonical `<public-name>--<id8>.cbx` filename, Vault Library/name registry, and save-time uniqueness. There is currently no specified channel by which warm learns the cold-entered name it must use. UI.10 reproduces the same mutually incompatible requirements. Required: make an explicit structural decision for the complete name lifecycle — creation, duplicate check, filename generation, library bookkeeping and save — without silently weakening the realm boundary.
+
+**4. R2-F4 — Advisory, therefore still must-fix:** ADR-0046's Context correctly says ADR-0046, not ADR-0045, moves naming into cold, but its rejected "Leave naming in the warm shell" alternative still says ADR-0045 made that decision. Correct that stale attribution.
+
+**5. R2-F5 — Blocking review coverage:** this review session again cannot close F7. I personally attempted:
+
+```
+git clone --no-tags https://github.com/JamesIsChosen/coldbox.git /tmp/coldbox-ui1-r2-review
+```
+
+and received `Could not resolve host: github.com`, exit 128. Therefore I could not do the protocol-required reviewer-owned fresh clone under an alternate path/timezone/locale or personally introduce a deliberate corruption and verify a non-zero failure. The protocol explicitly requires those reviewer-owned checks.
 
 ---
 

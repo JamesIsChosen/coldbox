@@ -3,21 +3,23 @@
 **Branch:** `ui.1-design-reconciliation` · **PR:** #55
 **Base:** `main` @ `94cf73b` (Merge PR #54: P2.7 Backup Health dashboard)
 **Roadmap item:** [UI.1 Design reconciliation](../ROADMAP.md) — Phase UI
-**Date:** 2026-08-14 · **Revision 3** (remediation of the round-2 FAIL at `53f8ae6`)
+**Date:** 2026-08-14 · **Revision 4** (round-2 remediation, completed against the full finding text)
 
 ---
 
 ## 0. Remediation of review round 2
 
-Round 2 returned **FAIL with 5 findings** at `53f8ae6`. The handoff is preserved separately at [`ui.1-design-reconciliation.review-2.md`](ui.1-design-reconciliation.review-2.md); round 1's FAIL is preserved unedited at [`ui.1-design-reconciliation.review.md`](ui.1-design-reconciliation.review.md), as the reviewer directed. Only the reviewer's handoff block was available for transcription in round 2, and that limitation is stated in the file rather than papered over.
+Round 2 returned **FAIL with 5 findings** at `53f8ae6`, preserved at [`ui.1-design-reconciliation.review-2.md`](ui.1-design-reconciliation.review-2.md). Round 1's FAIL is preserved unedited at [`ui.1-design-reconciliation.review.md`](ui.1-design-reconciliation.review.md), as the reviewer directed.
+
+**Remediation happened in two passes, and the second one matters.** Commit `14543ff` was written from the reviewer's handoff block, which was all that was available; the review file said so rather than implying it was complete. The **full finding text arrived afterwards** and is now transcribed in place of the handoff-only version. Re-checking `14543ff` against the complete text found that R2-F1 and R2-F4 were fully closed, but **R2-F2 and R2-F3 were only partly closed** — the fuller wording named specific residues the handoff summary did not. Those are fixed here. The lesson is not subtle: a remediation written from a summary of findings closed roughly two-thirds of them, and I would not have known which third was missing without the original text.
 
 **R2-F3 was a structural error, and it is the important one.** Two successive drafts of ADR-0046 proposed something that could not work.
 
 | # | Finding | Response |
 |---|---|---|
 | R2-F1 | UI.1's bundle criterion contradicted the single-canonical-home design it had just created — it required SPEC to carry a measured size, while the implementation deliberately made SPEC carry none | **Fixed.** The criterion now requires `dependencies.md` to be the single home and SPEC to restate nothing, and is checkable by grep |
-| R2-F2 | ADR-0045, UI.4 and CHANGELOG claimed more than the decision removes — "eleven entry points", "no input of their own" | **Fixed.** All three now say six seed/source-loading fields collapse to one, and state explicitly that share entry, recovery entry, BIP-39 passphrase, vault authentication and secret notes all stay. "Eleven" was an unsupported number carried over from the design handoff |
-| R2-F3 | ADR-0046's vault-name lifecycle was structurally incoherent | **Redesigned.** See below |
+| R2-F2 | ADR-0045, UI.4 and CHANGELOG claimed more than the decision removes — "eleven entry points", "no input of their own" | **Fixed, in two passes.** `14543ff` corrected ADR-0045 and CHANGELOG and narrowed UI.4's registry clause, but **left one clause of UI.4 intact — "every migrated tool renders from the focused secret with no input of its own"** — so UI.4 still contradicted itself three clauses later. The full finding named it explicitly. UI.4 now says each migrated tool has no *seed/source-loading* input of its own and may keep the inputs its own job requires |
+| R2-F3 | ADR-0046's vault-name lifecycle was structurally incoherent | **Redesigned in `14543ff`, completed here.** The redesign was right but under-specified: the full finding asked for the *complete* lifecycle — creation, duplicate check, filename generation, library bookkeeping, save — and for the amended clauses of ADR-0025 and ADR-0026 to stop asserting the old model in their own bodies. Both are now done. See below |
 | R2-F4 | ADR-0046 still credited the rejection of an alternative to ADR-0045 | **Fixed.** The stale attribution is gone and the alternative now carries a note that ADR-0045 says nothing about vault creation |
 | R2-F5 | Reviewer environment still could not clone | **Not fixable here.** Open, and it needs an environment rather than an edit |
 
@@ -33,6 +35,8 @@ The resolution came from asking why a user-chosen string is in a filename at all
 - **It is a privacy improvement.** A name in a filename is disclosed to cloud sync, backup software, file indexers and anyone reading the directory, whether or not the vault is opened. That disclosure is removed.
 - **The cost is not attacker-facing.** Pre-unlock the picker shows `id8` and file metadata, so the risk is a user selecting or overwriting the wrong vault — integrity and availability, not confidentiality. The device-local nickname bounds it without moving a byte across the boundary.
 - **Duplicate-name refusal is retired, not violated.** ADR-0026 §37 exists to prevent look-alike confusion; the visible discriminator is now `id8`, derived from the authenticated Vault ID rather than user-chosen text, and a name nobody can see cannot be used to confuse anyone.
+- **The lifecycle is now stated in full, as a table in ADR-0046**, with an owner per stage: choose and store (cold), duplicate check (retired), filename generation and library and save (warm), read-back and rename (cold), nickname (warm). The finding asked for exactly this, and writing it out is what confirmed the design closes: **warm needs the Vault ID to name a file, and it already receives the Vault ID as the authenticated `publicCompartment.id` in the existing public projection.** There is no channel to add because warm never needed the name — it only appeared to, because the filename convention put one there.
+- **The amended clauses now say so in their own bodies**, following this repository's existing convention (ADR-0025 §5 already carries an inline "Amended by ADR-0026" note). ADR-0025 §2, ADR-0026 §4 and ADR-0026's duplicate-name consequence each carry an inline amendment or retirement note, so a reader who lands on the clause is not misled by a status line they may never scroll to.
 - **One thing is deliberately left open, with a named owner.** Adding a bounded name field to the public compartment may or may not require a vault-format version bump. UI.10 must determine that against `vault-format.md` and record the reasoning; changing the format silently would be a defect. I did not guess.
 
 **How this got through twice.** Draft 1 was mine. Draft 2 was written while remediating a FAIL, which is exactly when the temptation to patch the cited symptom rather than re-examine the design is strongest — the round-1 reviewer asked me to give ADR-0046 an implementation owner, and I gave it one without asking whether the thing being owned was possible. The maintainer's question about rename support is what surfaced the real answer.
