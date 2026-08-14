@@ -258,7 +258,7 @@ Nothing above this phase is safe to build until the container is trustworthy.
   plus a deterministic byte-exact method-data fixture.
 - [x] P2.6 BackupRecords and verify-your-shares
   *Deps: P2.5*
-- [~] P2.7 Backup Health dashboard
+- [x] P2.7 Backup Health dashboard
   *Deps: P2.6*
   **Validation policy (recorded 2026-08-14):** Under [ADR-0043](adr/0043-scoped-mobile-validation-deferral.md), the maintainer-approved physical-mobile `file://` validation deferral is non-blocking for this warm-only item-level review. The packet records the mobile rows as `DEFERRED`; this does not claim mobile support, alter the release device gate, or close P0.19.
 - [ ] P2.8 Printable cards and hand-computation worksheets
