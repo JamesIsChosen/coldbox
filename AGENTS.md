@@ -76,7 +76,10 @@ For genuinely minor gaps — a variable name, a layout detail — decide, and re
 - [ ] Tests written, including negative tests, using independent vectors
 - [ ] `npm test`, `npm run verify-vendor`, and the lint all pass
 - [ ] Build is reproducible — built twice, hashes identical
-- [ ] Tested on at least one desktop and one mobile browser from `file://`
+- [ ] Tested on at least one desktop and one mobile browser from `file://`,
+      or covered by an explicit item-scoped maintainer deferral under
+      [ADR-0043](docs/05-development/adr/0043-scoped-mobile-validation-deferral.md);
+      a deferral is not release evidence and does not close P0.19
 - [ ] Docs and help content updated, per [doc-hygiene.md](docs/05-development/doc-hygiene.md)
 - [ ] No fact duplicated — every claim links to its canonical home
 - [ ] Review dates updated on any dated doc this change touches

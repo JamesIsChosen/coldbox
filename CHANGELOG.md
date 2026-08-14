@@ -26,6 +26,10 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
   [ADR-0042](docs/05-development/adr/0042-conservative-backup-health.md).
 - Hardened health evaluation so future cold timestamps and due-date arithmetic
   outside the JavaScript Date range fail closed as needs-review metadata.
+- Recorded the narrow, item-scoped mobile-validation deferral policy in
+  [ADR-0043](docs/05-development/adr/0043-scoped-mobile-validation-deferral.md):
+  P2.7 may remain mobile-unverified for item review, without changing the
+  release device matrix or P0.19 gate.
 
 ### Added - P2.6 BackupRecords and verify-your-shares (2026-08-13)
 

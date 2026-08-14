@@ -151,6 +151,11 @@ Covers: CSP enforcement and violation detection, post-build tamper rejection, co
 
 `file://` behaviour varies enough between browsers that automated testing alone is insufficient. Required before every release.
 
+An item-level review may use a maintainer-approved **DEFERRED** result only
+under [ADR-0043](adr/0043-scoped-mobile-validation-deferral.md). That narrow
+exception does not change this release requirement, does not establish mobile
+support, and does not close the P0.19 device matrix.
+
 | Platform | Browser | Must verify |
 |---|---|---|
 | Windows | Chrome/Edge | Full function, File System Access save |

@@ -50,6 +50,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0040](0040-vault-recovery-share-record.md) | Vault recovery-share method-3 record shape | Accepted |
 | [0041](0041-backup-record-verification-boundary.md) | BackupRecord verification metadata is public, but completion authority stays cold-owned | Accepted |
 | [0042](0042-conservative-backup-health.md) | Conservative Backup Health from public metadata | Accepted |
+| [0043](0043-scoped-mobile-validation-deferral.md) | Scoped mobile-validation deferral for item review | Accepted |
 
 ## When to write one
 
