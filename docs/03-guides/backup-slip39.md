@@ -117,12 +117,16 @@ Test a different subset too. Shares 1+2 working doesn't prove 1+3 does.
 
 If you have created a public BackupRecord for this share set, choose **Verify
 shares** on its warm metadata card. The sealed realm opens a cold-only input,
-where you type a threshold subset from the physical copies. On success, Coldbox
-records only a public `lastVerifiedAt` timestamp; the share words and recovered
-entropy never enter the warm shell. A new record starts incomplete, and editing
-the subject, method, threshold, or group configuration clears its completion
-timestamp. A BIP-39 passphrase remains separate backup material and is not
-tested by this reconstruction check.
+where you type a threshold subset from the physical copies. Before completion,
+the sealed realm resolves the record's subject to one cold-stored seed and
+checks that the recovered entropy is that seed's entropy. If the subject cannot
+be resolved, or the shares belong to another seed with the same threshold,
+the record remains incomplete. On success, Coldbox records only a public
+`lastVerifiedAt` timestamp; the share words and recovered entropy never enter
+the warm shell. A new record starts incomplete, and editing the subject,
+method, threshold, or group configuration clears its completion timestamp. A
+BIP-39 passphrase remains separate backup material and is not tested by this
+reconstruction check.
 
 ---
 

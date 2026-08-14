@@ -81,7 +81,7 @@ This is the strongest key generation available to an ordinary person. It is also
 
 ## Verify before you trust — mandatory
 
-As with any scheme, reconstruct from a threshold subset before relying on the backup. Type the shares from your written copies, not copy-paste. The P2.2 app reports recovery status and keeps the recovered value masked. If you have a public BackupRecord, use its **Verify shares** action to run the same reconstruction inside the sealed realm; P2.6 records only a cold-owned public verification timestamp, never the recovered value.
+As with any scheme, reconstruct from a threshold subset before relying on the backup. Type the shares from your written copies, not copy-paste. The P2.2 app reports recovery status and keeps the recovered value masked. If you have a public BackupRecord, use its **Verify shares** action to run the same reconstruction inside the sealed realm. P2.6 records a cold-owned public verification timestamp only when the recovered master seed matches the cold-stored subject named by the record; an unresolved or different subject remains incomplete. The recovered value never leaves the sealed realm.
 
 **Then verify the checksum by hand at least once**, using the printed worksheet. That's the capability you chose this format for — confirm you can actually use it before relying on it.
 

@@ -32,6 +32,10 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
   1,024-word list and added the official boundary vector that exposed the prior
   omission; the share remains rejected from every public text carrier in both
   projection directions.
+- Bound cold BackupRecord completion to the uniquely resolved cold subject:
+  every supported reconstruction candidate must match the subject's stored
+  secret before `lastVerifiedAt` can be written, and unresolved or wrong-subject
+  records fail closed.
 
 ### Added - P2.5 vault recovery shares (2026-08-13)
 

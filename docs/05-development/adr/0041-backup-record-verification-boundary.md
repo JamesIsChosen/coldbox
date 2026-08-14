@@ -32,15 +32,21 @@ without turning the record into a secret transport or a second vault format.
    `backup.verifyResult { backupId, outcome, verifiedAt? }`. `outcome` is a
    closed enum: `verified`, `invalid`, `unsupported`, `no-record`, or
    `vault-locked`. Only `verified` may include a canonical ISO timestamp.
-5. On a successful supported reconstruction, the cold session writes
-   `lastVerifiedAt` into its own authenticated public compartment before
-   sending the result. The warm registry applies the validated timestamp to its
-   view and a normal vault save makes it durable.
+5. On a successful supported reconstruction, the cold session resolves the
+   record's `subjectId` to exactly one cold `Seed` record with an available
+   `storedSecret`, directly or through a public wallet's `seedId`. It compares
+   the reconstructed candidate to that cold-owned subject inside the sealed
+   realm. If the subject cannot be resolved or the candidate does not match,
+   verification fails closed and no timestamp is written. Only after that
+   comparison does the cold session write `lastVerifiedAt` into its own
+   authenticated public compartment. The warm registry applies the validated
+   timestamp to its view and a normal vault save makes it durable.
 6. A warm public replacement preserves an existing timestamp only when the
    record's subject, method, threshold, and group configuration are unchanged.
    Changing any of those identity fields clears the timestamp in the cold
    session. The completion is therefore evidence for a specific backup
-   configuration, not for a label or location record in the abstract.
+   configuration and cold-resolved subject, not for a label or location record
+   in the abstract.
 7. Every public BackupRecord text carrier is passed through a shared
    share-material guard before either realm accepts the public projection. The
    guard recognizes the exact canonical 1,024-word SLIP-39 list at both standard 20- and
@@ -52,6 +58,11 @@ without turning the record into a secret transport or a second vault format.
 8. When `groupConfig.groups` is present, an explicit `groupThreshold` must not
    exceed the number of configured groups. A public record cannot describe a
    group quorum that no SLIP-39 share set could satisfy.
+9. Every supported reconstruction method passes its candidate through the same
+   cold subject-binding gate before completion. The gate compares BIP-39 entropy
+   for SLIP-39, Seed XOR, and Shamir39; the derived BIP-32 master seed for
+   codex32; and either cold-owned representation for raw SSS. It never returns
+   the candidate or the stored secret to the warm shell.
 
 The first implementation supports cold reconstruction for SLIP-39, codex32,
 Seed XOR, Shamir39, and raw SSS. SeedQR, metal, paper, and encrypted-file
@@ -66,9 +77,12 @@ separate BIP-39 passphrase or the safety of the physical storage location.
 
 The request identifies only a public record, so no share text can cross the
 realm boundary. A closed result enum avoids using cold-origin prose as an
-unbounded message field. Keeping the timestamp update in the cold session
-matches the existing cold-owned address verification rule and prevents a warm
-caller from turning an unverified record into a completed one.
+unbounded message field. The cold session's secret seed registry is the only
+accepted subject authority; a public UUID with no uniquely resolvable cold
+secret is not enough to complete a record. Keeping the candidate comparison
+and timestamp update in the cold session matches the existing cold-owned
+address verification rule and prevents a warm caller from turning an
+unverified or wrong-subject record into a completed one.
 
 The public share-material guard is deliberately conservative. The SLIP-39
 word list is public format metadata, so its membership check can run in the
@@ -102,9 +116,9 @@ new share set or threshold.
 
 ### Risks
 
-- A mathematically valid reconstruction can still represent the wrong wallet if
-  the physical shares belong to another record; the public subject metadata and
-  separate fingerprint/device checks remain the user's responsibility.
+- A record whose subject has no uniquely resolvable cold stored secret remains
+  incomplete. This is deliberate: a format-valid share set must not be treated
+  as evidence for an arbitrary user-supplied UUID.
 - JavaScript strings and DOM controls cannot promise perfect zeroization; the
   cold workflow clears inputs and byte buffers on completion and teardown but
   does not claim OS-level erasure.

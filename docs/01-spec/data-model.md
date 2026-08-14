@@ -156,7 +156,7 @@ shareMaterial 🔒, notes
 
 `method`: `slip39 | codex32 | seedxor | shamir39 | sss | seedqr | metal | paper | encrypted-file`
 
-`subjectId` is the public UUID of the Seed or wallet subject represented by the record. `groupConfig` is a closed numeric description of the threshold/group layout; it never contains share text. `lastVerifiedAt` is public evidence but is cold-owned: the warm registry may not set or clear it, and the cold realm clears it when the subject, method, threshold, or group configuration changes.
+`subjectId` is the public UUID of the Seed or wallet subject represented by the record. During verification, the cold realm must resolve it to exactly one cold `Seed` record with an available `storedSecret` (directly, or through a wallet's `seedId`); an unresolved subject fails closed. The reconstructed candidate is compared inside the cold realm with that subject before `lastVerifiedAt` can be written. `groupConfig` is a closed numeric description of the threshold/group layout; it never contains share text. `lastVerifiedAt` is public evidence but is cold-owned: the warm registry may not set or clear it, and the cold realm clears it when the subject, method, threshold, or group configuration changes.
 
 Locations and schedules are public so the Backup Health dashboard works online. Actual share material is secret and, as with seeds, optional; P2.6 does not store or transmit it and only records a cold-local reconstruction result.
 
