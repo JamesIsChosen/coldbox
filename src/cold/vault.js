@@ -1146,85 +1146,107 @@
     }
 
     function preserveColdVerificationAuthority(current, next) {
-      if (!isRecord(next) || !Array.isArray(next.addresses)) {
+      if (!isRecord(next)) {
         return;
       }
-      var currentAddresses = current && current.addresses;
-      next.addresses.forEach(function (address) {
-        if (!isRecord(address)) {
-          return;
-        }
-        var previous = findAddress(currentAddresses, address.id);
-        var requestedState = address.verificationState || 'unverified';
-        var previousState = previous && previous.verificationState
-          ? previous.verificationState
-          : 'unverified';
-        var samePublicIdentity = previous
-          && previous.address === address.address
-          && previous.accountId === address.accountId
-          && previous.index === address.index;
-
-        // publicData.replace is a warm-origin mutation. It may carry forward
-        // an authenticated state, or record the derived stale transition, but
-        // it can never create either verification claim from public input.
-        if (!previous || !samePublicIdentity) {
-          if (requestedState === 'cold-verified' || requestedState === 'cold-verified-stale') {
-            resetVerification(address);
+      if (Array.isArray(next.addresses)) {
+        var currentAddresses = current && current.addresses;
+        next.addresses.forEach(function (address) {
+          if (!isRecord(address)) {
+            return;
           }
-          return;
-        }
-        var previousAccount = findRecord(current && current.accounts, previous.accountId);
-        var nextAccount = findRecord(next.accounts, address.accountId);
-        var verifiedAgainstXpub = previous.verifiedAgainstXpub;
-        var xpubEvidenceChanged = previousState === 'cold-verified'
-          && (typeof verifiedAgainstXpub !== 'string'
-            || !previousAccount
-            || !nextAccount
-            || previousAccount.xpub !== verifiedAgainstXpub
-            || nextAccount.xpub !== verifiedAgainstXpub);
-        if (xpubEvidenceChanged) {
-          address.verificationState = 'cold-verified-stale';
-          address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
-          address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
-          return;
-        }
-        if (previousState === 'cold-verified' && requestedState === 'cold-verified-stale') {
-          address.verificationState = 'cold-verified';
-          address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
-          address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
-          return;
-        }
-        if (requestedState === 'cold-verified' && previousState !== 'cold-verified') {
-          if (previousState === 'cold-verified-stale') {
+          var previous = findAddress(currentAddresses, address.id);
+          var requestedState = address.verificationState || 'unverified';
+          var previousState = previous && previous.verificationState
+            ? previous.verificationState
+            : 'unverified';
+          var samePublicIdentity = previous
+            && previous.address === address.address
+            && previous.accountId === address.accountId
+            && previous.index === address.index;
+
+          // publicData.replace is a warm-origin mutation. It may carry forward
+          // an authenticated state, or record the derived stale transition, but
+          // it can never create either verification claim from public input.
+          if (!previous || !samePublicIdentity) {
+            if (requestedState === 'cold-verified' || requestedState === 'cold-verified-stale') {
+              resetVerification(address);
+            }
+            return;
+          }
+          var previousAccount = findRecord(current && current.accounts, previous.accountId);
+          var nextAccount = findRecord(next.accounts, address.accountId);
+          var verifiedAgainstXpub = previous.verifiedAgainstXpub;
+          var xpubEvidenceChanged = previousState === 'cold-verified'
+            && (typeof verifiedAgainstXpub !== 'string'
+              || !previousAccount
+              || !nextAccount
+              || previousAccount.xpub !== verifiedAgainstXpub
+              || nextAccount.xpub !== verifiedAgainstXpub);
+          if (xpubEvidenceChanged) {
             address.verificationState = 'cold-verified-stale';
             address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
             address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
-          } else {
-            resetVerification(address, previousState);
+            return;
           }
+          if (previousState === 'cold-verified' && requestedState === 'cold-verified-stale') {
+            address.verificationState = 'cold-verified';
+            address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
+            address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
+            return;
+          }
+          if (requestedState === 'cold-verified' && previousState !== 'cold-verified') {
+            if (previousState === 'cold-verified-stale') {
+              address.verificationState = 'cold-verified-stale';
+              address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
+              address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
+            } else {
+              resetVerification(address, previousState);
+            }
+            return;
+          }
+          if (requestedState === 'cold-verified-stale' && previousState !== 'cold-verified'
+            && previousState !== 'cold-verified-stale') {
+            resetVerification(address, previousState);
+            return;
+          }
+          if ((previousState === 'cold-verified' || previousState === 'cold-verified-stale')
+            && requestedState !== 'cold-verified'
+            && requestedState !== 'cold-verified-stale') {
+            address.verificationState = previousState;
+            address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
+            address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
+            return;
+          }
+          if (previousState === 'cold-verified' && requestedState === 'cold-verified') {
+            address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
+            address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
+          } else if (previousState === 'cold-verified-stale'
+            && requestedState === 'cold-verified-stale') {
+            address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
+            address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
+          }
+        });
+      }
+      if (!Array.isArray(next.backups)) {
+        return;
+      }
+      var currentBackups = current && current.backups;
+      next.backups.forEach(function (backup) {
+        if (!isRecord(backup)) {
           return;
         }
-        if (requestedState === 'cold-verified-stale' && previousState !== 'cold-verified'
-          && previousState !== 'cold-verified-stale') {
-          resetVerification(address, previousState);
+        var previous = findRecord(currentBackups, backup.id);
+        var sameBackupIdentity = previous
+          && previous.subjectId === backup.subjectId
+          && previous.method === backup.method
+          && previous.threshold === backup.threshold
+          && JSON.stringify(previous.groupConfig || null) === JSON.stringify(backup.groupConfig || null);
+        if (!sameBackupIdentity || !previous.lastVerifiedAt) {
+          delete backup.lastVerifiedAt;
           return;
         }
-        if ((previousState === 'cold-verified' || previousState === 'cold-verified-stale')
-          && requestedState !== 'cold-verified'
-          && requestedState !== 'cold-verified-stale') {
-          address.verificationState = previousState;
-          address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
-          address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
-          return;
-        }
-        if (previousState === 'cold-verified' && requestedState === 'cold-verified') {
-          address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
-          address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
-        } else if (previousState === 'cold-verified-stale'
-          && requestedState === 'cold-verified-stale') {
-          address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
-          address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
-        }
+        backup.lastVerifiedAt = previous.lastVerifiedAt;
       });
     }
 
@@ -1247,6 +1269,30 @@
       }
       var nextPublicData = migratePublicData(clonePublicData(publicData));
       preserveColdVerificationAuthority(state.publicData, nextPublicData);
+      var nextPublicPlain = paddedJson(nextPublicData);
+      zeroBytes(state.publicPlain);
+      state.publicData = nextPublicData;
+      state.publicPlain = nextPublicPlain;
+      return getPublicData();
+    }
+
+    function markBackupVerified(backupId, verifiedAt) {
+      if (closed || saving || operationInFlight || !state.publicData
+        || typeof backupId !== 'string' || typeof verifiedAt !== 'string') {
+        throw serializationError();
+      }
+      requireVaultHealth(serializationError);
+      if (networkState() !== state.mode
+        || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(verifiedAt)
+        || new Date(verifiedAt).toISOString() !== verifiedAt) {
+        throw serializationError();
+      }
+      var nextPublicData = clonePublicData(state.publicData);
+      var backup = findRecord(nextPublicData.backups, backupId);
+      if (!backup) {
+        throw serializationError();
+      }
+      backup.lastVerifiedAt = verifiedAt;
       var nextPublicPlain = paddedJson(nextPublicData);
       zeroBytes(state.publicPlain);
       state.publicData = nextPublicData;
@@ -1551,6 +1597,7 @@
       get publicData() { return getPublicData(); },
       getPublicData: getPublicData,
       replacePublicData: replacePublicData,
+      markBackupVerified: markBackupVerified,
       getSecretData: getSecretData,
       replaceSecretData: replaceSecretData,
       getRecoveryShareMetadata: getRecoveryShareMetadata,

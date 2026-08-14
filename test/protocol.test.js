@@ -51,6 +51,7 @@ test('protocol exposes only the documented message whitelist', () => {
     'mode.set',
     'derive.request',
     'address.verifyRequest',
+    'backup.verifyRequest',
     'publicData.request',
     'publicData.replace',
     'concealment.reveal',
@@ -63,6 +64,7 @@ test('protocol exposes only the documented message whitelist', () => {
     'vault.lockRequest',
     'derive.result',
     'address.verifyResult',
+    'backup.verifyResult',
     'publicData.updated',
     'concealment.revealed',
     'secretData.updated',
@@ -600,6 +602,71 @@ test('device records accept bounded lifecycle fields and reject unsafe shapes', 
         devices: [{ id: deviceId, vendor: 'Trezor', model: 'Safe 5', firmware: '2.8.1', firmwareDate: 'not-a-date', status: 'in-use' }]
       }
     }
+  }), null);
+});
+
+test('BackupRecords are public metadata and verification results carry no share material', () => {
+  const protocol = loadProtocol();
+  const backupId = SAFE_ID;
+  const subjectId = '550e8400-e29b-41d4-a716-446655440001';
+  const backup = {
+    id: backupId,
+    subjectId,
+    method: 'slip39',
+    shareLabel: 'Home safe set',
+    threshold: 2,
+    groupConfig: { groups: [{ threshold: 2, count: 3 }] },
+    location: 'Home safe',
+    custodian: 'Owner',
+    createdAt: '2026-08-13T00:00:00.000Z',
+    verifyEveryDays: 365,
+    hidden: false
+  };
+  const publicMessage = protocol.validateMessage('warm-to-cold', {
+    id: 'backup-write-1',
+    type: 'publicData.replace',
+    payload: { publicCompartment: { backups: [backup] } }
+  });
+  assert.ok(publicMessage);
+  assert.equal(
+    JSON.stringify(publicMessage.payload.publicCompartment.backups[0]),
+    JSON.stringify(backup)
+  );
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'backup-secret-1',
+    type: 'publicData.replace',
+    payload: { publicCompartment: { backups: [{ ...backup, shareMaterial: ['secret'] }] } }
+  }), null);
+  assert.equal(JSON.stringify(protocol.validateMessage('warm-to-cold', {
+    id: 'backup-request-1',
+    type: 'backup.verifyRequest',
+    payload: { backupId, shareMaterial: ['never accepted'] }
+  })?.payload), JSON.stringify({ backupId }));
+  assert.equal(JSON.stringify(protocol.validateMessage('cold-to-warm', {
+    id: 'backup-result-1',
+    type: 'backup.verifyResult',
+    payload: {
+      backupId,
+      outcome: 'verified',
+      verifiedAt: '2026-08-13T12:00:00.000Z',
+      shares: ['never accepted'],
+      reason: 'never accepted'
+    }
+  })?.payload), JSON.stringify({ backupId, outcome: 'verified', verifiedAt: '2026-08-13T12:00:00.000Z' }));
+  assert.equal(protocol.validateMessage('cold-to-warm', {
+    id: 'backup-result-invalid-timestamp',
+    type: 'backup.verifyResult',
+    payload: { backupId, outcome: 'verified' }
+  }), null);
+  assert.equal(protocol.validateMessage('cold-to-warm', {
+    id: 'backup-result-forged-timestamp',
+    type: 'backup.verifyResult',
+    payload: { backupId, outcome: 'invalid', verifiedAt: '2026-08-13T12:00:00.000Z' }
+  }), null);
+  assert.equal(protocol.validateMessage('cold-to-warm', {
+    id: 'backup-result-invalid-outcome',
+    type: 'backup.verifyResult',
+    payload: { backupId, outcome: 'completed', verifiedAt: '2026-08-13T12:00:00.000Z' }
   }), null);
 });
 

@@ -918,6 +918,52 @@ test('P1.11 cold replacement owns stale transitions and preserves authenticated 
   assert.equal(reconciled.addresses[0].verifiedAgainstXpub, authenticatedXpub);
 });
 
+test('P2.6 cold backup verification is the only authority that can set completion', async () => {
+  const context = createRealContext();
+  const passphrase = 'backup verification authority passphrase';
+  const publicData = {
+    schema: 2,
+    id: 'backup-verification-vault',
+    backups: [{
+      id: 'backup-record',
+      subjectId: 'backup-subject',
+      method: 'slip39',
+      shareLabel: 'Written shares',
+      threshold: 2,
+      createdAt: '2026-08-13T00:00:00.000Z',
+      verifyEveryDays: 365
+    }]
+  };
+  const vault = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fast',
+    publicData,
+    secretData: {}
+  });
+  const session = await context.__coldboxVault.openSession(vault, passphrase, 'offline');
+  const forged = session.publicData;
+  forged.backups[0].lastVerifiedAt = '2026-08-13T01:00:00.000Z';
+  const rejected = session.replacePublicData(forged);
+  assert.equal('lastVerifiedAt' in rejected.backups[0], false);
+
+  assert.throws(
+    () => session.markBackupVerified('backup-record', 'not-a-timestamp'),
+    /serialization/
+  );
+  const verified = session.markBackupVerified('backup-record', '2026-08-13T12:00:00.000Z');
+  assert.equal(verified.backups[0].lastVerifiedAt, '2026-08-13T12:00:00.000Z');
+  const rewritten = session.publicData;
+  rewritten.backups[0].lastVerifiedAt = '2026-08-13T13:00:00.000Z';
+  const preserved = session.replacePublicData(rewritten);
+  assert.equal(preserved.backups[0].lastVerifiedAt, '2026-08-13T12:00:00.000Z');
+
+  const changedIdentity = session.publicData;
+  changedIdentity.backups[0].method = 'codex32';
+  changedIdentity.backups[0].lastVerifiedAt = '2026-08-13T14:00:00.000Z';
+  const reset = session.replacePublicData(changedIdentity);
+  assert.equal('lastVerifiedAt' in reset.backups[0], false);
+});
+
 test('P1.11 cold open migrates schema 1, persists schema 2, and preserves failed input', async () => {
   const context = createRealContext();
   const passphrase = 'public schema migration passphrase';

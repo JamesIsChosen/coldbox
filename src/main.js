@@ -212,6 +212,24 @@ __COLDBOX_CONCEALMENT__
   var registryWalletList = document.getElementById('registry-wallet-list');
   var registryAccountList = document.getElementById('registry-account-list');
   var registryAddressList = document.getElementById('registry-address-list');
+  var backupLocked = document.getElementById('backup-locked');
+  var backupWorkspace = document.getElementById('backup-workspace');
+  var backupStatus = document.getElementById('backup-status');
+  var backupForm = document.getElementById('backup-form');
+  var backupId = document.getElementById('backup-id');
+  var backupSubjectId = document.getElementById('backup-subject-id');
+  var backupMethod = document.getElementById('backup-method');
+  var backupShareLabel = document.getElementById('backup-share-label');
+  var backupThreshold = document.getElementById('backup-threshold');
+  var backupVerifyEvery = document.getElementById('backup-verify-every');
+  var backupGroupConfig = document.getElementById('backup-group-config');
+  var backupLocation = document.getElementById('backup-location');
+  var backupCustodian = document.getElementById('backup-custodian');
+  var backupNotes = document.getElementById('backup-notes');
+  var backupHidden = document.getElementById('backup-hidden');
+  var backupCancel = document.getElementById('backup-cancel');
+  var backupSearch = document.getElementById('backup-search');
+  var backupList = document.getElementById('backup-list');
   var registryAddressVerificationSummary = document.getElementById('registry-address-verification-summary');
   var addressVerifyRecord = document.getElementById('address-verify-record');
   var addressVerifyCandidate = document.getElementById('address-verify-candidate');
@@ -325,6 +343,7 @@ __COLDBOX_CONCEALMENT__
   var registryStore = null;
   var pendingRegistryMutation = null;
   var pendingAddressVerification = null;
+  var pendingBackupVerification = null;
   var clipboardCanaryController = null;
   var clipboardCanaryUiGeneration = 0;
   var hiddenRegistryVisible = false;
@@ -334,6 +353,7 @@ __COLDBOX_CONCEALMENT__
     : null;
   var registrySearchTerm = '';
   var deviceSearchTerm = '';
+  var backupSearchTerm = '';
   var LIVE_TRANSFER_INTERVAL_MS = 250;
   var pages = Array.prototype.slice.call(document.querySelectorAll('[data-page]'));
   var routeLinks = Array.prototype.slice.call(document.querySelectorAll('[data-route]'));
@@ -3078,6 +3098,13 @@ __COLDBOX_CONCEALMENT__
   function setPublicRecordStatus(text) {
     setRegistryStatus(text);
     setDeviceStatus(text);
+    setBackupStatus(text);
+  }
+
+  function setBackupStatus(text) {
+    if (backupStatus) {
+      backupStatus.textContent = text;
+    }
   }
 
   function clearRegistryNode(node) {
@@ -3097,7 +3124,7 @@ __COLDBOX_CONCEALMENT__
     button.setAttribute('data-registry-action', action);
     button.setAttribute('data-registry-kind', kind);
     button.setAttribute('data-registry-id', id);
-    button.disabled = Boolean(pendingRegistryMutation);
+    button.disabled = Boolean(pendingRegistryMutation || pendingBackupVerification);
     return button;
   }
 
@@ -3118,6 +3145,16 @@ __COLDBOX_CONCEALMENT__
       verificationNode.textContent = addressVerificationLabel(record.verificationState);
       verificationNode.setAttribute('data-verification-state', record.verificationState || 'unverified');
       card.appendChild(verificationNode);
+    }
+    if (kind === 'backup') {
+      var backupVerificationNode = document.createElement('p');
+      backupVerificationNode.className = 'registry-record-verification';
+      backupVerificationNode.textContent = backupVerificationLabel(record);
+      backupVerificationNode.setAttribute(
+        'data-verification-state',
+        record.lastVerifiedAt ? 'cold-verified' : 'unverified'
+      );
+      card.appendChild(backupVerificationNode);
     }
     card.setAttribute('data-privacy-sensitive', 'true');
     if (record.hidden === true) {
@@ -3145,6 +3182,9 @@ __COLDBOX_CONCEALMENT__
     actions.className = 'registry-record-actions';
     actions.appendChild(registryButton('edit', kind, record.id, 'Edit'));
     actions.appendChild(registryButton('delete', kind, record.id, 'Hide'));
+    if (kind === 'backup') {
+      actions.appendChild(registryButton('verify', kind, record.id, 'Verify shares'));
+    }
     card.appendChild(actions);
     node.appendChild(card);
   }
@@ -3160,6 +3200,21 @@ __COLDBOX_CONCEALMENT__
       return 'Unverifiable: no seed in this vault';
     }
     return 'Never verified';
+  }
+
+  function backupVerificationLabel(record) {
+    if (!record.lastVerifiedAt) {
+      return 'Not verified — this backup is incomplete';
+    }
+    var verified = isoDateToInput(record.lastVerifiedAt) || record.lastVerifiedAt;
+    var due = '';
+    if (Number.isInteger(record.verifyEveryDays)) {
+      var dueTime = Date.parse(record.lastVerifiedAt) + record.verifyEveryDays * 86400000;
+      if (Number.isFinite(dueTime)) {
+        due = ' · due ' + new Date(dueTime).toISOString().slice(0, 10);
+      }
+    }
+    return 'Cold verified ' + verified + due;
   }
 
   function appendRegistryEmpty(node, text) {
@@ -3192,7 +3247,7 @@ __COLDBOX_CONCEALMENT__
   }
 
   function setRegistryFormsDisabled(disabled) {
-    [registryWalletForm, registryAccountForm, registryAddressForm, registryNoteForm, deviceForm].forEach(function (form) {
+    [registryWalletForm, registryAccountForm, registryAddressForm, registryNoteForm, deviceForm, backupForm].forEach(function (form) {
       if (!form) {
         return;
       }
@@ -3200,7 +3255,7 @@ __COLDBOX_CONCEALMENT__
         element.disabled = disabled;
       });
     });
-    [registryWalletCancel, registryAccountCancel, registryAddressCancel, registryNoteCancel, deviceCancel].forEach(function (button) {
+    [registryWalletCancel, registryAccountCancel, registryAddressCancel, registryNoteCancel, deviceCancel, backupCancel].forEach(function (button) {
       if (button) {
         button.disabled = disabled;
       }
@@ -3227,6 +3282,17 @@ __COLDBOX_CONCEALMENT__
 
   function deviceVisibleRecords() {
     return registryStore.list('devices', hiddenRegistryVisible).filter(deviceMatchesSearch);
+  }
+
+  function backupMatchesSearch(record) {
+    if (!backupSearchTerm) {
+      return true;
+    }
+    return JSON.stringify(record).toLowerCase().indexOf(backupSearchTerm) !== -1;
+  }
+
+  function backupVisibleRecords() {
+    return registryStore.list('backups', hiddenRegistryVisible).filter(backupMatchesSearch);
   }
 
   function addressVerificationStateText(state) {
@@ -3584,6 +3650,12 @@ __COLDBOX_CONCEALMENT__
     if (deviceWorkspace) {
       deviceWorkspace.hidden = !available;
     }
+    if (backupLocked) {
+      backupLocked.hidden = available;
+    }
+    if (backupWorkspace) {
+      backupWorkspace.hidden = !available;
+    }
     renderAddressVerificationOptions();
     if (!available) {
       return;
@@ -3596,6 +3668,7 @@ __COLDBOX_CONCEALMENT__
     }).length;
     var devices = deviceVisibleRecords();
     var notes = registryVisibleRecords('notes');
+    var backups = backupVisibleRecords();
     clearRegistryNode(registryWalletList);
     clearRegistryNode(registryAccountList);
     clearRegistryNode(registryAddressList);
@@ -3606,6 +3679,7 @@ __COLDBOX_CONCEALMENT__
     }
     clearRegistryNode(deviceList);
     clearRegistryNode(registryNoteList);
+    clearRegistryNode(backupList);
     if (wallets.length === 0) {
       appendRegistryEmpty(registryWalletList, 'No wallets recorded yet.');
     } else {
@@ -3679,6 +3753,20 @@ __COLDBOX_CONCEALMENT__
         );
       });
     }
+    if (backups.length === 0) {
+      appendRegistryEmpty(backupList, backupSearchTerm ? 'No backup records match this search.' : 'No backup records recorded yet.');
+    } else {
+      backups.forEach(function (backup) {
+        appendRegistryRecord(
+          backupList,
+          'backup',
+          backup,
+          backup.shareLabel || backup.method,
+          [backup.method, String(backup.threshold) + ' required', backup.location, backup.custodian]
+            .filter(Boolean).join(' · ')
+        );
+      });
+    }
     setRegistrySelectOptions(
       registryAccountWallet,
       wallets,
@@ -3691,25 +3779,28 @@ __COLDBOX_CONCEALMENT__
       'Create an account first',
       function (account) { return account.label || account.asset || 'Unlabeled account'; }
     );
-    setRegistryFormsDisabled(Boolean(pendingRegistryMutation));
+    setRegistryFormsDisabled(Boolean(pendingRegistryMutation || pendingBackupVerification));
     if (registryWalletForm) {
-      registryWalletForm.querySelector('button[type="submit"]').disabled = Boolean(pendingRegistryMutation);
+      registryWalletForm.querySelector('button[type="submit"]').disabled = Boolean(pendingRegistryMutation || pendingBackupVerification);
     }
     if (registryAccountForm) {
-      registryAccountForm.querySelector('button[type="submit"]').disabled = Boolean(pendingRegistryMutation);
+      registryAccountForm.querySelector('button[type="submit"]').disabled = Boolean(pendingRegistryMutation || pendingBackupVerification);
     }
     if (registryAddressForm) {
-      registryAddressForm.querySelector('button[type="submit"]').disabled = Boolean(pendingRegistryMutation);
+      registryAddressForm.querySelector('button[type="submit"]').disabled = Boolean(pendingRegistryMutation || pendingBackupVerification);
     }
     if (registryNoteForm) {
-      registryNoteForm.querySelector('button[type="submit"]').disabled = Boolean(pendingRegistryMutation);
+      registryNoteForm.querySelector('button[type="submit"]').disabled = Boolean(pendingRegistryMutation || pendingBackupVerification);
     }
     if (deviceForm) {
-      deviceForm.querySelector('button[type="submit"]').disabled = Boolean(pendingRegistryMutation);
+      deviceForm.querySelector('button[type="submit"]').disabled = Boolean(pendingRegistryMutation || pendingBackupVerification);
+    }
+    if (backupForm) {
+      backupForm.querySelector('button[type="submit"]').disabled = Boolean(pendingRegistryMutation || pendingBackupVerification);
     }
     if (registryShowHidden) {
       registryShowHidden.checked = hiddenRegistryVisible;
-      registryShowHidden.disabled = Boolean(pendingRegistryMutation);
+      registryShowHidden.disabled = Boolean(pendingRegistryMutation || pendingBackupVerification);
     }
     if (registryHiddenHelp) {
       registryHiddenHelp.textContent = hiddenRegistryVisible
@@ -3721,7 +3812,10 @@ __COLDBOX_CONCEALMENT__
     }
     if (deviceShowHidden) {
       deviceShowHidden.checked = hiddenRegistryVisible;
-      deviceShowHidden.disabled = Boolean(pendingRegistryMutation);
+      deviceShowHidden.disabled = Boolean(pendingRegistryMutation || pendingBackupVerification);
+    }
+    if (backupSearch) {
+      backupSearch.value = backupSearchTerm;
     }
     if (deviceHiddenHelp) {
       deviceHiddenHelp.textContent = hiddenRegistryVisible
@@ -3828,6 +3922,20 @@ __COLDBOX_CONCEALMENT__
     deviceCancel.hidden = true;
   }
 
+  function resetBackupForm() {
+    if (!backupForm) {
+      return;
+    }
+    backupForm.reset();
+    backupId.value = '';
+    backupMethod.value = 'slip39';
+    backupThreshold.value = '2';
+    backupVerifyEvery.value = '365';
+    backupGroupConfig.value = '';
+    backupHidden.checked = false;
+    backupCancel.hidden = true;
+  }
+
   function parseRegistryList(value) {
     return value.split(',').map(function (item) { return item.trim(); }).filter(Boolean);
   }
@@ -3925,9 +4033,25 @@ __COLDBOX_CONCEALMENT__
       deviceHidden.checked = record.hidden === true;
       deviceCancel.hidden = false;
       deviceVendor.focus();
+    } else if (kind === 'backup') {
+      backupId.value = record.id;
+      backupSubjectId.value = record.subjectId || '';
+      backupMethod.value = record.method || 'slip39';
+      backupShareLabel.value = record.shareLabel || '';
+      backupThreshold.value = String(record.threshold || 1);
+      backupVerifyEvery.value = String(record.verifyEveryDays || 365);
+      backupGroupConfig.value = record.groupConfig ? JSON.stringify(record.groupConfig) : '';
+      backupLocation.value = record.location || '';
+      backupCustodian.value = record.custodian || '';
+      backupNotes.value = record.notes || '';
+      backupHidden.checked = record.hidden === true;
+      backupCancel.hidden = false;
+      backupShareLabel.focus();
     }
     if (kind === 'device') {
       setDeviceStatus('Editing a public device record.');
+    } else if (kind === 'backup') {
+      setBackupStatus('Editing a public backup record. Its completion date remains cold-owned.');
     } else {
       setRegistryStatus('Editing a public ' + kind + ' record.');
     }
@@ -3943,10 +4067,78 @@ __COLDBOX_CONCEALMENT__
         registryStore.deleteAddress(id);
       } else if (kind === 'device') {
         registryStore.deleteDevice(id);
+      } else if (kind === 'backup') {
+        registryStore.deleteBackup(id);
       } else {
         registryStore.deleteNote(id);
       }
     });
+  }
+
+  function requestBackupVerification(id) {
+    if (!registryStore || vaultState !== 'unlocked') {
+      setBackupStatus('Unlock the vault before verifying a backup record.');
+      return;
+    }
+    if (pendingRegistryMutation) {
+      setBackupStatus('Finish the pending registry change before verifying shares.');
+      return;
+    }
+    if (pendingBackupVerification) {
+      setBackupStatus('Finish the current cold-local share verification first.');
+      return;
+    }
+    var record = registryStore.find('backups', id);
+    if (!record) {
+      setBackupStatus('That backup record is no longer available.');
+      return;
+    }
+    var messageId = sendVaultMessage('backup.verifyRequest', { backupId: id });
+    if (!messageId) {
+      setBackupStatus('The cold-local verification request could not be sent.');
+      return;
+    }
+    pendingBackupVerification = { id: messageId, backupId: id };
+    setBackupStatus('Type the physical shares into the sealed realm above. The record stays incomplete until reconstruction succeeds.');
+    renderRegistry();
+  }
+
+  function backupVerificationResultText(outcome) {
+    if (outcome === 'verified') {
+      return 'Threshold reconstruction succeeded in the sealed realm. This backup is now marked cold verified.';
+    }
+    if (outcome === 'invalid') {
+      return 'The share set did not reconstruct successfully. The backup remains incomplete.';
+    }
+    if (outcome === 'unsupported') {
+      return 'This backup method has no cold reconstruction workflow yet. The record remains incomplete.';
+    }
+    if (outcome === 'no-record') {
+      return 'The sealed realm could not find that backup record. Nothing was marked complete.';
+    }
+    return 'The vault was locked before verification completed. Nothing was marked complete.';
+  }
+
+  function handleBackupVerificationResult(message) {
+    if (!pendingBackupVerification || pendingBackupVerification.id !== message.id
+      || pendingBackupVerification.backupId !== message.payload.backupId) {
+      recordChannelAnomaly();
+      return;
+    }
+    var pending = pendingBackupVerification;
+    pendingBackupVerification = null;
+    if (message.payload.outcome === 'verified') {
+      try {
+        registryStore.recordColdBackupVerification(pending.backupId, message.payload.verifiedAt);
+        setVaultPersistenceState('unsaved');
+        setBackupStatus(backupVerificationResultText('verified') + ' Save the vault to make the public completion date durable.');
+      } catch (error) {
+        setBackupStatus('The cold verification result could not be applied to the public register. The vault remains unchanged.');
+      }
+    } else {
+      setBackupStatus(backupVerificationResultText(message.payload.outcome));
+    }
+    renderRegistry();
   }
 
   function handleRegistryListAction(event) {
@@ -3968,6 +4160,8 @@ __COLDBOX_CONCEALMENT__
       editRegistryRecord(kind, id);
     } else if (action === 'delete') {
       deleteRegistryRecord(kind, id);
+    } else if (action === 'verify' && kind === 'backup') {
+      requestBackupVerification(id);
     }
   }
 
@@ -4117,6 +4311,49 @@ __COLDBOX_CONCEALMENT__
       }
     });
     resetDeviceForm();
+  }
+
+  function handleBackupFormSubmit(event) {
+    event.preventDefault();
+    var id = backupId.value;
+    var clearFields = id ? [] : null;
+    var configText = backupGroupConfig.value.trim();
+    var groupConfigValue;
+    if (configText) {
+      try {
+        groupConfigValue = JSON.parse(configText);
+      } catch (error) {
+        setBackupStatus('Group configuration must be valid JSON or empty.');
+        return;
+      }
+    }
+    var record = {
+      subjectId: backupSubjectId.value.trim(),
+      method: backupMethod.value,
+      shareLabel: backupShareLabel.value.trim(),
+      threshold: Number(backupThreshold.value),
+      verifyEveryDays: Number(backupVerifyEvery.value),
+      hidden: backupHidden.checked
+    };
+    if (configText) {
+      record.groupConfig = groupConfigValue;
+    } else if (clearFields) {
+      clearFields.push('groupConfig');
+    }
+    if (!id) {
+      record.createdAt = new Date().toISOString();
+    }
+    addRegistryText(record, 'location', backupLocation, clearFields);
+    addRegistryText(record, 'custodian', backupCustodian, clearFields);
+    addRegistryText(record, 'notes', backupNotes, clearFields);
+    beginRegistryMutation(function () {
+      if (id) {
+        registryStore.updateBackup(id, record, { clearFields: clearFields });
+      } else {
+        registryStore.createBackup(record);
+      }
+    });
+    resetBackupForm();
   }
 
   function handleHiddenRevealResult(message) {
@@ -4279,6 +4516,7 @@ __COLDBOX_CONCEALMENT__
       return;
     }
     pendingRegistryMutation = null;
+    pendingBackupVerification = null;
     renderRegistry();
     // Persist public-name ownership only when a durable .cbx already exists.
     // A freshly-created or live-transferred vault that is later discarded
@@ -4355,6 +4593,7 @@ __COLDBOX_CONCEALMENT__
       registryStore = null;
       pendingRegistryMutation = null;
       pendingAddressVerification = null;
+      pendingBackupVerification = null;
       hiddenRegistryVisible = false;
       pendingHiddenReveal = null;
       resetWalletForm();
@@ -4617,6 +4856,10 @@ __COLDBOX_CONCEALMENT__
     }
     if (handshakeState === 'ready' && message.type === 'address.verifyResult') {
       handleAddressVerificationResult(message);
+      return;
+    }
+    if (handshakeState === 'ready' && message.type === 'backup.verifyResult') {
+      handleBackupVerificationResult(message);
       return;
     }
     if (handshakeState === 'ready' && message.type === 'concealment.revealed') {
@@ -5276,6 +5519,9 @@ __COLDBOX_CONCEALMENT__
   if (deviceForm) {
     deviceForm.addEventListener('submit', handleDeviceFormSubmit);
   }
+  if (backupForm) {
+    backupForm.addEventListener('submit', handleBackupFormSubmit);
+  }
   if (registryWalletCancel) {
     registryWalletCancel.addEventListener('click', resetWalletForm);
   }
@@ -5291,7 +5537,10 @@ __COLDBOX_CONCEALMENT__
   if (deviceCancel) {
     deviceCancel.addEventListener('click', resetDeviceForm);
   }
-  [registryWalletList, registryAccountList, registryAddressList, registryNoteList, deviceList].forEach(function (list) {
+  if (backupCancel) {
+    backupCancel.addEventListener('click', resetBackupForm);
+  }
+  [registryWalletList, registryAccountList, registryAddressList, registryNoteList, deviceList, backupList].forEach(function (list) {
     if (list) {
       list.addEventListener('click', handleRegistryListAction);
     }
@@ -5305,6 +5554,12 @@ __COLDBOX_CONCEALMENT__
   if (deviceSearch) {
     deviceSearch.addEventListener('input', function () {
       deviceSearchTerm = deviceSearch.value.trim().toLowerCase();
+      renderRegistry();
+    });
+  }
+  if (backupSearch) {
+    backupSearch.addEventListener('input', function () {
+      backupSearchTerm = backupSearch.value.trim().toLowerCase();
       renderRegistry();
     });
   }

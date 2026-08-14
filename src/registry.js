@@ -2,13 +2,16 @@
   'use strict';
 
   var protocol = global.__coldboxProtocol;
-  var COLLECTIONS = Object.freeze(['wallets', 'accounts', 'addresses', 'devices', 'notes']);
+  var COLLECTIONS = Object.freeze(['wallets', 'accounts', 'addresses', 'devices', 'notes', 'backups']);
   var REQUIRED_FIELDS = Object.freeze({
     wallets: Object.freeze(['id']),
     accounts: Object.freeze(['id', 'walletId']),
     addresses: Object.freeze(['id', 'accountId', 'index', 'address']),
     devices: Object.freeze(['id', 'vendor', 'model', 'firmware', 'status']),
-    notes: Object.freeze(['id', 'title', 'body', 'visibility'])
+    notes: Object.freeze(['id', 'title', 'body', 'visibility']),
+    backups: Object.freeze([
+      'id', 'subjectId', 'method', 'shareLabel', 'threshold', 'createdAt', 'verifyEveryDays'
+    ])
   });
   var ALLOWED_FIELDS = Object.freeze({
     wallets: Object.freeze([
@@ -31,6 +34,11 @@
     ]),
     notes: Object.freeze([
       'id', 'title', 'body', 'visibility', 'linkedIds', 'tags', 'hidden'
+    ]),
+    backups: Object.freeze([
+      'id', 'subjectId', 'method', 'shareLabel', 'threshold', 'groupConfig',
+      'location', 'custodian', 'createdAt', 'lastVerifiedAt', 'verifyEveryDays',
+      'notes', 'hidden'
     ])
   });
   var RELATION_PLACEHOLDER_ID = '550e8400-e29b-41d4-a716-446655440000';
@@ -159,6 +167,15 @@
     return validateClearFields(collection, options.clearFields);
   }
 
+  function rejectWarmBackupVerificationPatch(collection, value, clearFields) {
+    if (collection !== 'backups') {
+      return;
+    }
+    if (hasOwn(value || {}, 'lastVerifiedAt') || (clearFields || []).indexOf('lastVerifiedAt') !== -1) {
+      throw new Error('Backup verification is owned by the sealed realm.');
+    }
+  }
+
   function prepareRecord(collection, value, existing, clearFields) {
     var source = value || {};
     var fieldsToClear = clearFields || [];
@@ -276,6 +293,7 @@
     }
 
     function insert(collection, value) {
+      rejectWarmBackupVerificationPatch(collection, value, []);
       var record = prepareRecord(collection, value);
       if (findRecord(state, collection, record.id)) {
         throw new Error('The registry ID is already in use.');
@@ -298,7 +316,9 @@
       if (!existing) {
         throw new Error('The registry record was not found.');
       }
-      var record = prepareRecord(collection, patch, existing, clearFieldsForUpdate(collection, options));
+      var clearFields = clearFieldsForUpdate(collection, options);
+      rejectWarmBackupVerificationPatch(collection, patch, clearFields);
+      var record = prepareRecord(collection, patch, existing, clearFields);
       if (record.id !== id) {
         throw new Error('The registry ID cannot change.');
       }
@@ -319,6 +339,24 @@
         });
       }
       state[collection][state[collection].indexOf(existing)] = record;
+      return clone(record);
+    }
+
+    function recordColdBackupVerification(id, verifiedAt) {
+      var existing = findRecord(state, 'backups', id);
+      if (!existing || typeof verifiedAt !== 'string') {
+        throw new Error('The backup record was not found.');
+      }
+      var candidate = clone(existing);
+      candidate.lastVerifiedAt = verifiedAt;
+      var clean = validateCompartment({ backups: [candidate] });
+      var record = clean.backups[0];
+      REQUIRED_FIELDS.backups.forEach(function (field) {
+        if (!hasOwn(record, field)) {
+          throw new Error('The backup record is missing a required field.');
+        }
+      });
+      state.backups[state.backups.indexOf(existing)] = record;
       return clone(record);
     }
 
@@ -344,6 +382,10 @@
       createDevice: function (value) { return insert('devices', value); },
       updateDevice: function (id, value, options) { return update('devices', id, value, options); },
       deleteDevice: function (id) { return softDelete('devices', id); },
+      createBackup: function (value) { return insert('backups', value); },
+      updateBackup: function (id, value, options) { return update('backups', id, value, options); },
+      deleteBackup: function (id) { return softDelete('backups', id); },
+      recordColdBackupVerification: recordColdBackupVerification,
       createNote: function (value) { return insert('notes', value); },
       updateNote: function (id, value, options) { return update('notes', id, value, options); },
       deleteNote: function (id) { return softDelete('notes', id); },

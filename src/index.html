@@ -652,8 +652,70 @@ __COLDBOX_STYLES__
         </section>
 
         <section class="page" id="page-backup" data-page="backup" aria-labelledby="page-title-backup" hidden>
-          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-backup">Backup Lab</h1><p class="page-lede">Backup engineering will have a dedicated workspace with its own guidance and checks.</p></header>
-          <div class="empty-panel"><span class="panel-kicker">Coming in Phase 2</span><h2>Backup work deserves a deliberate flow.</h2><p>The navigation is ready for it; the backup formats and verification workflows are not yet implemented.</p></div>
+          <header class="page-header"><p class="eyebrow">Tools / Backup records</p><h1 id="page-title-backup">Backup Lab</h1><p class="page-lede">Track where each backup lives in public metadata, then verify the actual shares inside the sealed realm before treating the record as complete.</p></header>
+          <section class="backup-locked" id="backup-locked" aria-live="polite">
+            <div class="empty-panel"><span class="panel-kicker">Vault locked</span><h2>Unlock a vault to record backup locations.</h2><p>Backup labels, locations, custodians, and verification dates are stored in the public compartment. Share material never enters this form or the warm shell.</p></div>
+          </section>
+          <section class="backup-workspace" id="backup-workspace" hidden aria-live="polite">
+            <p class="registry-status" id="backup-status" role="status">Backup records ready.</p>
+            <div class="backup-grid">
+              <article class="info-card registry-card">
+                <span class="card-icon" aria-hidden="true">01</span>
+                <h2>Record a backup</h2>
+                <p class="registry-help">This record contains public location and schedule metadata only. The completion date can be written only after a cold-local reconstruction succeeds.</p>
+                <form id="backup-form" class="registry-form">
+                  <input id="backup-id" type="hidden">
+                  <label class="vault-label" for="backup-subject-id">Public subject UUID</label>
+                  <input id="backup-subject-id" class="registry-input" type="text" maxlength="36" autocomplete="off" spellcheck="false" placeholder="Seed or wallet record UUID" required>
+                  <label class="vault-label" for="backup-method">Method</label>
+                  <select id="backup-method" class="registry-input">
+                    <option value="slip39">SLIP-39</option>
+                    <option value="codex32">codex32</option>
+                    <option value="seedxor">Seed XOR</option>
+                    <option value="shamir39">Shamir39</option>
+                    <option value="sss">Raw SSS</option>
+                    <option value="seedqr">SeedQR</option>
+                    <option value="metal">Metal</option>
+                    <option value="paper">Paper</option>
+                    <option value="encrypted-file">Encrypted file</option>
+                  </select>
+                  <label class="vault-label" for="backup-share-label">Share set label</label>
+                  <input id="backup-share-label" class="registry-input" type="text" maxlength="256" autocomplete="off" required>
+                  <div class="backup-form-inline">
+                    <div>
+                      <label class="vault-label" for="backup-threshold">Shares required</label>
+                      <input id="backup-threshold" class="registry-input" type="number" min="1" max="2047" step="1" value="2" required>
+                    </div>
+                    <div>
+                      <label class="vault-label" for="backup-verify-every">Verify every (days)</label>
+                      <input id="backup-verify-every" class="registry-input" type="number" min="1" max="3650" step="1" value="365" required>
+                    </div>
+                  </div>
+                  <label class="vault-label" for="backup-group-config">Group configuration (optional JSON)</label>
+                  <textarea id="backup-group-config" class="registry-input" rows="3" maxlength="4096" spellcheck="false" autocomplete="off" placeholder='{"groups":[{"threshold":2,"count":3}]}'></textarea>
+                  <label class="vault-label" for="backup-location">Location</label>
+                  <input id="backup-location" class="registry-input" type="text" maxlength="256" autocomplete="off">
+                  <label class="vault-label" for="backup-custodian">Custodian</label>
+                  <input id="backup-custodian" class="registry-input" type="text" maxlength="256" autocomplete="off">
+                  <label class="vault-label" for="backup-notes">Notes</label>
+                  <textarea id="backup-notes" class="registry-input" rows="4" maxlength="10000" autocomplete="off"></textarea>
+                  <label class="registry-checkbox"><input id="backup-hidden" type="checkbox"> Hide this record</label>
+                  <div class="registry-form-actions">
+                    <button class="vault-button vault-button-primary" type="submit">Save backup record</button>
+                    <button class="vault-button" id="backup-cancel" type="button" hidden>Cancel edit</button>
+                  </div>
+                </form>
+              </article>
+              <article class="info-card registry-card registry-list-card">
+                <span class="card-icon" aria-hidden="true">02</span>
+                <h2>Backup register</h2>
+                <p class="registry-help">Unverified records stay visibly incomplete. “Verify shares” opens the cold-only reconstruction control in the sealed realm above.</p>
+                <label class="vault-label" for="backup-search">Search backup records</label>
+                <input id="backup-search" class="registry-input" type="search" maxlength="128" autocomplete="off" placeholder="e.g. home safe or slip39">
+                <div id="backup-list" class="registry-list"></div>
+              </article>
+            </div>
+          </section>
         </section>
 
         <section class="page" id="page-qr" data-page="qr" aria-labelledby="page-title-qr" hidden>

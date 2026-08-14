@@ -74,6 +74,24 @@
     'cold-verified-stale',
     'unverifiable'
   ]);
+  var BACKUP_METHOD_SET = makeSet([
+    'slip39',
+    'codex32',
+    'seedxor',
+    'shamir39',
+    'sss',
+    'seedqr',
+    'metal',
+    'paper',
+    'encrypted-file'
+  ]);
+  var BACKUP_VERIFY_OUTCOME_SET = makeSet([
+    'verified',
+    'invalid',
+    'unsupported',
+    'no-record',
+    'vault-locked'
+  ]);
   var KDF_ACTIVE = Object.freeze([
     'argon2id-standard',
     'argon2id-fast',
@@ -385,6 +403,21 @@
       status: 'device-status',
       notes: 'text:10000',
       hidden: 'boolean'
+    }),
+    backups: Object.freeze({
+      id: 'uuid',
+      subjectId: 'uuid',
+      method: 'backup-method',
+      shareLabel: 'text:256',
+      threshold: 'backup-threshold',
+      groupConfig: 'backup-group-config',
+      location: 'text:256',
+      custodian: 'text:256',
+      createdAt: 'iso',
+      lastVerifiedAt: 'iso',
+      verifyEveryDays: 'backup-verify-days',
+      notes: 'text:10000',
+      hidden: 'boolean'
     })
   });
 
@@ -402,7 +435,10 @@
     wallets: Object.freeze(['id']),
     accounts: Object.freeze(['id', 'walletId']),
     addresses: Object.freeze(['id', 'accountId', 'index', 'address']),
-    devices: Object.freeze(['id', 'vendor', 'model', 'firmware', 'status'])
+    devices: Object.freeze(['id', 'vendor', 'model', 'firmware', 'status']),
+    backups: Object.freeze([
+      'id', 'subjectId', 'method', 'shareLabel', 'threshold', 'createdAt', 'verifyEveryDays'
+    ])
   });
 
   function cleanIsoTimestamp(value) {
@@ -513,6 +549,62 @@
     return result;
   }
 
+  function cleanBackupGroupConfig(value) {
+    if (!isRecord(value)) {
+      return null;
+    }
+    var result = {};
+    var keys = Object.keys(value);
+    var allowed = makeSet(['threshold', 'count', 'groupThreshold', 'groups']);
+    if (keys.length === 0 || keys.length > 4) {
+      return null;
+    }
+    for (var index = 0; index < keys.length; index += 1) {
+      if (!hasOwn(allowed, keys[index])) {
+        return null;
+      }
+    }
+    if (value.threshold !== undefined) {
+      result.threshold = cleanInteger(value.threshold, 1, 2047);
+      if (result.threshold === null) {
+        return null;
+      }
+    }
+    if (value.count !== undefined) {
+      result.count = cleanInteger(value.count, 1, 2047);
+      if (result.count === null) {
+        return null;
+      }
+    }
+    if (value.groupThreshold !== undefined) {
+      result.groupThreshold = cleanInteger(value.groupThreshold, 1, 16);
+      if (result.groupThreshold === null) {
+        return null;
+      }
+    }
+    if (value.groups !== undefined) {
+      if (!Array.isArray(value.groups) || value.groups.length < 1 || value.groups.length > 16) {
+        return null;
+      }
+      result.groups = [];
+      for (var groupIndex = 0; groupIndex < value.groups.length; groupIndex += 1) {
+        var group = value.groups[groupIndex];
+        if (!isRecord(group) || Object.keys(group).some(function (key) {
+          return key !== 'threshold' && key !== 'count';
+        })) {
+          return null;
+        }
+        var groupThreshold = cleanInteger(group.threshold, 1, 16);
+        var groupCount = cleanInteger(group.count, 1, 16);
+        if (groupThreshold === null || groupCount === null || groupThreshold > groupCount) {
+          return null;
+        }
+        result.groups.push({ threshold: groupThreshold, count: groupCount });
+      }
+    }
+    return Object.keys(result).length > 0 ? result : null;
+  }
+
   function cleanRegistryField(value, rule) {
     if (rule === 'uuid') {
       return cleanUuid(value);
@@ -558,6 +650,18 @@
     }
     if (rule === 'iso') {
       return cleanIsoTimestamp(value);
+    }
+    if (rule === 'backup-method') {
+      return cleanEnum(value, BACKUP_METHOD_SET, 32);
+    }
+    if (rule === 'backup-threshold') {
+      return cleanInteger(value, 1, 2047);
+    }
+    if (rule === 'backup-verify-days') {
+      return cleanInteger(value, 1, 3650);
+    }
+    if (rule === 'backup-group-config') {
+      return cleanBackupGroupConfig(value);
     }
     if (rule === 'device-status') {
       return cleanEnum(value, DEVICE_STATUS_SET, 32);
@@ -911,6 +1015,36 @@
     return result;
   }
 
+  function cleanBackupVerifyRequest(value) {
+    if (!isRecord(value)) {
+      return null;
+    }
+    var backupId = cleanUuid(value.backupId);
+    return backupId === null ? null : { backupId: backupId };
+  }
+
+  function cleanBackupVerifyResult(value) {
+    if (!isRecord(value)) {
+      return null;
+    }
+    var backupId = cleanUuid(value.backupId);
+    var outcome = cleanEnum(value.outcome, BACKUP_VERIFY_OUTCOME_SET, 32);
+    if (backupId === null || outcome === null) {
+      return null;
+    }
+    var result = { backupId: backupId, outcome: outcome };
+    if (value.verifiedAt !== undefined) {
+      var verifiedAt = cleanIsoTimestamp(value.verifiedAt);
+      if (verifiedAt === null || outcome !== 'verified') {
+        return null;
+      }
+      result.verifiedAt = verifiedAt;
+    } else if (outcome === 'verified') {
+      return null;
+    }
+    return result;
+  }
+
   function cleanPublicDataRequest(value) {
     if (!isRecord(value)) {
       return null;
@@ -1055,6 +1189,7 @@
     'mode.set': cleanModeSet,
     'derive.request': cleanDeriveRequest,
     'address.verifyRequest': cleanAddressVerifyRequest,
+    'backup.verifyRequest': cleanBackupVerifyRequest,
     'publicData.request': cleanPublicDataRequest,
     'publicData.replace': cleanPublicDataReplace,
     'concealment.reveal': cleanStrictEmptyPayload,
@@ -1067,6 +1202,7 @@
     'vault.lockRequest': cleanStrictEmptyPayload,
     'derive.result': cleanDeriveResult,
     'address.verifyResult': cleanAddressVerifyResult,
+    'backup.verifyResult': cleanBackupVerifyResult,
     'publicData.updated': cleanVaultOpened,
     'concealment.revealed': cleanConcealmentRevealed,
     'secretData.updated': cleanSecretDataUpdated,

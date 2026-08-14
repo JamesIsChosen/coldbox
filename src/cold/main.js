@@ -287,6 +287,16 @@ __COLDBOX_QR_ENCODER__
   var slip39RecoveryInput = document.getElementById('cold-slip39-recovery-input');
   var slip39RecoverButton = document.getElementById('cold-slip39-recover');
   var slip39RecoveryStatus = document.getElementById('cold-slip39-recovery-status');
+  var backupVerificationPanel = document.getElementById('cold-backup-verification');
+  var backupVerificationLabel = document.getElementById('cold-backup-verification-label');
+  var backupVerificationMethod = document.getElementById('cold-backup-verification-method');
+  var backupVerificationThreshold = document.getElementById('cold-backup-verification-threshold');
+  var backupVerificationLanguage = document.getElementById('cold-backup-verification-language');
+  var backupVerificationPassphrase = document.getElementById('cold-backup-verification-passphrase');
+  var backupVerificationInput = document.getElementById('cold-backup-verification-input');
+  var backupVerificationRun = document.getElementById('cold-backup-verification-run');
+  var backupVerificationClear = document.getElementById('cold-backup-verification-clear');
+  var backupVerificationStatus = document.getElementById('cold-backup-verification-status');
   var entropySession = entropyLab ? entropyLab.createSession() : null;
   var seedForgeWordInputs = [];
   var shamir39CombineInputs = [];
@@ -354,6 +364,7 @@ __COLDBOX_QR_ENCODER__
   var vaultRecoverySharesRevealed = false;
   var vaultRecoveryRevealTimer = null;
   var pendingConcealmentRevealId = null;
+  var pendingBackupVerification = null;
   var secretNoteRevealTimers = [];
   // Off by default (P0.15). Keyfile bytes and name never leave this document -
   // no message type carries them, and they are never logged. Cleared on lock
@@ -2260,6 +2271,260 @@ __COLDBOX_QR_ENCODER__
       slip39CompatibilityAck.addEventListener('change', updateSlip39Controls);
     }
     updateSlip39Controls();
+  }
+
+  function setBackupVerificationStatus(state, text) {
+    if (!backupVerificationStatus) {
+      return;
+    }
+    backupVerificationStatus.setAttribute('data-state', state);
+    backupVerificationStatus.textContent = text;
+  }
+
+  function clearBackupVerificationInput() {
+    if (backupVerificationPassphrase) {
+      backupVerificationPassphrase.value = '';
+    }
+    if (backupVerificationInput) {
+      backupVerificationInput.value = '';
+    }
+  }
+
+  function clearBackupVerificationState() {
+    pendingBackupVerification = null;
+    clearBackupVerificationInput();
+    if (backupVerificationPanel) {
+      backupVerificationPanel.hidden = true;
+    }
+    if (backupVerificationLabel) {
+      backupVerificationLabel.textContent = 'No record selected.';
+    }
+    if (backupVerificationMethod) {
+      backupVerificationMethod.textContent = 'Not selected';
+    }
+    if (backupVerificationThreshold) {
+      backupVerificationThreshold.textContent = 'Not selected';
+    }
+    setBackupVerificationStatus('idle', 'No BackupRecord verification requested.');
+    updateBackupVerificationControls();
+  }
+
+  function updateBackupVerificationControls() {
+    var active = Boolean(
+      pendingBackupVerification
+      && vaultCryptoReady
+      && vaultUnlocked
+      && currentVaultSession
+      && typeof currentVaultSession.markBackupVerified === 'function'
+    );
+    var method = pendingBackupVerification && pendingBackupVerification.record
+      ? pendingBackupVerification.record.method
+      : '';
+    if (backupVerificationPanel) {
+      backupVerificationPanel.hidden = !pendingBackupVerification;
+      backupVerificationPanel.setAttribute('data-state', active ? 'ready' : 'locked');
+    }
+    [backupVerificationLanguage, backupVerificationInput, backupVerificationRun, backupVerificationClear]
+      .forEach(function (control) {
+        if (control) {
+          control.disabled = !active;
+        }
+      });
+    if (backupVerificationPassphrase) {
+      backupVerificationPassphrase.disabled = !active || method !== 'slip39';
+    }
+  }
+
+  function sendBackupVerificationResult(outcome, verifiedAt) {
+    if (!pendingBackupVerification) {
+      return;
+    }
+    var request = pendingBackupVerification;
+    pendingBackupVerification = null;
+    clearBackupVerificationInput();
+    var payload = { backupId: request.record.id, outcome: outcome };
+    if (verifiedAt) {
+      payload.verifiedAt = verifiedAt;
+    }
+    if (!postVaultMessage(request.requestId, 'backup.verifyResult', payload)) {
+      setBackupVerificationStatus('error', 'The verification result could not be sent. The backup was not confirmed by the warm register.');
+    }
+    updateBackupVerificationControls();
+  }
+
+  function handleBackupVerificationRequest(message) {
+    if (!vaultUnlocked || !currentVaultSession || typeof currentVaultSession.getPublicData !== 'function') {
+      postVaultMessage(message.id, 'backup.verifyResult', {
+        backupId: message.payload.backupId,
+        outcome: 'vault-locked'
+      });
+      return;
+    }
+    if (pendingBackupVerification) {
+      postVaultMessage(message.id, 'backup.verifyResult', {
+        backupId: message.payload.backupId,
+        outcome: 'invalid'
+      });
+      return;
+    }
+    var publicData = currentVaultSession.getPublicData() || {};
+    var record = findPublicRecord(publicData.backups, message.payload.backupId);
+    if (!record) {
+      postVaultMessage(message.id, 'backup.verifyResult', {
+        backupId: message.payload.backupId,
+        outcome: 'no-record'
+      });
+      return;
+    }
+    pendingBackupVerification = {
+      requestId: message.id,
+      record: {
+        id: record.id,
+        method: record.method,
+        shareLabel: record.shareLabel,
+        threshold: record.threshold,
+        groupConfig: record.groupConfig || null
+      }
+    };
+    if (backupVerificationLabel) {
+      backupVerificationLabel.textContent = record.shareLabel || record.id;
+    }
+    if (backupVerificationMethod) {
+      backupVerificationMethod.textContent = record.method;
+    }
+    if (backupVerificationThreshold) {
+      backupVerificationThreshold.textContent = String(record.threshold);
+    }
+    setBackupVerificationStatus('ready', 'Type the threshold subset from the physical copies, then reconstruct it here.');
+    updateBackupVerificationControls();
+    if (backupVerificationInput) {
+      backupVerificationInput.focus();
+    }
+  }
+
+  function runBackupVerification() {
+    if (!pendingBackupVerification || !vaultUnlocked || !currentVaultSession) {
+      setBackupVerificationStatus('error', 'A vault must remain unlocked while a backup is verified.');
+      return;
+    }
+    var record = pendingBackupVerification.record;
+    var lines = (backupVerificationInput ? backupVerificationInput.value : '')
+      .split(/\r?\n/)
+      .map(function (line) { return line.trim(); })
+      .filter(function (line) { return line.length > 0; });
+    var recoveredBytes = null;
+    var outcome = 'invalid';
+    try {
+      if (lines.length === 0 || lines.length > 32) {
+        throw new Error('Enter a bounded set of complete shares from the physical copies.');
+      }
+      var language = backupVerificationLanguage ? backupVerificationLanguage.value : 'english';
+      if (record.method === 'slip39') {
+        var slip39Records = lines.map(function (line) { return slip39.decode(line); });
+        var slip39Record = slip39Records[0];
+        var configuredGroups = record.groupConfig && Array.isArray(record.groupConfig.groups)
+          ? record.groupConfig.groups
+          : null;
+        if (!configuredGroups
+          && (slip39Record.groupThreshold !== 1
+            || slip39Record.groupCount !== 1
+            || slip39Record.memberThreshold !== record.threshold
+            || lines.length !== record.threshold)) {
+          throw new Error('The SLIP-39 threshold does not match the BackupRecord.');
+        }
+        if (configuredGroups) {
+          if (slip39Record.groupCount !== configuredGroups.length
+            || (record.groupConfig.groupThreshold !== undefined
+              && slip39Record.groupThreshold !== record.groupConfig.groupThreshold)) {
+            throw new Error('The SLIP-39 group configuration does not match the BackupRecord.');
+          }
+          slip39Records.forEach(function (decoded) {
+            var configuredGroup = configuredGroups[decoded.groupIndex];
+            if (!configuredGroup || configuredGroup.threshold !== decoded.memberThreshold) {
+              throw new Error('The SLIP-39 member threshold does not match the BackupRecord.');
+            }
+          });
+          if (configuredGroups.length === 1
+            && (slip39Record.groupThreshold !== 1
+              || slip39Record.memberThreshold !== record.threshold
+              || lines.length !== record.threshold)) {
+            throw new Error('The SLIP-39 threshold does not match the BackupRecord.');
+          }
+        }
+        recoveredBytes = slip39.recover(
+          lines,
+          backupVerificationPassphrase ? backupVerificationPassphrase.value : ''
+        );
+      } else if (record.method === 'codex32') {
+        var codexRecovered = codex32.recover(lines);
+        if (codexRecovered.threshold !== record.threshold) {
+          throw new Error('The codex32 threshold does not match the BackupRecord.');
+        }
+        recoveredBytes = new Uint8Array(codexRecovered.bytes);
+        zeroBytes(codexRecovered.bytes);
+      } else if (record.method === 'seedxor') {
+        if (lines.length !== record.threshold) {
+          throw new Error('The Seed XOR part count does not match the BackupRecord.');
+        }
+        var xorRecovered = seedXor.combine(lines, { language: language });
+        recoveredBytes = new Uint8Array(xorRecovered.entropy);
+        zeroBytes(xorRecovered.entropy);
+      } else if (record.method === 'shamir39') {
+        var shamirRecord = shamir.shamir39.parse(lines[0], { language: language });
+        if (shamirRecord.threshold !== record.threshold) {
+          throw new Error('The Shamir39 threshold does not match the BackupRecord.');
+        }
+        var shamirRecovered = shamir.shamir39.combine(lines, { language: language });
+        recoveredBytes = new Uint8Array(seedForge.mnemonicToEntropy(shamirRecovered.mnemonic, language));
+      } else if (record.method === 'sss') {
+        var rawRecovered = shamir.raw.combine(lines, { threshold: record.threshold });
+        if (!rawRecovered || typeof rawRecovered.hex !== 'string' || rawRecovered.hex.length === 0) {
+          throw new Error('The raw share result was empty.');
+        }
+      } else {
+        outcome = 'unsupported';
+      }
+      if (outcome !== 'unsupported') {
+        var verifiedAt = new Date().toISOString();
+        currentVaultSession.markBackupVerified(record.id, verifiedAt);
+        setBackupVerificationStatus('valid', 'Reconstruction succeeded. The public record is now cold verified; save the vault to make the timestamp durable.');
+        sendBackupVerificationResult('verified', verifiedAt);
+      } else {
+        setBackupVerificationStatus('error', 'This backup method has no reconstruction workflow in this release. The record remains incomplete.');
+        sendBackupVerificationResult('unsupported');
+      }
+    } catch (error) {
+      setBackupVerificationStatus('error', 'Reconstruction failed closed. The record remains incomplete.');
+      sendBackupVerificationResult(outcome);
+    } finally {
+      zeroBytes(recoveredBytes);
+      lines.length = 0;
+      clearBackupVerificationInput();
+      updateBackupVerificationControls();
+    }
+  }
+
+  function wireBackupVerification() {
+    if (backupVerificationLanguage && seedForge && Array.isArray(seedForge.languages)) {
+      backupVerificationLanguage.textContent = '';
+      seedForge.languages.forEach(function (language) {
+        var option = document.createElement('option');
+        option.value = language.id;
+        option.textContent = language.label;
+        backupVerificationLanguage.appendChild(option);
+      });
+      backupVerificationLanguage.value = 'english';
+    }
+    if (backupVerificationRun) {
+      backupVerificationRun.addEventListener('click', runBackupVerification);
+    }
+    if (backupVerificationClear) {
+      backupVerificationClear.addEventListener('click', function () {
+        clearBackupVerificationInput();
+        setBackupVerificationStatus('ready', 'Verification input cleared. Type the physical copies again when ready.');
+      });
+    }
+    updateBackupVerificationControls();
   }
 
   function setFingerprintOutput(output, value) {
@@ -4511,6 +4776,7 @@ __COLDBOX_QR_ENCODER__
     }
     updateVaultPassphraseHealth();
     updateVaultRecoveryControls();
+    updateBackupVerificationControls();
   }
 
   function zeroKeyfile() {
@@ -4702,6 +4968,7 @@ __COLDBOX_QR_ENCODER__
     clearSeedForgeSession();
     clearSeedXorSession();
     clearShamirSession();
+    clearBackupVerificationState();
     clearVerificationSession();
     clearQrArtifact();
     clearCodex32State();
@@ -5416,6 +5683,10 @@ __COLDBOX_QR_ENCODER__
       handleAddressVerifyRequest(message);
       return;
     }
+    if (message.type === 'backup.verifyRequest') {
+      handleBackupVerificationRequest(message);
+      return;
+    }
     if (message.type === 'concealment.reveal') {
       requestHiddenRecordReveal(message.id);
       return;
@@ -6028,6 +6299,7 @@ __COLDBOX_QR_ENCODER__
   wireCodex32();
   wireShamir();
   wireSlip39();
+  wireBackupVerification();
   wireQrStudio();
   wireEntropyLab();
   wireVerification();

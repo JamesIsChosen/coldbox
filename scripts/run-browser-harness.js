@@ -3663,6 +3663,62 @@ async function verifySlip39(browser, engine) {
   }
 }
 
+async function verifyBackupRecordVerification(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    const coldFrame = await getColdFrame(page, engine);
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    await createPreparedVault(page, coldFrame, 'backup record browser phrase', 'Backup Records Browser');
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+
+    await page.locator('#nav-rail a[data-route="backup"]').click();
+    await page.locator('#page-backup:not([hidden])').waitFor({ state: 'visible' });
+    await page.locator('#backup-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+
+    const mnemonic = [
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
+    ].join(' ');
+    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(mnemonic);
+    await coldFrame.locator('#cold-seed-forge-validate').click();
+    await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-slip39-seed-source').selectOption('validated');
+    await coldFrame.locator('#cold-slip39-compatibility-ack').check();
+    await coldFrame.locator('#cold-slip39-generate').click();
+    await coldFrame.locator('#cold-slip39-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    await coldFrame.locator('#cold-slip39-reveal').click();
+    const shares = (await coldFrame.locator('#cold-slip39-output').inputValue()).trim().split(/\r?\n/);
+    assert.equal(shares.length, 3, `${engine}: BackupRecord verification fixture must have three SLIP-39 shares`);
+
+    await page.locator('#backup-subject-id').fill('550e8400-e29b-41d4-a716-446655440001');
+    await page.locator('#backup-share-label').fill('Browser SLIP-39 record');
+    await page.locator('#backup-threshold').fill('2');
+    await page.locator('#backup-verify-every').fill('365');
+    await page.locator('#backup-location').fill('Browser fixture safe');
+    await page.locator('#backup-form button[type="submit"]').click();
+    await page.locator('#backup-status').filter({ hasText: /Public registry change written/ }).waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await page.locator('#backup-list .registry-record').count(), 1, `${engine}: BackupRecord did not render`);
+    assert.match(await page.locator('#backup-list').textContent(), /Not verified/);
+
+    await page.locator('#backup-list [data-registry-action="verify"]').click();
+    await coldFrame.locator('#cold-backup-verification:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-backup-verification-input').fill([shares[0], shares[2]].join('\n'));
+    await coldFrame.locator('#cold-backup-verification-run').click();
+    await page.locator('#backup-status').filter({ hasText: /marked cold verified/ }).waitFor({ state: 'visible', timeout: 10000 });
+    assert.match(await page.locator('#backup-list').textContent(), /Cold verified/);
+    assert.equal((await page.locator('html').evaluate((element) => element.outerHTML)).includes(shares[0]), false, `${engine}: BackupRecord verification shares must never enter the warm DOM`);
+    assert.equal(await coldFrame.locator('#cold-backup-verification-input').inputValue(), '', `${engine}: BackupRecord verification input must clear after reconstruction`);
+
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    console.log(`${engine}: public BackupRecord creation, cold-only SLIP-39 verification, warm isolation, and teardown passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyVerificationWorkflows(browser, engine) {
   const { page } = await openPage(browser, buildPath);
   try {
@@ -4111,6 +4167,7 @@ async function run() {
       await verifyCodex32(browser, engine);
       await verifyShamirBackups(browser, engine);
       await verifySlip39(browser, engine);
+      await verifyBackupRecordVerification(browser, engine);
       await verifyVerificationWorkflows(browser, engine);
       await verifyQrStudio(browser, engine);
       await verifyUnlockedRuntimeHealthLockdown(browser, engine);
