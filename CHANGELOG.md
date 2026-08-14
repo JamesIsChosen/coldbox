@@ -24,6 +24,8 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 - Added deterministic health-engine tests, Chromium/Firefox `file://` coverage,
   the [Backup Health guide](docs/03-guides/backup-health.md), and
   [ADR-0042](docs/05-development/adr/0042-conservative-backup-health.md).
+- Hardened health evaluation so future cold timestamps and due-date arithmetic
+  outside the JavaScript Date range fail closed as needs-review metadata.
 
 ### Added - P2.6 BackupRecords and verify-your-shares (2026-08-13)
 

@@ -42,7 +42,8 @@ incomplete until their own verification workflows exist.
 
 Health status is deterministic at a supplied time: a valid timestamp plus
 `verifyEveryDays` is **current** before its due instant and **overdue** at or
-after it. Invalid required metadata is **needs review**, not current. The
+after it. A future verification timestamp, invalid required metadata, or a due
+date outside the JavaScript Date range is **needs review**, not current. The
 placement assessment reports duplicate location/custodian labels and whether
 locations are recorded across a subject; it deliberately has no percentage,
 survivability score, or `thresholdReachable` claim. Such a claim would require
