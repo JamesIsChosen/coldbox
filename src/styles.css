@@ -1335,10 +1335,21 @@ samp {
 
 .registry-forms,
 .device-grid,
-.registry-lists {
+.registry-lists,
+.backup-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1.25rem;
+}
+
+.backup-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.backup-form-inline {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
 }
 
 .device-grid {
@@ -2083,7 +2094,12 @@ samp {
 
   .registry-forms,
   .device-grid,
-  .registry-lists {
+  .registry-lists,
+  .backup-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .backup-form-inline {
     grid-template-columns: 1fr;
   }
 }

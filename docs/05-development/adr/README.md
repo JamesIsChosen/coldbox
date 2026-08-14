@@ -48,6 +48,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0038](0038-shamir39-and-raw-sss-cold-only.md) | Shamir39 and raw SSS are cold-only inline adaptations | Accepted |
 | [0039](0039-seed-xor-cold-only.md) | Seed XOR operates on BIP-39 entropy and stays cold-only | Accepted |
 | [0040](0040-vault-recovery-share-record.md) | Vault recovery-share method-3 record shape | Accepted |
+| [0041](0041-backup-record-verification-boundary.md) | BackupRecord verification metadata is public, but completion authority stays cold-owned | Accepted |
 
 ## When to write one
 

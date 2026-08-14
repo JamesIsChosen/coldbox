@@ -12,6 +12,31 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
+### Added - P2.6 BackupRecords and verify-your-shares (2026-08-13)
+
+- Added public BackupRecord metadata with method, threshold, location,
+  custodian, schedule, and cold-owned completion timestamps. Warm edits cannot
+  manufacture or clear verification evidence.
+- Added cold-only verification for SLIP-39, codex32, Seed XOR, Shamir39, and raw
+  SSS. The warm shell receives only a closed result code and, on success, a
+  public timestamp; share words and reconstructed secrets never cross the
+  realm boundary. SeedQR, metal, paper, and encrypted-file records remain
+  explicitly unsupported until their workflows exist.
+- Added Chromium and Firefox `file://` coverage for public record creation,
+  cold reconstruction, warm-shell isolation, and teardown. See [ADR-0041](docs/05-development/adr/0041-backup-record-verification-boundary.md).
+- Hardened the public projection against supported share text in every
+  BackupRecord text carrier, including both standard SLIP-39 lengths, and
+  rejected impossible `groupThreshold > groups.length` metadata. Added
+  independent-vector regression coverage for the boundary.
+- Mechanically verified the public SLIP-39 detector against the canonical
+  1,024-word list and added the official boundary vector that exposed the prior
+  omission; the share remains rejected from every public text carrier in both
+  projection directions.
+- Bound cold BackupRecord completion to the uniquely resolved cold subject:
+  every supported reconstruction candidate must match the subject's stored
+  secret before `lastVerifiedAt` can be written, and unresolved or wrong-subject
+  records fail closed.
+
 ### Added - P2.5 vault recovery shares (2026-08-13)
 
 - Added an offline cold-realm recovery route that generates configured SLIP-39

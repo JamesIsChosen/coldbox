@@ -91,6 +91,7 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 | `concealment.reveal` | `{}` | Ask the cold realm to show its re-authentication control; no phrase crosses the channel |
 | `ui.navigate` | `{ section }` | |
 | `address.verifyRequest` | `{ addressId, accountRef, index, candidate }` | `candidate` is a **validated public address string**, which the existing projection already permits. Asks the cold realm to re-derive and compare |
+| `backup.verifyRequest` | `{ backupId }` | References a public BackupRecord. Share words and reconstructed bytes are entered and processed only inside the cold realm |
 
 ### Cold → Warm
 
@@ -107,14 +108,17 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 | `vault.dirty` | `{ dirty: true }` | Signals that cold-local recovery-share settings changed; carries no share material or secret plaintext |
 | `status` | `{ locked, mode, warnings[] }` | |
 | `address.verifyResult` | `{ addressId, outcome, divergenceIndex, verificationState, verifiedAt, xpubFingerprint }` | `outcome` and `verificationState` are **enum codes, never prose** — see below. `divergenceIndex` is an integer |
+| `backup.verifyResult` | `{ backupId, outcome, verifiedAt? }` | `outcome` is one of `verified`, `invalid`, `unsupported`, `no-record`, or `vault-locked`; only `verified` carries a canonical public timestamp |
 | `error` | `{ code, message }` | Never includes secret material in the message |
 | `panic.hide` | `{ }` | Cold realm requests the same concealment after `Esc Esc` inside the frame |
 
 ### Schema invariants — enforced by test
 
-1. No Cold → Warm type carries a mnemonic, private key, extended private key, passphrase, or secret-compartment plaintext.
+1. No Cold → Warm type carries a mnemonic, private key, extended private key, passphrase, share words, reconstructed bytes, or secret-compartment plaintext.
 2. Payloads are validated against the schema on receipt. Extra fields are stripped, not passed through.
-3. Adding a message type requires review. This is written in [CONTRIBUTING.md](../../CONTRIBUTING.md) because it's the one change that could quietly dismantle the model.
+3. Backup verification returns only a closed outcome code and, on success, a canonical timestamp. It never returns a candidate secret or an explanation string.
+4. Public BackupRecord text fields use the share-material guard defined in [ADR-0041](../05-development/adr/0041-backup-record-verification-boundary.md); supported SLIP-39, codex32, Shamir39, raw SSS, and mnemonic-shaped share text is rejected before either projection is accepted.
+5. Adding a message type requires review. This is written in [CONTRIBUTING.md](../../CONTRIBUTING.md) because it's the one change that could quietly dismantle the model.
 
 The `publicData.request.collections` allowlist is the public projection of [data-model.md](data-model.md): `seeds`, `wallets`, `accounts`, `addresses`, `notes`, `devices`, `transactions`, `lots`, `disposals`, `basisAllocations`, `prices`, `backups`, `contacts`, and `auditLog`. `settings` is not a vault collection and is rejected rather than silently accepted.
 
@@ -122,13 +126,19 @@ The `publicData.request.collections` allowlist is the public projection of [data
 
 `address.verifyResult` reports `outcome` as one of a closed set — `match`, `mismatch`, `unrecognised-format`, `checksum-invalid`, `no-record`, `different-account`, `vault-locked` — and never a human-readable explanation. The warm shell maps the code to display text on its own side.
 
+`backup.verifyResult` follows the same rule. `verified` means the selected cold reconstruction workflow accepted the supplied threshold set **and** its reconstructed candidate matched the cold-owned subject resolved from the record's `subjectId`; `invalid`, `unsupported`, `no-record`, and `vault-locked` leave the BackupRecord incomplete. The timestamp is generated inside the cold realm and is the only completion evidence returned to the warm register.
+
 This is not a style preference. The schema invariant below permits only structurally typed public values precisely because **arbitrary prose cannot be distinguished from a secret by inspection**. A `reason` string on a Cold → Warm message would be exactly the free-form text field the projection exists to exclude, and it would be an unusually attractive one, since it originates in the realm that holds the secrets. The same reasoning already governs `error`, whose `message` is constrained for the same purpose.
 
 `different-account` deserves its own code rather than being folded into `match`: an address that matches a record in a *different* account than expected is a real and confusing situation, and collapsing it into a plain match would hide it.
 
 The public projection deliberately contains no unbounded free-form text fields. Registry records use a closed, collection-specific schema: bounded labels, paths, notes, tags, and status metadata are accepted only after secret-shaped content and unknown text fields are rejected; UUIDs, fingerprints, extended public keys, addresses, numbers, booleans, and balance timestamps use typed validators. The new Vault ID uses the existing UUID-safe `publicCompartment.id` field. **Vault names do not cross cold → warm**: they are explicit public warm-shell/filename metadata, because arbitrary names could contain a passphrase or other secret if a user typed one by mistake. Recognizable extended-private-key forms, WIF forms, mnemonic-shaped phrases, and raw 32-byte private-key hex are also rejected. This is the only honest way to enforce the literal no-passphrase/no-secret-plaintext invariant; arbitrary prose cannot be distinguished from a secret by regex. All non-vault messages have a 4 MiB aggregate sanitized-payload limit, and encrypted `vault.open`/`vault.bytes` payloads have a 64 MiB byte limit. `publicData.replace` is the only write path: it is accepted on the private channel only while a cold session is unlocked, and the cold session rejects a Vault ID change before re-encrypting the public plaintext.
 
+BackupRecord labels, locations, custodians, and notes are still public metadata, not share storage. Their shared validator additionally rejects recognizable supported share encodings, including both standard SLIP-39 lengths; this is a conservative boundary filter, not cold checksum validation. `groupConfig` is also schema-validated as realizable: an explicit group threshold cannot exceed the number of configured groups.
+
 `publicData.replace` remains a warm-origin write even while the vault is unlocked. Its address provenance fields are reconciled against the cold session's existing authenticated projection: a warm replacement may carry forward an existing `cold-verified` or `cold-verified-stale` record, and may record the xpub-change staleness transition, but it cannot elevate an unverified, unverifiable, or stale record to `cold-verified`, or rewrite the timestamp/xpub evidence. Only a future cold-owned re-derivation transition may create a new `cold-verified` state.
+
+BackupRecord completion follows the same ownership rule. A warm registry mutation may create or edit public metadata, but it cannot set or clear `lastVerifiedAt`. The cold session resolves `subjectId` to exactly one cold secret seed reference (directly, or through a public wallet's `seedId`) and refuses verification when that reference or its stored secret is unavailable. It compares the reconstructed candidate to that subject inside the cold realm before writing the timestamp. The session preserves an authenticated completion timestamp when the record's subject, method, threshold, and group configuration are unchanged; changing those identity fields clears the timestamp. A successful `backup.verifyRequest` therefore proves both supported reconstruction and subject correspondence, then returns only the result code and timestamp.
 
 ---
 

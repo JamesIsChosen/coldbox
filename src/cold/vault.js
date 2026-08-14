@@ -1139,6 +1139,122 @@
       return null;
     }
 
+    function byteSequencesEqual(left, right) {
+      if (!isBytes(left) || !isBytes(right)) {
+        return false;
+      }
+      var leftBytes = left instanceof Uint8Array ? left : new Uint8Array(left);
+      var rightBytes = right instanceof Uint8Array ? right : new Uint8Array(right);
+      var difference = leftBytes.length ^ rightBytes.length;
+      var length = Math.max(leftBytes.length, rightBytes.length);
+      for (var index = 0; index < length; index += 1) {
+        difference |= (leftBytes[index] || 0) ^ (rightBytes[index] || 0);
+      }
+      return difference === 0;
+    }
+
+    function backupSubjectSeed(backup) {
+      if (!isRecord(backup) || typeof backup.subjectId !== 'string'
+        || !state.secretData || !Array.isArray(state.secretData.seeds)) {
+        return null;
+      }
+      var references = [];
+      function addReference(value) {
+        if (typeof value === 'string' && references.indexOf(value) === -1) {
+          references.push(value);
+        }
+      }
+      if (state.secretData.seeds.some(function (seed) {
+        return isRecord(seed) && seed.id === backup.subjectId;
+      })) {
+        addReference(backup.subjectId);
+      }
+      [
+        { records: state.publicData && state.publicData.seeds, kind: 'seed' },
+        { records: state.publicData && state.publicData.wallets, kind: 'wallet' }
+      ].forEach(function (source) {
+        var records = source.records;
+        if (!Array.isArray(records)) {
+          return;
+        }
+        records.forEach(function (record) {
+          if (!isRecord(record) || record.id !== backup.subjectId) {
+            return;
+          }
+          if (typeof record.seedId === 'string') {
+            addReference(record.seedId);
+          } else if (source.kind === 'seed') {
+            addReference(record.id);
+          }
+        });
+      });
+      if (references.length !== 1) {
+        return null;
+      }
+      var matches = state.secretData.seeds.filter(function (seed) {
+        return isRecord(seed) && seed.id === references[0];
+      });
+      return matches.length === 1 ? matches[0] : null;
+    }
+
+    function backupCandidateMatchesSubject(backup, method, candidateBytes) {
+      if (!isRecord(backup) || backup.method !== method || !isBytes(candidateBytes)
+        || candidateBytes.length === 0 || state.mode !== 'offline') {
+        return false;
+      }
+      var seedRecord = backupSubjectSeed(backup);
+      var storedSecret = seedRecord && seedRecord.storedSecret;
+      var seedForge = global.__coldboxSeedForge;
+      if (!isRecord(storedSecret) || typeof storedSecret.mnemonic !== 'string'
+        || (storedSecret.passphrase !== undefined
+          && typeof storedSecret.passphrase !== 'string')
+        || !seedForge || !Array.isArray(seedForge.languages)
+        || typeof seedForge.mnemonicToEntropy !== 'function'
+        || typeof seedForge.mnemonicToSeed !== 'function') {
+        return false;
+      }
+      var entropyMethods = ['slip39', 'seedxor', 'shamir39', 'sss'];
+      var masterSeedMethods = ['codex32', 'sss'];
+      var compareEntropy = entropyMethods.indexOf(method) !== -1;
+      var compareMasterSeed = masterSeedMethods.indexOf(method) !== -1;
+      if (!compareEntropy && !compareMasterSeed) {
+        return false;
+      }
+      var passphrase = storedSecret.passphrase === undefined ? '' : storedSecret.passphrase;
+      var matched = false;
+      for (var languageIndex = 0;
+        languageIndex < seedForge.languages.length && !matched;
+        languageIndex += 1) {
+        var language = seedForge.languages[languageIndex];
+        var expected = null;
+        try {
+          if (compareEntropy) {
+            expected = new Uint8Array(seedForge.mnemonicToEntropy(
+              storedSecret.mnemonic,
+              language.id
+            ));
+            matched = byteSequencesEqual(candidateBytes, expected);
+          }
+          if (!matched && compareMasterSeed) {
+            zeroBytes(expected);
+            expected = new Uint8Array(seedForge.mnemonicToSeed(
+              storedSecret.mnemonic,
+              passphrase,
+              language.id
+            ));
+            matched = byteSequencesEqual(candidateBytes, expected);
+          }
+        } catch (error) {
+          // A subject with no valid cold mnemonic representation is unresolved.
+          matched = false;
+        } finally {
+          zeroBytes(expected);
+        }
+      }
+      passphrase = '';
+      return matched;
+    }
+
     function resetVerification(address, stateName) {
       address.verificationState = stateName === 'unverifiable' ? 'unverifiable' : 'unverified';
       delete address.lastColdVerifiedAt;
@@ -1146,85 +1262,107 @@
     }
 
     function preserveColdVerificationAuthority(current, next) {
-      if (!isRecord(next) || !Array.isArray(next.addresses)) {
+      if (!isRecord(next)) {
         return;
       }
-      var currentAddresses = current && current.addresses;
-      next.addresses.forEach(function (address) {
-        if (!isRecord(address)) {
-          return;
-        }
-        var previous = findAddress(currentAddresses, address.id);
-        var requestedState = address.verificationState || 'unverified';
-        var previousState = previous && previous.verificationState
-          ? previous.verificationState
-          : 'unverified';
-        var samePublicIdentity = previous
-          && previous.address === address.address
-          && previous.accountId === address.accountId
-          && previous.index === address.index;
-
-        // publicData.replace is a warm-origin mutation. It may carry forward
-        // an authenticated state, or record the derived stale transition, but
-        // it can never create either verification claim from public input.
-        if (!previous || !samePublicIdentity) {
-          if (requestedState === 'cold-verified' || requestedState === 'cold-verified-stale') {
-            resetVerification(address);
+      if (Array.isArray(next.addresses)) {
+        var currentAddresses = current && current.addresses;
+        next.addresses.forEach(function (address) {
+          if (!isRecord(address)) {
+            return;
           }
-          return;
-        }
-        var previousAccount = findRecord(current && current.accounts, previous.accountId);
-        var nextAccount = findRecord(next.accounts, address.accountId);
-        var verifiedAgainstXpub = previous.verifiedAgainstXpub;
-        var xpubEvidenceChanged = previousState === 'cold-verified'
-          && (typeof verifiedAgainstXpub !== 'string'
-            || !previousAccount
-            || !nextAccount
-            || previousAccount.xpub !== verifiedAgainstXpub
-            || nextAccount.xpub !== verifiedAgainstXpub);
-        if (xpubEvidenceChanged) {
-          address.verificationState = 'cold-verified-stale';
-          address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
-          address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
-          return;
-        }
-        if (previousState === 'cold-verified' && requestedState === 'cold-verified-stale') {
-          address.verificationState = 'cold-verified';
-          address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
-          address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
-          return;
-        }
-        if (requestedState === 'cold-verified' && previousState !== 'cold-verified') {
-          if (previousState === 'cold-verified-stale') {
+          var previous = findAddress(currentAddresses, address.id);
+          var requestedState = address.verificationState || 'unverified';
+          var previousState = previous && previous.verificationState
+            ? previous.verificationState
+            : 'unverified';
+          var samePublicIdentity = previous
+            && previous.address === address.address
+            && previous.accountId === address.accountId
+            && previous.index === address.index;
+
+          // publicData.replace is a warm-origin mutation. It may carry forward
+          // an authenticated state, or record the derived stale transition, but
+          // it can never create either verification claim from public input.
+          if (!previous || !samePublicIdentity) {
+            if (requestedState === 'cold-verified' || requestedState === 'cold-verified-stale') {
+              resetVerification(address);
+            }
+            return;
+          }
+          var previousAccount = findRecord(current && current.accounts, previous.accountId);
+          var nextAccount = findRecord(next.accounts, address.accountId);
+          var verifiedAgainstXpub = previous.verifiedAgainstXpub;
+          var xpubEvidenceChanged = previousState === 'cold-verified'
+            && (typeof verifiedAgainstXpub !== 'string'
+              || !previousAccount
+              || !nextAccount
+              || previousAccount.xpub !== verifiedAgainstXpub
+              || nextAccount.xpub !== verifiedAgainstXpub);
+          if (xpubEvidenceChanged) {
             address.verificationState = 'cold-verified-stale';
             address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
             address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
-          } else {
-            resetVerification(address, previousState);
+            return;
           }
+          if (previousState === 'cold-verified' && requestedState === 'cold-verified-stale') {
+            address.verificationState = 'cold-verified';
+            address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
+            address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
+            return;
+          }
+          if (requestedState === 'cold-verified' && previousState !== 'cold-verified') {
+            if (previousState === 'cold-verified-stale') {
+              address.verificationState = 'cold-verified-stale';
+              address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
+              address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
+            } else {
+              resetVerification(address, previousState);
+            }
+            return;
+          }
+          if (requestedState === 'cold-verified-stale' && previousState !== 'cold-verified'
+            && previousState !== 'cold-verified-stale') {
+            resetVerification(address, previousState);
+            return;
+          }
+          if ((previousState === 'cold-verified' || previousState === 'cold-verified-stale')
+            && requestedState !== 'cold-verified'
+            && requestedState !== 'cold-verified-stale') {
+            address.verificationState = previousState;
+            address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
+            address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
+            return;
+          }
+          if (previousState === 'cold-verified' && requestedState === 'cold-verified') {
+            address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
+            address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
+          } else if (previousState === 'cold-verified-stale'
+            && requestedState === 'cold-verified-stale') {
+            address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
+            address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
+          }
+        });
+      }
+      if (!Array.isArray(next.backups)) {
+        return;
+      }
+      var currentBackups = current && current.backups;
+      next.backups.forEach(function (backup) {
+        if (!isRecord(backup)) {
           return;
         }
-        if (requestedState === 'cold-verified-stale' && previousState !== 'cold-verified'
-          && previousState !== 'cold-verified-stale') {
-          resetVerification(address, previousState);
+        var previous = findRecord(currentBackups, backup.id);
+        var sameBackupIdentity = previous
+          && previous.subjectId === backup.subjectId
+          && previous.method === backup.method
+          && previous.threshold === backup.threshold
+          && JSON.stringify(previous.groupConfig || null) === JSON.stringify(backup.groupConfig || null);
+        if (!sameBackupIdentity || !previous.lastVerifiedAt) {
+          delete backup.lastVerifiedAt;
           return;
         }
-        if ((previousState === 'cold-verified' || previousState === 'cold-verified-stale')
-          && requestedState !== 'cold-verified'
-          && requestedState !== 'cold-verified-stale') {
-          address.verificationState = previousState;
-          address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
-          address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
-          return;
-        }
-        if (previousState === 'cold-verified' && requestedState === 'cold-verified') {
-          address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
-          address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
-        } else if (previousState === 'cold-verified-stale'
-          && requestedState === 'cold-verified-stale') {
-          address.lastColdVerifiedAt = previous.lastColdVerifiedAt;
-          address.verifiedAgainstXpub = previous.verifiedAgainstXpub;
-        }
+        backup.lastVerifiedAt = previous.lastVerifiedAt;
       });
     }
 
@@ -1247,6 +1385,32 @@
       }
       var nextPublicData = migratePublicData(clonePublicData(publicData));
       preserveColdVerificationAuthority(state.publicData, nextPublicData);
+      var nextPublicPlain = paddedJson(nextPublicData);
+      zeroBytes(state.publicPlain);
+      state.publicData = nextPublicData;
+      state.publicPlain = nextPublicPlain;
+      return getPublicData();
+    }
+
+    function markBackupVerified(backupId, method, candidateBytes, verifiedAt) {
+      if (closed || saving || operationInFlight || !state.publicData
+        || typeof backupId !== 'string' || typeof method !== 'string'
+        || !isBytes(candidateBytes) || candidateBytes.length === 0
+        || typeof verifiedAt !== 'string') {
+        throw serializationError();
+      }
+      requireVaultHealth(serializationError);
+      if (networkState() !== state.mode
+        || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(verifiedAt)
+        || new Date(verifiedAt).toISOString() !== verifiedAt) {
+        throw serializationError();
+      }
+      var nextPublicData = clonePublicData(state.publicData);
+      var backup = findRecord(nextPublicData.backups, backupId);
+      if (!backup || !backupCandidateMatchesSubject(backup, method, candidateBytes)) {
+        throw serializationError();
+      }
+      backup.lastVerifiedAt = verifiedAt;
       var nextPublicPlain = paddedJson(nextPublicData);
       zeroBytes(state.publicPlain);
       state.publicData = nextPublicData;
@@ -1551,6 +1715,7 @@
       get publicData() { return getPublicData(); },
       getPublicData: getPublicData,
       replacePublicData: replacePublicData,
+      markBackupVerified: markBackupVerified,
       getSecretData: getSecretData,
       replaceSecretData: replaceSecretData,
       getRecoveryShareMetadata: getRecoveryShareMetadata,

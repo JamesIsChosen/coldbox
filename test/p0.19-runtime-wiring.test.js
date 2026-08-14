@@ -232,3 +232,45 @@ test('P2.5 recovery shares stay cold-only and the offline mode refreshes their c
   assert.match(recoveryFlow, /slice\(0, 2\)/);
   assert.match(recoveryFlow, /Saved\.\*unverified/);
 });
+
+test('P2.6 BackupRecords keep verification metadata public while reconstruction stays cold-only', () => {
+  const harness = fs.readFileSync(path.join(projectRoot, 'scripts', 'run-browser-harness.js'), 'utf8');
+  assert.match(warmHtml, /id="backup-form"/);
+  assert.match(warmHtml, /Share material never enters this form or the warm shell/);
+  assert.match(warmHtml, /id="backup-list"/);
+  assert.doesNotMatch(warmHtml, /cold-backup-verification-input/);
+  assert.match(coldHtml, /id="cold-backup-verification"/);
+  assert.match(coldHtml, /the warm shell receives only a success or failure code/);
+
+  assert.match(warmSource, /sendVaultMessage\('backup\.verifyRequest'/);
+  assert.match(warmSource, /registryStore\.recordColdBackupVerification/);
+  assert.doesNotMatch(warmSource, /backupVerification(?:Input|Passphrase|Language)/);
+  const warmResult = extractFunction(warmSource, 'handleBackupVerificationResult');
+  assert.match(warmResult, /setVaultPersistenceState\('unsaved'\)/, 'a successful cold verification must require a durable save');
+
+  const request = extractFunction(coldSource, 'handleBackupVerificationRequest');
+  assert.match(request, /findPublicRecord\(publicData\.backups/);
+  assert.match(request, /method: record\.method/);
+  assert.match(request, /threshold: record\.threshold/);
+  assert.doesNotMatch(request, /shareMaterial|mnemonic|privateKey|secret/i);
+
+  const run = extractFunction(coldSource, 'runBackupVerification');
+  assert.match(run, /slip39\.recover/);
+  assert.match(run, /codex32\.recover/);
+  assert.match(run, /seedXor\.combine/);
+  assert.match(run, /shamir\.shamir39\.combine/);
+  assert.match(run, /shamir\.raw\.combine/);
+  assert.match(run, /currentVaultSession\.markBackupVerified/);
+  assert.match(run, /sendBackupVerificationResult\('verified'/);
+  assert.doesNotMatch(run, /postVaultMessage\([^;]*(?:lines|recoveredBytes|mnemonic|secret)/i);
+
+  assert.match(vaultSource, /function markBackupVerified\(backupId, method, candidateBytes, verifiedAt\)/);
+  assert.match(vaultSource, /backupCandidateMatchesSubject\(backup, method, candidateBytes\)/);
+  assert.match(vaultSource, /sameBackupIdentity/);
+  assert.match(vaultSource, /lastVerifiedAt/);
+
+  const browserFlow = extractFunction(harness, 'verifyBackupRecordVerification');
+  assert.match(browserFlow, /#backup-list \[data-registry-action="verify"\]/);
+  assert.match(browserFlow, /#cold-backup-verification-input/);
+  assert.match(browserFlow, /includes\(shares\[0\]\)/);
+});

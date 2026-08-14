@@ -10,6 +10,7 @@ const VAULT_ID = '550e8400-e29b-41d4-a716-446655440000';
 const XPUB = `xpub${'1'.repeat(107)}`;
 const NEXT_XPUB = `xpub${'2'.repeat(107)}`;
 const ADDRESS = `bc1q${'q'.repeat(56)}`;
+const OFFICIAL_SLIP39_SHARE = 'duckling enlarge academic academic agency result length solution fridge kidney coal piece deal husband erode duke ajar critical decision keyboard';
 
 function loadRegistry(disableRandomness = false) {
   const window = {
@@ -55,7 +56,7 @@ test('registry CRUD preserves relationships, clones values, and soft-deletes', (
   });
   assert.equal(store.find('accounts', account.id).walletId, wallet.id);
   assert.equal(store.find('addresses', address.id).accountId, account.id);
-  assert.equal(JSON.stringify(store.counts()), JSON.stringify({ wallets: 2, accounts: 1, addresses: 1, devices: 0, notes: 0 }));
+  assert.equal(JSON.stringify(store.counts()), JSON.stringify({ wallets: 2, accounts: 1, addresses: 1, devices: 0, notes: 0, backups: 0 }));
 
   const external = store.snapshot();
   external.wallets[0].label = 'mutated outside store';
@@ -299,4 +300,63 @@ test('device registry stores lifecycle metadata, fingerprint links, and soft hid
     () => store.createDevice({ vendor: 'Trezor', model: 'Bad', firmware: '1.0', status: 'in-use', secretPlaintext: 'never' }),
     /registry field/
   );
+});
+
+test('backup registry records stay public, start unverified, and accept only cold completion', () => {
+  const registry = loadRegistry();
+  const store = registry.createStore({ id: VAULT_ID });
+  const backup = store.createBackup({
+    subjectId: VAULT_ID,
+    method: 'slip39',
+    shareLabel: 'Home safe set',
+    threshold: 2,
+    groupConfig: { groups: [{ threshold: 2, count: 3 }] },
+    location: 'Home safe',
+    custodian: 'Owner',
+    createdAt: '2026-08-13T00:00:00.000Z',
+    verifyEveryDays: 365,
+    hidden: false
+  });
+  assert.equal(backup.lastVerifiedAt, undefined);
+  assert.equal(store.list('backups').length, 1);
+  assert.throws(
+    () => store.updateBackup(backup.id, { lastVerifiedAt: '2026-08-13T12:00:00.000Z' }),
+    /sealed realm/
+  );
+  assert.throws(
+    () => store.createBackup({
+      subjectId: VAULT_ID,
+      method: 'slip39',
+      shareLabel: 'Forged complete set',
+      threshold: 2,
+      createdAt: '2026-08-13T00:00:00.000Z',
+      verifyEveryDays: 365,
+      lastVerifiedAt: '2026-08-13T12:00:00.000Z'
+    }),
+    /sealed realm/
+  );
+  assert.throws(
+    () => store.createBackup({
+      subjectId: VAULT_ID,
+      method: 'slip39',
+      shareLabel: OFFICIAL_SLIP39_SHARE,
+      threshold: 1,
+      createdAt: '2026-08-13T00:00:00.000Z',
+      verifyEveryDays: 365
+    }),
+    /public registry rejected/
+  );
+  assert.throws(
+    () => store.updateBackup(backup.id, { location: OFFICIAL_SLIP39_SHARE }),
+    /public registry rejected/
+  );
+  const completed = store.recordColdBackupVerification(backup.id, '2026-08-13T12:00:00.000Z');
+  assert.equal(completed.lastVerifiedAt, '2026-08-13T12:00:00.000Z');
+  assert.throws(
+    () => store.updateBackup(backup.id, {}, { clearFields: ['lastVerifiedAt'] }),
+    /sealed realm/
+  );
+  store.deleteBackup(backup.id);
+  assert.equal(store.list('backups').length, 0);
+  assert.equal(store.list('backups', true)[0].hidden, true);
 });

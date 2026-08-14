@@ -11,10 +11,23 @@ const { createCryptoVendorSource } = require('../scripts/crypto-bundle.js');
 const projectRoot = path.resolve(__dirname, '..');
 const cryptoSource = fs.readFileSync(path.join(projectRoot, 'src', 'cold', 'crypto.js'), 'utf8');
 const slip39Source = fs.readFileSync(path.join(projectRoot, 'src', 'cold', 'slip39.js'), 'utf8');
+const seedForgeSource = fs.readFileSync(path.join(projectRoot, 'src', 'cold', 'seed-forge.js'), 'utf8');
 const vaultSource = fs.readFileSync(path.join(projectRoot, 'src', 'cold', 'vault.js'), 'utf8');
 const preP25Fixture = fs.readFileSync(
   path.join(projectRoot, 'test', 'fixtures', 'pre-p2.5-vault-v1.fixture')
 );
+
+// Independent Trezor SLIP-39 vectors. They intentionally reconstruct two
+// different BIP-39 subjects with the same 2-share configuration; the test
+// never prints or sends these values outside the cold-only VM context.
+const OFFICIAL_SUBJECT_SLIP39_A = Object.freeze([
+  'shadow pistol academic always adequate wildlife fancy gross oasis cylinder mustang wrist rescue view short owner flip making coding armed',
+  'shadow pistol academic acid actress prayer class unknown daughter sweater depict flip twice unkind craft early superior advocate guest smoking'
+]);
+const OFFICIAL_SUBJECT_SLIP39_B = Object.freeze([
+  'enemy favorite academic acid cowboy phrase havoc level response walnut budget painting inside trash adjust froth kitchen learn tidy punish',
+  'enemy favorite academic always academic sniff script carpet romp kind promise scatter center unfair training emphasis evening belong fake enforce'
+]);
 
 function baseContext() {
   const nodes = new Map();
@@ -91,6 +104,7 @@ function createRealContext() {
   vm.runInNewContext(createCryptoVendorSource(projectRoot), context);
   vm.runInNewContext(cryptoSource, context);
   vm.runInNewContext(slip39Source, context);
+  vm.runInNewContext(seedForgeSource, context);
   vm.runInNewContext(vaultSource, context);
   return context;
 }
@@ -155,6 +169,7 @@ function createFormatContext() {
   context.__forceDerivedProfile = (name) => { deriveOverride = name; };
   assert.equal(typeof nobleLayer.hkdf, 'function');
   vm.runInNewContext(slip39Source, context);
+  vm.runInNewContext(seedForgeSource, context);
   vm.runInNewContext(vaultSource, context);
   return context;
 }
@@ -178,6 +193,7 @@ function createPublicTrackingContext() {
   });
   context.__coldboxNobleCrypto = trackedNoble;
   vm.runInNewContext(slip39Source, context);
+  vm.runInNewContext(seedForgeSource, context);
   vm.runInNewContext(vaultSource, context);
   return { context, infos };
 }
@@ -916,6 +932,164 @@ test('P1.11 cold replacement owns stale transitions and preserves authenticated 
   assert.equal(reconciled.addresses[0].verificationState, 'cold-verified-stale');
   assert.equal(reconciled.addresses[0].lastColdVerifiedAt, '2026-08-11T12:00:00.000Z');
   assert.equal(reconciled.addresses[0].verifiedAgainstXpub, authenticatedXpub);
+});
+
+test('P2.6 cold backup verification is the only authority that can set completion', async () => {
+  const context = createRealContext();
+  const passphrase = 'backup verification authority passphrase';
+  const subjectMnemonic = [
+    'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
+    'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
+  ].join(' ');
+  const subjectEntropy = context.__coldboxSeedForge.mnemonicToEntropy(subjectMnemonic, 'english');
+  const publicData = {
+    schema: 2,
+    id: 'backup-verification-vault',
+    backups: [{
+      id: 'backup-record',
+      subjectId: 'backup-subject',
+      method: 'slip39',
+      shareLabel: 'Written shares',
+      threshold: 2,
+      createdAt: '2026-08-13T00:00:00.000Z',
+      verifyEveryDays: 365
+    }]
+  };
+  const vault = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fast',
+    publicData,
+    secretData: {
+      seeds: [{
+        id: 'backup-subject',
+        storedSecret: { mnemonic: subjectMnemonic, passphrase: '' }
+      }]
+    }
+  });
+  const session = await context.__coldboxVault.openSession(vault, passphrase, 'offline');
+  const forged = session.publicData;
+  forged.backups[0].lastVerifiedAt = '2026-08-13T01:00:00.000Z';
+  const rejected = session.replacePublicData(forged);
+  assert.equal('lastVerifiedAt' in rejected.backups[0], false);
+
+  assert.throws(
+    () => session.markBackupVerified('backup-record', 'slip39', subjectEntropy, 'not-a-timestamp'),
+    /serialization/
+  );
+  const verified = session.markBackupVerified(
+    'backup-record',
+    'slip39',
+    subjectEntropy,
+    '2026-08-13T12:00:00.000Z'
+  );
+  assert.equal(verified.backups[0].lastVerifiedAt, '2026-08-13T12:00:00.000Z');
+  const rewritten = session.publicData;
+  rewritten.backups[0].lastVerifiedAt = '2026-08-13T13:00:00.000Z';
+  const preserved = session.replacePublicData(rewritten);
+  assert.equal(preserved.backups[0].lastVerifiedAt, '2026-08-13T12:00:00.000Z');
+
+  const changedIdentity = session.publicData;
+  changedIdentity.backups[0].method = 'codex32';
+  changedIdentity.backups[0].lastVerifiedAt = '2026-08-13T14:00:00.000Z';
+  const reset = session.replacePublicData(changedIdentity);
+  assert.equal('lastVerifiedAt' in reset.backups[0], false);
+});
+
+test('P2.6 backup verification rejects another subject and unresolved subjects', async () => {
+  const context = createRealContext();
+  const passphrase = 'backup subject binding passphrase';
+  const recoveredA = new context.Uint8Array(
+    context.__coldboxSlip39.recover(OFFICIAL_SUBJECT_SLIP39_A, 'TREZOR')
+  );
+  const recoveredB = new context.Uint8Array(
+    context.__coldboxSlip39.recover(OFFICIAL_SUBJECT_SLIP39_B, 'TREZOR')
+  );
+  const mnemonicA = context.__coldboxSeedForge.entropyToMnemonic(recoveredA, 'english');
+  const mnemonicB = context.__coldboxSeedForge.entropyToMnemonic(recoveredB, 'english');
+  const publicData = {
+    schema: 2,
+    id: 'backup-subject-binding-vault',
+    wallets: [{ id: 'wallet-subject-b', seedId: 'subject-b' }],
+    backups: [
+      {
+        id: 'backup-subject-a',
+        subjectId: 'subject-a',
+        method: 'slip39',
+        shareLabel: 'Subject A shares',
+        threshold: 2,
+        createdAt: '2026-08-13T00:00:00.000Z',
+        verifyEveryDays: 365
+      },
+      {
+        id: 'backup-subject-b',
+        subjectId: 'wallet-subject-b',
+        method: 'slip39',
+        shareLabel: 'Subject B shares',
+        threshold: 2,
+        createdAt: '2026-08-13T00:00:00.000Z',
+        verifyEveryDays: 365
+      },
+      {
+        id: 'backup-subject-unresolved',
+        subjectId: 'subject-missing',
+        method: 'slip39',
+        shareLabel: 'Unresolved subject shares',
+        threshold: 2,
+        createdAt: '2026-08-13T00:00:00.000Z',
+        verifyEveryDays: 365
+      }
+    ]
+  };
+  const vault = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fast',
+    publicData,
+    secretData: {
+      seeds: [
+        { id: 'subject-a', storedSecret: { mnemonic: mnemonicA, passphrase: '' } },
+        { id: 'subject-b', storedSecret: { mnemonic: mnemonicB, passphrase: '' } }
+      ]
+    }
+  });
+  const session = await context.__coldboxVault.openSession(vault, passphrase, 'offline');
+
+  assert.throws(
+    () => session.markBackupVerified(
+      'backup-subject-a',
+      'slip39',
+      recoveredB,
+      '2026-08-13T12:00:00.000Z'
+    ),
+    /serialization/
+  );
+  assert.equal('lastVerifiedAt' in session.publicData.backups[0], false);
+
+  const verifiedA = session.markBackupVerified(
+    'backup-subject-a',
+    'slip39',
+    recoveredA,
+    '2026-08-13T12:01:00.000Z'
+  );
+  assert.equal(verifiedA.backups[0].lastVerifiedAt, '2026-08-13T12:01:00.000Z');
+
+  const verifiedB = session.markBackupVerified(
+    'backup-subject-b',
+    'slip39',
+    recoveredB,
+    '2026-08-13T12:02:00.000Z'
+  );
+  assert.equal(verifiedB.backups[1].lastVerifiedAt, '2026-08-13T12:02:00.000Z');
+
+  assert.throws(
+    () => session.markBackupVerified(
+      'backup-subject-unresolved',
+      'slip39',
+      recoveredA,
+      '2026-08-13T12:03:00.000Z'
+    ),
+    /serialization/
+  );
+  assert.equal('lastVerifiedAt' in session.publicData.backups[2], false);
 });
 
 test('P1.11 cold open migrates schema 1, persists schema 2, and preserves failed input', async () => {

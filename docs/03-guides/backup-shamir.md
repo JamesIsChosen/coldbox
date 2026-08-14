@@ -106,6 +106,16 @@ Fewer than the threshold number of shares must not be treated as partial
 recovery. Reconstructing with a damaged or mixed share set is not evidence
 that the output is correct; independent verification is mandatory.
 
+For a public BackupRecord, **Verify shares** opens the corresponding cold-only
+workflow. Type the physical shares there; P2.6 writes a public
+`lastVerifiedAt` only after the selected Shamir39 or raw SSS reconstruction
+succeeds **and** the reconstructed candidate matches the cold-stored subject
+named by the record. A valid set for another subject, or a subject that cannot
+be resolved inside the cold realm, remains incomplete. Share text, the
+reconstructed phrase or hexadecimal value, and any passphrase remain inside
+the cold realm. The record's timestamp is evidence of subject-bound format
+reconstruction, not proof that the physical custodian or location is safe.
+
 ## Important limitations
 
 - Shamir39 is not SLIP-39. It does not promise the same checksum, metadata, or

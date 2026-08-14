@@ -1,22 +1,64 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const test = require('node:test');
+const { createCryptoVendorSource } = require('../scripts/crypto-bundle.js');
 
 const projectRoot = path.resolve(__dirname, '..');
+const slip39Source = fs.readFileSync(path.join(projectRoot, 'src', 'cold', 'slip39.js'), 'utf8');
 const SAFE_ID = '550e8400-e29b-41d4-a716-446655440000';
 const SAFE_FINGERPRINT = 'deadbeef';
 const SAFE_XPUB = `xpub${'1'.repeat(107)}`;
 const SAFE_ADDRESS = `bc1q${'q'.repeat(56)}`;
+// Independent public fixtures. These are the same published vectors used by
+// the cold combiners; they are boundary probes only and are never logged.
+const OFFICIAL_SLIP39_20 = 'duckling enlarge academic academic agency result length solution fridge kidney coal piece deal husband erode duke ajar critical decision keyboard';
+const OFFICIAL_SLIP39_20_OMITTED_WORD = 'enemy favorite academic acid cowboy phrase havoc level response walnut budget painting inside trash adjust froth kitchen learn tidy punish';
+const OFFICIAL_SLIP39_33 = 'western apart academic always artist resident briefing sugar woman oven coding club ajar merit pecan answer prisoner artist fraction amount desktop mild false necklace muscle photo wealthy alpha category unwrap spew losing making';
+const OFFICIAL_CODEX32 = 'MS12NAMEA320ZYXWVUTSRQPNMLKJHGFEDCAXRPP870HKKQRM';
+const OFFICIAL_SHAMIR39 = 'shamir39-p1 army abandon ability abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+const OFFICIAL_RAW_SSS = '80111001e523b02029c58aceebead70329000';
+const OFFICIAL_SEED_XOR = 'romance wink lottery autumn shop bring dawn tongue range crater truth ability miss spice fitness easy legal release recall obey exchange recycle dragon room';
 
 function loadProtocol() {
   const source = fs.readFileSync(path.join(projectRoot, 'src', 'protocol.js'), 'utf8');
   const window = {};
   vm.runInNewContext(source, { window }, { filename: 'src/protocol.js' });
   return window.__coldboxProtocol;
+}
+
+function loadPublicSlip39WordList() {
+  const source = fs.readFileSync(path.join(projectRoot, 'src', 'protocol.js'), 'utf8');
+  const startMarker = 'var SLIP39_WORD_SET = makeSet(';
+  const endMarker = '.split(/\\s+/));';
+  const start = source.indexOf(startMarker);
+  const end = source.indexOf(endMarker, start);
+  assert.notEqual(start, -1, 'public SLIP-39 word set was not found');
+  assert.notEqual(end, -1, 'public SLIP-39 word set terminator was not found');
+  const expression = source.slice(start + startMarker.length, end);
+  return vm.runInNewContext(expression).trim().split(/\s+/);
+}
+
+function loadCanonicalSlip39WordList() {
+  const context = {
+    ArrayBuffer,
+    TextDecoder,
+    TextEncoder,
+    Uint8Array,
+    WebAssembly,
+    atob,
+    crypto: crypto.webcrypto,
+    console
+  };
+  context.window = context;
+  context.self = context;
+  vm.runInNewContext(createCryptoVendorSource(projectRoot), context);
+  vm.runInNewContext(slip39Source, context, { filename: 'src/cold/slip39.js' });
+  return Array.from(context.__coldboxSlip39.wordList);
 }
 
 function containsSensitiveKey(value) {
@@ -51,6 +93,7 @@ test('protocol exposes only the documented message whitelist', () => {
     'mode.set',
     'derive.request',
     'address.verifyRequest',
+    'backup.verifyRequest',
     'publicData.request',
     'publicData.replace',
     'concealment.reveal',
@@ -63,6 +106,7 @@ test('protocol exposes only the documented message whitelist', () => {
     'vault.lockRequest',
     'derive.result',
     'address.verifyResult',
+    'backup.verifyResult',
     'publicData.updated',
     'concealment.revealed',
     'secretData.updated',
@@ -601,6 +645,156 @@ test('device records accept bounded lifecycle fields and reject unsafe shapes', 
       }
     }
   }), null);
+});
+
+test('BackupRecords are public metadata and verification results carry no share material', () => {
+  const protocol = loadProtocol();
+  const backupId = SAFE_ID;
+  const subjectId = '550e8400-e29b-41d4-a716-446655440001';
+  const backup = {
+    id: backupId,
+    subjectId,
+    method: 'slip39',
+    shareLabel: 'Home safe set',
+    threshold: 2,
+    groupConfig: { groups: [{ threshold: 2, count: 3 }] },
+    location: 'Home safe',
+    custodian: 'Owner',
+    createdAt: '2026-08-13T00:00:00.000Z',
+    verifyEveryDays: 365,
+    hidden: false
+  };
+  const publicMessage = protocol.validateMessage('warm-to-cold', {
+    id: 'backup-write-1',
+    type: 'publicData.replace',
+    payload: { publicCompartment: { backups: [backup] } }
+  });
+  assert.ok(publicMessage);
+  assert.equal(
+    JSON.stringify(publicMessage.payload.publicCompartment.backups[0]),
+    JSON.stringify(backup)
+  );
+  assert.equal(protocol.validateMessage('warm-to-cold', {
+    id: 'backup-secret-1',
+    type: 'publicData.replace',
+    payload: { publicCompartment: { backups: [{ ...backup, shareMaterial: ['secret'] }] } }
+  }), null);
+  assert.equal(JSON.stringify(protocol.validateMessage('warm-to-cold', {
+    id: 'backup-request-1',
+    type: 'backup.verifyRequest',
+    payload: { backupId, shareMaterial: ['never accepted'] }
+  })?.payload), JSON.stringify({ backupId }));
+  assert.equal(JSON.stringify(protocol.validateMessage('cold-to-warm', {
+    id: 'backup-result-1',
+    type: 'backup.verifyResult',
+    payload: {
+      backupId,
+      outcome: 'verified',
+      verifiedAt: '2026-08-13T12:00:00.000Z',
+      shares: ['never accepted'],
+      reason: 'never accepted'
+    }
+  })?.payload), JSON.stringify({ backupId, outcome: 'verified', verifiedAt: '2026-08-13T12:00:00.000Z' }));
+  assert.equal(protocol.validateMessage('cold-to-warm', {
+    id: 'backup-result-invalid-timestamp',
+    type: 'backup.verifyResult',
+    payload: { backupId, outcome: 'verified' }
+  }), null);
+  assert.equal(protocol.validateMessage('cold-to-warm', {
+    id: 'backup-result-forged-timestamp',
+    type: 'backup.verifyResult',
+    payload: { backupId, outcome: 'invalid', verifiedAt: '2026-08-13T12:00:00.000Z' }
+  }), null);
+  assert.equal(protocol.validateMessage('cold-to-warm', {
+    id: 'backup-result-invalid-outcome',
+    type: 'backup.verifyResult',
+    payload: { backupId, outcome: 'completed', verifiedAt: '2026-08-13T12:00:00.000Z' }
+  }), null);
+});
+
+test('public SLIP-39 guard mechanically covers the canonical 1024-word list', () => {
+  const protocol = loadProtocol();
+  const canonicalWords = loadCanonicalSlip39WordList();
+  const publicWords = loadPublicSlip39WordList();
+  assert.equal(canonicalWords.length, 1024);
+  assert.equal(new Set(canonicalWords).size, 1024);
+  assert.deepEqual(publicWords, canonicalWords);
+  assert.equal(protocol.isSecretContent(OFFICIAL_SLIP39_20_OMITTED_WORD), true);
+});
+
+test('public BackupRecord text rejects every supported share encoding in both directions', () => {
+  const protocol = loadProtocol();
+  const subjectId = '550e8400-e29b-41d4-a716-446655440001';
+  const shares = [
+    OFFICIAL_SLIP39_20,
+    OFFICIAL_SLIP39_20_OMITTED_WORD,
+    OFFICIAL_SLIP39_33,
+    OFFICIAL_CODEX32,
+    OFFICIAL_SHAMIR39,
+    OFFICIAL_RAW_SSS,
+    OFFICIAL_SEED_XOR
+  ];
+  const textFields = ['shareLabel', 'location', 'custodian', 'notes'];
+
+  shares.forEach((share) => {
+    assert.equal(protocol.isSecretContent(share), true, 'share encoding was not classified as secret text');
+    textFields.forEach((field) => {
+      const backup = {
+        id: SAFE_ID,
+        subjectId,
+        method: 'slip39',
+        shareLabel: 'Home safe set',
+        threshold: 2,
+        groupConfig: { groupThreshold: 1, groups: [{ threshold: 2, count: 3 }] },
+        location: 'Home safe',
+        custodian: 'Owner',
+        createdAt: '2026-08-13T00:00:00.000Z',
+        verifyEveryDays: 365,
+        hidden: false,
+        [field]: share
+      };
+      assert.equal(protocol.validateMessage('warm-to-cold', {
+        id: `backup-share-warm-${field}`,
+        type: 'publicData.replace',
+        payload: { publicCompartment: { backups: [backup] } }
+      }), null, `warm-to-cold accepted ${field}`);
+      assert.equal(protocol.validateMessage('cold-to-warm', {
+        id: `backup-share-cold-${field}`,
+        type: 'vault.opened',
+        payload: { publicCompartment: { backups: [backup] } }
+      }), null, `cold-to-warm accepted ${field}`);
+    });
+  });
+});
+
+test('BackupRecord group configuration accepts realizable boundaries and rejects impossible thresholds', () => {
+  const protocol = loadProtocol();
+  const subjectId = '550e8400-e29b-41d4-a716-446655440001';
+  const base = {
+    id: SAFE_ID,
+    subjectId,
+    method: 'slip39',
+    shareLabel: 'Home safe set',
+    threshold: 1,
+    location: 'Home safe',
+    custodian: 'Owner',
+    createdAt: '2026-08-13T00:00:00.000Z',
+    verifyEveryDays: 365,
+    hidden: false
+  };
+  const validate = (groupConfig) => protocol.validateMessage('warm-to-cold', {
+    id: 'backup-group-config',
+    type: 'publicData.replace',
+    payload: { publicCompartment: { backups: [{ ...base, groupConfig }] } }
+  });
+
+  assert.ok(validate({ groupThreshold: 1, groups: [{ threshold: 1, count: 1 }] }));
+  assert.ok(validate({
+    groupThreshold: 2,
+    groups: [{ threshold: 1, count: 1 }, { threshold: 2, count: 3 }]
+  }));
+  assert.equal(validate({ groupThreshold: 2, groups: [{ threshold: 1, count: 1 }] }), null);
+  assert.equal(validate({ groupThreshold: 3, groups: [{ threshold: 1, count: 1 }, { threshold: 1, count: 1 }] }), null);
 });
 
 test('public notes are bounded, public-only records with canonical tags', () => {

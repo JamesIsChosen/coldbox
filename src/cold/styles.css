@@ -2354,8 +2354,141 @@ body {
   color: var(--cold-red);
 }
 
+#cold-backup-verification {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+  padding: 0.85rem;
+  border: 2px solid var(--cold-pink);
+  border-radius: 0.35rem;
+  background: var(--cold-surface);
+}
+
+#cold-backup-verification h2,
+#cold-backup-verification p {
+  margin-top: 0;
+}
+
+#cold-backup-verification label {
+  color: var(--cold-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+#cold-backup-verification input,
+#cold-backup-verification select,
+#cold-backup-verification textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 2.3rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--cold-outline);
+  border-radius: 0.25rem;
+  background: var(--cold-input);
+  color: var(--cold-text);
+  font: inherit;
+}
+
+#cold-backup-verification textarea {
+  min-height: 8rem;
+  resize: vertical;
+}
+
+#cold-backup-verification input:focus,
+#cold-backup-verification select:focus,
+#cold-backup-verification textarea:focus,
+#cold-backup-verification button:focus-visible {
+  outline: 2px solid var(--cold-yellow);
+  outline-offset: 2px;
+}
+
+#cold-backup-verification input:disabled,
+#cold-backup-verification select:disabled,
+#cold-backup-verification textarea:disabled,
+#cold-backup-verification button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.cold-backup-verification-target {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.cold-backup-verification-target > div {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.4fr) minmax(0, 1fr);
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--cold-outline);
+}
+
+.cold-backup-verification-target dt {
+  color: var(--cold-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.cold-backup-verification-target dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.78rem;
+}
+
+#cold-backup-verification .cold-backup-verification-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+#cold-backup-verification button {
+  width: fit-content;
+  min-height: 2.3rem;
+  padding: 0.45rem 0.7rem;
+  border: 2px solid var(--cold-outline);
+  border-radius: 0.25rem;
+  background: var(--cold-yellow);
+  color: var(--cold-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#cold-backup-verification button[type="button"] {
+  background: var(--cold-surface);
+  color: var(--cold-text);
+}
+
+.cold-backup-verification-status {
+  margin: 0;
+  padding: 0.55rem;
+  border-left: 4px solid var(--cold-outline);
+  background: var(--cold-input);
+  color: var(--cold-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.cold-backup-verification-status[data-state="success"] {
+  border-color: var(--cold-green);
+  color: var(--cold-green);
+}
+
+.cold-backup-verification-status[data-state="error"] {
+  border-color: var(--cold-red);
+  color: var(--cold-red);
+}
+
 @media (max-width: 38rem) {
   .cold-verification-grid {
     grid-template-columns: 1fr;
+  }
+
+  .cold-backup-verification-target > div {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
   }
 }

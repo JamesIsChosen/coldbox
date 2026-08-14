@@ -611,6 +611,28 @@ __COLDBOX_COLD_STYLES__
       </details>
       <p id="cold-slip39-note">The standard uses its own 1024-word list; these words are not BIP-39 words. The checksum detects transcription errors but does not authorize automatic correction. Verify a threshold subset from paper before treating the backup as complete.</p>
     </section>
+    <section id="cold-backup-verification" aria-label="Cold-only BackupRecord verification" data-state="locked" hidden>
+      <p class="eyebrow">Backup Records / P2.6</p>
+      <h2>Verify a recorded backup</h2>
+      <p id="cold-backup-verification-help">This control is opened by a public BackupRecord. Type shares from the physical copies into this sealed frame; the warm shell receives only a success or failure code. Only a reconstruction that matches the selected subject writes the public verification timestamp; an unresolved or different subject remains incomplete. The reconstructed secret never leaves this frame.</p>
+      <dl class="cold-backup-verification-target">
+        <div><dt>Record</dt><dd id="cold-backup-verification-label">No record selected.</dd></div>
+        <div><dt>Method</dt><dd id="cold-backup-verification-method">Not selected</dd></div>
+        <div><dt>Threshold</dt><dd id="cold-backup-verification-threshold">Not selected</dd></div>
+      </dl>
+      <label for="cold-backup-verification-language">Mnemonic language (for Seed XOR / Shamir39)</label>
+      <select id="cold-backup-verification-language" disabled></select>
+      <label for="cold-backup-verification-passphrase">SLIP-39 share passphrase, if the record uses one</label>
+      <input id="cold-backup-verification-passphrase" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+      <label for="cold-backup-verification-input">Shares from written copies (one per line)</label>
+      <textarea id="cold-backup-verification-input" rows="8" spellcheck="false" autocapitalize="off" autocomplete="off" disabled></textarea>
+      <div class="cold-qr-actions">
+        <button id="cold-backup-verification-run" type="button" disabled>Reconstruct and verify</button>
+        <button id="cold-backup-verification-clear" type="button" disabled>Clear verification input</button>
+      </div>
+      <p id="cold-backup-verification-status" class="cold-qr-status" data-state="idle" role="status" aria-live="polite">No BackupRecord verification requested.</p>
+      <p id="cold-backup-verification-note">A checksum-valid or mathematically reconstructed result proves that this typed subset can be combined. It does not prove that a separate BIP-39 passphrase was remembered or that a physical copy was stored safely.</p>
+    </section>
     <section id="cold-verification" aria-label="Verification Bench" data-state="locked">
       <p class="eyebrow">Verify Bench / P1.9</p>
       <h2>Independent hardware-wallet checks</h2>
