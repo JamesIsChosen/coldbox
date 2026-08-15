@@ -223,7 +223,7 @@ test('an out-of-range offset or an unrepresentable instant is refused, not round
 test('a real build of a UTC product commit embeds +00:00, end to end', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-build-date-e2e-'));
   try {
-    for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
+    for (const directory of ['assets', 'scripts', 'src', 'vendor', 'docs']) {
       fs.cpSync(path.join(projectRoot, directory), path.join(root, directory), { recursive: true });
     }
     fs.copyFileSync(path.join(projectRoot, 'LICENSE'), path.join(root, 'LICENSE'));

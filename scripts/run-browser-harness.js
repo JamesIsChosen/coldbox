@@ -247,7 +247,11 @@ function requireBrowserBinaries() {
 // it cannot drift out of sync with scripts/build.js's actual dependencies
 // again.
 function copyBuildInputsInto(temporaryRoot, { includeGit = false } = {}) {
-  for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
+  // UI.2 added `assets`: scripts/build.js now reads the traced wordmark SVG
+  // and the favicon PNGs out of assets/brand/, so a build root without that
+  // directory fails closed on ENOENT in exactly the way the docs/ omission
+  // described above used to.
+  for (const directory of ['assets', 'scripts', 'src', 'vendor', 'docs']) {
     fs.cpSync(
       path.join(projectRoot, directory),
       path.join(temporaryRoot, directory),
@@ -258,7 +262,8 @@ function copyBuildInputsInto(temporaryRoot, { includeGit = false } = {}) {
   fs.copyFileSync(path.join(projectRoot, 'LICENSE'), path.join(temporaryRoot, 'LICENSE'));
   if (includeGit) {
     // P0.16 F4 fallout: scripts/build.js derives the embedded build date from
-    // `git log -- src scripts vendor` (see ADR-0015's 2026-08-06 amendment).
+    // `git log -- assets src scripts vendor` (see ADR-0015's 2026-08-06
+    // amendment, and UI.2 for the assets/ addition).
     // Fixtures proving "no devDependency required" would otherwise fall back
     // to the "unknown (no git commit metadata available)" branch while the
     // real build embeds an actual date, diverging for a reason unrelated to
@@ -566,6 +571,10 @@ async function lockVaultDiscardingUnsaved(page) {
 
 async function openPage(browser, file, reachabilityMode = 'reachable', options = {}) {
   const page = await browser.newPage();
+  const requestLog = options.requestLog ? [] : null;
+  if (requestLog) {
+    page.on('request', (request) => requestLog.push(request.url()));
+  }
   const reachability = await installReachabilityRoutes(page, reachabilityMode);
   const harness = await createHarness(page);
   if (options.initScript) {
@@ -575,7 +584,7 @@ async function openPage(browser, file, reachabilityMode = 'reachable', options =
     await page.addInitScript(SUSPEND_REACHABILITY_INTERVAL_SCRIPT);
   }
   await page.goto(fileUrl(file), { waitUntil: 'load' });
-  return { harness, page, reachability };
+  return { harness, page, reachability, requestLog };
 }
 
 async function closePage(page) {
@@ -1109,6 +1118,119 @@ async function verifyBuiltFile(browser, engine) {
       { blockedURI: COLD_CANARY_URL }
     );
     console.log(`${engine}: warm shell routes, theme switch, responsive navigation, and cold boundary passed over file://`);
+  } finally {
+    await closePage(page);
+  }
+}
+
+async function verifyUi2BrandAssets(browser, engine) {
+  const opened = await openPage(browser, buildPath, 'reachable', { requestLog: true });
+  const page = opened.page;
+  try {
+    const { harness, requestLog } = opened;
+    await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible' });
+    await harness.atViewport(320, 640);
+
+    const wordmark = page.locator('header.app-bar svg.brand-wordmark');
+    await wordmark.waitFor({ state: 'visible' });
+    const geometry = await wordmark.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        bottom: rect.bottom,
+        height: rect.height,
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        viewportWidth: window.innerWidth,
+        width: rect.width
+      };
+    });
+    assert.equal(geometry.viewportWidth, 320, `${engine}: UI.2 harness did not reach 320px`);
+    assert.ok(geometry.width > 0 && geometry.height > 0, `${engine}: UI.2 wordmark has no rendered size`);
+    assert.ok(geometry.left >= 0, `${engine}: UI.2 wordmark is clipped on the left`);
+    assert.ok(
+      geometry.right <= geometry.viewportWidth + 0.5,
+      `${engine}: UI.2 wordmark is clipped at 320px (${JSON.stringify(geometry)})`
+    );
+    assert.ok(geometry.bottom > geometry.top, `${engine}: UI.2 wordmark has invalid vertical geometry`);
+    assert.equal(await wordmark.getAttribute('role'), 'img');
+    assert.equal(await wordmark.getAttribute('aria-label'), 'Coldbox');
+
+    async function assertThemeFills(theme) {
+      const colors = await page.evaluate(() => {
+        const ink = document.querySelector('header.app-bar svg.brand-wordmark .wordmark-ink');
+        const cyan = document.querySelector('header.app-bar svg.brand-wordmark .wordmark-cyan');
+        const probe = document.createElement('span');
+        probe.style.cssText = [
+          'position:absolute',
+          'width:1px',
+          'height:1px',
+          'background:var(--fill-ink)',
+          'color:var(--fill-cyan)'
+        ].join(';');
+        document.body.appendChild(probe);
+        const probeStyle = getComputedStyle(probe);
+        const result = {
+          actual: {
+            cyan: getComputedStyle(cyan).fill,
+            ink: getComputedStyle(ink).fill
+          },
+          expected: {
+            cyan: probeStyle.color,
+            ink: probeStyle.backgroundColor
+          },
+          theme: document.documentElement.getAttribute('data-theme')
+        };
+        probe.remove();
+        return result;
+      });
+      assert.equal(colors.theme, theme, `${engine}: UI.2 theme did not settle`);
+      assert.deepEqual(colors.actual, colors.expected, `${engine}: wordmark fills do not resolve from theme tokens`);
+    }
+
+    await assertThemeFills('dark');
+    await page.locator('#theme-toggle').click();
+    await page.locator('html[data-theme="light"]').waitFor({ state: 'attached' });
+    await assertThemeFills('light');
+
+    const faviconResults = await page.evaluate(async () => {
+      const links = Array.from(document.querySelectorAll('link[rel="icon"][type="image/png"]'));
+      const decode = (link) => new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve({
+          height: image.naturalHeight,
+          href: link.href,
+          size: link.sizes.value,
+          width: image.naturalWidth
+        });
+        image.onerror = () => reject(new Error(`favicon did not decode: ${link.sizes.value}`));
+        image.src = link.href;
+      });
+      return Promise.all(links.map(decode));
+    });
+    assert.deepEqual(
+      faviconResults,
+      [16, 32, 48].map((size) => ({
+        height: size,
+        href: faviconResults.find((favicon) => favicon.size === `${size}x${size}`)?.href,
+        size: `${size}x${size}`,
+        width: size
+      })),
+      `${engine}: UI.2 favicon dimensions did not decode as declared`
+    );
+    assert.equal(faviconResults.length, 3, `${engine}: UI.2 must carry exactly three favicon links`);
+    assert.ok(
+      faviconResults.every(({ href }) => href.startsWith('data:image/png;base64,')),
+      `${engine}: UI.2 favicon is not a data URI`
+    );
+
+    await page.waitForTimeout(100);
+    const documentRequest = fileUrl(buildPath);
+    const siblingFileRequests = requestLog.filter((url) => url.startsWith('file:') && url !== documentRequest);
+    assert.deepEqual(siblingFileRequests, [], `${engine}: UI.2 requested a sibling file: ${siblingFileRequests.join(', ')}`);
+    const iconOrManifestRequests = requestLog.filter((url) => /(?:favicon|manifest|apple-touch-icon|mask-icon)/i.test(url));
+    assert.deepEqual(iconOrManifestRequests, [], `${engine}: UI.2 made an icon or manifest request`);
+    console.log(`${engine}: UI.2 exact 320px wordmark and data-favicon file:// checks passed`);
   } finally {
     await closePage(page);
   }
@@ -4180,6 +4302,7 @@ async function run() {
     const browser = await browserType.launch({ headless: true });
     try {
       await verifyBuiltFile(browser, engine);
+      await verifyUi2BrandAssets(browser, engine);
       await verifyVaultRecoveryShares(browser, engine);
       await verifyStaleReachabilityOnlineSafety(browser, engine);
       await verifyVaultLibrary(browser, engine);

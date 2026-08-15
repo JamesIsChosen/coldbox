@@ -170,3 +170,15 @@ The formatter lives in its own module rather than inside `scripts/build.js` so i
 ### Verification
 
 `test/build-date.test.js`: real commits created at six offsets, with the formatter's output compared against git's own `%cI` for each non-UTC case (proving byte-neutrality on historical commits) and pinned to `+00:00` for the UTC case (proving the fix). Plus locale/timezone independence, malformed-input degradation, out-of-range refusal, and an end-to-end build of a synthetic UTC product commit. `test/provenance.test.js`'s two build-date assertions were rewritten off `%cI` for the same reason this amendment exists.
+
+## Amendment (2026-08-15): `assets/` joins the build-date path list
+
+**Status of this amendment:** Accepted. It adds one entry to the path list the 2026-08-06 amendment introduced. The same-day P0.22 rendering amendment remains authoritative; this amendment changes only which product paths feed that query.
+
+[UI.2](../ROADMAP.md) added `assets/brand/`, a build-input directory holding the traced wordmark SVG and the favicon PNGs that `scripts/build.js` embeds ([ADR-0047](0047-brand-assets-traced-once-and-embedded.md)). The query is now:
+
+```
+git log -1 --format=%ct %ci HEAD -- assets src scripts vendor
+```
+
+This is precisely the residual risk the 2026-08-06 amendment recorded — "if a future contributor adds a new top-level directory that also feeds the build ... without adding it to `BUILD_DATE_SOURCE_PATHS`, a commit to that new directory would silently fail to advance the build date." A brand-artwork change alters the shipped bytes, so it must move the build date with it. `test/brand-assets.test.js` pins `assets` into the list, alongside `test/provenance.test.js`'s existing coverage of the mechanism, so dropping it again would be a deliberate reviewed change rather than a silent one.

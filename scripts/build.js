@@ -8,6 +8,7 @@ const { spawnSync } = require('node:child_process');
 const { createCryptoVendorSource } = require('./crypto-bundle.js');
 const { createFontFaceSource } = require('./font-bundle.js');
 const { compileHelpContent } = require('./help-content.js');
+const { createFaviconLinks, createWordmarkMarkup } = require('./brand-assets.js');
 const { BUILD_DATE_UNKNOWN, parseCommitDateOutput } = require('./build-date.js');
 
 // These values are part of the reproducibility contract. Set them rather than
@@ -158,7 +159,10 @@ function readLicenseText() {
 // far, including the one the recorded CI bundle figure was measured from;
 // only UTC-offset commits change, and they change from an unstable spelling
 // to a fixed "+00:00". See the packet for the rebuild proving that.
-const BUILD_DATE_SOURCE_PATHS = Object.freeze(['src', 'scripts', 'vendor']);
+// UI.2 adds assets/ to the product-path provenance scope. Brand PNG/SVG
+// bytes feed the shipped artifact, so an artwork commit must advance the
+// product commit date exactly as src/, scripts/, and vendor/ do.
+const BUILD_DATE_SOURCE_PATHS = Object.freeze(['assets', 'src', 'scripts', 'vendor']);
 
 function readBuildCommitDate() {
   const result = spawnSync(
@@ -254,6 +258,11 @@ function injectOnce(template, token, contents) {
 function assemble() {
   let document = readSource('index.html');
   document = injectOnce(document, '__COLDBOX_EXPECTED_HASH__', EXPECTED_HASH_PLACEHOLDER);
+  // UI.2 - both fail closed inside their own module rather than returning a
+  // degraded asset, so a malformed favicon or an SVG that grew a script tag
+  // stops the build instead of shipping.
+  document = injectOnce(document, '__COLDBOX_FAVICONS__', createFaviconLinks(projectRoot));
+  document = injectOnce(document, '__COLDBOX_WORDMARK__', createWordmarkMarkup(projectRoot));
   const protocolSource = readSource('protocol.js');
   const airgapSource = readSource('airgap.js');
   const capabilitiesSource = readSource('capabilities.js');
@@ -339,7 +348,9 @@ function assemble() {
     '__COLDBOX_LICENSE_TEXT__',
     '__COLDBOX_ADDRESS_VERIFICATION__',
     '__COLDBOX_CLIPBOARD_CANARY__',
-    '__COLDBOX_BACKUP_HEALTH__'
+    '__COLDBOX_BACKUP_HEALTH__',
+    '__COLDBOX_FAVICONS__',
+    '__COLDBOX_WORDMARK__'
   ]) {
     if (document.includes(placeholder)) {
       throw new Error(`Unresolved source placeholder in assembled document: ${placeholder}`);

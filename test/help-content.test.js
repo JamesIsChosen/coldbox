@@ -310,7 +310,7 @@ test('a missing depth block is reported on stderr as a warning, not a build fail
   // to prose rather than on the mechanism this test actually targets.
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-help-warn-'));
   try {
-    for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
+    for (const directory of ['assets', 'scripts', 'src', 'vendor', 'docs']) {
       fs.cpSync(path.join(projectRoot, directory), path.join(root, directory), { recursive: true });
     }
     // P0.20: build.js reads the repository LICENSE file directly; every
@@ -347,7 +347,7 @@ test('the compiled help content in the build round-trips the real dependencies-f
 test('an unterminated ::: block in a guide fails the build closed with a non-zero exit, not a silently broken page', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-help-fail-'));
   try {
-    for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
+    for (const directory of ['assets', 'scripts', 'src', 'vendor', 'docs']) {
       fs.cpSync(path.join(projectRoot, directory), path.join(root, directory), { recursive: true });
     }
     // P0.20: build.js reads the repository LICENSE file directly; every
