@@ -1125,8 +1125,9 @@ async function verifyBuiltFile(browser, engine) {
 
 async function verifyUi2BrandAssets(browser, engine) {
   const opened = await openPage(browser, buildPath, 'reachable', { requestLog: true });
+  const page = opened.page;
   try {
-    const { harness, page, requestLog } = opened;
+    const { harness, requestLog } = opened;
     await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible' });
     await harness.atViewport(320, 640);
 
