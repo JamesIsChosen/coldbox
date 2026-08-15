@@ -24,6 +24,25 @@ __COLDBOX_COLD_STYLES__
       <p id="cold-secret-registry-empty">No released secret is loaded. Release one from Seed Forge. Vault lock, inactivity, panic hide, or closing this sealed realm clears this list.</p>
       <button id="cold-secret-registry-clear" type="button" aria-keyshortcuts="Control+Alt+Shift+L" disabled>Clear released secrets (Ctrl+Alt+Shift+L)</button>
     </section>
+    <section id="cold-tool-hub" class="cold-tool-hub" aria-labelledby="cold-tool-hub-title">
+      <p class="eyebrow">Sealed realm tools</p>
+      <h1 id="cold-tool-hub-title">Choose a cold-only workspace</h1>
+      <p id="cold-tool-hub-help">Every workspace below stays inside this sealed frame. Seed Forge is the only place to enter or validate a mnemonic; the backup, QR, and verification workspaces use the focused released secret.</p>
+      <nav class="cold-tool-hub-grid" aria-label="Sealed realm workspaces">
+        <a class="cold-tool-hub-link" href="#cold-group-session">Vault &amp; session</a>
+        <a class="cold-tool-hub-link" href="#cold-group-entropy">Entropy Lab</a>
+        <a class="cold-tool-hub-link" href="#cold-group-seed-forge">Seed Forge</a>
+        <a class="cold-tool-hub-link" href="#cold-group-backups">Backup Lab</a>
+        <a class="cold-tool-hub-link" href="#cold-group-qr">SeedQR Studio</a>
+        <a class="cold-tool-hub-link" href="#cold-group-recovery">Recovery &amp; verification</a>
+      </nav>
+    </section>
+    <section id="cold-group-session" class="cold-tool-group" data-cold-group="session" aria-labelledby="cold-group-session-title">
+      <header class="cold-tool-group-header">
+        <p class="eyebrow">Workspace 1 of 6</p>
+        <h2 id="cold-group-session-title">Vault &amp; session</h2>
+        <p>Unlocking, concealment, and secret notes stay in the sealed realm.</p>
+      </header>
     <section id="cold-kdf-details" data-kdf-active="checking" aria-label="Vault cryptography">
       <p class="eyebrow">Vault details / P0.12</p>
       <p id="cold-kdf-active">Active KDF: checking.</p>
@@ -126,6 +145,13 @@ __COLDBOX_COLD_STYLES__
       </form>
       <div id="cold-secret-note-list" aria-live="polite"></div>
     </section>
+    </section>
+    <section id="cold-group-entropy" class="cold-tool-group" data-cold-group="entropy" aria-labelledby="cold-group-entropy-title">
+      <header class="cold-tool-group-header">
+        <p class="eyebrow">Workspace 2 of 6</p>
+        <h2 id="cold-group-entropy-title">Entropy Lab</h2>
+        <p>Collect and inspect physical or manual entropy before handing it to Seed Forge.</p>
+      </header>
     <section id="cold-entropy-lab" aria-label="Entropy Lab">
       <p class="eyebrow">Entropy Lab / P1.1 + P1.2</p>
       <p id="cold-entropy-lab-help">Collect physical/manual entropy from dice, coin flips, shuffled cards, or genuinely user-supplied hex, then combine it with fresh CSPRNG bytes. A sound device RNG supplies the selected normal output strength; the independently collected physical/manual contribution determines how much fallback protection remains if that RNG is completely compromised. The Generate controls are simulation conveniences powered by the same device RNG as CSPRNG; generated values are labeled and receive zero independent-source credit. Recording no physical/manual entropy is supported, but that is CSPRNG-only security rather than two-source protection.</p>
@@ -259,6 +285,13 @@ __COLDBOX_COLD_STYLES__
       </div>
       <p id="cold-entropy-lab-note">Seed Forge below can generate from a fresh CSPRNG-only draw, or you can follow the explicit handoff: Mix entropy, then select “Use this mix in Seed Forge” once. P1.2 diagnostics remain advisory, while Seed Forge owns the generation boundary and any marginal-state acknowledgement. The mixed bytes, mnemonic, passphrase, raw BIP-39 seed, and fingerprint stay in this sealed realm and are not carried anywhere.</p>
     </section>
+    </section>
+    <section id="cold-group-seed-forge" class="cold-tool-group" data-cold-group="seed-forge" aria-labelledby="cold-group-seed-forge-title">
+      <header class="cold-tool-group-header">
+        <p class="eyebrow">Workspace 3 of 6</p>
+        <h2 id="cold-group-seed-forge-title">Seed Forge</h2>
+        <p>Create or validate a phrase here, then release it once to make it available to the other cold-only lenses.</p>
+      </header>
     <section id="cold-seed-forge" aria-label="Seed Forge" data-state="locked">
       <p class="eyebrow">Seed Forge / P1.3</p>
       <p id="cold-seed-forge-help">Generate or validate a BIP-39 phrase inside this sealed realm. For a recorded Entropy Lab result, choose the language and word count, select “Use this mix in Seed Forge,” and the exact mixed bytes are consumed once without a second mix. Normal CSPRNG-only generation is also available. Each workflow has its own optional passphrase pair; phrases, passphrases, raw BIP-39 seeds, and fingerprints never cross the realm boundary.</p>
@@ -349,6 +382,13 @@ __COLDBOX_COLD_STYLES__
       </section>
       <p id="cold-seed-forge-note">Write the words down offline and verify them from paper. A fingerprint is only a public identifier: it cannot recover a phrase. The raw BIP-39 seed is an advanced cold-only output; it is masked by default and has no clipboard or storage action. BIP-85 child phrases, xprv/xpub/ypub/zpub, script/path derivation, WIF, addresses, and password derivation are separate roadmap items.</p>
     </section>
+    </section>
+    <section id="cold-group-backups" class="cold-tool-group" data-cold-group="backups" aria-labelledby="cold-group-backups-title">
+      <header class="cold-tool-group-header">
+        <p class="eyebrow">Workspace 4 of 6</p>
+        <h2 id="cold-group-backups-title">Backup Lab</h2>
+        <p>Split a focused secret into offline backup shares. Existing share-entry fields remain available for recovery.</p>
+      </header>
     <section id="cold-seed-xor" aria-label="Cold-only Seed XOR backup" data-state="locked">
       <p class="eyebrow">Seed XOR / P2.3</p>
       <h2>N-of-N Seed XOR backup</h2>
@@ -377,8 +417,7 @@ __COLDBOX_COLD_STYLES__
       </div>
       <section class="cold-seed-xor-workflow" aria-labelledby="cold-seed-xor-split-title">
         <h3 id="cold-seed-xor-split-title">Split an existing phrase</h3>
-        <label for="cold-seed-xor-source">Phrase to split (masked)</label>
-        <input id="cold-seed-xor-source" type="password" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+        <p class="cold-focused-source">Source: focused released Seed Forge secret</p>
         <button id="cold-seed-xor-split" type="button" disabled>Generate Seed XOR parts</button>
         <p id="cold-seed-xor-split-status" role="status" aria-live="polite">No Seed XOR parts generated.</p>
       </section>
@@ -406,8 +445,7 @@ __COLDBOX_COLD_STYLES__
       <p class="cold-secret-focus-indicator" data-secret-focus-indicator="codex32" data-state="empty">No released secret is focused. Release one from Seed Forge before using this panel.</p>
       <div class="cold-codex32-grid">
         <div>
-          <label for="cold-codex32-secret-hex">Existing BIP-32 master seed (hex)</label>
-          <input id="cold-codex32-secret-hex" type="password" inputmode="text" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" placeholder="32–128 hexadecimal characters" disabled>
+          <p class="cold-focused-source">Source: focused released Seed Forge secret bytes</p>
         </div>
         <div>
           <label for="cold-codex32-threshold">Threshold</label>
@@ -487,8 +525,7 @@ __COLDBOX_COLD_STYLES__
               <select id="cold-shamir39-shares" disabled></select>
             </div>
           </div>
-          <label for="cold-shamir39-source">BIP-39 phrase to split (masked)</label>
-          <input id="cold-shamir39-source" type="password" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <p class="cold-focused-source">Source: focused released Seed Forge phrase</p>
           <button id="cold-shamir39-split" type="button" disabled>Split phrase</button>
           <p id="cold-shamir39-status" role="status" aria-live="polite">Shamir39 is waiting for the cold-realm self-test.</p>
           <section id="cold-shamir39-generated" class="cold-shamir-generated" hidden aria-labelledby="cold-shamir39-generated-title">
@@ -524,8 +561,7 @@ __COLDBOX_COLD_STYLES__
               <select id="cold-raw-sss-shares" disabled></select>
             </div>
           </div>
-          <label for="cold-raw-sss-source">Hexadecimal secret to split (masked)</label>
-          <input id="cold-raw-sss-source" type="password" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <p class="cold-focused-source">Source: focused released Seed Forge secret bytes</p>
           <button id="cold-raw-sss-split" type="button" disabled>Split hex secret</button>
           <p id="cold-raw-sss-status" role="status" aria-live="polite">Raw SSS is waiting for the cold-realm self-test.</p>
           <section id="cold-raw-sss-generated" class="cold-shamir-generated" hidden aria-labelledby="cold-raw-sss-generated-title">
@@ -547,20 +583,20 @@ __COLDBOX_COLD_STYLES__
       </div>
       <p id="cold-shamir-note">A threshold share set is not the same as a passphrase: the original phrase or raw secret must still be protected from unauthorized reconstruction. Wrong or damaged shares can reconstruct an incorrect candidate; always validate the resulting BIP-39 checksum or independently verify the raw secret. Prefer the standard SLIP-39 workflow when interoperable wallet backup is the goal.</p>
     </section>
+    </section>
+    <section id="cold-group-qr" class="cold-tool-group" data-cold-group="qr" aria-labelledby="cold-group-qr-title">
+      <header class="cold-tool-group-header">
+        <p class="eyebrow">Workspace 5 of 6</p>
+        <h2 id="cold-group-qr-title">SeedQR Studio</h2>
+        <p>Export a plaintext seed QR only after confirming the focused secret and the physical handling risk.</p>
+      </header>
     <section id="cold-qr-studio" aria-label="Cold-only SeedQR Studio" data-state="locked">
       <p class="eyebrow">SeedQR Studio / P1.10</p>
       <h2>Plaintext seed QR — cold-only</h2>
       <p id="cold-qr-help">These codes contain the complete seed phrase or its raw entropy. They are generated only in this sealed frame; no QR payload, phrase, or entropy bytes cross the message channel. Use an airgapped camera and treat every printed copy as a spend-authorising secret.</p>
       <p class="cold-secret-focus-indicator" data-secret-focus-indicator="seedqr" data-state="empty">No released secret is focused. Release one from Seed Forge before using this panel.</p>
       <div class="cold-qr-grid-form">
-        <div>
-          <label for="cold-qr-seed-source">Seed source</label>
-          <select id="cold-qr-seed-source" disabled>
-            <option value="focused">Focused released secret</option>
-            <option value="generated" selected>Generated Seed Forge phrase</option>
-            <option value="validated">Validated existing phrase</option>
-          </select>
-        </div>
+        <p class="cold-focused-source">Source: focused released Seed Forge secret</p>
         <div>
           <label for="cold-qr-language">BIP-39 wordlist</label>
           <select id="cold-qr-language" disabled></select>
@@ -595,20 +631,20 @@ __COLDBOX_COLD_STYLES__
       </div>
       <p id="cold-qr-note">Standard SeedQR uses English BIP-39 word indices as zero-padded four-digit numeric groups. Compact SeedQR uses the raw BIP-39 entropy bytes, works for non-English BIP-39 phrases, and is smaller but not hand-readable. The current phrase is cleared with Seed Forge when the cold session locks.</p>
     </section>
+    </section>
+    <section id="cold-group-recovery" class="cold-tool-group" data-cold-group="recovery" aria-labelledby="cold-group-recovery-title">
+      <header class="cold-tool-group-header">
+        <p class="eyebrow">Workspace 6 of 6</p>
+        <h2 id="cold-group-recovery-title">Recovery &amp; verification</h2>
+        <p>Reconstruct from written shares or compare public values without entering a second mnemonic.</p>
+      </header>
     <section id="cold-slip39-lab" aria-label="Cold-only SLIP-39 Backup Lab" data-state="locked">
       <p class="eyebrow">Backup Lab / P2.1</p>
       <h2>SLIP-39 recovery shares</h2>
       <p id="cold-slip39-help">SLIP-39 shares are secret material and remain inside this sealed frame. Before generating, confirm that the device you intend to restore supports SLIP-39: Trezor does; Ledger and Coldcard do not. A single-share set is not a backup split. The share set contains the BIP-39 phrase entropy; any BIP-39 passphrase is a separate secret and must be backed up separately.</p>
       <p class="cold-secret-focus-indicator" data-secret-focus-indicator="slip39" data-state="empty">No released secret is focused. Release one from Seed Forge before using this panel.</p>
       <div class="cold-qr-grid-form">
-        <div>
-          <label for="cold-slip39-seed-source">Master seed source</label>
-          <select id="cold-slip39-seed-source" disabled>
-            <option value="focused">Focused released secret entropy</option>
-            <option value="generated" selected>Generated Seed Forge phrase entropy</option>
-            <option value="validated">Validated existing phrase entropy</option>
-          </select>
-        </div>
+        <p class="cold-focused-source">Source: focused released Seed Forge phrase entropy</p>
         <div>
           <label for="cold-slip39-group-threshold">Groups required</label>
           <input id="cold-slip39-group-threshold" type="number" min="1" max="16" step="1" value="1" disabled>
@@ -758,6 +794,7 @@ __COLDBOX_COLD_STYLES__
       </details>
 
       <p id="cold-verification-note">A match means the independent public value you entered agrees with this cold derivation. It does not prove the device is genuine, the display is uncompromised, or that a passphrase was not omitted. Select and confirm the mnemonic and passphrase only in Seed Forge, then compare every character while keeping the device online state and physical network isolation under your control.</p>
+    </section>
     </section>
   </main>
   <script>
