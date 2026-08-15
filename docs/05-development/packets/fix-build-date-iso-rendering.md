@@ -12,9 +12,10 @@
 versions disagree on how to spell a zero UTC offset — `+00:00` on older git, `Z` on newer git.
 P0.22 hardens the existing fix by validating `formatCommitDate()`'s direct inputs before
 arithmetic, so invalid signs, negative components, noncanonical components, and malformed
-seconds fail closed instead of becoming malformed provenance strings. The original formatter
-still asks git only for values with no rendering to disagree about and emits a fixed explicit
-numeric offset.
+seconds fail closed instead of becoming malformed provenance strings. The parser also retains
+`%ci`'s calendar/time fields and compares them with a reconstruction from `%ct` plus the numeric
+offset, so impossible or contradictory Git output degrades to the labeled unknown rather than
+being accepted on shape alone. The formatter still emits a fixed explicit numeric offset.
 
 ---
 
@@ -23,7 +24,7 @@ numeric offset.
 **In:** `scripts/build-date.js`, `readBuildCommitDate()` in `scripts/build.js`,
 `scripts/lint.js` (one line — the new build module joins the tooling syntax-check list, matching
 how `crypto-bundle.js`/`font-bundle.js`/`help-content.js` are treated), `test/build-date.test.js`
-(now 7 tests), two rewritten assertions in `test/provenance.test.js`, ADR-0015 amendment,
+(now 8 tests), two rewritten assertions in `test/provenance.test.js`, ADR-0015 amendment,
 `build.md` step 7, CHANGELOG, and the P0.22 roadmap item.
 
 **Deliberately not in:** no change to which commit the date comes from — the 2026-08-06
@@ -47,7 +48,8 @@ Environment used for this remediation: Node v24.16.0, npm 11.13.0, Git
 
 The motivating divergence is recorded in the original review and ADR-0015: the same UTC commit
 can render as either `...+00:00` or `...Z` under different Git versions. This remediation keeps
-the explicit numeric form and hardens the formatter's direct-input contract.
+the explicit numeric form, hardens the formatter's direct-input contract, and rejects `%ci`
+calendar/time values that are impossible or disagree with `%ct`.
 
 ### Main byte-neutrality check
 
@@ -70,23 +72,23 @@ after verification.
 
 ### At the remediation tip
 
-The product/test commit is `dc916ac`. Its build-date source path includes `scripts/`, so later
+The product/test commit is `3540ccb`. Its build-date source path includes `scripts/`, so later
 packet-only commits do not change this artifact:
 
 ```
 $ npm run build
-Built build/coldbox.html (8d9342869392a4b9dcb7ce6752ecc8b926355c2c9f482e6fd704a58fdb9765e0)
+Built build/coldbox.html (da04ecd107ae27fd2b8be8cc30843d5d89ea608034976964eb1ddb0936c95562)
 $ Get-FileHash -Algorithm SHA256 build/coldbox.html
-hash 8d9342869392a4b9dcb7ce6752ecc8b926355c2c9f482e6fd704a58fdb9765e0
+hash da04ecd107ae27fd2b8be8cc30843d5d89ea608034976964eb1ddb0936c95562
 $ (Get-Item build/coldbox.html).Length
 2597939
 $ (Select-String -LiteralPath build/coldbox.html -Pattern 'var PROVENANCE_BUILD_DATE = "[^"]*"' | Select-Object -First 1).Matches.Value
-var PROVENANCE_BUILD_DATE = "2026-08-14T22:37:51-07:00"
+var PROVENANCE_BUILD_DATE = "2026-08-14T23:18:32-07:00"
 
 $ $env:LC_ALL='C'; $env:TZ='UTC'; npm run build
-Built build/coldbox.html (8d9342869392a4b9dcb7ce6752ecc8b926355c2c9f482e6fd704a58fdb9765e0)
+Built build/coldbox.html (da04ecd107ae27fd2b8be8cc30843d5d89ea608034976964eb1ddb0936c95562)
 $ Get-FileHash -Algorithm SHA256 build/coldbox.html
-hash 8d9342869392a4b9dcb7ce6752ecc8b926355c2c9f482e6fd704a58fdb9765e0
+hash da04ecd107ae27fd2b8be8cc30843d5d89ea608034976964eb1ddb0936c95562
 $ (Get-Item -LiteralPath build/coldbox.html).Length
 2597939
 ```
@@ -107,16 +109,16 @@ $ npm run check-docs
 Documentation hygiene check passed: 220 markdown file(s) checked, 0 warning(s).
 
 $ npm test
-ℹ tests 385
-ℹ pass 385
+ℹ tests 386
+ℹ pass 386
 ℹ fail 0
 
 $ npm run test:browser
 Browser harness passed in Chromium and Firefox.
 ```
 
-The targeted `node --test --test-concurrency=1 test/build-date.test.js` run passed all 7 tests,
-including the new direct-input regression. The first browser-harness invocation reported missing
+The targeted `node --test --test-concurrency=1 test/build-date.test.js` run passed all 8 tests,
+including the direct-input and semantic `%ci` regressions. The first browser-harness invocation reported missing
 binaries; after the documented install command above, the complete Chromium+Firefox harness passed.
 
 ### Scratch repositories are pinned against the tester's git config
@@ -168,10 +170,10 @@ Copied verbatim from [ROADMAP.md](../ROADMAP.md), P0.22:
 | A UTC product commit embeds `+00:00`, never `Z` | The formatter reconstructs the wall clock from `%ct` plus the numeric `%ci` offset and always emits the validated explicit offset. | `build-date.test.js` creates a real UTC commit and checks the embedded end-to-end build value. |
 | Valid non-UTC offsets remain byte-neutral with the historical rendering | Six real commits at `-07:00`, `+01:00`, `+05:30`, `+14:00`, `-11:00`, and `-03:30` are compared against Git's own `%cI` output. | `build-date.test.js` offset cross-check. |
 | The formatter is locale/timezone independent | Formatting uses `toISOString()` after explicit offset arithmetic, with no locale APIs. | Four `TZ` values and two `LC_ALL` values in `build-date.test.js`; independent two-build hashes in §3. |
-| Malformed Git output degrades to the labeled unknown | Strict parsing rejects malformed stdout before the formatter is called; a null formatter result also maps to the labeled unknown. | `build-date.test.js` malformed-output table. |
+| Malformed Git output degrades to the labeled unknown | Strict parsing captures `%ci`'s calendar/time fields, reconstructs the expected wall clock from `%ct` plus the parsed offset, and maps any mismatch or formatter failure to the labeled unknown. | `build-date.test.js` syntactic malformed-output table and semantic impossible/contradictory timestamp regression. |
 | Invalid signs, negative offset components, noncanonical offset components, impossible offsets, and unrepresentable instants are refused by the formatter itself | `formatCommitDate()` validates its own sign, seconds, and canonical two-digit offset components before arithmetic. | Direct-input regression covers invalid sign, negative values, numeric/noncanonical components, whitespace, negative seconds, out-of-range offsets, and unrepresentable instants. |
 | The complete build path remains reproducible | Build output is compared across locale/timezone and from a synthetic UTC product commit. | §3 command output and the full test suite. |
-| Regression tests cover the direct formatter contract with negative cases | The new direct-input test calls the exported formatter rather than only the parser path. | `build-date.test.js` now has 7 passing tests. |
+| Regression tests cover the direct formatter contract with negative cases | The direct-input test calls the exported formatter rather than only the parser path; the parser test independently covers semantic `%ci` validation. | `build-date.test.js` now has 8 passing tests. |
 
 ---
 
@@ -201,17 +203,19 @@ claim there are none. §9 says where I would look.
 
 ## 6. Test evidence
 
-**7 tests in `test/build-date.test.js`.** The vectors are not hand-written: `commitAt()` creates a real repository, makes
+**8 tests in `test/build-date.test.js`.** The vectors are not hand-written: `commitAt()` creates a real repository, makes
 a real commit at a requested offset, and returns both the machine values the build reads and
 git's own `%cI` rendering. So "our formatter agrees with git" is checked against git, not against
 my belief about git.
 
-**Negative tests.** 12 malformed git outputs must all produce the labeled unknown — including
-`'1786767525 Z'` and `'1786767525 2026-08-15T04:18:45 +0000'`, which are close enough to the real
-shape to slip past a loose parser. The direct formatter regression adds 12 invalid sign,
-negative, noncanonical, whitespace, and negative-seconds inputs that must return `null`, and
-the existing out-of-range/unrepresentable inputs must also return `null` rather than a rounded
-or wrapped date.
+**Negative tests.** 12 syntactically malformed Git outputs must all produce the labeled unknown —
+including `'1786767525 Z'` and `'1786767525 2026-08-15T04:18:45 +0000'`, which are close enough to
+the real shape to slip past a loose parser. Four additional semantically malformed or
+contradictory `%ci` values cover an impossible month/time, an impossible day, an impossible hour,
+and a one-second contradiction against `%ct`; each also produces the labeled unknown. The direct
+formatter regression adds 12 invalid sign, negative, noncanonical, whitespace, and negative-seconds
+inputs that must return `null`, and the existing out-of-range/unrepresentable inputs must also
+return `null` rather than a rounded or wrapped date.
 
 **Deliberately broken, and how it failed.** My first implementation asked for `--format=%ct %cz`.
 `%cz` is not a git placeholder — git emitted the literal text `%cz`, the strict parse rejected
@@ -276,10 +280,10 @@ does not add a rendered surface or mobile behavior.
 ## 9. What to scrutinise
 
 **Whether the byte-neutrality claim survives the branch's own commits.** This branch touches
-`scripts/`, which is in `BUILD_DATE_SOURCE_PATHS`, so the product/test commit `dc916ac` advances
+`scripts/`, which is in `BUILD_DATE_SOURCE_PATHS`, so the product/test commit `3540ccb` advances
 the build date and changes the final artifact hash — correctly, per the mechanism. The claim is
 narrower than "the artifact never changes": rebuilding `main` reproduces the recorded
-`73ce748f…` artifact, while rebuilding this tip twice reproduces `8d934286…`.
+`73ce748f…` artifact, while rebuilding this tip twice reproduces `da04ecd…`.
 
 **`formatCommitDate`'s arithmetic.** It shifts the instant by the offset and then formats in UTC,
 which is a trick that reads as slightly wrong on first pass. The six-offset cross-check against
@@ -287,7 +291,9 @@ git is what makes me confident, including `+05:30` and `-03:30` (non-integer hou
 (the extreme), and a leap day. If a reviewer finds an offset where it disagrees with git, that is
 a real finding.
 
-**Whether the fix is complete.** I fixed the input I caught. Other candidates for
+**Whether the fix is complete.** The parser now binds the raw `%ci` wall clock to the independent
+`%ct` reconstruction; a reviewer should try both impossible calendar/time values and valid-looking
+contradictions. Other candidates for
 environment-dependence in this build that I did *not* audit: `readLicenseText()` reads `LICENSE`
 with no normalisation at all (deliberately, per P0.20 — but that makes it line-ending sensitive,
 guarded only by `.gitattributes`), and `help-content.js` compiles markdown whose file ordering
@@ -303,10 +309,12 @@ that the longhand re-derivation is not just `build-date.js` copied.
 ## 10. Self-assessment
 
 **What might be wrong:** the formatter could disagree with git at some offset I did not try,
-though I tried the awkward ones. The `%ci` dependency (assumption 3) is a smaller version of the
-same class of problem I am fixing, mitigated but not eliminated. The direct formatter contract is
-now deliberately strict; a future caller that supplies a different representation will receive
-`null` and must adapt at that boundary rather than bypassing validation.
+though I tried the awkward ones. The parser's semantic check deliberately treats `%ct` plus the
+parsed offset as authoritative and rejects any `%ci` wall clock that differs; a future change in
+Git's timestamp semantics should therefore degrade to the labeled unknown rather than be guessed.
+The direct formatter contract is deliberately strict; a future caller that supplies a different
+representation will receive `null` and must adapt at that boundary rather than bypassing
+validation.
 
 **What I did not do that arguably should have been done:** verify the `Z` rendering firsthand on a
 newer git rather than relying on the maintainer's build output; identify the git version boundary;
