@@ -99,3 +99,96 @@ UI.3's core switcher/lifecycle behavior is substantially exercised and the exact
 Per `docs/05-development/review-protocol.md`, any finding of any severity is a FAIL. Leave UI.3 at `[~]`; do not merge PR #58. A fresh reviewer must re-check every finding and all acceptance criteria on the remediation tip.
 
 **VERDICT: FAIL**
+
+---
+
+# Independent re-review — UI.3 released-secret state and the secret switcher
+
+**VERDICT: FAIL**
+
+**Findings:** 2 — one blocking evidence finding and one stale-PR-metadata finding; both must be addressed before another fresh review.
+
+- **Reviewed commit:** `23c17de2e1e2d98ed5fac1e97066e286a88661b1`
+- **Base:** `main@ac09a5f1153a94cabbc068cf5d1ffc4d98ce9b6c`
+- **Reviewed by:** GPT-5.6 Sol
+- **Date:** 2026-08-15
+
+## Previous finding disposition
+
+| Prior finding | Status | Re-review evidence |
+|---|---|---|
+| F1 — released-secret derivative persisted/sent warm | **RESOLVED** | `handleAddressVerifyRequest()` now sets `current` to `null` whenever released-secret mode has ever activated, so the focused record cannot enter `deriveRegistryAddress()`, `markAddressColdVerified()`, `replacePublicData()`, or `publicData.updated`. The committed browser regression releases a secret, captures every cold→warm MessagePort delivery for the verification operation, requires `address.verifyResult`/`unverified`, requires zero `publicData.updated`, and checks the warm registry record remains `unverified`. |
+| F2 — pink Release button used white/hard-coded foreground | **RESOLVED** | `.cold-seed-forge-release button` now uses `var(--cold-pink)` with `var(--cold-ink)`. From the committed token values `#ff007a` and `#121212`, the independently calculated WCAG contrast is **4.94:1**. `test/ui.3-released-secret.test.js` checks the actual tokens and recalculates the ratio with a `>= 4.5` assertion. |
+| F3 — packet artifact evidence stale/non-reproducible | **NOT RESOLVED** | See R2-F1 below. Clean committed checkouts at both the packet-named product tip `e78cb6422510be26cb060d7df0744199dfef845a` and this reviewed tip `23c17de2e1e2d98ed5fac1e97066e286a88661b1` produce a different artifact from the packet claim. |
+| F4 — prohibited bare `wallet` in new glossary plain copy | **RESOLVED** | The plain definition now starts “The released secret you temporarily choose…” and no longer names the released-secret entry as a wallet. |
+
+## What I verified
+
+- Re-read `AGENTS.md`, `docs/05-development/review-protocol.md`, the existing independent FAIL report, the UI.3 roadmap criterion, the remediation diff, and the current packet.
+- Verified PR #58 was open, non-draft, mergeable, and exactly at `23c17de2e1e2d98ed5fac1e97066e286a88661b1` for this re-review before publishing reviewer artifacts.
+- Inspected all 15 changed files, including the released-secret registry/focus/clear paths, every new cold UI surface, the warm-origin address-verification guard, the MessagePort boundary regression, the contrast regression, the help/spec/ADR amendments, and the packet evidence.
+- Inspected exact-tip GitHub Actions run #220. Clean Ubuntu and Windows build jobs both completed successfully through `npm ci`, upstream vendor verification, lint, documentation hygiene, unit/vector tests, two builds, and same-checkout hash comparison. The cross-OS comparison job also passed.
+- Inspected exact-tip Browser harness job #220. The committed built `file://` artifact passed the Chromium + Firefox harness, including the released-secret switcher/lifecycle coverage and the released-session address-verification boundary regression.
+- Downloaded the exact-tip Ubuntu and Windows build artifacts and independently hashed the actual `coldbox.html` files. Both are **2,654,759 bytes** with SHA-256 **`b2f752827e4480769ec84850aa3edb555005fad93f8aa000386ac32055ab3a5d`**; their bytes agree across operating systems.
+- Independently checked the packet-named product tip `e78cb6422510be26cb060d7df0744199dfef845a`. Its completed clean CI run #219 also produced **2,654,759 bytes** with the same SHA-256 **`b2f752827e4480769ec84850aa3edb555005fad93f8aa000386ac32055ab3a5d`**. Therefore the packet's `2,654,776` / `1a60f562...` evidence does not reproduce even at the commit the packet says it measured.
+- Recomputed the bundle delta from the packet's UI.2 baseline of 2,622,481 bytes: the reproducible clean artifact is **+32,278 bytes (+31.52 KiB, +1.23%)**, not +32,295 bytes.
+- Re-checked F1 directly in `handleAddressVerifyRequest()` and the browser capture path: released mode cannot supply `currentSeedForgeWallet()` to the derivation/persistence block, while the unreleased transitional path remains intact.
+- Re-checked F2 against the committed CSS tokens and test: pink/ink computes to **4.94:1** and the rule contains no literal white foreground.
+- Re-checked F4 against the committed glossary text and documentation-hygiene-successful exact-tip CI.
+- Re-checked the realm-boundary scope: no new message type is introduced by UI.3; released-mode warm address verification is comparison-only, and the cold registry itself remains session-local. The exact-tip browser and protocol suites are green.
+
+### Execution-environment note
+
+This reviewer runtime cannot mount the maintainer's Windows worktree and its shell cannot perform a fresh outbound Git clone. As in the first independent review, I used the PR's exact commit in GitHub-hosted clean checkouts as executable verification evidence and downloaded the resulting artifacts for independent byte/hash inspection. The Windows and Ubuntu jobs give distinct clean paths/environments and independently verify the upstream-vendor and reproducibility gates; the exact-tip browser job executes the committed `file://` flow in both required engines.
+
+## What I could not verify
+
+None within UI.3's browser-verifiable acceptance surface. Physical mobile, Safari, Tor, and other device-matrix entries remain outside UI.3 acceptance and were not used to pass or fail this item.
+
+## Acceptance criteria — verbatim check
+
+| Roadmap acceptance criterion | Result | Evidence |
+|---|---:|---|
+| `a secret released from Seed Forge appears in the switcher with its label and public master fingerprint` | PASS | Registry/render code plus exact-tip Chromium/Firefox released-secret flow. |
+| `several secrets can be released and exactly one is focused` | PASS | Registry invariant/unit coverage and two-secret browser flow. |
+| `changing focus re-points every dependent panel with no reload and no re-entry` | PASS | Focus invalidation plus six dependent focus surfaces and browser focus-switch assertions without cold-frame reload. |
+| `the registry is cleared and its buffers zeroized by each of vault lock, idle timeout, panic and realm teardown, each covered by a test` | PASS | Registry zeroization unit test plus browser lock, shortened idle, double-Escape panic, and `pagehide` coverage. |
+| `no released secret, and no derivative of one, appears in any message to the warm shell` | PASS | F1 remediation guard plus the committed capture of every cold→warm delivery during released-session address verification; zero `publicData.updated` and `unverified` result required. |
+| `the empty registry renders a designed empty state that explains what cleared it` | PASS | Switcher empty-state rendering and exact-tip browser checks across clear/lifecycle paths. |
+| `nothing is persisted to any vault compartment or storage` | PASS | Registry remains closure-local; released-mode address verification cannot reach `replacePublicData`; browser regression requires the warm registry record to remain `unverified`. |
+| `the focused secret's public master fingerprint is visible on any panel that performs a destructive, splitting or exporting action` | PASS | Six `[data-secret-focus-indicator]` surfaces are populated and checked in both browser engines. |
+| `the keyboard shortcut that clears the registry is confirmed not to collide with the panic binding` | PASS | `Ctrl+Alt+Shift+L` clear and double-Escape panic remain distinct and are both exercised by the exact-tip browser harness. |
+
+## Findings
+
+### R2-F1 — BLOCKING EVIDENCE — Prior F3 remains unresolved: the packet still records a non-reproducible build artifact
+
+**Location:** `docs/05-development/packets/ui.3-released-secret-state.md` §§3, 11.
+
+**Observed:** The remediated packet explicitly says its verification product tip is `e78cb6422510be26cb060d7df0744199dfef845a` and records `build/coldbox.html` as **2,654,776 bytes**, SHA-256 **`1a60f562dbb428ea97a7e040820b1bbe359bce4d0c3a2b31ab9561577d16271d`**. Section 11 consequently records a **+32,295-byte** delta from the 2,622,481-byte UI.2 baseline.
+
+Clean GitHub Actions checkouts do not reproduce those numbers. Run #219 at the packet-named `e78cb6422510be26cb060d7df0744199dfef845a` and run #220 at the reviewed `23c17de2e1e2d98ed5fac1e97066e286a88661b1` both produce **2,654,759 bytes**, SHA-256 **`b2f752827e4480769ec84850aa3edb555005fad93f8aa000386ac32055ab3a5d`**. I independently downloaded and hashed the artifacts. Ubuntu and Windows agree byte-for-byte at the reviewed tip. The clean delta is **+32,278 bytes (+31.52 KiB, +1.23%)**.
+
+This is the same class of evidence defect as prior F3. That finding's required action was explicit: after fixes are committed, record one internally consistent set of clean, committed-tip artifact figures rather than working-tree/pre-commit values. The new packet instead names a committed product tip but still gives an artifact that a clean checkout of that exact commit does not produce.
+
+**Expected:** Every exact artifact hash, byte count, dependency-free rebuild claim, and bundle-delta statement in the packet must describe a clean committed checkout and reproduce at the commit it names. Per `review-protocol.md`, a packet claim that does not reproduce is a FAIL even when the underlying source itself builds reproducibly.
+
+**Required action:** Replace the packet's non-reproducing artifact hash, byte count, and bundle-delta evidence with values obtained from a clean committed checkout. Commit that packet correction, then rerun the required verification at the resulting new PR tip and confirm the packet's recorded evidence still matches that exact tip. Do not use untracked reviewer material or other working-tree-only content when deriving the recorded artifact figures. Request another fresh re-review after the correction is pushed.
+
+### R2-F2 — ADVISORY (still FAIL under protocol) — PR #58's GitHub description is stale and contradicts the remediated branch
+
+**Location:** PR #58 description/body.
+
+**Observed:** At the reviewed tip, the committed packet file describes the F1/F2/F4 remediation and records 406 tests plus the newer (though still non-reproducing) `1a60f562...` artifact evidence. The GitHub PR description is still the original pre-remediation packet: it reports 405 tests, the obsolete `b214401b...` / 2,652,783-byte artifact, 226 docs, and states the old direct boundary rationale that was invalidated by F1. It does not describe the released-session address-verification guard or its new regression.
+
+That makes the PR's primary review surface materially stale. A reviewer opening PR #58 is shown claims that no longer describe the branch and evidence from before the remediation commits.
+
+**Expected:** The PR description must reflect the current packet/branch and must not present superseded security or verification claims as current evidence.
+
+**Required action:** After correcting R2-F1 in the committed packet and rerunning final-tip verification, update PR #58's description from that final corrected packet so the GitHub review surface and repository packet agree. Do not merely patch individual numbers in the old body; synchronize the full final packet content.
+
+## Verdict rationale
+
+F1, F2, and F4 are resolved, every UI.3 roadmap acceptance clause is supported by the exact-tip code/tests/browser run, and run #220 is green across Windows, Ubuntu, cross-OS reproducibility, and Chromium/Firefox. The review still cannot PASS for two independent evidence/publication reasons: prior F3 was not actually remediated because the packet's supposedly final artifact evidence fails to reproduce both at its named `e78cb64` product tip and at the reviewed `23c17de` tip; and the GitHub PR description remains the obsolete pre-remediation packet. Under the review protocol, either finding is enough for FAIL. Leave UI.3 at `[~]`; do not merge PR #58.
+
+**VERDICT: FAIL**
