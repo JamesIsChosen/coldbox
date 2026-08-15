@@ -5,24 +5,26 @@
 
 ## Context
 
-`src/cold/index.html` is one document with every sealed-realm tool stacked vertically: Entropy Lab, Entropy Health, Seed Forge, Seed XOR, codex32, Shamir39 and raw SSS, SeedQR Studio, SLIP-39, and BackupRecord verification. Six of those sections open with their own masked phrase or secret field:
+`src/cold/index.html` is one document with every sealed-realm tool stacked vertically: Entropy Lab, Entropy Health, Seed Forge, Seed XOR, codex32, Shamir39 and raw SSS, SeedQR Studio, SLIP-39, and BackupRecord verification. Seed Forge has the one seed-entry field; five other tools have duplicate seed/source loaders that must not remain:
 
-| Field | Line (at 94cf73b) |
+| Field | Status |
 |---|---|
-| `#cold-seed-forge-mnemonic-input` | 306 |
-| `#cold-seed-xor-source` | 360 |
-| `#cold-codex32-secret-hex` | 388 |
-| `#cold-shamir39-source` | 468 |
-| `#cold-raw-sss-source` | 505 |
-| `#cold-slip39-seed-source` | 580 |
+| `#cold-seed-forge-mnemonic-input` | Seed Forge's single seed-entry surface |
+| `#cold-seed-xor-source` | Removed by UI.4 |
+| `#cold-codex32-secret-hex` | Removed by UI.4 |
+| `#cold-shamir39-source` | Removed by UI.4 |
+| `#cold-raw-sss-source` | Removed by UI.4 |
+| `#cold-slip39-seed-source` | Removed by UI.4 |
+
+The QR Studio and SLIP-39 source selectors were also non-secret source-loading controls. UI.4 replaces both with focused-source status text so those tools cannot select an unreleased generated or validated result. No recovery, share-combine, passphrase, vault-authentication, note, or entropy input is removed.
 
 Three consequences follow, and the third is the one that matters.
 
-**The same phrase gets retyped up to six times in one session.** Every retype is a fresh opportunity to mistype a word, and — far worse — a fresh opportunity to paste a seed into the wrong field, including a field outside this document.
+**The same phrase used to be retyped up to six times in one session.** Every retype was a fresh opportunity to mistype a word, and — far worse — a fresh opportunity to paste a seed into the wrong field, including a field outside this document.
 
 **Nothing is grouped.** Tools sit in roadmap-phase order rather than in the order any task needs them, so finding the right one means scrolling a 753-line document.
 
-**Each phrase field is an independent implementation of the same security-critical behaviour**: masked by default, cleared on teardown, never logged, never persisted. Six implementations of one contract is six chances to get it wrong, and the correctness of each is verified separately or not at all.
+**Each former phrase field was an independent implementation of the same security-critical behaviour**: masked by default, cleared on teardown, never logged, never persisted. The registry now holds the released secret once, and the remaining secret inputs are declared by their purpose rather than treated as seed loaders.
 
 The existing one-shot hand-off between Entropy Lab and Seed Forge ([ADR-0023](0023-entropy-lab-seed-forge-boundary.md) as amended, implemented per [ADR-0028](0028-cold-only-bip39-seed-forge.md)) already establishes the right shape for two tools. It does not generalise to nine, because it is a direct call between one producer and one consumer rather than a thing a session holds.
 
@@ -38,15 +40,15 @@ The vault passphrase is a *different kind of secret* from a released one: it aut
 
 **Release publishes to a session-scoped registry inside the cold document.** A released secret is an in-memory record holding the secret material, its derived public master fingerprint, and a user-visible label. It lives in the sealed frame only. It is never serialised, never written to a vault compartment, never logged, and never included in any message to the warm shell — the existing prohibition on secret material crossing the boundary is unchanged and unqualified by this decision.
 
-**Every other cold tool becomes a lens on the focused secret.** Split lab, SeedQR Studio, derivation, addresses, child seeds, verification and recovery read the focused secret from the registry and render from it.
+**Every other cold tool becomes a lens on the focused secret.** Split lab, SeedQR Studio, derivation, addresses, child seeds, verification and share generation read the focused secret from the registry and render from it. Recovery and combine workflows retain their own share-entry inputs because those fields serve reconstruction rather than seed loading.
 
-Precisely: **they lose their seed/source-loading input, and only that.** The six fields listed above collapse to one. They keep every input that does a different job — share and recovery material being reconstructed, the separate BIP-39 passphrase, vault authentication and re-authentication, secret notes. A recovery tool that could not accept share words would not be a recovery tool. An earlier draft of this ADR said "eleven entry points collapse to one" and that tools "gain no input of their own"; both were over-broad, the number was unsupported, and neither described what this decision actually removes.
+Precisely: **they lose their seed/source-loading input, and only that.** The five duplicate loaders listed above are removed, leaving Seed Forge's one seed-entry surface. They keep every input that does a different job — share and recovery material being reconstructed, the separate BIP-39 passphrase, vault authentication and re-authentication, secret notes, and physical/manual entropy collection. A recovery tool that could not accept share words would not be a recovery tool. An earlier draft of this ADR said "eleven entry points collapse to one" and that tools "gain no input of their own"; both were over-broad, the number was unsupported, and neither described what this decision actually removes.
 
 **Several secrets may be released; exactly one is focused.** Switching focus re-points every panel. This is what makes a 2-of-3 multisig workable — three fingerprints have to be comparable side by side, not one at a time.
 
 **Everything recomputes from the focused secret at render time.** There is no re-derive button and no cached derived panel that can survive a focus change. A panel showing values derived from a secret that is no longer focused is a defect, not a stale view.
 
-**Warm-origin address checks do not consume released-secret state.** The warm Address Check may still compare a pasted candidate with the public registry, but once any secret has been released the cold handler refuses to derive an address or write `verifiedAgainstXpub`/`cold-verified` state from that session-only registry. This keeps a released-secret derivative out of warm/public persistence. The unreleased Seed Forge fields retain their transitional cold re-derivation path until UI.4 removes them; the dedicated cold verification panel remains a cold-local lens on the focused secret.
+**Warm-origin address checks do not consume released-secret state.** The warm Address Check may still compare a pasted candidate with the public registry, but once any secret has been released the cold handler refuses to derive an address or write `verifiedAgainstXpub`/`cold-verified` state from that session-only registry. Before release, it preserves the existing re-derivation from the current Seed Forge result; no duplicate source field remains. This keeps a released-secret derivative out of warm/public persistence, while the dedicated cold verification panel remains a cold-local lens on the focused secret.
 
 **Lifetime is the session, and it ends hard.** The registry is cleared, and its buffers zeroized on the same path the existing teardown uses, by every one of: vault lock, the idle timeout, the panic action, and realm teardown. There is no persistence across a lock and no "keep it loaded for convenience" affordance. The empty registry is a normal destination with a designed empty state, not an error condition.
 
@@ -65,18 +67,25 @@ Multiple released secrets are included deliberately rather than deferred. A sing
 ## Consequences
 
 - The registry and its switcher are the first thing built. Nothing else in the restructure can be tested without it.
-- Deleting the six fields above re-points `seed-forge.js`, `seed-xor.js`, `codex32.js`, `shamir.js` and `slip39.js` at the registry, and every test asserting on those element IDs changes with them. This is the largest mechanical cost of the decision and is expected to dominate the diff.
+- Removing the five duplicate loaders above re-points the Seed XOR, codex32, Shamir39/raw SSS, SeedQR, and SLIP-39 lenses at the registry, and every test asserting on those element IDs changes with them. The six-group hub is navigation chrome around those existing panels; it adds no new secret boundary or message path.
 - **The invariant is a declared registry, not a count.** An earlier draft said "exactly two secret-entry points exist in `src/`". That is simply false and would have failed on the day it was written: the sealed realm legitimately holds around two dozen inputs that accept secret material — vault passphrase and confirmation, keyfile, recovery-share re-authentication, recovery-share entry, concealment re-authentication, secret notes, the separate BIP-39 passphrase fields, and every share-combine field that recovery requires. None of those are seed-loading, and none of them should disappear.
 
   What the model actually requires is that **exactly one input anywhere accepts seed material** — a BIP-39 mnemonic or raw master-seed bytes — *for the purpose of loading a secret to operate on.* That is expressed as a registry in the test suite: every secret-accepting input in `src/` is declared with a category, and the test asserts three things. That no undeclared secret-accepting input exists, so adding one is a deliberate act with a review trail. That exactly one entry carries the category `seed-entry`. And that no entry changes category without the registry changing with it.
 
   | Category | Meaning | Count |
   |---|---|---|
-  | `seed-entry` | Accepts a mnemonic or raw master seed, to load a secret | **exactly 1** |
-  | `vault-auth` | Authenticates a vault session — passphrase, confirmation, keyfile, re-auth | unbounded |
+  | `seed-entry` | Accepts a mnemonic for Seed Forge's single seed-entry surface | **exactly 1 registry entry** |
+  | `seed-validation` | Editable per-word validation mirrors inside Seed Forge; not an additional source loader | unbounded |
+  | `vault-auth` | Authenticates a vault session — passphrase and confirmation | unbounded |
+  | `keyfile` | Selects the optional vault keyfile | unbounded |
+  | `recovery-auth` | Re-authenticates the vault before recovery-share configuration | unbounded |
+  | `recovery-share` | Share or recovery material being reconstructed | unbounded |
+  | `concealment-auth` | Re-authenticates concealment reveal | unbounded |
+  | `secret-note` | User-authored secret content and search text | unbounded |
   | `bip39-passphrase` | The BIP-39 passphrase, a separate secret from the seed | unbounded |
-  | `share-input` | Share or recovery material being reconstructed | unbounded |
-  | `secret-note` | User-authored secret content | unbounded |
+  | `entropy-input` | Physical/manual entropy that feeds a new Seed Forge generation | unbounded |
+  | `share-passphrase` | The separate SLIP-39 share passphrase | unbounded |
+  | `share-combine` | A codex32 share or correction candidate | unbounded |
 
   A count was the wrong shape because it conflates "how many places can I type a secret" with "how many places can I load *the* secret". Only the second is what this decision constrains.
 - New behavioural coverage is required, none of which the existing suite provides: that releasing updates every dependent view without re-entry; that lock, idle timeout and panic each clear the whole registry; that no send-to path writes secret material to the clipboard; and that concealment reveal does not survive a lock.

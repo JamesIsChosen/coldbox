@@ -50,7 +50,7 @@ Each `Address` record carries its verification history — fields in [data-model
 
 ### Released-secret session boundary
 
-The warm-origin Address Check remains available after a Seed Forge result is released: it can compare the pasted candidate with the public registry. It does not, however, use the session-only released secret to derive an address or persist `verifiedAgainstXpub`/`cold-verified` state. The dedicated cold verification panel can still use the focused secret inside the sealed realm; the unreleased transitional Seed Forge fields retain the existing warm-request re-derivation path until UI.4 removes them.
+The warm-origin Address Check remains available after a Seed Forge result is released: it can compare the pasted candidate with the public registry. It does not, however, use the session-only released secret to derive an address or persist `verifiedAgainstXpub`/`cold-verified` state. Before release, it preserves the existing cold re-derivation from the current Seed Forge result; that path has no duplicate source field. The dedicated cold verification panel uses the focused secret inside the sealed realm.
 
 **A registry match against an `unverified` or `unverifiable` address states that, inline, every time.** Not once at setup, not in a help panel.
 

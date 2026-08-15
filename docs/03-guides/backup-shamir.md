@@ -1,8 +1,9 @@
 # Backing up with Shamir39 or raw SSS
 
 Coldbox offers two non-SLIP-39 threshold-share formats for cold-local use:
-Shamir39 turns a BIP-39 phrase into mnemonic shares, while raw SSS turns
-hexadecimal key material into hexadecimal shares. The Ian Coleman Shamir39
+Shamir39 turns the focused Seed Forge BIP-39 phrase into mnemonic shares, while
+raw SSS turns that focused phrase's BIP-39 seed bytes into hexadecimal shares.
+The Ian Coleman Shamir39
 specification and the secrets.js reference behavior were reviewed on
 2026-08-12.
 
@@ -17,11 +18,12 @@ keep the original phrase or raw secret protected too.
 ::: working
 Shamir39 is a non-standard mnemonic format for splitting a valid BIP-39
 phrase. Raw SSS is Shamir Secret Sharing over a configurable binary finite
-field for hexadecimal data. Neither format is SLIP-39, and neither provides
-wallet-device interoperability by itself. A BIP-39 passphrase is a separate
-secret and is not included in either share set. The full-uniform coefficient
-policy protects the field-segment secret below threshold, but it does not
-authenticate shares or protect a separate passphrase.
+field for the focused phrase's hexadecimal BIP-39 seed bytes. Neither format
+is SLIP-39, and neither provides wallet-device interoperability by itself.
+Shamir39 shares phrase entropy, so its BIP-39 passphrase is separate; raw SSS
+shares the derived seed bytes, so the selected passphrase is reflected in its
+source bytes. The full-uniform coefficient policy protects the field-segment
+secret below threshold, but it does not authenticate shares.
 :::
 ::: technical
 The pinned Ian Coleman commit contains two historical artifacts that must not
@@ -62,14 +64,16 @@ original material in Coldbox and then using the result in the target wallet.
 ## Generate shares
 
 1. Work offline and open **Backup Shares / P2.4** in the sealed realm.
-2. For Shamir39, choose the BIP-39 language, threshold, and total share count,
-   then enter a valid BIP-39 phrase. For raw SSS, enter even-length
-   hexadecimal data and choose the field size; 8 bits is the compatibility
-   default.
-3. Generate the shares. The source field is cleared after the attempt.
-4. Reveal the generated shares briefly and transcribe each one to a separate
+2. In **Seed Forge**, validate or generate the phrase and its exact BIP-39
+   passphrase, release it, and confirm the focused fingerprint.
+3. In Backup Shares, choose the language, threshold, and total share count for
+   Shamir39, or the field size for raw SSS. Both generators use the focused
+   Seed Forge secret; there is no second phrase or raw-hex source field.
+4. Generate the shares. The focused registry and generated output are cleared
+   after the cold session ends.
+5. Reveal the generated shares briefly and transcribe each one to a separate
    offline record. Hide them again before moving on.
-5. Type the written shares into the matching combine fields and reconstruct a
+6. Type the written shares into the matching combine fields and reconstruct a
    candidate. This verifies transcription only when the shares came from your
    physical records, not when you reuse the just-displayed values.
 

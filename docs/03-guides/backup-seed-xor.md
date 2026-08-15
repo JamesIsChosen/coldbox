@@ -42,8 +42,11 @@ vendored BIP-39 wordlists, but an external wallet must support that wordlist.
 ## Generate parts
 
 1. Work offline and open **Seed XOR / P2.3** in the sealed realm.
-2. Choose the same BIP-39 wordlist and select 2, 3, or 4 parts.
-3. Enter the existing phrase in the masked field.
+2. In **Seed Forge**, validate or generate the BIP-39 phrase, then release it
+   and confirm its fingerprint in the focused-secret switcher.
+3. Open Seed XOR, choose the same BIP-39 wordlist, and select 2, 3, or 4
+   parts. The split source is the focused Seed Forge phrase; there is no
+   second phrase field.
 4. Choose **Deterministic** for reproducible Coldcard-compatible masks, or
    **Random masks** when you want fresh CSPRNG-derived masks.
 5. Generate the parts, reveal them briefly, and transcribe each onto separate
@@ -52,8 +55,8 @@ vendored BIP-39 wordlists, but an external wallet must support that wordlist.
    **Combine existing parts** fields. Do not treat the phrases that were just
    displayed as proof that the transcription is correct.
 
-The app clears the source field, generated output, combine fields, and
-combined phrase when the cold session locks or is torn down. It has no copy,
+The app clears the focused-secret registry, generated output, combine fields,
+and combined phrase when the cold session locks or is torn down. It has no copy,
 clipboard, download, or storage action for these phrases.
 
 ## Recovery and verification
