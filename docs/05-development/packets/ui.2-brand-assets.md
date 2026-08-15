@@ -35,7 +35,7 @@ the repository.
 
 - `scripts/run-browser-harness.js` `copyBuildInputsInto()` and the temporary-build-root
   lists in `test/build.test.js`, `test/help-content.test.js`, `test/legal-notices.test.js`
-  and `test/provenance.test.js` each gained `'assets'`. These construct a scratch project
+  and `test/provenance.test.js` each gained `'assets'`. After P0.22 merged, its new `test/build-date.test.js` end-to-end scratch build was added to the same list during reconciliation. These construct a scratch project
   root and run the real `scripts/build.js` in it; without the new directory they fail
   closed on ENOENT. This is not optional cleanup — it is the same drift the comment above
   `copyBuildInputsInto()` was written to warn about, and leaving it would have broken six
@@ -59,8 +59,7 @@ the repository.
 
 ## 3. How to verify
 
-Environment: Node **v24.16.0** (matching `.nvmrc` and `package.json` `engines`), Linux
-x64, `npm ci` from the committed `package-lock.json`.
+Post-P0.22 regeneration environment: Node **v24.16.0** on Windows x64, `npm ci` from the committed `package-lock.json`.
 
 ```
 $ node --version
@@ -76,36 +75,32 @@ $ npm run lint
 Lint passed: forbidden constructs, JavaScript syntax, and LF source line endings are valid.
 
 $ npm run check-docs
-Documentation hygiene check passed: 221 markdown file(s) checked, 0 warning(s).
+Documentation hygiene check passed: 223 markdown file(s) checked, 0 warning(s).
 
 $ rm -rf build && npm run build && sha256sum build/coldbox.html
-Built build/coldbox.html (bd4273913623881864ce12f7beecd20a6486053ae48cda0764c10f77cf2b9c2d)
-bd4273913623881864ce12f7beecd20a6486053ae48cda0764c10f77cf2b9c2d  build/coldbox.html
+Built build/coldbox.html (39f190b5e9f7b754a650e154329549a451c1f0e8ff7beb33817198132c26dcc1)
+39f190b5e9f7b754a650e154329549a451c1f0e8ff7beb33817198132c26dcc1  build/coldbox.html
 
 $ rm -rf build && LC_ALL=fr_FR.UTF-8 TZ=Asia/Tokyo npm run build && sha256sum build/coldbox.html
-Built build/coldbox.html (bd4273913623881864ce12f7beecd20a6486053ae48cda0764c10f77cf2b9c2d)
-bd4273913623881864ce12f7beecd20a6486053ae48cda0764c10f77cf2b9c2d  build/coldbox.html
+Built build/coldbox.html (39f190b5e9f7b754a650e154329549a451c1f0e8ff7beb33817198132c26dcc1)
+39f190b5e9f7b754a650e154329549a451c1f0e8ff7beb33817198132c26dcc1  build/coldbox.html
 
 $ wc -c build/coldbox.html
 2622481 build/coldbox.html
 
 $ npm test
-ℹ tests 391
-ℹ pass 391
+ℹ tests 399
+ℹ pass 399
 ℹ fail 0
 ```
 
-**Which tip that hash belongs to, and when it moves.** `readBuildCommitDate()` resolves
-`git log -1 --format=%cI HEAD -- assets src scripts vendor`, so the embedded build date —
-and therefore the artifact hash — is fixed by the last commit touching a *product* path.
-On this branch that is the test commit, `ea0a76d`; the docs commit after it touches only
-`docs/` and `CHANGELOG.md` and does not move the hash, which is exactly the property
-ADR-0015's 2026-08-06 amendment exists to give. `bd427391…` is therefore the hash of this
-branch as submitted, and a reviewer building this tip should reproduce it. If the branch
-gains a further commit under `src/`, `scripts/`, `assets/` or `vendor/` — a remediation
-round, say — the hash advances and this line goes stale by design. **The byte count does
-not move either way**, since the date is a fixed-length ISO-8601 string; that is why §11
-quotes a size delta and this section quotes a hash with its tip named.
+**Which product commit that hash belongs to, and when it moves.** `readBuildCommitDate()` resolves
+`git log -1 --format=%ct %ci HEAD -- assets src scripts vendor`; `scripts/build-date.js` owns the
+canonical ISO rendering. The post-P0.22 reconciliation merge `0f4ad25`
+touches `scripts/build.js`, so it is the most recent product commit and therefore fixes the embedded
+build date for UI.2. The fixture-remediation commit `cfa3085` touches only
+`test/`, and the evidence commit after it touches only governance/docs paths, so neither moves the
+artifact. `39f190b5…` is therefore the current hash a reviewer should reproduce.
 
 ### The trace is reproducible, not asserted
 
@@ -123,20 +118,23 @@ against the committed file. It is the reason 15 KB of path data does not have to
 on trust. It is a maintenance tool: `npm run build` never calls it, and the build succeeds
 on a machine with no `potrace` installed.
 
-### This environment reproduces CI exactly
+### Current merged-main baseline after P0.22
 
-Before making any change, `main` was built with the same toolchain:
+A detached worktree at merged `main` `be11564` was rebuilt with the same
+Node/npm toolchain used for this regeneration:
 
 ```
-$ git checkout main && npm run build && sha256sum build/coldbox.html && wc -c build/coldbox.html
-73ce748f871166f717de4c22d31dcb4c6b8d048337a0eea78f1e4a7b676aafc1  build/coldbox.html
-2597939 build/coldbox.html
+$ npm run build
+Built build/coldbox.html (da04ecd107ae27fd2b8be8cc30843d5d89ea608034976964eb1ddb0936c95562)
+$ sha256(build/coldbox.html)
+da04ecd107ae27fd2b8be8cc30843d5d89ea608034976964eb1ddb0936c95562
+$ byte-count(build/coldbox.html)
+2597939
 ```
 
-Both match the CI-measured figures recorded in
-[dependencies.md](../dependencies.md#bundle-budget) exactly — hash and byte count. That is
-what makes the §11 delta a real measurement of this change rather than a measurement of a
-toolchain difference.
+The current merged-main baseline is **2,597,939 bytes**. The reconciled UI.2 artifact
+is **2,622,481 bytes**, a measured delta of **+24,542 bytes**.
+This comparison is against merged P0.22 main, not the stale pre-P0.22 branch base.
 
 ---
 
@@ -152,7 +150,7 @@ Criteria copied verbatim from the roadmap item, split at the semicolons.
 | the favicons are `data:` URIs at 16, 32 and 48 px | Three `<link rel="icon" type="image/png" sizes="NxN" href="data:image/png;base64,…">` in `<head>`, emitted in fixed order. Each decodes to a PNG whose IHDR dimensions equal the declared size, and whose bytes equal the committed source file. | "the built document carries data: favicons at 16, 32 and 48 px and nothing else"; "each embedded favicon decodes to a PNG of the size it declares" |
 | and resolve with no network and no sibling file from `file://` | Loaded from `file://` with request interception on: zero requests outside the document itself and the pre-existing warm reachability monitor (ADR-0024, `api.coinbase.com` / `mempool.space`, unrelated to this change). No `favicon.ico` sibling request. In-page `new Image()` against the 32 px `href` resolved to `32x32` under the document's own CSP. A negative markup assertion rejects any icon `href` that is not `data:`, and any `apple-touch-icon` / `shortcut icon` / `mask-icon` / `manifest` relationship that could reach for a file. | §6 browser evidence; "the built document carries data: favicons … and nothing else" |
 | `scripts/lint.js` passes, which means no external URL and no fetched asset | Lint passes (§3). **Read the note below the table before treating this as the evidence.** | `test/lint.test.js` (unchanged); the substantive property is covered by `assertSafeSvg()` and its negative tests |
-| the build remains reproducible across two runs | Two builds, second under a different locale and timezone and after `rm -rf build`: identical hash `f7b9025a…`. | §3; `test/build.test.js` "two builds are byte-identical regardless of caller locale and timezone" |
+| the build remains reproducible across two runs | Two builds, second under a different locale and timezone and after `rm -rf build`: identical hash `39f190b5…`. | §3; `test/build.test.js` "two builds are byte-identical regardless of caller locale and timezone" |
 | the size delta is recorded against dependencies.md#bundle-budget | +24,542 bytes (+23.97 KB) recorded there with its component breakdown and its provenance, without overwriting the CI-measured absolute figure. | §11 |
 | design-system.md §5 `.app-bar` is updated to describe the logo rather than the five-layer text-shadow wordmark it replaces | §5 rewritten: the logo, its two token-filled paths, the accessible name, the clamp, the no-rotation decision, and the favicons. The stale `.brand-name` reference is gone. | `npm run check-docs`; "the replaced text wordmark is gone from source and from the artifact" |
 | the `Pre-release · Not audited` badge and §2's copy rules are untouched | `.brand-badge` markup, CSS and copy are byte-unchanged; the diff for `src/index.html` is 3 lines, none of them the badge. No UI copy is added by this change at all — the wordmark is artwork and its accessible name is the product name. | "the app bar holds the inline wordmark…" asserts the badge element verbatim |
