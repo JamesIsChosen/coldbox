@@ -48,6 +48,10 @@ Each `Address` record carries its verification history — fields in [data-model
 
 `unverifiable` is a permanent, honest terminal state, not a failure. A watch-only address can never be cold-verified, because Coldbox has no seed for it. Marking it so is more useful than leaving it indistinguishable from an address nobody has got round to checking.
 
+### Released-secret session boundary
+
+The warm-origin Address Check remains available after a Seed Forge result is released: it can compare the pasted candidate with the public registry. It does not, however, use the session-only released secret to derive an address or persist `verifiedAgainstXpub`/`cold-verified` state. The dedicated cold verification panel can still use the focused secret inside the sealed realm; the unreleased transitional Seed Forge fields retain the existing warm-request re-derivation path until UI.4 removes them.
+
 **A registry match against an `unverified` or `unverifiable` address states that, inline, every time.** Not once at setup, not in a help panel.
 
 ---

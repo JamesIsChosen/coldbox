@@ -86,6 +86,121 @@ body {
   font-size: 0.74rem;
 }
 
+/* Released-secret switcher (UI.3). This chrome is intentionally always
+   visible: focus is a security control, not a convenience menu. It only
+   renders labels and public fingerprints; secret material never enters this
+   DOM surface. */
+#cold-secret-switcher {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.7rem;
+  border: 0.16rem solid var(--cold-pink);
+  border-radius: 0.35rem;
+  background: var(--cold-surface);
+  box-shadow: 0.2rem 0.2rem 0 var(--cold-drop);
+}
+
+#cold-secret-focus-summary {
+  margin: 0.35rem 0 0;
+  padding-left: 0.55rem;
+  border-left: 0.28rem solid var(--cold-green);
+  color: var(--cold-green);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+#cold-secret-switcher-help,
+#cold-secret-registry-empty {
+  max-width: 48rem;
+  margin: 0.3rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+#cold-secret-registry-empty {
+  padding: 0.45rem 0.55rem;
+  border: 0.13rem dashed var(--cold-yellow);
+  color: var(--cold-yellow);
+  font-weight: 800;
+}
+
+#cold-secret-registry-empty[hidden] {
+  display: none;
+}
+
+#cold-secret-list {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+}
+
+.cold-secret-switcher-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.45rem 0.5rem;
+  border: 0.13rem solid var(--cold-outline);
+  border-radius: 0.3rem;
+  background: var(--cold-bg);
+}
+
+.cold-secret-switcher-item[data-focused="true"] {
+  border-color: var(--cold-green);
+}
+
+.cold-secret-switcher-copy {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.cold-secret-switcher-copy strong {
+  overflow-wrap: anywhere;
+  color: var(--cold-text);
+  font-size: 0.74rem;
+}
+
+.cold-secret-switcher-copy span {
+  color: var(--cold-muted);
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.66rem;
+}
+
+.cold-secret-switcher-item button,
+#cold-secret-registry-clear {
+  min-height: 2.75rem;
+  flex: 0 0 auto;
+  padding: 0.35rem 0.6rem;
+  border: 0.13rem solid var(--cold-drop);
+  border-radius: 0.3rem;
+  background: var(--cold-yellow);
+  box-shadow: 0.15rem 0.15rem 0 var(--cold-drop);
+  color: var(--cold-ink);
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+#cold-secret-registry-clear {
+  margin-top: 0.55rem;
+}
+
+.cold-secret-switcher-item button:disabled,
+#cold-secret-registry-clear:disabled {
+  background: var(--cold-disabled-fill);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.cold-secret-switcher-item button:focus-visible,
+#cold-secret-registry-clear:focus-visible {
+  outline: 0.2rem solid var(--cold-pink);
+  outline-offset: 0.18rem;
+}
+
 #cold-vault-keyfile {
   margin-top: 0.6rem;
   padding: 0.5rem 0.6rem;
@@ -1242,6 +1357,90 @@ body {
   min-height: 2.75rem;
   margin-top: 0.45rem;
   padding: 0.35rem 0.7rem;
+}
+
+.cold-seed-forge-release {
+  display: grid;
+  gap: 0.35rem;
+  max-width: 34rem;
+  margin-top: 0.6rem;
+  padding: 0.5rem 0.55rem;
+  border-left: 0.28rem solid var(--cold-pink);
+  background: var(--cold-bg);
+}
+
+.cold-seed-forge-release label {
+  color: var(--cold-text);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.cold-seed-forge-release input {
+  min-height: 2.35rem;
+  padding: 0.3rem 0.45rem;
+  border: 0.13rem solid var(--cold-outline);
+  border-radius: 0.25rem;
+  background: var(--cold-input);
+  color: var(--cold-text);
+  font: inherit;
+  font-size: 0.7rem;
+}
+
+.cold-seed-forge-release button {
+  min-height: 2.75rem;
+  justify-self: start;
+  padding: 0.35rem 0.65rem;
+  border: 0.13rem solid var(--cold-drop);
+  border-radius: 0.3rem;
+  background: var(--cold-pink);
+  box-shadow: 0.15rem 0.15rem 0 var(--cold-drop);
+  color: var(--cold-ink);
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cold-seed-forge-release button:disabled {
+  background: var(--cold-disabled-fill);
+  box-shadow: none;
+  color: var(--cold-ink);
+  cursor: not-allowed;
+}
+
+.cold-seed-forge-release button:focus-visible,
+.cold-seed-forge-release input:focus-visible {
+  outline: 0.2rem solid var(--cold-pink);
+  outline-offset: 0.18rem;
+}
+
+.cold-seed-forge-release p {
+  margin: 0;
+  color: var(--cold-muted);
+  font-size: 0.66rem;
+  line-height: 1.35;
+}
+
+.cold-secret-focus-indicator {
+  max-width: 48rem;
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+  border-left: 0.28rem solid var(--cold-yellow);
+  background: var(--cold-bg);
+  color: var(--cold-yellow);
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.cold-secret-focus-indicator[data-state="focused"] {
+  border-left-color: var(--cold-green);
+  color: var(--cold-green);
+}
+
+.cold-secret-focus-indicator[data-state="empty"] {
+  border-left-color: var(--cold-yellow);
+  color: var(--cold-yellow);
 }
 
 .cold-seed-forge-fingerprint-row {

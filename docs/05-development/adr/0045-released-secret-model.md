@@ -46,6 +46,8 @@ Precisely: **they lose their seed/source-loading input, and only that.** The six
 
 **Everything recomputes from the focused secret at render time.** There is no re-derive button and no cached derived panel that can survive a focus change. A panel showing values derived from a secret that is no longer focused is a defect, not a stale view.
 
+**Warm-origin address checks do not consume released-secret state.** The warm Address Check may still compare a pasted candidate with the public registry, but once any secret has been released the cold handler refuses to derive an address or write `verifiedAgainstXpub`/`cold-verified` state from that session-only registry. This keeps a released-secret derivative out of warm/public persistence. The unreleased Seed Forge fields retain their transitional cold re-derivation path until UI.4 removes them; the dedicated cold verification panel remains a cold-local lens on the focused secret.
+
 **Lifetime is the session, and it ends hard.** The registry is cleared, and its buffers zeroized on the same path the existing teardown uses, by every one of: vault lock, the idle timeout, the panic action, and realm teardown. There is no persistence across a lock and no "keep it loaded for convenience" affordance. The empty registry is a normal destination with a designed empty state, not an error condition.
 
 **A released secret is not a backup.** Release is a session convenience. Nothing about it makes a secret recoverable, and the interface must not imply otherwise — in particular a share set is not a backup until it has been reconstructed, and that wording stays.

@@ -85,6 +85,17 @@ An 8-hex-character identifier derived from a seed's master public key. Comparing
 Per BIP-32, the master fingerprint is the first 4 bytes of `HASH160(compressed master public key)` = `RIPEMD160(SHA256(K))`, rendered as 8 hex characters. It identifies a specific master key without exposing it, and is used throughout PSBTs and multisig descriptors to reference keys unambiguously.
 :::
 
+**Released secret** (also *secret switcher entry*, *focused secret*)
+::: plain
+The released secret you temporarily choose for Coldbox's offline tools after Seed Forge checks it. You can keep several ready, but the fingerprint shown beside an action tells you which one is in use. Locking or clearing the session removes them; this is not a backup.
+:::
+::: working
+A session-only Seed Forge result held inside the sealed realm with a label and public master fingerprint. Several entries may exist, but exactly one is focused, and split, backup-share, SeedQR, and verification panels recalculate from that focus.
+:::
+::: technical
+Per [ADR-0045](../05-development/adr/0045-released-secret-model.md), a released secret is an in-memory record containing secret material, its derived public master fingerprint, and a user label. It is neither serialized nor written to a vault compartment, browser storage, or a warm-realm message; teardown clears the registry and zeroizes its retained byte buffers.
+:::
+
 ---
 
 ## Derivation

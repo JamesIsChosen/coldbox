@@ -87,6 +87,20 @@ Seed Forge turns the exact Entropy Lab Mix result into a BIP-39 phrase, or valid
 Generation uses the vendored BIP-39 wordlists with NFKD normalization. Each workflow's optional passphrase is NFKD-normalized as PBKDF2-HMAC-SHA512 salt material with 2,048 rounds; its raw 64-byte BIP-39 seed and master fingerprint are recalculated on confirmed changes to that workflow's pair only. Japanese's U+3000 display separator is NFKD-normalized in the final PBKDF2 mnemonic text. These values stay inside the cold iframe.
 :::
 
+### Release it for the cold-only tools
+
+After checking your written phrase, choose **Release ... secret to switcher** in Seed Forge. Give it a label if you will load more than one. The switcher shows the label and public master fingerprint, and the focused fingerprint is repeated on the split, backup-share, SeedQR, and verification panels before you act.
+
+::: plain
+Release is a short-term handoff inside the sealed part of Coldbox. It saves you from typing the same phrase into every offline tool. It is not a backup, and it disappears when you lock, go idle, use panic hide, close the sealed realm, or choose **Clear released secrets**.
+:::
+::: working
+You can release several Seed Forge results. Exactly one is focused; choose **Focus this secret** to change which phrase the cold-only tools use. Check the fingerprint beside the action before splitting shares or making a plaintext SeedQR. **Ctrl+Alt+Shift+L** clears the released-secret list immediately.
+:::
+::: technical
+The registry is an in-memory cold-realm session object defined by [ADR-0045](../05-development/adr/0045-released-secret-model.md). It is never written to a vault, browser storage, or a message to the warm shell; its retained byte buffers are zeroized on the documented teardown paths. A focus change clears dependent derived outputs so a prior secret cannot remain displayed as if it were current.
+:::
+
 ---
 
 ## 3. A passphrase? Decide now
