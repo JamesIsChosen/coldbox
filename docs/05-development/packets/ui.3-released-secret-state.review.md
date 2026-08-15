@@ -192,3 +192,82 @@ That makes the PR's primary review surface materially stale. A reviewer opening 
 F1, F2, and F4 are resolved, every UI.3 roadmap acceptance clause is supported by the exact-tip code/tests/browser run, and run #220 is green across Windows, Ubuntu, cross-OS reproducibility, and Chromium/Firefox. The review still cannot PASS for two independent evidence/publication reasons: prior F3 was not actually remediated because the packet's supposedly final artifact evidence fails to reproduce both at its named `e78cb64` product tip and at the reviewed `23c17de` tip; and the GitHub PR description remains the obsolete pre-remediation packet. Under the review protocol, either finding is enough for FAIL. Leave UI.3 at `[~]`; do not merge PR #58.
 
 **VERDICT: FAIL**
+---
+
+# Independent re-review R3 - UI.3 released-secret state and the secret switcher
+
+**VERDICT: PASS**
+
+**Findings:** 0.
+
+- **Reviewed commit:** `3b8dffb1a9d734cd0d1b936179dd35620f775d45`
+- **Base:** `main@ac09a5f1153a94cabbc068cf5d1ffc4d98ce9b6c`
+- **Reviewed by:** GPT-5.6 Sol
+- **Date:** 2026-08-15
+
+## Previous finding disposition
+
+| Prior finding | Status | R3 evidence |
+|---|---|---|
+| R2-F1 - packet artifact evidence did not reproduce | **RESOLVED** | The packet now records **2,654,759 bytes** and SHA-256 `b2f752827e4480769ec84850aa3edb555005fad93f8aa000386ac32055ab3a5d`. I downloaded the exact-head run #223 Ubuntu and Windows artifacts and independently hashed each `coldbox.html`; both have that exact byte count and SHA-256. The correction commit changes only the packet, and the exact-head build still reproduces the same artifact. |
+| R2-F2 - PR body stale versus packet | **RESOLVED** | I re-fetched the current GitHub PR body and committed packet. The body now carries the corrected product-tip narrative, 228-doc count, 406-test count, `b2f752...55ab3a5d` artifact, +32,278-byte bundle delta, released-session address-verification guard, and its boundary regression. The obsolete 405-test / `b214401b...` / 2,652,783-byte claims are absent. |
+
+The earlier R1 F1, F2, and F4 remediations remain resolved: the released-session warm verification guard is present and covered; the Release button uses pink/ink with an automated contrast check; and the plain glossary copy uses released-secret terminology.
+
+## What I verified
+
+- Re-read `AGENTS.md`, `docs/05-development/review-protocol.md`, the complete prior review history, ADR-0045, the UI.3 roadmap criterion, the corrected author packet, and the PR diff/current remediation delta.
+- Verified PR #58 was open, non-draft, mergeable, and exactly at `3b8dffb1a9d734cd0d1b936179dd35620f775d45` before reviewer closeout.
+- Compared `c17449b449002d84c9d895255a3fdaf1194708da..3b8dffb1a9d734cd0d1b936179dd35620f775d45`: the only changed path is `docs/05-development/packets/ui.3-released-secret-state.md`. Product inputs under `assets/`, `src/`, `scripts/`, and `vendor/` are unchanged, and the prior review report blob remained unchanged through the remediation.
+- Inspected exact-head GitHub Actions CI run #223. Clean Ubuntu and Windows jobs succeeded through real-head/full-history checkout, pinned Node setup, `npm ci`, upstream `verify-vendor`, lint, documentation hygiene, `npm test`, two builds, same-checkout hash comparison, and cross-OS hash comparison.
+- Downloaded both exact-head build artifacts and independently inspected their actual bytes. Ubuntu and Windows each contain `coldbox.html` at **2,654,759 bytes**, SHA-256 **`b2f752827e4480769ec84850aa3edb555005fad93f8aa000386ac32055ab3a5d`**.
+- Inspected the exact-head Browser harness job. The built `file://` artifact passed the committed harness in **Chromium and Firefox**.
+- Re-checked the review protocol's alternate-environment requirement. The browser harness builds with `LC_ALL=C` and `TZ=UTC`, uses independently created temporary build roots, and the exact-head hosted run passed those checks. The CI matrix independently builds on Windows and Ubuntu and confirms identical output across OSes.
+- Re-checked deliberate fail-closed behavior. `test/vendor.test.js` flips a byte in a copied vendored artifact and requires both vendor verification and the build to exit non-zero; the exact-head full test suite passed that regression, alongside the existing malformed/CSP/tamper negative fixtures.
+- Re-checked the released-session boundary in `handleAddressVerifyRequest()`: after release, `current` is forced to `null`, so the session-only focused secret cannot enter `deriveRegistryAddress()`, `markAddressColdVerified()`, `replacePublicData()`, or `publicData.updated`. The browser regression captures the post-release cold-to-warm traffic and requires one `address.verifyResult` with `unverified`, zero `publicData.updated`, and no persisted cold verification state.
+- Re-checked the registry implementation/tests: several copied records can coexist; exactly one is focused; focus changes invalidate dependent output; clear zeroizes retained byte buffers and clears references; registry source contains no storage/message persistence path.
+- Re-checked lifecycle coverage: normal vault lock, shortened idle timeout, double-Escape panic, and `pagehide` realm teardown all clear the registry in browser coverage, while the unit test directly observes zeroized buffers.
+- Re-checked the switcher/consumer UI: the designed empty state names Seed Forge and the lock/inactivity/panic/realm clearing causes; six destructive/splitting/exporting surfaces show the active public master fingerprint; the clear shortcut is `Ctrl+Alt+Shift+L` and is exercised separately from double-Escape panic.
+- Re-checked the built security boundary: the cold document keeps `connect-src 'none'`; the cold iframe sandbox is `allow-scripts allow-downloads allow-modals` and omits `allow-same-origin`; UI.3 introduces no new warm/cold message type.
+
+### Execution-environment note
+
+This reviewer runtime cannot mount `C:\Users\semaj\Projects\coldbox-review-r3`, and its shell cannot resolve GitHub for an independent local clone. As in the earlier independent rounds, I therefore used the PR's exact-head GitHub-hosted clean checkouts as executable reviewer evidence, then independently downloaded and hashed the resulting artifacts rather than accepting the packet's numbers. The hosted jobs execute in separate Windows/Ubuntu paths, and the browser harness itself creates additional temporary build roots under explicit `LC_ALL=C` / `TZ=UTC` conditions.
+
+## What I could not verify
+
+None within UI.3's browser-verifiable acceptance surface. Physical mobile, Safari, Tor, and other device-matrix checks remain outside UI.3 acceptance and are not used to support this PASS. UI.4's deletion of the transitional duplicate source inputs is also intentionally out of scope.
+
+## Acceptance criteria - verbatim check
+
+| Roadmap acceptance criterion | Result | Evidence |
+|---|---:|---|
+| `a secret released from Seed Forge appears in the switcher with its label and public master fingerprint` | **PASS** | Registry/render implementation plus Chromium/Firefox release flow. |
+| `several secrets can be released and exactly one is focused` | **PASS** | Registry invariant/unit test plus two-secret browser flow. |
+| `changing focus re-points every dependent panel with no reload and no re-entry` | **PASS** | Focus invalidation, source-control locking, six dependent indicators, and browser focus switch without cold-frame reload. |
+| `the registry is cleared and its buffers zeroized by each of vault lock, idle timeout, panic and realm teardown, each covered by a test` | **PASS** | Direct zeroization unit test plus browser lock, idle, double-Escape panic, and `pagehide` coverage. |
+| `no released secret, and no derivative of one, appears in any message to the warm shell` | **PASS** | Released-mode derivation guard plus captured cold-to-warm verification regression requiring zero `publicData.updated`. |
+| `the empty registry renders a designed empty state that explains what cleared it` | **PASS** | Cold switcher copy names release and clearing causes; browser checks the empty state after clear/lifecycle paths. |
+| `nothing is persisted to any vault compartment or storage` | **PASS** | Registry is closure-local with no storage calls; released-mode warm verification cannot reach public-data replacement. |
+| `the focused secret's public master fingerprint is visible on any panel that performs a destructive, splitting or exporting action` | **PASS** | Six `[data-secret-focus-indicator]` surfaces are populated and verified in both engines. |
+| `the keyboard shortcut that clears the registry is confirmed not to collide with the panic binding` | **PASS** | Browser separately executes `Ctrl+Alt+Shift+L` and double Escape and observes the intended clear paths. |
+
+## How I tried to break it
+
+- Used the exact-head clean hosted checkouts rather than author working-tree claims and independently hashed both OS artifacts.
+- Checked the packet correction against the final exact PR head, not merely the earlier product tip.
+- Re-checked the specific R1 boundary defect route through warm-origin address verification and the MessagePort capture regression.
+- Confirmed the full Node test command includes the vendor-corruption regression that intentionally mutates a vendored artifact and demands non-zero verification/build exits.
+- Re-inspected the cold CSP/sandbox boundary and the browser harness's existing tamper/CSP negative fixtures.
+
+No attempted break produced a UI.3 finding.
+
+## Findings
+
+None.
+
+## Verdict rationale
+
+Both R2 findings are resolved at the exact reviewed head. The corrected artifact evidence reproduces independently across Ubuntu and Windows; the PR body is synchronized with the corrected packet; every UI.3 acceptance clause is supported by the implementation plus exact-head unit/browser coverage; and the security-sensitive released-secret boundary regression passes without a warm derivative or persistence path. Under the binary review protocol, there is no remaining finding of any severity.
+
+**VERDICT: PASS**
