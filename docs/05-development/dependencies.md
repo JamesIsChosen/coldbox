@@ -130,7 +130,7 @@ Update this line from a CI run, not a local build: a local figure can drift from
 The delta is a local measurement, and it is quoted as a delta for that reason. After P0.22 merged,
 the same local toolchain rebuilt current `main` at **2,597,939 bytes** and
 `da04ecd107ae27fd2b8be8cc30843d5d89ea608034976964eb1ddb0936c95562`, then built the reconciled UI.2 product tip at **2,622,481 bytes**
-and `39f190b5e9f7b754a650e154329549a451c1f0e8ff7beb33817198132c26dcc1`. The two local measurements therefore differ by exactly **+24,542 bytes**.
+and `ba94ee70a5308a623810cff9090d37d6c4f5f9ecd9aecc79ac431a1ae42f5a83`. The two local measurements therefore differ by exactly **+24,542 bytes**.
 The absolute "Last measured" line above remains governed by its CI-only update rule; this UI.2 delta
 record does not replace that historical CI measurement with a local absolute figure.
 
