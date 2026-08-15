@@ -3,11 +3,56 @@
 **Branch:** `ui.1-design-reconciliation` · **PR:** #55
 **Base:** `main` @ `94cf73b` (Merge PR #54: P2.7 Backup Health dashboard)
 **Roadmap item:** [UI.1 Design reconciliation](../ROADMAP.md) — Phase UI
-**Date:** 2026-08-14 · **Revision 5** (remediation of the round-3 FAIL at `86685d7`)
+**Date:** 2026-08-15 · **Revision 6** (remediation of the round-4 FAIL at `a5a7cb8`)
 
 ---
 
-## 0. Remediation of review round 3
+## 0. Remediation of review round 4
+
+Round 4 returned **FAIL with 2 findings** at `a5a7cb89b24bbc388039d0fb2e5d52b864aba041`, preserved at [`ui.1-design-reconciliation.review-4.md`](ui.1-design-reconciliation.review-4.md). Rounds 1, 2 and 3 are preserved unedited. R3-F3 is closed and untouched.
+
+| # | Finding | Response |
+|---|---|---|
+| R4-F1 | ADR-0025's Rationale, ADR-0026 §3 and ADR-0026's Negative/limits entry still asserted the old warm-owned/public-name model without amendment | **Fixed by a third full sweep of both ADRs, this time by reading every occurrence of the string `name` in each file rather than only the clauses a finding cited.** All three named residues now carry markers, and the sweep found two more the finding did not name |
+| R4-F2 | Revision 5 attributed the reviewer-owned run correctly to `86685d7` and then said that verification "now exists at the current tip" — which was `a5a7cb8`, not `86685d7` | **Fixed.** §3's reviewer-owned block is now labelled prior-tip in its heading, states the tip it was run at and the tip it is not, and says explicitly that exact-tip evidence for the current head does not yet exist |
+
+### On R4-F1
+
+The finding is right and the pattern is the embarrassing part: this is the **third** consecutive round in which a naming-model residue survived a remediation that claimed to have swept for them. Round 2 annotated three clauses. Round 3 annotated three more it had missed. Round 4 found three more still.
+
+The reason is now clear enough to state, because it is the same reason each time. Each sweep was driven by the finding's citation list — I amended what the reviewer pointed at, plus whatever I noticed while I was in the file. A citation list is a sample, not an enumeration, and a sample cannot close a claim of the form "nothing in this document still says X."
+
+So this round the method changed. I enumerated **every** occurrence of `name` in both ADRs and classified each one as historical narrative, already-marked, or live-and-unmarked, and I am recording the classification here so the next reviewer can check the method rather than re-derive the list:
+
+| Location | Classification | Action |
+|---|---|---|
+| ADR-0025 title — "names/library/save UX stay in the warm shell" | **Live and unmarked.** Not named by the finding | New title notice under the Status line: `names` no longer holds; `library` and `save UX` still do |
+| ADR-0025 Context — "there was no useful vault name" | Historical narrative of a P0.19 defect | None — it describes what was observed, not what is decided |
+| ADR-0025 §2, §5 | Already marked in rounds 2 and 3 | None |
+| ADR-0025 §6 — legacy `coldbox-vault-0047.cbx` | Compatibility statement ADR-0046 explicitly preserves | None |
+| ADR-0025 **Rationale** — "Keeping the human name in the warm shell…" | **Live and unmarked** — R4-F1 | Amendment block: preserved as the August 2026 record, marked not-live, and stating that the invariant it protected is strengthened rather than weakened |
+| ADR-0025 Consequences — "manage several named vaults … before entering a passphrase" | **Live and unmarked.** Not named by the finding | Amendment marker: pre-unlock the library shows `id8` plus an optional device-local nickname; the name is not readable until unlock |
+| ADR-0025 Consequences — filenames as public metadata | Already reversed in round 3 | None |
+| ADR-0025 Alternatives — "Put the free-form vault name in `vault.opened`" | Live **and still correct**; ADR-0046 reaffirms this rejection | None |
+| ADR-0026 §3 — public-name uniqueness | **Live and unmarked** — R4-F1 | Retirement marker, stating that the session / browser-profile / library name scopes cease to exist as name scopes |
+| ADR-0026 §5 — historical generational filenames | Compatibility statement ADR-0046 explicitly preserves | None |
+| ADR-0026 §7 — "durably backed **named** vault" | **Live and unmarked.** Not named by the finding | Amendment marker: warm gates this action and never sees the name, so `named` was never testable here; the durability half is unchanged |
+| ADR-0026 Positive consequence — duplicate-name refusal | Already retired in round 2 | None |
+| ADR-0026 **Negative/limits** — browser-profile name uniqueness | **Live and unmarked** — R4-F1 | Retirement marker tied to §3, plus the replacement limit — pre-unlock legibility — named and pointed at ADR-0046 |
+
+Two of the six live residues — ADR-0025's title and ADR-0026 §7 — were not in the finding. That is the check on whether the method actually changed, and it is the reason I am reporting the enumeration rather than just the diff.
+
+### On R4-F2
+
+The sentence was "This is the protocol's reviewer-owned fresh-clone check, which rounds 1 and 2 could not perform, and it now exists at the current tip." The attribution to `86685d7` two paragraphs earlier was correct; the trailing clause then quietly promoted it to the head under review, which was `a5a7cb8`. **Prior-tip evidence described as current is the same class of error as F1 and F6 — a real measurement presented against the wrong artifact — and it is worse here, because the subject is the reviewer's own verification and the packet is what a reviewer reads to decide what has been checked.**
+
+§3 now states the tip each piece of evidence belongs to, says in terms that no reviewer-owned or hosted run exists for the current head yet, and does not carry that claim anywhere else. The exact-tip CI run for this remediation commit is not yet available at the time of writing and **will be recorded here when it completes, not anticipated**.
+
+Sweeping the rest of §3 for the same pattern found **one further instance the finding did not name, and no reviewer has**: revision 5's author-run markdown-file count of 214 had been carried forward unmeasured from `53f8ae6`, while the count at the tip it shipped in was 216. It is corrected in §3 with per-commit measurements, and it is reported here rather than quietly fixed because three instances of one failure mode is a method problem, not three typos.
+
+---
+
+## 0a. Remediation of review round 3
 
 Round 3 returned **FAIL with 4 findings** at `86685d7`, preserved at [`ui.1-design-reconciliation.review-3.md`](ui.1-design-reconciliation.review-3.md). Rounds 1 and 2 are preserved unedited.
 
@@ -16,7 +61,7 @@ Round 3 returned **FAIL with 4 findings** at `86685d7`, preserved at [`ui.1-desi
 | R3-F1 | ADR-0025/0026 still contained unqualified old naming-model statements | **Fixed.** Round 2 annotated ADR-0025 §2, ADR-0026 §4 and ADR-0026's duplicate-name consequence but missed three more: ADR-0025 §5, ADR-0025's Consequences line on filenames being public metadata, and ADR-0026 §1 itself. All three now carry inline amendment, reversal or retirement notes |
 | R3-F2 | The packet was stale against exact-tip CI and current ROADMAP wording — it still read "This revision has not yet been through CI" | **Fixed.** §3 now leads with the reviewer's own fresh-clone run at `86685d7`, §4's bundle row quotes the criterion as it currently reads, and §11 carries the reviewer-confirmed figure |
 | R3-F3 | ADR-0046/UI.10 needed an explicit rule preserving the cold-owned name across warm `publicData.replace` | **Fixed, and it was a data-loss bug in waiting.** See below |
-| R3-F4 | Reviewer-owned verification | **Mostly closed by the reviewer's own run.** Fresh clone, alternate path, pinned Node, clean gates, reproducibility and both browsers are now demonstrated at this tip. Only the deliberate-corruption check remains, blocked by a runner-side selector bug the reviewer identified as theirs |
+| R3-F4 | Reviewer-owned verification | **Mostly closed by the reviewer's own run.** Fresh clone, alternate path, pinned Node, clean gates, reproducibility and both browsers were demonstrated at `86685d7`, the tip round 3 reviewed. Only the deliberate-corruption check remains, blocked by a runner-side selector bug the reviewer identified as theirs |
 
 ### On R3-F3
 
@@ -93,7 +138,7 @@ Makes the August 2026 sealed-realm reorganisation legal to build. It lands three
 
 ## 2. Scope
 
-**In:** three new ADRs (0044, 0045, 0046) · `adr/README.md` index and amendment markers · status lines in ADR-0009, 0023, 0025, 0028 · `design-system.md` §3, §5, §6, §7, §8, §10 · `SPEC.md` §5.1, the platform-constraints table and §16 · `dependencies.md` bundle budget · `threat-model.md` (new *Not defended* subsection) · `.github/workflows/ci.yml` (budget report line) · `ROADMAP.md` (Phase UI, ten items; P2.8 dependency) · `CHANGELOG.md` · this packet · the preserved review report.
+**In:** three new ADRs (0044, 0045, 0046) · `adr/README.md` index and amendment markers · status lines in ADR-0009, 0023, 0025, 0028 · `design-system.md` §3, §5, §6, §7, §8, §10 · `SPEC.md` §5.1, the platform-constraints table and §16 · `dependencies.md` bundle budget · `threat-model.md` (new *Not defended* subsection) · `.github/workflows/ci.yml` (budget report line) · `ROADMAP.md` (Phase UI, ten items; P2.8 dependency) · `CHANGELOG.md` · this packet · the preserved review reports for rounds 1–4.
 
 **Deliberately not in:**
 
@@ -105,18 +150,22 @@ Makes the August 2026 sealed-realm reorganisation legal to build. It lands three
 
 ## 3. How to verify
 
-**Reviewer-owned verification at tip `86685d7` (round 3, run by the reviewer, not by me).** A fresh clone from GitHub into a new temp path with head and base confirmed, on the pinned **Node 24.16.0**: `npm ci` · real-upstream vendor verification · lint, docs and tests · **two builds under different caller timezone and locale** · Chromium and Firefox. Both builds identical at
+**Nothing in this section is exact-tip evidence for the current head.** The current head is the round-4 remediation commit. Every run recorded below was performed at an **earlier** commit on this branch, and each is labelled with the tip it belongs to. Read them as prior-tip evidence, which is what they are.
+
+**Prior-tip reviewer-owned verification, at `86685d7` (round 3, run by the reviewer, not by me).** `86685d7` is **two commits behind the current head** — `a5a7cb8` was the round-3 remediation and the current head is the round-4 remediation. A fresh clone from GitHub into a new temp path with head and base confirmed, on the pinned **Node 24.16.0**: `npm ci` · real-upstream vendor verification · lint, docs and tests · **two builds under different caller timezone and locale** · Chromium and Firefox. Both builds identical at
 
 ```
 73ce748f871166f717de4c22d31dcb4c6b8d048337a0eea78f1e4a7b676aafc1
 2,597,939 bytes
 ```
 
-and the repository clean afterwards. This is the protocol's reviewer-owned fresh-clone check, which rounds 1 and 2 could not perform, and it now exists at the current tip.
+and the repository clean afterwards. This is the protocol's reviewer-owned fresh-clone check, which rounds 1 and 2 could not perform — **it exists, at `86685d7`, and it does not exist at the current tip.** It is prior-tip evidence and revision 5 was wrong to say otherwise; that was R4-F2.
 
-**Hosted CI at `ce4bba4` agrees**: 378/378 tests, Windows and Ubuntu builds, cross-OS reproducibility, both browsers — same artifact, same hash. That hash is **identical to the P2.7 product artifact**, which is what independently confirms this PR's zero-byte bundle claim across every revision of it.
+**Prior-tip hosted CI, at `ce4bba4` (the round-1 tip), agrees**: 378/378 tests, Windows and Ubuntu builds, cross-OS reproducibility, both browsers — same artifact, same hash. That hash is **identical to the P2.7 product artifact**, which is what independently confirms this PR's zero-byte bundle claim across every revision of it. `ce4bba4` is four commits behind the current head.
 
-**What is not yet verified on the current tip:** the reviewer-owned deliberate-corruption check. Round 3 could not execute it — the runner's corruption-target selector failed to find a tracked `vendor/**/package.tgz` although ten exist, which the reviewer identified as a bug in the runner and explicitly declined to charge against UI.1. It remains the one outstanding protocol check.
+**Exact-tip status of the current head: none yet.** No hosted CI run and no reviewer-owned run has completed at the round-4 remediation commit at the time this revision is written. The round-4 reviewer recorded that the exact-tip GitHub Actions run for `a5a7cb8` was still in progress when they reviewed; the current head is newer still. **This line is to be replaced with the run and its result once it completes — it must not be filled in by anticipation, and the absence of exact-tip evidence is not to be papered over with the prior-tip runs above.**
+
+**What is not verified at any tip:** the reviewer-owned deliberate-corruption check. Round 3 could not execute it — the runner's corruption-target selector failed to find a tracked `vendor/**/package.tgz` although ten exist, which the reviewer identified as a bug in the runner and explicitly declined to charge against UI.1. Round 4 did not rerun the suite at all, because the branch already failed on documentation findings. It remains the one outstanding protocol check, and round 4's handoff specifies how it must be run on the next textually clean tip: against a known tracked `vendor/**/package.tgz`, proving that **both** `npm run verify-vendor` and `npm run build` exit non-zero before the file is restored.
 
 **Author-run, this revision.** These are the only commands I can execute; see §6 for why.
 
@@ -125,10 +174,12 @@ $ node scripts/lint.js
 Lint passed: forbidden constructs, JavaScript syntax, and LF source line endings are valid.
 
 $ node scripts/check-docs.js
-Documentation hygiene check passed: 214 markdown file(s) checked, 0 warning(s).
+Documentation hygiene check passed: 217 markdown file(s) checked, 0 warning(s).
 ```
 
-214, not the 213 CI saw at `ce4bba4`, because this revision adds the preserved review report. The 212 figure in revision 1 of this packet was taken before its own packet file existed and should not have been presented as current — that was F6.
+217, run against the working tree that becomes the round-4 remediation commit; it is 216 at `a5a7cb8`, and the difference is this round's preserved review report.
+
+**A third stale-evidence defect, found by me this round and not reported by any reviewer.** Revision 5 printed **214** here and explained it as "213 at `ce4bba4`, plus the preserved review report". Both halves were wrong. 214 was the count at `53f8ae6`, two remediations earlier; the count at the tip revision 5 actually shipped in was **216**. So the figure was carried forward across two commits without being re-run, which is precisely the F6 failure — a real measurement presented against the wrong artifact — for the third time in this packet, alongside F1 and R4-F2. Verified by running `check-docs.js` in a clean clone at each commit on this branch: `ce4bba4` 213 · `53f8ae6` 214 · `14543ff` 215 · `86685d7` 215 · `a5a7cb8` 216. **The generalisable rule, and the reason all three happened: a number copied from a previous revision is not evidence. If it is not re-measured at the tip being described, it does not belong in the packet.**
 
 **The build output cannot change, and this is checkable rather than asserted.** `scripts/build.js` scopes its build-date git query to `BUILD_DATE_SOURCE_PATHS = ['src', 'scripts', 'vendor']` (build.js:127), so governance-only commits do not move the artifact. Help content compiles from `docs/00-overview/glossary.md` and `docs/03-guides/*.md` only (help-content.js:513–514); neither is touched. `.github/` is not a build input. Round 1 confirmed this empirically by producing the P2.7 artifact byte-for-byte.
 
@@ -169,7 +220,7 @@ The one thing I deliberately did not settle is whether the compartment addition 
 
 No new tests: this PR adds records and criteria, not behaviour. The tests the decisions require are acceptance criteria on UI.2–UI.10, because the code they cover does not exist.
 
-**Exact-tip coverage from round 1 CI** — 378/378 tests, both browsers, both operating systems, cross-OS reproducible, upstream vendor bytes verified. That is stronger evidence than anything I could produce and it is the reason F1's discrepancy was caught at all.
+**Prior-tip CI coverage, exact-tip at the time it ran, at the round-1 commit `ce4bba4`** — 378/378 tests, both browsers, both operating systems, cross-OS reproducible, upstream vendor bytes verified. That is stronger evidence than anything I could produce and it is the reason F1's discrepancy was caught at all. It is **not** evidence at the current head; see §3 for what does and does not exist there.
 
 **Method note.** Every edit in both revisions was applied by a script asserting exactly one match per anchor and aborting otherwise, so a missed or double-applied replacement fails loudly. Every edited file was asserted CRLF-free before and after writing, per `.gitattributes`.
 
@@ -201,7 +252,7 @@ No new tests: this PR adds records and criteria, not behaviour. The tests the de
 
 **ADR-0044 as a whole.** Read it as someone who thinks relaxing a security rule to accommodate a visual design is backwards; that position nearly won. The specific question: is the two-clause test decidable at authoring time, or will it collapse into "everything is chrome until someone complains"?
 
-**ADR-0046's redesign, hardest — it has now been wrong twice.** The specific things to test it against: does anything else in the repository still assume a user-chosen name is present in a filename or reachable by warm? I checked ADR-0025, ADR-0026 and architecture.md, and amended the first two. If a fourth place exists, this is wrong a third time. Also worth challenging: I retired ADR-0026 §37's duplicate-name refusal on the reasoning that a name nobody can see cannot cause look-alike confusion. If §37 was protecting against something else I have not identified, retiring it is a regression rather than a simplification.
+**ADR-0046's redesign, hardest — and the sweep around it has now failed three rounds running.** The design itself has been wrong twice; the *completeness of its amendment markers* has been found wanting in rounds 2, 3 and 4. Revision 6 changed the method from "amend what the finding cited" to "enumerate every occurrence of `name` in both ADRs and classify each one", and the classification table is in §0 precisely so it can be attacked rather than taken on trust. **The specific thing to check is the classification, not the diff:** the rows marked *historical narrative* and *compatibility statement ADR-0046 preserves* are the ones where a wrong call would leave a live assertion unmarked while looking swept. Separately, does anything outside these two ADRs still assume a user-chosen name is present in a filename or reachable by warm? §10 enumerates seven such documents, deliberately unchanged until UI.10 ships. Also worth challenging: the duplicate-name refusal is retired on the reasoning that a name nobody can see cannot cause look-alike confusion. If it was protecting against something else I have not identified, retiring it is a regression rather than a simplification.
 
 **Whether UI.10 belongs where I put it.** It is placed after UI.9 in document order with `Deps: UI.4`, so ordering rests on the dependency line rather than position. If the roadmap's read-top-to-bottom convention should dominate, it is in the wrong place.
 
@@ -212,6 +263,8 @@ No new tests: this PR adds records and criteria, not behaviour. The tests the de
 **What might be wrong.** ADR-0044 may be a decision the project regrets, and no care in the writing changes that it is a loosening. Beyond that: I authored ten roadmap items with acceptance criteria for code I have not written. Round 1 proved that risk is real rather than theoretical — F4 was exactly that failure, an invariant that read well and was false. UI.6 and UI.8 remain the vaguest and I would not defend their criteria as strongly as UI.3's or UI.10's.
 
 **Defects I introduced, and how they were found.** Clause 2's missing adjacency provision and an overstated novelty claim: found by re-reading my own diff, fixed in `ce4bba4`. F1–F6: found by an independent reviewer, fixed here. The ratio is the honest signal — self-review caught the smaller two; the reviewer caught the boundary error, the invalid invariant and the incoherent ADR integration. That is the process working as designed, and it is an argument against trusting a self-review to substitute for it.
+
+**The sharper signal is a repeated defect, not a list of distinct ones.** Naming-model residue in ADR-0025/0026 was found by the reviewer in rounds 2, 3 **and** 4, and each time I reported it fixed. Three rounds is no longer a miss; it is a method failing the same way — I was amending citations rather than enumerating the document. Revision 6 changes the method and publishes the enumeration in §0 so that the claim "the sweep is complete" is now checkable against something other than my assurance. R4-F2 is the same shape in a different register: a real prior-tip measurement described as current, which is F1's and F6's failure mode reappearing on the reviewer's own evidence rather than on mine. Sweeping §3 for that pattern then turned up a **third** instance the reviewer had not found — revision 5's markdown-file count of 214, carried forward unmeasured from a commit two remediations earlier while the actual count at its own tip was 216. It is recorded in §3 with the per-commit measurements, and I would rather hand the reviewer that than have them find it in round 5.
 
 **What I did not do that arguably should have been done.**
 
@@ -228,12 +281,12 @@ No new tests: this PR adds records and criteria, not behaviour. The tests the de
 
 ## 11. Bundle impact
 
-**0 bytes**, confirmed empirically rather than argued, and now twice independently: hosted CI at `ce4bba4` and the reviewer's own fresh-clone run at `86685d7` both produced **2,597,939 bytes** / `73ce748f871166f717de4c22d31dcb4c6b8d048337a0eea78f1e4a7b676aafc1`, byte-identical to the P2.7 product artifact. The reviewer's run built twice under differing caller timezone and locale and got the same hash both times. No `src/`, `scripts/` or `vendor/` path is touched; `.github/` is not a build input.
+**0 bytes**, confirmed empirically rather than argued, and twice independently — **both at prior tips, neither at the current head**: hosted CI at `ce4bba4` and the reviewer's own fresh-clone run at `86685d7` both produced **2,597,939 bytes** / `73ce748f871166f717de4c22d31dcb4c6b8d048337a0eea78f1e4a7b676aafc1`, byte-identical to the P2.7 product artifact. The reviewer's run built twice under differing caller timezone and locale and got the same hash both times. No `src/`, `scripts/` or `vendor/` path is touched; `.github/` is not a build input.
 
 Budget status, now canonical in one place: **2,597,939 bytes measured** against a **4 MB target** (raised from 3 MB here) and an unchanged **4.5 MB hard cap**. The estimate this replaced — ≈ 1.7 MB — sat below the artifact that already existed.
 
 ## 12. Docs updated
 
-`design-system.md` (§3, §5, §6, §7, §8, §10) · `SPEC.md` (§5.1, platform-constraints table, §16) · `dependencies.md` (bundle budget, relocated help-content measurement) · `threat-model.md` (new *Not defended* subsection) · `ROADMAP.md` (Phase UI, ten items; P2.8 deps) · `adr/README.md` · status lines in ADR-0009, 0023, 0025, 0028 · three new ADRs · `.github/workflows/ci.yml` · `CHANGELOG.md` · this packet · the preserved review report.
+`design-system.md` (§3, §5, §6, §7, §8, §10) · `SPEC.md` (§5.1, platform-constraints table, §16) · `dependencies.md` (bundle budget, relocated help-content measurement) · `threat-model.md` (new *Not defended* subsection) · `ROADMAP.md` (Phase UI, ten items; P2.8 deps) · `adr/README.md` · status lines in ADR-0009, 0023, 0025, 0028 · three new ADRs · `.github/workflows/ci.yml` · `CHANGELOG.md` · this packet · the preserved review reports for rounds 1–4.
 
 **Help content: not applicable.** No user-facing feature ships here, so there is nothing to write at three depths. UI.2 onward will need it.

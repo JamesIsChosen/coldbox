@@ -3,6 +3,8 @@
 **Status:** Accepted · save/QR portions amended by [ADR-0026](0026-canonical-vault-save-and-live-transfer.md) · creation-path naming amended by [ADR-0046](0046-vault-name-availability-at-unlock.md)
 **Date:** 2026-08-08
 
+> **Title notice, added when [ADR-0046](0046-vault-name-availability-at-unlock.md) was accepted.** The title above is preserved as written, but the word **names** in it no longer holds. Vault naming is cold-owned under ADR-0046: the name is typed inside the sealed realm and stored in the encrypted public compartment. Only *library* and *save UX* still stay in the warm shell. Every clause below that still asserts the warm-owned or filename-visible name model carries an inline amendment, reversal or retirement marker at the clause itself, so a reader who lands mid-document is not misled by a header they may never scroll back to.
+
 ## Context
 
 P0.19 Windows testing exposed a coherent vault-UX failure rather than one broken button: creation asked for an unlock phrase only once; the save actions were not discoverable enough for the tester to know a `.cbx` had not yet been written; locking correctly zeroized the cold working bytes, leaving no loaded bytes to unlock; there was no useful vault name; and the one-file picker/global `coldbox-vault-0047.cbx` counter did not scale to several vaults.
@@ -28,11 +30,13 @@ The redesign must preserve the existing security boundary: passphrases stay cold
 
 Vault identity and device identity are different concepts. A random vault-scoped UUID is portable, collision-resistant, non-secret, and already representable by the strict public schema. Keeping the human name in the warm shell avoids weakening the no-free-form Cold → Warm invariant.
 
+> **Amended by [ADR-0046](0046-vault-name-availability-at-unlock.md).** The last sentence above states the reasoning as it stood in August 2026 and is preserved for that record, but it is **no longer the live rationale**. The human name is not kept in the warm shell at all: it is typed inside the sealed realm and stored in the encrypted public compartment, and it never crosses cold → warm in any message or any form. The invariant that sentence was protecting is not weakened by that move — it is **strengthened**, because nothing on the warm side wants the name any more, so the invariant stops depending on where the name happens to be kept and becomes trivially true. The first two sentences of this paragraph — vault identity versus device identity, and the UUID's properties — are unchanged and remain live.
+
 The save redesign does not trade away zeroization: warm receives the same authenticated ciphertext it already receives for storage, while cold still destroys passphrase/session keys/plaintext/working bytes on lock. The real defect was discoverability and lifecycle communication.
 
 ## Consequences
 
-- Users can manage several named vaults and see which file is active before entering a passphrase.
+- Users can manage several named vaults and see which file is active before entering a passphrase. **Amended by [ADR-0046](0046-vault-name-availability-at-unlock.md):** several vaults can still be managed and the active file is still identifiable before unlock, but **not by name**. Pre-unlock the library shows `id8` — derived from the authenticated Vault ID — plus an optional device-local nickname that warm owns outright. The vault's own name is not readable until the vault is open, which is a deliberate reduction in pre-unlock legibility that ADR-0046 accepts and bounds with the nickname.
 - Vault names and generated filenames are public metadata; cloud/filesystem observers can see them. **Reversed by [ADR-0046](0046-vault-name-availability-at-unlock.md):** the name moves inside the encrypted container and the filename carries no user-chosen text, so a filesystem observer sees `coldbox--<id8>.cbx` and learns nothing you chose. This is the main user-visible privacy consequence of that ADR, and it inverts this line rather than qualifying it.
 - Filename grouping and rollback checks remain advisory until the vault opens and its authenticated ID is known.
 - ADR-0013 remains authoritative about warm-shell save-integrity location. ADR-0026 supersedes user-visible generations while retaining per-Vault-ID advisory history and legacy-generation compatibility.
