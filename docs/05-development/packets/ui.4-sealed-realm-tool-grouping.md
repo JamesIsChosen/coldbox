@@ -1,8 +1,8 @@
 # UI.4 — Sealed-realm tool grouping and hub
 
-Branch: `ui.4-sealed-realm-tool-grouping`  
-Base: `main`  
-Date: 2026-08-15  
+Branch: `ui.4-sealed-realm-tool-grouping`
+Base: `main`
+Date: 2026-08-15
 Roadmap: [UI.4](../ROADMAP.md#phase-ui--interface-restructure)
 
 ## 1. Summary
