@@ -12,7 +12,7 @@ Deliberately out of scope: UI.4's six-group hub and deletion of the five duplica
 
 ## 3. How to verify
 
-The product tip used for verification, before this packet-only commit, is `e78cb6422510be26cb060d7df0744199dfef845a` on `ui.3-released-secret-state`. The reviewer-owned local report `docs/05-development/packets/ui.3-released-secret-state.review.md` is intentionally untracked and must not be staged.
+The clean committed product tip used for the artifact baseline is `c17449b449002d84c9d895255a3fdaf1194708da` on `ui.3-released-secret-state`. The reviewer report `docs/05-development/packets/ui.3-released-secret-state.review.md` is preserved as tracked review history and is not modified by this remediation. The correction below is packet/PR-description-only and touches no `assets/`, `src/`, `scripts/`, or `vendor/` product inputs; the final PR tip was rebuilt after the correction and reproduced the same artifact byte-for-byte.
 
 ```text
 > npm run verify-vendor
@@ -21,22 +21,22 @@ Vendor verification passed against local files and upstream releases.
 > npm run lint
 Lint passed: forbidden constructs, JavaScript syntax, and LF source line endings are valid.
 
-> node scripts/check-docs.js (clean checkout at e78cb64)
-Documentation hygiene check passed: 227 markdown file(s) checked, 0 warning(s).
+> node scripts/check-docs.js (clean checkout at c17449b)
+Documentation hygiene check passed: 228 markdown file(s) checked, 0 warning(s).
 
 > npm run build
-Built build/coldbox.html (1a60f562dbb428ea97a7e040820b1bbe359bce4d0c3a2b31ab9561577d16271d)
+Built build/coldbox.html (b2f752827e4480769ec84850aa3edb555005fad93f8aa000386ac32055ab3a5d)
 
 > first clean build
-bytes=2654776
-sha256=1a60f562dbb428ea97a7e040820b1bbe359bce4d0c3a2b31ab9561577d16271d
+bytes=2654759
+sha256=b2f752827e4480769ec84850aa3edb555005fad93f8aa000386ac32055ab3a5d
 
 > Remove-Item build; npm run build
-Built build/coldbox.html (1a60f562dbb428ea97a7e040820b1bbe359bce4d0c3a2b31ab9561577d16271d)
+Built build/coldbox.html (b2f752827e4480769ec84850aa3edb555005fad93f8aa000386ac32055ab3a5d)
 
 > second clean build
-bytes=2654776
-sha256=1a60f562dbb428ea97a7e040820b1bbe359bce4d0c3a2b31ab9561577d16271d
+bytes=2654759
+sha256=b2f752827e4480769ec84850aa3edb555005fad93f8aa000386ac32055ab3a5d
 
 > npm test
 ℹ tests 406
@@ -44,13 +44,13 @@ sha256=1a60f562dbb428ea97a7e040820b1bbe359bce4d0c3a2b31ab9561577d16271d
 ℹ fail 0
 
 > npm run test:browser
-Playwright is dev-only; dependency-free build matches byte-for-byte (1a60f562dbb428ea97a7e040820b1bbe359bce4d0c3a2b31ab9561577d16271d)
+Playwright is dev-only; dependency-free build matches byte-for-byte (b2f752827e4480769ec84850aa3edb555005fad93f8aa000386ac32055ab3a5d)
 Browser harness passed in Chromium and Firefox.
 Chromium: EVM cold verdict/state transition, named different-account match, aligned mismatch, raw whitespace, and checksum-invalid batch rows passed
 Firefox: EVM cold verdict/state transition, named different-account match, aligned mismatch, raw whitespace, and checksum-invalid batch rows passed
 ```
 
-The browser harness ran the built artifact from `file://` in both engines. Its dependency-free rebuild matched byte-for-byte. The EVM address-verification flow first proves the unreleased transitional path still reaches `cold-verified`, then releases/focuses the same Seed Forge result, verifies a previously unverified secondary address, captures every cold→warm delivery, and asserts one `address.verifyResult` with `unverified`, zero `publicData.updated` replacements, and an unchanged warm registry record.
+The browser harness ran the built artifact from `file://` in both engines. Its dependency-free rebuild matched byte-for-byte at `b2f752827e4480769ec84850aa3edb555005fad93f8aa000386ac32055ab3a5d`; the final packet-only PR tip reproduced the same bytes. The EVM address-verification flow first proves the unreleased transitional path still reaches `cold-verified`, then releases/focuses the same Seed Forge result, verifies a previously unverified secondary address, captures every cold→warm delivery, and asserts one `address.verifyResult` with `unverified`, zero `publicData.updated` replacements, and an unchanged warm registry record.
 
 ## 4. Acceptance criteria
 
@@ -149,7 +149,7 @@ No physical-device testing was performed. UI.3's acceptance is explicitly browse
 
 ## 11. Bundle impact
 
-The recorded UI.2 baseline is 2,622,481 bytes. This branch builds to 2,654,776 bytes, a delta of +32,295 bytes (+31.54 KiB, +1.23%); the artifact remains below the 4 MB target and 4.5 MB hard cap recorded in [dependencies.md](../dependencies.md#bundle-budget). The increase includes the UI.3 cold registry/switcher, the released-session verification boundary, automatic verification relinking, and the three-depth help additions.
+The recorded UI.2 baseline is 2,622,481 bytes. This branch builds to 2,654,759 bytes, a delta of +32,278 bytes (+31.52 KiB, +1.23%); the artifact remains below the 4 MB target and 4.5 MB hard cap recorded in [dependencies.md](../dependencies.md#bundle-budget). The increase includes the UI.3 cold registry/switcher, the released-session verification boundary, automatic verification relinking, and the three-depth help additions.
 
 ## 12. Docs updated
 
