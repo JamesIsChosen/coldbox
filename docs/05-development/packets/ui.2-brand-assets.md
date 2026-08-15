@@ -27,9 +27,12 @@ the repository.
   Never invoked by the build or by CI.
 - `scripts/build.js` — two new injections; `assets` added to `BUILD_DATE_SOURCE_PATHS`.
 - `src/index.html`, `src/styles.css` — the app-bar markup and the wordmark rules.
-- `test/brand-assets.test.js` — 13 tests.
+- `test/brand-assets.test.js` — 15 tests, including truncated-PNG and CRC-corruption regressions.
+- `scripts/lint.js` and `test/lint.test.js` — a binary-safe textual SVG side scan and
+  its external-URL regression.
 - Docs: ADR-0047 (new), ADR-0015 amendment, ADR index, design-system §5, build.md,
-  dependencies.md bundle budget, CHANGELOG, roadmap marker.
+  dependencies.md bundle budget, CHANGELOG, roadmap acceptance, and the standing
+  browser-verification rule.
 
 **Touched outside the item, and why:**
 
@@ -40,6 +43,9 @@ the repository.
   closed on ENOENT. This is not optional cleanup — it is the same drift the comment above
   `copyBuildInputsInto()` was written to warn about, and leaving it would have broken six
   existing tests. Verified by the failure being reproduced first (see §6) and then fixed.
+
+- `docs/05-development/packets/ui.2-brand-assets.review.md` — the independent FAIL report
+  supplied for this remediation, preserved unchanged as the reviewer-owned record.
 
 **Deliberately not in:**
 
@@ -75,32 +81,31 @@ $ npm run lint
 Lint passed: forbidden constructs, JavaScript syntax, and LF source line endings are valid.
 
 $ npm run check-docs
-Documentation hygiene check passed: 223 markdown file(s) checked, 0 warning(s).
+Documentation hygiene check passed: 224 markdown file(s) checked, 0 warning(s).
 
-$ rm -rf build && npm run build && sha256sum build/coldbox.html
-Built build/coldbox.html (39f190b5e9f7b754a650e154329549a451c1f0e8ff7beb33817198132c26dcc1)
-39f190b5e9f7b754a650e154329549a451c1f0e8ff7beb33817198132c26dcc1  build/coldbox.html
+$ Remove-Item build -Recurse -Force; npm run build; Get-FileHash build/coldbox.html
+Built build/coldbox.html (ba94ee70a5308a623810cff9090d37d6c4f5f9ecd9aecc79ac431a1ae42f5a83)
+SHA256  ba94ee70a5308a623810cff9090d37d6c4f5f9ecd9aecc79ac431a1ae42f5a83  build/coldbox.html
 
-$ rm -rf build && LC_ALL=fr_FR.UTF-8 TZ=Asia/Tokyo npm run build && sha256sum build/coldbox.html
-Built build/coldbox.html (39f190b5e9f7b754a650e154329549a451c1f0e8ff7beb33817198132c26dcc1)
-39f190b5e9f7b754a650e154329549a451c1f0e8ff7beb33817198132c26dcc1  build/coldbox.html
+$ Remove-Item build -Recurse -Force; $env:LC_ALL='fr_FR.UTF-8'; $env:TZ='Asia/Tokyo'; npm run build; Get-FileHash build/coldbox.html
+Built build/coldbox.html (ba94ee70a5308a623810cff9090d37d6c4f5f9ecd9aecc79ac431a1ae42f5a83)
+SHA256  ba94ee70a5308a623810cff9090d37d6c4f5f9ecd9aecc79ac431a1ae42f5a83  build/coldbox.html
 
-$ wc -c build/coldbox.html
+$ (Get-Item build/coldbox.html).Length
 2622481 build/coldbox.html
 
 $ npm test
-ℹ tests 399
-ℹ pass 399
+ℹ tests 402
+ℹ pass 402
 ℹ fail 0
 ```
 
 **Which product commit that hash belongs to, and when it moves.** `readBuildCommitDate()` resolves
 `git log -1 --format=%ct %ci HEAD -- assets src scripts vendor`; `scripts/build-date.js` owns the
-canonical ISO rendering. The post-P0.22 reconciliation merge `0f4ad25`
-touches `scripts/build.js`, so it is the most recent product commit and therefore fixes the embedded
-build date for UI.2. The fixture-remediation commit `cfa3085` touches only
-`test/`, and the evidence commit after it touches only governance/docs paths, so neither moves the
-artifact. `39f190b5…` is therefore the current hash a reviewer should reproduce.
+canonical ISO rendering. The current product commit is `18218c0` (`test(UI.2): close browser
+harness page safely`), which is the latest commit touching `scripts/` and therefore fixes the
+embedded build date for this packet. The subsequent packet/report commit touches only governance
+and review paths, so it does not move the artifact. The final reproducible hash is `ba94ee70…`.
 
 ### The trace is reproducible, not asserted
 
@@ -149,24 +154,20 @@ Criteria copied verbatim from the roadmap item, split at the semicolons.
 | it carries an accessible name of `Coldbox` | `role="img"` plus `aria-label="Coldbox"` on the `<svg>`, and a `<title>Coldbox</title>`. `focusable="false"` so it is not a tab stop. | `brand-assets.test.js` "the app bar holds the inline wordmark with an accessible name of Coldbox"; `assertSafeSvg()` fails the build if either attribute is missing |
 | the favicons are `data:` URIs at 16, 32 and 48 px | Three `<link rel="icon" type="image/png" sizes="NxN" href="data:image/png;base64,…">` in `<head>`, emitted in fixed order. Each decodes to a PNG whose IHDR dimensions equal the declared size, and whose bytes equal the committed source file. | "the built document carries data: favicons at 16, 32 and 48 px and nothing else"; "each embedded favicon decodes to a PNG of the size it declares" |
 | and resolve with no network and no sibling file from `file://` | Loaded from `file://` with request interception on: zero requests outside the document itself and the pre-existing warm reachability monitor (ADR-0024, `api.coinbase.com` / `mempool.space`, unrelated to this change). No `favicon.ico` sibling request. In-page `new Image()` against the 32 px `href` resolved to `32x32` under the document's own CSP. A negative markup assertion rejects any icon `href` that is not `data:`, and any `apple-touch-icon` / `shortcut icon` / `mask-icon` / `manifest` relationship that could reach for a file. | §6 browser evidence; "the built document carries data: favicons … and nothing else" |
-| `scripts/lint.js` passes, which means no external URL and no fetched asset | Lint passes (§3). **Read the note below the table before treating this as the evidence.** | `test/lint.test.js` (unchanged); the substantive property is covered by `assertSafeSvg()` and its negative tests |
-| the build remains reproducible across two runs | Two builds, second under a different locale and timezone and after `rm -rf build`: identical hash `39f190b5…`. | §3; `test/build.test.js` "two builds are byte-identical regardless of caller locale and timezone" |
+| `scripts/lint.js` passes, which means no external URL and no fetched asset | Lint now scans textual SVG files under `assets/brand/` through a binary-safe side path, allowing only the standalone SVG namespace declaration. The build embeds only committed local PNG bytes as `data:` URIs; its structural SVG/PNG validators fail closed before emission. | `test/lint.test.js` external-URL regression; `scripts/brand-assets.js` structural checks and `test/brand-assets.test.js` negative regressions |
+| the build remains reproducible across two runs | Two builds, second under a different locale and timezone and after removing `build`: identical SHA-256 `ba94ee70a5308a623810cff9090d37d6c4f5f9ecd9aecc79ac431a1ae42f5a83`. | §3; `test/build.test.js` "two builds are byte-identical regardless of caller locale and timezone" |
 | the size delta is recorded against dependencies.md#bundle-budget | +24,542 bytes (+23.97 KB) recorded there with its component breakdown and its provenance, without overwriting the CI-measured absolute figure. | §11 |
 | design-system.md §5 `.app-bar` is updated to describe the logo rather than the five-layer text-shadow wordmark it replaces | §5 rewritten: the logo, its two token-filled paths, the accessible name, the clamp, the no-rotation decision, and the favicons. The stale `.brand-name` reference is gone. | `npm run check-docs`; "the replaced text wordmark is gone from source and from the artifact" |
 | the `Pre-release · Not audited` badge and §2's copy rules are untouched | `.brand-badge` markup, CSS and copy are byte-unchanged; the diff for `src/index.html` is 3 lines, none of them the badge. No UI copy is added by this change at all — the wordmark is artwork and its accessible name is the product name. | "the app bar holds the inline wordmark…" asserts the badge element verbatim |
 | the SVG contains no `<script>`, no `<foreignObject>`, no `href`/`xlink:href`, and no external reference of any kind | Asserted directly against the committed asset, and enforced at build time by `assertSafeSvg()`, which additionally rejects `<image>`, `<use>`, `<style>`, `<a>`, inline event handlers, `url()`, entity declarations and a DOCTYPE. The only URI-shaped string in the asset is the SVG namespace declaration — see the note below. | "the wordmark contains no script, no foreignObject, no href, and no external reference"; "the SVG validator rejects each forbidden construct rather than passing it through" (14 mutations); "a wordmark that grew a script tag fails the build closed with a non-zero exit" |
 
-**Two criteria need a caveat rather than a tick, and I would rather state them than have
-them found.**
-
-**`scripts/lint.js` does not cover these assets.** It walks `src/` only. The brand assets
-live in `assets/`, for the reason in ADR-0047: lint reads every file under `src/` as UTF-8
-text and fails on a CR byte, so committing binary PNGs there would force the lint to skip
-files by extension, weakening a P0.3 guard in order to place a directory. Lint does pass,
-and there is no external URL or fetched asset anywhere in the change — but the criterion's
-"which means" clause does not hold as a chain of reasoning for these files, and a reviewer
-should not accept "lint passed" as the evidence. The evidence is `assertSafeSvg()` failing
-the build closed and the 14-mutation negative test proving each rejection fires.
+**The binary/source boundary is deliberate, but no longer leaves a lint blind spot.**
+`assets/brand/` remains outside the UTF-8 source walk so PNGs do not force `scripts/lint.js`
+to weaken its source-tree guard. The lint now separately walks textual `.svg` files there,
+rejecting external and protocol-relative URLs except for the one standalone SVG namespace
+declaration. `assertSafeSvg()` still owns the full SVG content contract, and the PNG parser
+owns chunk, CRC, decompression, scanline and dimension validation. The negative tests prove
+both paths fail closed.
 
 **The SVG contains exactly one URI-shaped string:** `xmlns="http://www.w3.org/2000/svg"`.
 It is a namespace *name*, not a location — nothing dereferences it, and the mark renders
@@ -217,15 +218,17 @@ whose output shape is fixed. I do not claim it would stop a determined adversary
 already commit to `assets/brand/`; someone with that access can change `scripts/` too. It
 is a guard against a mistake, layered under a CSP that is the actual control.
 
-**Favicons.** A `data:` URI cannot be a network beacon; the byte ceiling and the
-dimension check exist so that a corrupted or swapped file stops the build rather than
-shipping. The bytes are the committed PNGs, unmodified, asserted by test.
+**Favicons.** A `data:` URI cannot be a network beacon; the byte ceiling, complete PNG
+chunk/CRC structure, zlib decode, scanline validation and dimension check exist so that a
+corrupted, truncated or swapped file stops the build rather than shipping. The bytes are
+the committed PNGs, unmodified, asserted by test.
 
 ---
 
 ## 6. Test evidence
 
-**New tests: 13**, in `test/brand-assets.test.js`. Suite total 378 → 391, all passing.
+**New tests: 15** in `test/brand-assets.test.js`, plus one lint regression in
+`test/lint.test.js`. The full suite is 402 tests after this remediation, all passing.
 
 What each group proves:
 
@@ -238,18 +241,25 @@ What each group proves:
   a copy of the real asset and `assertSafeSvg()` must throw. This is the test that matters:
   without it, the positive assertions above only prove the current file is clean, not that
   anything would notice if it stopped being.
-- **Negative: build fails closed (3 tests).** A temporary project root is built with (a) a
+- **Negative: build fails closed (5 tests).** A temporary project root is built with (a) a
   wordmark carrying `<script>1</script>`, (b) the 48 px artwork copied over the 16 px file,
-  (c) a favicon that is not a PNG. Each must exit non-zero with the specific message, and
+  (c) a favicon that is not a PNG, (d) a valid PNG signature and IHDR truncated before
+  IDAT/IEND, and (e) a valid PNG with a corrupted IDAT CRC. Each must exit non-zero with
+  the specific message, and
   the script case additionally asserts **no `build/coldbox.html` is written** — a build that
   fails after emitting an artifact is not failing closed. Observed failures:
   `Brand SVG coldbox-wordmark.svg contains a forbidden construct: <script>`,
   `Favicon favicon-c-lower-16x16.png is 48x48, expected 16x16`,
-  `Favicon favicon-c-lower-32x32.png is not a PNG`.
+  `Favicon favicon-c-lower-32x32.png is not a PNG`, a truncated-PNG message naming the
+  missing or incomplete IDAT/IEND structure, and an invalid-IDAT-CRC message.
 - **Favicons in the artifact (2 tests).** Exactly three icon links, right sizes, right
-  order, `data:` scheme; each base64 payload decodes to a PNG whose IHDR matches its
-  declared size, whose IDAT inflates, and whose bytes equal the committed file. Plus the
-  negative markup assertions for non-`data:` hrefs and sibling-seeking relationships.
+  order, `data:` scheme; each base64 payload decodes to a PNG whose complete source
+  structure is accepted by the build parser, whose IDAT inflates, and whose bytes equal
+  the committed file. Plus the negative markup assertions for non-`data:` hrefs and
+  sibling-seeking relationships.
+- **Lint asset coverage (1 test).** A temporary textual SVG under `assets/brand/` carrying
+  an external URL is rejected by `scripts/lint.js`, while the real namespace declaration
+  remains allowed.
 - **App bar (3 tests).** The inlined markup is byte-identical to `createWordmarkMarkup()`
   (so the artifact cannot drift from the asset), carries `role`/`aria-label`/`<title>`/
   `focusable`, sits inside `<header class="app-bar">`, and the badge element is asserted
@@ -274,7 +284,7 @@ Mean absolute per-channel difference 1.481/255. The differences are edge pixels 
 fitted curve lands inside or outside the antialiased boundary; there is no structural
 difference. Composited over white, both at 1494×514, source alpha flattened.
 
-**Browser evidence (Chromium, from `file://`, against the built artifact).**
+**Browser evidence (Chromium and Firefox, from `file://`, against the built artifact).**
 
 Masthead height, measured against a `main` build in the same session:
 
@@ -291,24 +301,29 @@ earlier iteration of this change used a different clamp and shrank the bar by 2.
 exactly, because §5's contract is that the bar's height and the nav rail's `top` derive
 from one token.
 
-Wordmark geometry and computed fills: 1280 px → 127.9 × 44.0 px; 320 px → 88.3 × 30.4 px;
-`fill` resolves to `rgb(18, 18, 18)` and `rgb(0, 240, 255)` in both themes. Favicon
-`new Image()` load from the 32 px `data:` href resolved `32x32`. Request log outside the
-document: empty, apart from ADR-0024's reachability monitor.
+Wordmark geometry and computed fills at the exact UI.2 viewport were checked by the
+committed harness in both engines: 320 px × 640 px, visible, inside the viewport, with
+`role="img"` and `aria-label="Coldbox"`; each path's computed fill was compared with a
+browser-resolved `--fill-ink`/`--fill-cyan` probe in both dark and light themes. The same
+run decoded all three favicon `data:` payloads through `new Image()` as 16×16, 32×32 and
+48×48, and recorded no sibling file, favicon, manifest or apple-touch-icon request. The
+existing general responsive check remains at 360 px; the new UI.2 check is deliberately
+the literal 320 px condition.
 
-**What I could not test, and it is not a small gap:**
+The committed harness produced these lines in the final exact-tip run:
 
-- **Firefox.** `npm run test:browser` refuses to run without both engines, and the Firefox
-  binary could not be downloaded in this environment (`Failed to download Firefox 153.0`,
-  network-restricted sandbox). **The P0.3a harness therefore did not run at all in this
-  session.** The Chromium evidence above comes from a purpose-written Playwright script
-  against the real built artifact from `file://`, not from the project harness. A reviewer
-  or CI must run `npm run test:browser` — it is expected to pass, since this change adds no
-  behaviour the harness asserts and the harness's `copyBuildInputsInto()` was updated for
-  the new build input, but *expected to pass* is not *observed to pass*.
-- **Physical mobile.** Untested. See §7.
-- **Safari / WebKit.** Untested. SVG `fill` from a CSS custom property and `data:` favicons
-  are both long-standing features, but I have not observed them there.
+```
+$ npm run test:browser
+Playwright is dev-only; dependency-free build matches byte-for-byte (ba94ee70a5308a623810cff9090d37d6c4f5f9ecd9aecc79ac431a1ae42f5a83)
+Chromium: UI.2 exact 320px wordmark and data-favicon file:// checks passed
+Firefox: UI.2 exact 320px wordmark and data-favicon file:// checks passed
+Browser harness passed in Chromium and Firefox.
+```
+
+Safari/WebKit and physical devices were not run. They are not UI.2 acceptance conditions:
+the item is explicitly browser-verifiable, and the standing definition of done now
+requires its committed browser harness conditions rather than adding a physical-device
+gate. P0.19 remains the separate release/device matrix.
 
 ---
 
@@ -316,32 +331,13 @@ document: empty, apart from ADR-0024's reachability monitor.
 
 | Platform | Result | Notes |
 |---|---|---|
-| Windows Chrome | UNTESTED | No Windows host in this session |
-| Windows Firefox | UNTESTED | " |
-| macOS Safari | UNTESTED | No macOS host |
-| macOS Chrome | UNTESTED | " |
-| Linux Chromium | **PASS** | Playwright Chromium 1194, `file://`, real built artifact. Wordmark renders in both themes at 1280/720/400/320 px; favicons decode; no external request; masthead height unchanged vs `main` |
-| Linux Firefox | UNTESTED | Binary download blocked in this environment; `npm run test:browser` could not run |
-| **iOS local-execution target** | UNTESTED | No device. Per [ADR-0010](../adr/0010-ios-local-html-execution.md), nothing here may be inferred from another context |
-| Android Chrome (Files) | UNTESTED | No device |
-| Tor Browser | UNTESTED | Not available |
+| Linux Chromium | **PASS** | Committed harness, `file://`, exact 320×640 UI.2 assertions plus the existing general suite |
+| Linux Firefox | **PASS** | Committed harness, `file://`, exact 320×640 UI.2 assertions plus the existing general suite |
+| Physical mobile / Safari / WebKit | NOT A UI.2 CONDITION | The roadmap acceptance is browser-verifiable; P0.19 owns the separate physical-device release matrix |
 
-**This does not yet meet AGENTS.md §5's "one desktop and one mobile browser from
-`file://`" clause.** Desktop is covered; mobile is not.
-
-**[ADR-0043](../adr/0043-scoped-mobile-validation-deferral.md) is not borrowed here.** It
-says in its own text that it applies "for P2.7 only" and that "a later item needs its own
-explicit scope decision." Marking UI.2 `DEFERRED` under it would be exactly the misuse its
-Risks section names. So this row is `UNTESTED`, not `DEFERRED`, and closing it needs either
-a physical mobile `file://` result or a maintainer decision recorded as its own ADR. The
-roadmap item carries the same note so the gap is not visible only from inside this packet.
-
-For what it is worth in deciding that: this change is warm-realm chrome. It adds no
-behaviour, no storage, no message, no CSP change, and no realm-boundary interaction. The
-mobile-specific risk is rendering — an SVG `fill` that does not resolve from a custom
-property, or a `data:` favicon a mobile browser ignores — and the failure mode of either is
-cosmetic, not a security property. That is an argument for a deferral being reasonable; it
-is not a deferral, and it is not mine to grant.
+The exact viewport/file condition is covered in both required desktop browser engines by
+the committed harness. No physical-mobile deferral is claimed, and ADR-0043 remains scoped
+to P2.7; the UI.2 item does not borrow it.
 
 ---
 
@@ -371,15 +367,17 @@ is not a deferral, and it is not mine to grant.
    its own tilt, and re-tilting it looked like a mistake. Recorded in design-system §5.
    Purely aesthetic and trivially reversible.
 5. **`assets/` at the repo root rather than `src/assets/`.** ADR-0047 §"Why not
-   `src/assets/`". The cost is that lint does not cover these files, disclosed in §4.
+   `src/assets/`". Binary PNGs stay outside the UTF-8 source walk; lint's separate textual
+   SVG side scan covers external/protocol-relative URLs, while the build validator covers
+   the complete SVG/PNG structures.
 6. **The 64 px favicon and the `.ico` are not committed.** Unused bytes in a budgeted
    artifact. If a reviewer wants `.ico` for legacy Windows shortcut behaviour, that is a
    separate decision.
-7. **`scripts/trace-brand-wordmark.js` is not added to `lint.js`'s
-   `toolingJavaScriptFiles`.** That list is not exhaustive today — `check-docs.js` is
-   absent from it too — and I chose not to edit a security control for a maintenance
-   script. It is covered by `npm test` only in the sense that nothing imports it; its
-   `--check` mode is the real exercise and is not run in CI.
+7. **The two brand maintenance/build scripts are syntax-checked by lint.**
+   `scripts/brand-assets.js` and `scripts/trace-brand-wordmark.js` are now in
+   `toolingJavaScriptFiles`; this catches syntax drift without treating their comments or
+   maintenance strings as source-tree security findings. `--check` remains the trace
+   fidelity exercise.
 
 ---
 
@@ -431,10 +429,9 @@ review protocol exists to prevent, but it would be a smaller change.
 - Run the P0.3a browser harness. I could not, and I did not paper over it by stubbing the
   Firefox check — that would have produced a green line with nothing behind it.
 - Test on any mobile device, or on Safari or Firefox at all.
-- Add `assets` to `lint.js`'s scan in some binary-aware form. It would make the roadmap's
-  "lint passes, which means no external URL" chain actually hold. I judged editing a
-  security control to be out of scope for a brand-asset item; a reviewer may disagree, and
-  it is the most likely legitimate finding against this PR after the namespace question.
+- Add a binary-safe textual SVG side scan to `lint.js`, plus a negative lint regression for
+  an external URL. The scan preserves the source-tree UTF-8 guard while making the
+  roadmap's literal lint criterion true for these brand assets.
 
 **Known limitations shipping with this change:**
 
@@ -448,7 +445,8 @@ review protocol exists to prevent, but it would be a smaller change.
 
 - The absolute bundle figure in `dependencies.md` needs its CI refresh after merge, per
   that file's own rule. Not filed as a roadmap item; it is a line edit on the next CI run.
-- The mobile gap needs a maintainer decision or a device result (§7).
+- Physical-device and Safari/WebKit evidence remains outside UI.2's browser-verifiable
+  acceptance; P0.19 owns that separate release/device matrix.
 
 ---
 
@@ -484,7 +482,12 @@ to come from CI, and this one did not.
 | [design-system.md §5](../../01-spec/design-system.md) | `.app-bar` describes the logo, its tokens, its accessible name, its clamp, the no-rotation decision, and the favicons. The `.brand-name` text-shadow description is gone |
 | [build.md](../build.md) | New step 3a for brand-asset embedding; build-date path list corrected |
 | [dependencies.md](../dependencies.md#bundle-budget) | UI.2 delta with component breakdown and provenance |
-| [ROADMAP.md](../ROADMAP.md) | UI.2 → `[~]`, plus the open device-matrix gap |
+| [ROADMAP.md](../ROADMAP.md) | UI.2 acceptance; the item-level status remains canonical there |
+| [AGENTS.md](../../../AGENTS.md) | Browser-verifiable items use literal committed harness conditions; physical-device gating remains scoped to items that claim it and to P0.19 |
+| [scripts/lint.js](../../../scripts/lint.js) and [test/lint.test.js](../../../test/lint.test.js) | Binary-safe textual SVG URL scan and its negative regression |
+| [test/brand-assets.test.js](../../../test/brand-assets.test.js) | Complete PNG structure/decodability regression, including valid-header truncation |
+| [scripts/run-browser-harness.js](../../../scripts/run-browser-harness.js) | Exact 320px Chromium/Firefox UI.2 browser gate and sibling-request assertions |
+| [ui.2-brand-assets.review.md](ui.2-brand-assets.review.md) | Preserved independent review report supplied for this remediation |
 | [CHANGELOG.md](../../../CHANGELOG.md) | Unreleased entry |
 
 **No help content.** The three-depth requirement applies to user-facing features; a
