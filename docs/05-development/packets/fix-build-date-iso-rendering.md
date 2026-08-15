@@ -100,6 +100,34 @@ $ npm test
 
 378 before, 384 after: the 6 new tests in `test/build-date.test.js`.
 
+### At this branch's own tip
+
+The branch touches `scripts/`, so its own commit moves the build date — correctly, per the
+mechanism. At tip `bd097df`, under two different locales and timezones:
+
+```
+$ rm -rf build && LC_ALL=fr_FR.UTF-8 TZ=Asia/Tokyo npm run build && sha256sum build/coldbox.html
+45502c24752645f5ef3286bc341121ae105be035ef76704d7385a9d5ff6f8573  build/coldbox.html
+
+$ rm -rf build && LC_ALL=C TZ=UTC npm run build && sha256sum build/coldbox.html
+45502c24752645f5ef3286bc341121ae105be035ef76704d7385a9d5ff6f8573  build/coldbox.html
+
+$ wc -c build/coldbox.html
+2597939 build/coldbox.html
+
+$ grep -o 'PROVENANCE_BUILD_DATE = "[^"]*"' build/coldbox.html
+PROVENANCE_BUILD_DATE = "2026-08-15T04:42:04+00:00"
+```
+
+**That embedded value is the fix demonstrating itself.** `bd097df` is a UTC commit — the case
+that was broken — and it renders `+00:00` here and would have rendered `Z` on the maintainer's
+git before this change. Same artifact size as `main`, because the canonical form is the same
+length as the spelling `main`'s non-UTC commit already produced.
+
+This packet's own commit is docs-only, so it does not move that hash — which is the property
+[ADR-0015](../adr/0015-provenance-build-date-and-self-hash.md)'s 2026-08-06 amendment exists to
+provide, and it is why this figure can be written down here truthfully at all.
+
 ### A reviewer on a different git version
 
 The most useful thing a reviewer can do here is run `npm test` on a git that renders `Z`. On
