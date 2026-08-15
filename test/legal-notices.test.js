@@ -45,7 +45,7 @@ function runBuild(cwd = projectRoot, overrides = {}) {
 
 function createBuildRoot() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-legal-notices-'));
-  for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
+  for (const directory of ['assets', 'scripts', 'src', 'vendor', 'docs']) {
     fs.cpSync(path.join(projectRoot, directory), path.join(root, directory), { recursive: true });
   }
   fs.copyFileSync(licensePath, path.join(root, 'LICENSE'));

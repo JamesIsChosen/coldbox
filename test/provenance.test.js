@@ -35,7 +35,7 @@ function runBuild(overrides = {}) {
 
 function createBuildRoot() {
   const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'coldbox-provenance-'));
-  for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
+  for (const directory of ['assets', 'scripts', 'src', 'vendor', 'docs']) {
     fs.cpSync(path.join(projectRoot, directory), path.join(root, directory), { recursive: true });
   }
   // P0.20: build.js reads the repository LICENSE file directly; every

@@ -247,7 +247,11 @@ function requireBrowserBinaries() {
 // it cannot drift out of sync with scripts/build.js's actual dependencies
 // again.
 function copyBuildInputsInto(temporaryRoot, { includeGit = false } = {}) {
-  for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
+  // UI.2 added `assets`: scripts/build.js now reads the traced wordmark SVG
+  // and the favicon PNGs out of assets/brand/, so a build root without that
+  // directory fails closed on ENOENT in exactly the way the docs/ omission
+  // described above used to.
+  for (const directory of ['assets', 'scripts', 'src', 'vendor', 'docs']) {
     fs.cpSync(
       path.join(projectRoot, directory),
       path.join(temporaryRoot, directory),
@@ -258,7 +262,8 @@ function copyBuildInputsInto(temporaryRoot, { includeGit = false } = {}) {
   fs.copyFileSync(path.join(projectRoot, 'LICENSE'), path.join(temporaryRoot, 'LICENSE'));
   if (includeGit) {
     // P0.16 F4 fallout: scripts/build.js derives the embedded build date from
-    // `git log -- src scripts vendor` (see ADR-0015's 2026-08-06 amendment).
+    // `git log -- assets src scripts vendor` (see ADR-0015's 2026-08-06
+    // amendment, and UI.2 for the assets/ addition).
     // Fixtures proving "no devDependency required" would otherwise fall back
     // to the "unknown (no git commit metadata available)" branch while the
     // real build embeds an actual date, diverging for a reason unrelated to

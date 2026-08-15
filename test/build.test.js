@@ -143,7 +143,7 @@ function provenanceBuildDate(html) {
 
 function createBuildRoot() {
   const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'coldbox-csp-'));
-  for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
+  for (const directory of ['assets', 'scripts', 'src', 'vendor', 'docs']) {
     fs.cpSync(path.join(projectRoot, directory), path.join(root, directory), { recursive: true });
   }
   // P0.20: build.js now reads the repository LICENSE file directly (see
@@ -244,7 +244,7 @@ test('the no-machine-paths guard flags real absolute paths, including ones shape
 test('a machine path smuggled in through LICENSE makes the build test suite fail non-zero (P0.20 review F2 negative regression)', () => {
   const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'coldbox-license-leak-'));
   try {
-    for (const directory of ['scripts', 'src', 'vendor', 'docs']) {
+    for (const directory of ['assets', 'scripts', 'src', 'vendor', 'docs']) {
       fs.cpSync(path.join(projectRoot, directory), path.join(root, directory), { recursive: true });
     }
     const originalLicense = fs.readFileSync(path.join(projectRoot, 'LICENSE'), 'utf8');
