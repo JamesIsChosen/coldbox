@@ -171,6 +171,24 @@ test('unparseable git output degrades to the labeled unknown rather than a guess
   }
 });
 
+test('semantically malformed or contradictory git timestamps degrade to the labeled unknown', () => {
+  const valid = '1786767525 2026-08-15 04:18:45 +0000';
+  assert.equal(parseCommitDateOutput(valid), '2026-08-15T04:18:45+00:00');
+
+  for (const bad of [
+    '1786767525 2026-99-99 99:99:99 +0000',
+    '1786767525 2026-02-31 04:18:45 +0000',
+    '1786767525 2026-08-15 24:00:00 +0000',
+    '1786767525 2026-08-15 04:18:46 +0000'
+  ]) {
+    assert.equal(
+      parseCommitDateOutput(bad),
+      BUILD_DATE_UNKNOWN,
+      `accepted semantically malformed or contradictory git output: ${bad}`
+    );
+  }
+});
+
 test('direct formatter inputs fail closed for invalid sign, negative, and noncanonical offsets', () => {
   for (const [label, seconds, sign, hours, minutes] of [
     ['invalid sign', '1786767525', 'x', '00', '00'],

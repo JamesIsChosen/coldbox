@@ -39,7 +39,9 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
   created at six offsets and cross-checked against git's own rendering.
 - Review remediation is tracked as P0.22: `formatCommitDate()` now rejects invalid signs,
   negative or noncanonical offset components, and malformed seconds before doing arithmetic;
-  direct-input negative tests cover the fail-closed contract.
+  direct-input negative tests cover the fail-closed contract. The parser also validates `%ci`'s
+  calendar/time fields against `%ct` plus the numeric offset, so impossible or contradictory Git
+  output degrades to the labeled unknown instead of being silently discarded.
 
 ### Changed - UI.1 Design reconciliation for the interface restructure (2026-08-14)
 

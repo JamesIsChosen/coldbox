@@ -12,11 +12,11 @@
 
 const BUILD_DATE_UNKNOWN = 'unknown (no git commit metadata available)';
 
-// `%ct` is an integer with no rendering to disagree about. The offset is read
-// from `%ci` — git's long-standing "YYYY-MM-DD HH:MM:SS +HHMM" — but *only*
-// the numeric offset is taken from it, never the instant, so even a change to
-// how `%ci` renders dates cannot move the output.
-const GIT_OUTPUT_PATTERN = /^(\d+) \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} ([+-])(\d{2})(\d{2})$/;
+// `%ct` is an integer with no rendering to disagree about. `%ci` is git's
+// long-standing "YYYY-MM-DD HH:MM:SS +HHMM" spelling. We read its numeric
+// offset, but also retain its calendar/time portion so malformed or
+// contradictory output cannot be accepted on shape alone.
+const GIT_OUTPUT_PATTERN = /^(\d+) (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) ([+-])(\d{2})(\d{2})$/;
 const UNIX_SECONDS_PATTERN = /^\d+$/;
 const OFFSET_SIGN_PATTERN = /^[+-]$/;
 const OFFSET_HOURS_PATTERN = /^(?:[01]\d|2[0-3])$/;
@@ -90,8 +90,18 @@ function parseCommitDateOutput(stdout) {
   if (!parsed) {
     return BUILD_DATE_UNKNOWN;
   }
-  const formatted = formatCommitDate(parsed[1], parsed[2], parsed[3], parsed[4]);
-  return formatted === null ? BUILD_DATE_UNKNOWN : formatted;
+  const formatted = formatCommitDate(parsed[1], parsed[3], parsed[4], parsed[5]);
+  if (formatted === null) {
+    return BUILD_DATE_UNKNOWN;
+  }
+
+  // Do not trust `%ci`'s calendar/time fields merely because they have the
+  // right shape. Reconstruct the committer wall clock from `%ct` plus the
+  // parsed offset, then require git's reported wall clock to match it. This
+  // rejects impossible dates/times and syntactically valid but contradictory
+  // `%ci` output without duplicating date-validation arithmetic here.
+  const expectedCalendarTime = `${formatted.slice(0, 10)} ${formatted.slice(11, 19)}`;
+  return parsed[2] === expectedCalendarTime ? formatted : BUILD_DATE_UNKNOWN;
 }
 
 module.exports = {
