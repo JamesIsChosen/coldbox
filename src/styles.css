@@ -225,29 +225,46 @@ samp {
 }
 
 .brand {
+  display: flex;
+  align-items: center;
   min-width: 0;
   color: var(--fill-ink);
 }
 
-/* Cyan wordmark knocked out with a hard black outline — the mock's signature
-   move. Layered text-shadow rather than -webkit-text-stroke, which thins
-   unpredictably across engines. */
-.brand-name {
+/* UI.2 — the drawn wordmark, traced from the supplied artwork and inlined by
+   the build. It replaces a five-layer text-shadow that approximated a knocked-
+   out cyan letterform with the display face; the artwork is the real thing, so
+   the approximation is gone rather than layered underneath.
+
+   Sized by height only, width auto. The clamp is deliberately the same
+   clamp(1.9rem, 4vw, 2.75rem) the replaced text wordmark carried as its
+   font-size against line-height 1, so the wordmark occupies exactly the
+   vertical space the text did and the masthead's rendered height is unchanged
+   at every width — which matters because §5's contract is that the bar's
+   height and the nav rail's top offset derive from one token and must not
+   drift apart. The artwork is wider than it is tall but still comes out
+   narrower than the text it replaces, so the badge gets more of the row on a
+   phone rather than less.
+
+   No rotation. The old text wordmark was tilted −2° to look drawn; the artwork
+   is already drawn, and tilting it again reads as a mistake. */
+.brand-wordmark {
   display: block;
-  color: var(--fill-cyan);
-  font-family: var(--font-display);
-  font-size: clamp(1.9rem, 4vw, 2.75rem);
-  font-weight: 400;
-  letter-spacing: 0.05em;
-  line-height: 1;
-  text-shadow:
-    0.055em 0.055em 0 var(--drop),
-    -0.035em -0.035em 0 var(--drop),
-    0.035em -0.035em 0 var(--drop),
-    -0.035em 0.035em 0 var(--drop),
-    0.035em 0.035em 0 var(--drop);
-  text-transform: uppercase;
-  transform: rotate(-2deg);
+  width: auto;
+  height: clamp(1.9rem, 4vw, 2.75rem);
+  overflow: visible;
+}
+
+/* The two flat colours. The SVG carries the same tokens as presentation
+   attributes so the asset is correct on its own; these rules win the cascade
+   and are what guarantees the theme is followed in engines that do not resolve
+   var() inside a presentation attribute. Neither place holds a hex value. */
+.brand-wordmark .wordmark-ink {
+  fill: var(--fill-ink);
+}
+
+.brand-wordmark .wordmark-cyan {
+  fill: var(--fill-cyan);
 }
 
 /* The mock's tagline read "AIR-GAPPED VAULT v2.0" — wrong noun, and a version

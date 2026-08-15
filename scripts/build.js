@@ -8,6 +8,7 @@ const { spawnSync } = require('node:child_process');
 const { createCryptoVendorSource } = require('./crypto-bundle.js');
 const { createFontFaceSource } = require('./font-bundle.js');
 const { compileHelpContent } = require('./help-content.js');
+const { createFaviconLinks, createWordmarkMarkup } = require('./brand-assets.js');
 
 // These values are part of the reproducibility contract. Set them rather than
 // trusting the caller's environment, so the build behaves the same everywhere.
@@ -124,7 +125,11 @@ function readLicenseText() {
 // Still degrades to a labeled "unknown" rather than failing the build when
 // git metadata is unavailable (e.g. a source tarball without history),
 // since this field is informational and not a security boundary.
-const BUILD_DATE_SOURCE_PATHS = Object.freeze(['src', 'scripts', 'vendor']);
+// `assets` joined this list in UI.2. The brand PNGs and the traced wordmark
+// SVG feed the build the same way vendor/ does, so a commit that changes them
+// changes the artifact and must move the build date with it. Leaving it out
+// would let the wordmark change while the build claimed the same provenance.
+const BUILD_DATE_SOURCE_PATHS = Object.freeze(['assets', 'src', 'scripts', 'vendor']);
 
 function readBuildCommitDate() {
   const result = spawnSync(
@@ -219,6 +224,11 @@ function injectOnce(template, token, contents) {
 function assemble() {
   let document = readSource('index.html');
   document = injectOnce(document, '__COLDBOX_EXPECTED_HASH__', EXPECTED_HASH_PLACEHOLDER);
+  // UI.2 - both fail closed inside their own module rather than returning a
+  // degraded asset, so a malformed favicon or an SVG that grew a script tag
+  // stops the build instead of shipping.
+  document = injectOnce(document, '__COLDBOX_FAVICONS__', createFaviconLinks(projectRoot));
+  document = injectOnce(document, '__COLDBOX_WORDMARK__', createWordmarkMarkup(projectRoot));
   const protocolSource = readSource('protocol.js');
   const airgapSource = readSource('airgap.js');
   const capabilitiesSource = readSource('capabilities.js');
@@ -304,7 +314,9 @@ function assemble() {
     '__COLDBOX_LICENSE_TEXT__',
     '__COLDBOX_ADDRESS_VERIFICATION__',
     '__COLDBOX_CLIPBOARD_CANARY__',
-    '__COLDBOX_BACKUP_HEALTH__'
+    '__COLDBOX_BACKUP_HEALTH__',
+    '__COLDBOX_FAVICONS__',
+    '__COLDBOX_WORDMARK__'
   ]) {
     if (document.includes(placeholder)) {
       throw new Error(`Unresolved source placeholder in assembled document: ${placeholder}`);
