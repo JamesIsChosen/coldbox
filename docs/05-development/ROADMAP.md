@@ -270,7 +270,7 @@ The IDs are lettered rather than numbered into Phase 2 because `P2.8` is referen
 
 **Six of these ten are the handoff's own build order (UI.3–UI.8), and it is load-bearing.** The released-secret state has to exist before anything can be tested against it; the phrase fields cannot be deleted until it does; the floating menu is built once because forty-odd surfaces use it.
 
-- [~] **UI.1 Design reconciliation**
+- [x] **UI.1 Design reconciliation**
   *Deps: P2.7*
   Land the three ADRs, rewrite [design-system.md](../01-spec/design-system.md) §6 from realm-scoped to panel-scoped, add `.realm-strip` as a named component, reconcile the light-mode token conflict, correct the stale bundle-size figures, and create this phase. No `src/` change.
   **Accept:** ADR-0044, ADR-0045 and ADR-0046 exist, are indexed, and are linked from every document whose behaviour they change; §6 no longer contains a realm-scoped surface entry; §7's superseded second reason is corrected; `.realm-strip` is specified with angle, band width, both palettes and the no-motion requirement; the three conflicting light tokens are resolved in favour of the shipped values with the decision recorded; [dependencies.md](dependencies.md#bundle-budget) is the **single** home for the measured artifact size, target and hard cap, and carries a real measurement with its provenance rather than an estimate, while [SPEC.md](../01-spec/SPEC.md) restates none of those figures anywhere and links to it instead — a grep for the size, the target or the cap outside `dependencies.md` returns only historical records; ADR-0009, ADR-0023, ADR-0025 and ADR-0028 carry amendment markers pointing at the new records; no file under `src/` is modified.
