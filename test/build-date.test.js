@@ -41,13 +41,32 @@ const GIT_IDENTITY = Object.freeze({
   GIT_COMMITTER_EMAIL: 'test@example.invalid'
 });
 
+// A scratch repository must not inherit the developer's global git config.
+//
+// `core.autocrlf=true` is the default on a standard Windows git install, and
+// these temporary roots have no .gitattributes of their own — the repository's
+// `* text=auto eol=lf` rule is not among the files copied in. Without this,
+// `git add` rewrites line endings on the way into the index and prints a
+// warning per file, which on Windows buries `npm test` output under several
+// hundred lines of noise and makes the fixture's on-disk bytes depend on the
+// machine running it.
+//
+// Pinning it here is the same principle this whole change is about, one level
+// down: a test that asserts build determinism should not itself vary with the
+// tester's git configuration.
+function initScratchRepository(root) {
+  execFileSync('git', ['init', '-q'], { cwd: root });
+  execFileSync('git', ['config', 'core.autocrlf', 'false'], { cwd: root });
+  execFileSync('git', ['config', 'core.safecrlf', 'false'], { cwd: root });
+}
+
 // Creates a throwaway repository with one commit at the requested offset and
 // returns what git reports for it: the raw `%ct %ci` line the build reads, and
 // git's own `%cI` rendering for comparison.
 function commitAt(dateWithOffset) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-build-date-'));
   try {
-    execFileSync('git', ['init', '-q'], { cwd: root });
+    initScratchRepository(root);
     fs.writeFileSync(path.join(root, 'file.txt'), 'x\n');
     execFileSync('git', ['add', '-A'], { cwd: root });
     execFileSync('git', ['commit', '-q', '-m', 'commit'], {
@@ -168,7 +187,7 @@ test('a real build of a UTC product commit embeds +00:00, end to end', () => {
     }
     fs.copyFileSync(path.join(projectRoot, 'LICENSE'), path.join(root, 'LICENSE'));
 
-    execFileSync('git', ['init', '-q'], { cwd: root });
+    initScratchRepository(root);
     execFileSync('git', ['add', '-A'], { cwd: root });
     execFileSync('git', ['commit', '-q', '-m', 'product commit at UTC'], {
       cwd: root,

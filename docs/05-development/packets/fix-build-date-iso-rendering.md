@@ -128,6 +128,34 @@ This packet's own commit is docs-only, so it does not move that hash — which i
 [ADR-0015](../adr/0015-provenance-build-date-and-self-hash.md)'s 2026-08-06 amendment exists to
 provide, and it is why this figure can be written down here truthfully at all.
 
+### Scratch repositories are pinned against the tester's git config
+
+Found by the maintainer running `npm test` on Windows against the first version of this
+branch: 788 lines of `warning: in the working copy of '<file>', LF will be replaced by CRLF`,
+one per file, burying the test output.
+
+Cause: the temporary repositories these tests build in have no `.gitattributes` of their own
+— the repository's `* text=auto eol=lf` rule is not among the files copied in — so
+`core.autocrlf` fell through to the developer's global config, which is `true` by default on
+a standard Windows git install. `git add -A` then rewrote line endings on the way into the
+index and warned for every file.
+
+No build output was affected, and no assertion was wrong: the fixtures are written to disk as
+LF and never checked back out, so the build read LF either way, which is why all 384 tests
+passed on both machines. It was noise — but noise of exactly the kind this branch exists to
+remove, one level down: **a test asserting build determinism should not itself vary with the
+tester's git configuration.** Both scratch roots now pin `core.autocrlf=false` and
+`core.safecrlf=false` after `git init`.
+
+Measured by reproducing the condition (`git config --global core.autocrlf true`) on Linux:
+
+```
+$ git config --global core.autocrlf true
+$ node --test --test-concurrency=1 test/build-date.test.js test/provenance.test.js 2>&1 | grep -c "LF will be replaced by CRLF"
+788        # before
+0          # after
+```
+
 ### A reviewer on a different git version
 
 The most useful thing a reviewer can do here is run `npm test` on a git that renders `Z`. On

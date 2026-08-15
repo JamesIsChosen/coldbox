@@ -153,6 +153,14 @@ test('a commit touching only docs/ (governance-only, e.g. a packet update) does 
       GIT_COMMITTER_EMAIL: 'test@example.invalid'
     };
     execFileSync('git', ['init', '-q'], { cwd: root });
+    // This scratch root has no .gitattributes of its own, so without pinning
+    // these the developer's global config decides how `git add -A` treats line
+    // endings. On a standard Windows git install (`core.autocrlf=true`) that
+    // rewrites every copied file on the way into the index and prints a warning
+    // for each one — several hundred lines of noise across `npm test`, and
+    // fixture bytes that depend on the machine running the suite.
+    execFileSync('git', ['config', 'core.autocrlf', 'false'], { cwd: root });
+    execFileSync('git', ['config', 'core.safecrlf', 'false'], { cwd: root });
     execFileSync('git', ['add', '-A'], { cwd: root });
     execFileSync('git', ['commit', '-q', '-m', 'product commit'], {
       cwd: root,
