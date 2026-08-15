@@ -117,3 +117,15 @@ This asks "what is the date of the most recent commit, reachable from `HEAD`, th
 ### Verification
 
 Confirmed by building the same commit from two different checkout paths (a fresh worktree at a separate filesystem path) under different locale/timezone, per the review protocol's determinism requirement — see the regenerated [p0.16-provenance-panel.md](../packets/p0.16-provenance-panel.md) packet §3 for the actual commands and hashes. Also confirmed directly: a synthetic two-commit repository (one product commit, one docs-only commit as the new `HEAD`) embeds the first commit's date, not the second's — `test/provenance.test.js`, "a commit touching only docs/ ... does not change the build date."
+
+## Amendment (2026-08-15): `assets/` joins the build-date path list
+
+**Status of this amendment:** Accepted. It adds one entry to the path list the 2026-08-06 amendment introduced; the decision it records is unchanged.
+
+[UI.2](../ROADMAP.md) added `assets/brand/`, a build-input directory holding the traced wordmark SVG and the favicon PNGs that `scripts/build.js` embeds ([ADR-0047](0047-brand-assets-traced-once-and-embedded.md)). The query is now:
+
+```
+git log -1 --format=%cI HEAD -- assets src scripts vendor
+```
+
+This is precisely the residual risk the 2026-08-06 amendment recorded — "if a future contributor adds a new top-level directory that also feeds the build ... without adding it to `BUILD_DATE_SOURCE_PATHS`, a commit to that new directory would silently fail to advance the build date." A brand-artwork change alters the shipped bytes, so it must move the build date with it. `test/brand-assets.test.js` pins `assets` into the list, alongside `test/provenance.test.js`'s existing coverage of the mechanism, so dropping it again would be a deliberate reviewed change rather than a silent one.

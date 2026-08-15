@@ -12,6 +12,37 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
+### Changed - UI.2 Brand assets: wordmark and favicons (2026-08-15)
+
+- The `.app-bar` masthead now carries the drawn Coldbox logo as an inline SVG, replacing
+  the five-layer `text-shadow` treatment that approximated it with display-face text. Two
+  flat paths filled from `--fill-ink` and `--fill-cyan`, so it follows the theme and holds
+  design-system §3's no-hex rule; `role="img"` with an accessible name of `Coldbox`. It is
+  sized by the same `clamp(1.9rem, 4vw, 2.75rem)` the text carried, so the bar's rendered
+  height is unchanged at every width. The `Pre-release · Not audited` badge is untouched.
+- Favicons at 16, 32 and 48 px are embedded as `data:` PNG URIs, so they resolve from
+  `file://` with no network and no sibling file.
+- Added [ADR-0047](docs/05-development/adr/0047-brand-assets-traced-once-and-embedded.md):
+  the wordmark is traced from the supplied PNG **once**, with
+  `potrace --flat -O 1.0 -t 8 -a 1.3 -u 10`, and the result is committed as a source asset.
+  Nothing is traced at build time, so `potrace` is not a build dependency and the artifact
+  does not depend on which version of it is installed. `scripts/trace-brand-wordmark.js`
+  regenerates the asset, and `--check` proves the committed bytes reproduce.
+- Binary brand artwork lives in a new top-level `assets/` build-input directory rather than
+  under `src/`, so `scripts/lint.js` keeps reading every source file as UTF-8 text instead of
+  being taught to skip files by extension. `assets` joins `BUILD_DATE_SOURCE_PATHS`, amending
+  [ADR-0015](docs/05-development/adr/0015-provenance-build-date-and-self-hash.md), so an
+  artwork change cannot ship under an unchanged provenance date.
+- `scripts/brand-assets.js` validates the SVG at build time and fails closed on `<script>`,
+  `<foreignObject>`, `<image>`, `<use>`, `<style>`, `<a>`, `href`/`xlink:href`, an inline
+  event handler, `url()`, an entity declaration, a DOCTYPE, a literal hex colour, or any
+  URI-shaped string other than the SVG namespace declaration — and on a favicon that is not
+  a PNG of the size it declares. The CSP would block execution regardless; a content type
+  that has never been in this document before is checked rather than assumed.
+- Bundle: +24,542 bytes (+23.97 KB), recorded against
+  [dependencies.md](docs/05-development/dependencies.md#bundle-budget). Embedding the
+  supplied PNG as base64 instead would have cost ≈ 560 KB.
+
 ### Changed - UI.1 Design reconciliation for the interface restructure (2026-08-14)
 
 - The calm rule in [design-system.md](docs/01-spec/design-system.md) §6 is now scoped

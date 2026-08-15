@@ -54,6 +54,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0044](0044-panel-scoped-calm-rule.md) | The calm rule is scoped to the panel, not the realm | Accepted |
 | [0045](0045-released-secret-model.md) | One released secret per session, and every cold tool is a lens on it | Accepted |
 | [0046](0046-vault-name-availability-at-unlock.md) | Vault naming moves into the sealed realm, and the name leaves the filesystem | Accepted |
+| [0047](0047-brand-assets-traced-once-and-embedded.md) | Brand artwork is traced once, committed as source, and embedded from `assets/` | Accepted |
 
 ## When to write one
 

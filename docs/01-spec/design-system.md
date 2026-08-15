@@ -166,9 +166,13 @@ The `h1` outline is a four-way `text-shadow`, not a `-webkit-text-stroke`, becau
 
 ### App bar — `.app-bar`
 
-The yellow masthead, sticky at the top of every route and present at every width. Left to right: the cyan `.brand-name` wordmark knocked out with a five-layer black `text-shadow` and rotated −2°, the pink `.brand-badge` rotated +3°, then `.app-bar-actions`.
+The yellow masthead, sticky at the top of every route and present at every width. Left to right: the `.brand-wordmark` logo, the pink `.brand-badge` rotated +3°, then `.app-bar-actions`.
 
-Its height is `--app-bar-height`, which is also what the nav rail's `top` and `height` are computed from — one token, so the two cannot drift apart and leave a gap or a clipped rail.
+**The wordmark is the drawn Coldbox logo, inlined as SVG.** Two flat paths — `.wordmark-ink` and `.wordmark-cyan` — filled from `--fill-ink` and `--fill-cyan`, so it follows the theme and holds §3's no-hex rule. It carries `role="img"` and an accessible name of `Coldbox`. It is sized by height only, `clamp(1.9rem, 4vw, 2.75rem)`, and it is not rotated: the artwork already has its own tilt, and tilting it again reads as a mistake. UI.2 replaced a five-layer black `text-shadow` on display-face text that approximated this mark; the clamp is deliberately the one that text carried, so the bar's rendered height did not move. The asset is traced once and committed, never traced at build time — [ADR-0047](../05-development/adr/0047-brand-assets-traced-once-and-embedded.md).
+
+Its height is `--app-bar-height`, which is also what the nav rail's `top` and `height` are computed from — one token, so the two cannot drift apart and leave a gap or a clipped rail. Nothing placed in the bar may exceed that token less the bar's own padding and border.
+
+**Favicons are three `data:` PNGs at 16, 32 and 48 px**, emitted into `<head>` by the build from `assets/brand/`. They resolve with no network and no sibling file, which is what makes them work from `file://` at all; `img-src data:` in both realm CSPs is what permits them.
 
 Chrome, not a security surface: the tilts and the button press are fine here because nothing on the bar reports boundary state. The network/sealed-realm status surface does that, one screen down, and stays still.
 

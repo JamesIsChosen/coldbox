@@ -125,6 +125,10 @@ Provenance: exact-tip CI at `ce4bba40bd1df404f32148104fbf8d451866cf2c`, built on
 
 Update this line from a CI run, not a local build: a local figure can drift from the reproducible one, which is exactly how the superseded 2,597,956-byte estimate came to sit here.
 
+**UI.2 delta: +24,542 bytes (+23.97 KB), giving 2,622,481 bytes (≈ 2.62 MB).** The brand assets ([ADR-0047](adr/0047-brand-assets-traced-once-and-embedded.md)): the traced wordmark SVG at 15,757 bytes inlined verbatim, three favicon PNGs at 7,572 bytes of base64 plus their `<link>` tags, and the net of the stylesheet rules that replaced the text wordmark. 0.6% of the target; the budget is not threatened. Embedding the supplied 419,715-byte PNG as base64 instead would have cost ≈ 560 KB.
+
+The delta is a local measurement, and it is quoted as a delta for that reason. What makes it trustworthy is that the same local toolchain rebuilt the pre-UI.2 tip and reproduced **both** the 2,597,939-byte figure and the `73ce748f…` hash above exactly — so the two builds differ only by this change. The absolute figure above still awaits its CI refresh under the rule in the preceding paragraph, and should be updated from the CI run on the UI.2 merge rather than from this line.
+
 The target moved from 3 MB to 4 MB in UI.1. The old figure sat below the artifact that already existed, which is the worst state for a budget to be in — it reads as headroom that is not there. 4 MB leaves genuine room for Phases 3–5 while keeping the 4.5 MB hard cap meaningful. The table below is the original per-component projection, retained for its shape rather than its total. Only the help-content row has been replaced with a measurement; every other row is a pre-implementation estimate and the total under-counts the real artifact substantially. Do not quote the total as a size.
 
 | Component | Est. |
