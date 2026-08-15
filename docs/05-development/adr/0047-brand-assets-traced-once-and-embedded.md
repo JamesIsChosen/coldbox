@@ -58,9 +58,12 @@ committed file.
 
 **4. Binary brand artwork lives in `assets/`, not `src/`.** `assets/` is a
 build input directory in the same category as `vendor/`: read by the build,
-never linted as source, never shipped as a separate file. `assets` is added to
-`BUILD_DATE_SOURCE_PATHS` so a change to the artwork moves the build date with
-it.
+never treated as UTF-8 source, never shipped as a separate file. `scripts/lint.js`
+performs a binary-safe side scan of textual SVG files under `assets/brand/` for
+external and protocol-relative URLs; the build validator remains responsible
+for the SVG's full structural/content checks and for decoding PNGs. `assets` is
+added to `BUILD_DATE_SOURCE_PATHS` so a change to the artwork moves the build
+date with it.
 
 **5. The SVG is validated at build time, and the build fails closed.**
 `scripts/brand-assets.js` rejects `<script>`, `<foreignObject>`, `<image>`,
@@ -100,10 +103,10 @@ refusing to execute.
 `scripts/lint.js` treats as source, forcing the lint to skip files by
 extension. Trading a real guard on the source tree for a directory name is a
 bad trade, and the guard is one of the P0.3 constraints the project's own
-threat model leans on. The cost of the alternative is that "lint passes" says
-nothing about these assets — which is why the SVG has its own build-time
-validator and its own negative tests, and why the packet says so explicitly
-rather than letting the roadmap's phrasing imply lint is the enforcement.
+threat model leans on. The separate asset side scan preserves that source-tree
+guard while making the roadmap's literal lint criterion true for textual
+brand assets; `assertSafeSvg()` and the PNG decoder add the deeper structural
+checks and their negative tests prove that the build fails closed.
 
 ## Consequences
 

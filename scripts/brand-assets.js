@@ -15,13 +15,14 @@
 // for a directory name. The PNGs are build inputs like vendor/, so they live
 // beside vendor/ rather than inside the linted source tree. See ADR-0047.
 //
-// Because they sit outside the linted tree, "lint passes" is NOT the evidence
-// that the SVG is safe to inline. The evidence is assertSafeSvg() below, which
-// fails the build closed, plus the negative tests in test/brand-assets.test.js
-// that prove each rejection actually fires.
+// The lint has a separate binary-safe side scan for textual SVG files under
+// assets/brand/. The structural checks below remain the build-time authority:
+// they reject unsafe SVG content and fully parse/decode the favicon PNGs, with
+// negative tests proving that each guard fails closed.
 
 const fs = require('node:fs');
 const path = require('node:path');
+const zlib = require('node:zlib');
 
 const brandRoot = ['assets', 'brand'];
 const wordmarkFile = 'coldbox-wordmark.svg';
@@ -35,6 +36,30 @@ const FAVICONS = Object.freeze([
 ]);
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+const MAX_DECODED_PNG_BYTES = 16 * 1024 * 1024;
+
+function createCrc32Table() {
+  const table = [];
+  for (let index = 0; index < 256; index += 1) {
+    let value = index;
+    for (let bit = 0; bit < 8; bit += 1) {
+      value = (value & 1) ? ((value >>> 1) ^ 0xedb88320) : (value >>> 1);
+    }
+    table.push(value >>> 0);
+  }
+  return Object.freeze(table);
+}
+
+const CRC32_TABLE = createCrc32Table();
+
+function crc32(bytes) {
+  let value = 0xffffffff;
+  for (let index = 0; index < bytes.length; index += 1) {
+    value = (value >>> 8) ^ CRC32_TABLE[(value ^ bytes[index]) & 0xff];
+  }
+  return (value ^ 0xffffffff) >>> 0;
+}
 
 // A favicon that grew to a megabyte by accident should stop the build rather
 // than quietly land in an artifact with a 4 MB budget. The supplied set is
@@ -113,17 +138,128 @@ function assertSafeSvg(source, label) {
 }
 
 function readPngDimensions(bytes, label) {
+  const fail = (reason) => {
+    throw new Error(`Favicon ${label} ${reason}`);
+  };
+
+  if (!Buffer.isBuffer(bytes) || bytes.length < PNG_SIGNATURE.length) {
+    fail('is truncated');
+  }
   if (!bytes.subarray(0, 8).equals(PNG_SIGNATURE)) {
-    throw new Error(`Favicon ${label} is not a PNG`);
+    fail('is not a PNG');
   }
-  if (bytes.subarray(12, 16).toString('ascii') !== 'IHDR') {
-    throw new Error(`Favicon ${label} has no IHDR chunk`);
+
+  let offset = PNG_SIGNATURE.length;
+  let dimensions = null;
+  let idatSeen = false;
+  let idatEnded = false;
+  let iendSeen = false;
+  const idatChunks = [];
+
+  while (offset < bytes.length) {
+    if (bytes.length - offset < 12) {
+      fail('has a truncated PNG chunk');
+    }
+
+    const length = bytes.readUInt32BE(offset);
+    const typeBytes = bytes.subarray(offset + 4, offset + 8);
+    const type = typeBytes.toString('ascii');
+    const dataStart = offset + 8;
+    const dataEnd = dataStart + length;
+    const crcOffset = dataEnd;
+    const nextOffset = crcOffset + 4;
+    if (!/^[A-Za-z]{4}$/.test(type) || dataEnd > bytes.length || nextOffset > bytes.length) {
+      fail(`has a truncated or invalid ${type || 'unknown'} chunk`);
+    }
+    if (type[0] === type[0].toUpperCase() && !['IHDR', 'IDAT', 'IEND'].includes(type)) {
+      fail(`contains an unsupported critical ${type} chunk`);
+    }
+
+    const data = bytes.subarray(dataStart, dataEnd);
+    const expectedCrc = bytes.readUInt32BE(crcOffset);
+    const actualCrc = crc32(Buffer.concat([typeBytes, data]));
+    if (actualCrc !== expectedCrc) {
+      fail(`has an invalid CRC in its ${type} chunk`);
+    }
+
+    if (offset === PNG_SIGNATURE.length && type !== 'IHDR') {
+      fail('does not begin with IHDR');
+    }
+
+    if (type === 'IHDR') {
+      if (dimensions !== null || length !== 13) {
+        fail('has an invalid IHDR chunk');
+      }
+      const width = data.readUInt32BE(0);
+      const height = data.readUInt32BE(4);
+      if (width === 0 || height === 0) {
+        fail('has zero-sized dimensions');
+      }
+      if (data[8] !== 8 || data[9] !== 6 || data[10] !== 0 || data[11] !== 0 || data[12] !== 0) {
+        fail('uses an unsupported PNG format; expected 8-bit RGBA, non-interlaced data');
+      }
+      dimensions = { width, height };
+    } else if (dimensions === null) {
+      fail(`contains ${type} before IHDR`);
+    }
+
+    if (type === 'IDAT') {
+      if (idatEnded || iendSeen) {
+        fail('has non-consecutive IDAT chunks');
+      }
+      idatSeen = true;
+      idatChunks.push(data);
+    } else if (idatSeen && type !== 'IEND') {
+      idatEnded = true;
+    }
+
+    if (type === 'IEND') {
+      if (length !== 0 || iendSeen || !idatSeen) {
+        fail('has an invalid IEND chunk');
+      }
+      iendSeen = true;
+      if (nextOffset !== bytes.length) {
+        fail('has trailing bytes after IEND');
+      }
+    }
+
+    offset = nextOffset;
+    if (iendSeen) {
+      break;
+    }
   }
-  return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+
+  if (dimensions === null || !idatSeen || !iendSeen) {
+    fail('is missing a complete IHDR/IDAT/IEND structure');
+  }
+
+  const rowLength = dimensions.width * 4 + 1;
+  const decodedLength = rowLength * dimensions.height;
+  if (!Number.isSafeInteger(decodedLength) || decodedLength > MAX_DECODED_PNG_BYTES) {
+    fail('exceeds the safe PNG decode limit');
+  }
+
+  let decoded;
+  try {
+    decoded = zlib.inflateSync(Buffer.concat(idatChunks), { maxOutputLength: MAX_DECODED_PNG_BYTES });
+  } catch (error) {
+    fail(`is not decodable image data: ${error.message}`);
+  }
+  if (decoded.length !== decodedLength) {
+    fail(`has ${decoded.length} decoded bytes, expected ${decodedLength}`);
+  }
+  for (let row = 0; row < dimensions.height; row += 1) {
+    const filter = decoded[row * rowLength];
+    if (filter > 4) {
+      fail(`has an invalid scanline filter byte ${filter}`);
+    }
+  }
+
+  return dimensions;
 }
 
-// Exported so the build can inline it and the tests can check it without
-// reimplementing the read.
+// Kept private so the build owns one complete PNG validation path; callers use
+// createFaviconLinks() rather than depending on a header-only helper.
 function readWordmarkSource(projectRoot) {
   const file = brandAssetPath(projectRoot, wordmarkFile);
   const source = fs.readFileSync(file, 'utf8');

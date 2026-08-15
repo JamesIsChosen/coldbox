@@ -8,11 +8,10 @@
 // but "a later layer would have caught it" is not the same as "the build
 // refuses to emit it", and only the second is testable here.
 //
-// Note for reviewers: scripts/lint.js scans src/ only, and these assets live
-// under assets/ (see ADR-0047 for why binary artwork is not committed into the
-// tree that lint reads as UTF-8 text). So `npm run lint` passing is NOT the
-// evidence that the SVG is safe. The evidence is assertSafeSvg() failing the
-// build closed, and the negative tests below that prove each rejection fires.
+// Note for reviewers: binary artwork remains under assets/ rather than inside
+// the UTF-8 source tree, but lint now performs a binary-safe textual SVG side
+// scan there. The build's assertSafeSvg() and PNG decoder add the structural
+// checks, and the negative tests below prove each layer fails closed.
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -230,6 +229,55 @@ test('UI.2 a favicon that is not a PNG at all fails the build closed', () => {
     const result = runBuildIn(root);
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /favicon-c-lower-32x32\.png is not a PNG/i);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('UI.2 a truncated favicon with a valid PNG header fails the build closed', () => {
+  const root = createBuildRoot('brand-favicon-truncated');
+  try {
+    const source = fs.readFileSync(path.join(
+      root,
+      'assets',
+      'brand',
+      'favicon-c-lower-16x16.png'
+    ));
+    // Keep the signature and complete IHDR (including its CRC), but remove
+    // every IDAT and IEND byte. A header-only dimension check must not pass.
+    fs.writeFileSync(
+      path.join(root, 'assets', 'brand', 'favicon-c-lower-16x16.png'),
+      source.subarray(0, 33)
+    );
+
+    const result = runBuildIn(root);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /IDAT|IEND|truncated|decodable/i);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('UI.2 a favicon with a corrupted IDAT CRC fails the build closed', () => {
+  const root = createBuildRoot('brand-favicon-crc');
+  try {
+    const source = Buffer.from(fs.readFileSync(path.join(
+      root,
+      'assets',
+      'brand',
+      'favicon-c-lower-16x16.png'
+    )));
+    const idatLength = source.readUInt32BE(33);
+    const idatCrcOffset = 33 + 12 + idatLength - 4;
+    source[idatCrcOffset] ^= 0x01;
+    fs.writeFileSync(
+      path.join(root, 'assets', 'brand', 'favicon-c-lower-16x16.png'),
+      source
+    );
+
+    const result = runBuildIn(root);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /invalid CRC.*IDAT/i);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

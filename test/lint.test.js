@@ -71,6 +71,25 @@ test('external URLs and localStorage remain available in warm source', () => {
   }
 });
 
+test('brand asset lint rejects external URLs in textual SVG assets', () => {
+  const root = createLintRoot();
+  try {
+    const brandRoot = path.join(root, 'assets', 'brand');
+    fs.mkdirSync(brandRoot, { recursive: true });
+    fs.writeFileSync(
+      path.join(brandRoot, 'external.svg'),
+      '<svg xmlns="http://www.w3.org/2000/svg"><image href="https://evil.example/icon.png"/></svg>\n',
+      'utf8'
+    );
+    const result = runLint(root);
+    assert.notEqual(result.status, 0);
+    assert.match(combinedOutput(result), /Forbidden construct "external URL"/);
+    assert.match(combinedOutput(result), /assets[\\/]brand[\\/]external\.svg/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('the required wasm-unsafe-eval CSP token is not treated as JavaScript eval', () => {
   const root = createLintRoot();
   try {

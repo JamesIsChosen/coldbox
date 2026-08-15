@@ -10,6 +10,7 @@ const secretSourcePrefixes = Object.freeze([
   'src/cold/'
 ]);
 const toolingJavaScriptFiles = Object.freeze([
+  path.join(projectRoot, 'scripts', 'brand-assets.js'),
   path.join(projectRoot, 'scripts', 'build.js'),
   path.join(projectRoot, 'scripts', 'build-date.js'),
   path.join(projectRoot, 'scripts', 'crypto-bundle.js'),
@@ -17,7 +18,8 @@ const toolingJavaScriptFiles = Object.freeze([
   path.join(projectRoot, 'scripts', 'help-content.js'),
   path.join(projectRoot, 'scripts', 'lint.js'),
   path.join(projectRoot, 'scripts', 'verify-vendor.js'),
-  path.join(projectRoot, 'scripts', 'run-browser-harness.js')
+  path.join(projectRoot, 'scripts', 'run-browser-harness.js'),
+  path.join(projectRoot, 'scripts', 'trace-brand-wordmark.js')
 ]);
 
 const forbiddenConstructs = Object.freeze([
@@ -28,6 +30,7 @@ const forbiddenConstructs = Object.freeze([
 ]);
 const externalUrlPattern = /\b[a-z][a-z0-9+.-]{1,31}:\/\/[^\s"'<>]+/gi;
 const protocolRelativeUrlPattern = /(?<![:\w])\/\/[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}(?::\d+)?(?:[/?#][^\s"'<>]*)?/gi;
+const allowedBrandNamespace = 'http://www.w3.org/2000/svg';
 const localStoragePattern = /\blocalStorage\b/g;
 const executableMathRandomPattern = /\bMath\.random\s*\(/g;
 
@@ -82,6 +85,36 @@ function collectSourceFiles(root) {
   return files.sort((left, right) => compareBytewise(
     path.relative(root, left).replace(/\\/g, '/'),
     path.relative(root, right).replace(/\\/g, '/')
+  ));
+}
+
+function collectBrandTextFiles(root) {
+  const brandRoot = path.join(root, 'assets', 'brand');
+  if (!fs.existsSync(brandRoot)) {
+    return [];
+  }
+
+  const files = [];
+  function visit(directory) {
+    const entries = fs.readdirSync(directory, { withFileTypes: true })
+      .sort((left, right) => compareBytewise(left.name, right.name));
+    for (const entry of entries) {
+      const absolutePath = path.join(directory, entry.name);
+      if (entry.isSymbolicLink()) {
+        throw new Error(`Symlink found in brand asset tree: ${relativePath(root, absolutePath)}`);
+      }
+      if (entry.isDirectory()) {
+        visit(absolutePath);
+      } else if (entry.isFile() && path.extname(entry.name).toLowerCase() === '.svg') {
+        files.push(absolutePath);
+      }
+    }
+  }
+
+  visit(brandRoot);
+  return files.sort((left, right) => compareBytewise(
+    relativePath(root, left),
+    relativePath(root, right)
   ));
 }
 
@@ -152,6 +185,27 @@ function scanSourceFile(root, file, source, findings) {
   }
 }
 
+function scanBrandAssetFile(root, file, source, findings) {
+  for (const pattern of [externalUrlPattern, protocolRelativeUrlPattern]) {
+    pattern.lastIndex = 0;
+    let match = pattern.exec(source);
+    while (match) {
+      if (match[0] !== allowedBrandNamespace) {
+        const location = lineAndColumn(source, match.index);
+        findings.push({
+          index: match.index,
+          file: relativePath(root, file),
+          line: location.line,
+          column: location.column,
+          name: 'external URL'
+        });
+      }
+      match = pattern.exec(source);
+    }
+    pattern.lastIndex = 0;
+  }
+}
+
 function checkLineEndings(root, file, source) {
   if (source.includes('\r')) {
     throw new Error(`CRLF line ending found in ${relativePath(root, file)}`);
@@ -206,6 +260,11 @@ function main() {
     const source = fs.readFileSync(file, 'utf8');
     checkLineEndings(root, file, source);
     scanSourceFile(root, file, source, findings);
+  }
+  for (const file of collectBrandTextFiles(root)) {
+    const source = fs.readFileSync(file, 'utf8');
+    checkLineEndings(root, file, source);
+    scanBrandAssetFile(root, file, source, findings);
   }
   checkVendorManifest(root);
   reportFindings(findings);

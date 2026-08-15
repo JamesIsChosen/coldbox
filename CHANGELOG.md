@@ -67,9 +67,19 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 - `scripts/brand-assets.js` validates the SVG at build time and fails closed on `<script>`,
   `<foreignObject>`, `<image>`, `<use>`, `<style>`, `<a>`, `href`/`xlink:href`, an inline
   event handler, `url()`, an entity declaration, a DOCTYPE, a literal hex colour, or any
-  URI-shaped string other than the SVG namespace declaration — and on a favicon that is not
-  a PNG of the size it declares. The CSP would block execution regardless; a content type
-  that has never been in this document before is checked rather than assumed.
+  URI-shaped string other than the SVG namespace declaration — and on a favicon whose PNG
+  signature, chunk bounds, CRCs, IHDR format, IDAT decompression, scanline filters or
+  declared dimensions are invalid. A valid header without image data now fails closed too.
+  The CSP would block execution regardless; a content type that has never been in this
+  document before is checked rather than assumed.
+- `scripts/lint.js` keeps the binary PNGs outside its UTF-8 source walk while scanning
+  textual SVGs under `assets/brand/` for external and protocol-relative URLs. The
+  committed browser harness now verifies UI.2 at the literal 320×640 `file://` viewport in
+  both Chromium and Firefox: wordmark geometry/accessibility/theme fills, all three favicon
+  decodes, and the absence of sibling icon/manifest requests.
+- Reconciled the standing browser-verification rule: browser-verifiable roadmap items use
+  their literal committed harness conditions, while physical-device validation remains
+  scoped to items that claim it and to the separate P0.19 release/device matrix.
 - Bundle: +24,542 bytes (+23.97 KB), recorded against
   [dependencies.md](docs/05-development/dependencies.md#bundle-budget). Embedding the
   supplied PNG as base64 instead would have cost ≈ 560 KB.
