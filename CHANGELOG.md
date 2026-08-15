@@ -12,6 +12,37 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
+### Fixed - Build date rendering no longer depends on the builder's git version (2026-08-15)
+
+- `scripts/build.js` embedded whatever string `git log --format=%cI` returned. For a commit
+  made at a `+0000` offset, git 2.43.0 returns `2026-08-15T04:18:45+00:00` and a newer git
+  returns `2026-08-15T04:18:45Z` — the same instant, the same commit object, **five bytes of
+  difference in `build/coldbox.html`**. The artifact's size and hash therefore depended on
+  which git the builder had installed, breaking the reproducible-build constraint.
+- Hidden through Phases 0–2 because every commit in this repository's history was made at a
+  non-zero UTC offset, which both git versions spell identically. A container-based session
+  commits at `+0000`; the first one to touch product code exposed it, with two machines
+  building the identical commit to 2,622,481 and 2,622,476 bytes.
+- The symptom had been seen before, in P0.18 review R2-F1, and was diagnosed as a *test*
+  comparing against a hardcoded spelling. The test was made robust; the artifact was left
+  carrying the same version-dependent string.
+- Fixed by asking git only for values with no rendering to disagree about — `%ct`, an
+  integer, for the instant, and the numeric offset from `%ci` — and formatting the ISO-8601
+  string in a new `scripts/build-date.js`. Anything unparseable degrades to the existing
+  labeled unknown rather than guessing.
+- The canonical form keeps an explicit numeric offset and never `Z`, which is what every
+  existing commit already embedded. **The fix is byte-neutral on all existing history:**
+  rebuilding `main` reproduces `73ce748f…` at 2,597,939 bytes, the artifact recorded in
+  [dependencies.md](docs/05-development/dependencies.md#bundle-budget) from a real CI run.
+- See the [ADR-0015](docs/05-development/adr/0015-provenance-build-date-and-self-hash.md)
+  amendment of 2026-08-15 and `test/build-date.test.js`, whose vectors are real commits
+  created at six offsets and cross-checked against git's own rendering.
+- Review remediation is tracked as P0.22: `formatCommitDate()` now rejects invalid signs,
+  negative or noncanonical offset components, and malformed seconds before doing arithmetic;
+  direct-input negative tests cover the fail-closed contract. The parser also validates `%ci`'s
+  calendar/time fields against `%ct` plus the numeric offset, so impossible or contradictory Git
+  output degrades to the labeled unknown instead of being silently discarded.
+
 ### Changed - UI.2 Brand assets: wordmark and favicons (2026-08-15)
 
 - The `.app-bar` masthead now carries the drawn Coldbox logo as an inline SVG, replacing

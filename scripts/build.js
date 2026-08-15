@@ -9,6 +9,7 @@ const { createCryptoVendorSource } = require('./crypto-bundle.js');
 const { createFontFaceSource } = require('./font-bundle.js');
 const { compileHelpContent } = require('./help-content.js');
 const { createFaviconLinks, createWordmarkMarkup } = require('./brand-assets.js');
+const { BUILD_DATE_UNKNOWN, parseCommitDateOutput } = require('./build-date.js');
 
 // These values are part of the reproducibility contract. Set them rather than
 // trusting the caller's environment, so the build behaves the same everywhere.
@@ -125,22 +126,55 @@ function readLicenseText() {
 // Still degrades to a labeled "unknown" rather than failing the build when
 // git metadata is unavailable (e.g. a source tarball without history),
 // since this field is informational and not a security boundary.
-// `assets` joined this list in UI.2. The brand PNGs and the traced wordmark
-// SVG feed the build the same way vendor/ does, so a commit that changes them
-// changes the artifact and must move the build date with it. Leaving it out
-// would let the wordmark change while the build claimed the same provenance.
+//
+// Second amendment (2026-08-15): the *rendering* is ours, not git's.
+//
+// This used to read `--format=%cI` and embed whatever string git handed
+// back. That string is not stable across git versions for a UTC commit:
+// git 2.43.0 renders a +0000 commit as "2026-08-15T04:18:45+00:00", and a
+// newer git renders the same commit object as "2026-08-15T04:18:45Z". Same
+// instant, same commit, five bytes of difference in the artifact - so the
+// output hash depended on which git the builder had installed.
+//
+// That is a direct violation of the reproducibility contract, and it hid
+// for as long as it did only because every commit in this repository's
+// history until now was made at a non-zero UTC offset, which both
+// renderings spell identically. An agent session in a container is
+// UTC-configured by default, so the first one to commit product code
+// exposed it. (The symptom was seen once before, in P0.18 review R2-F1,
+// but was diagnosed as a *test* comparing against a hardcoded string and
+// fixed only in the test - see test/provenance.test.js. The same
+// divergence was reaching the shipped bytes the whole time.)
+//
+// So: ask git for the two unambiguous machine values - the commit's Unix
+// timestamp and its numeric UTC offset - and format the ISO-8601 string in
+// scripts/build-date.js, where the spelling is fixed by that module and by
+// nothing else. It lives there rather than here so the formatter is a pure
+// function with its own unit tests, instead of something only observable
+// through a full build.
+//
+// The canonical form keeps an explicit numeric offset and never "Z",
+// because that is what every existing commit in this repository already
+// embedded. This fix is therefore byte-neutral on every commit made so
+// far, including the one the recorded CI bundle figure was measured from;
+// only UTC-offset commits change, and they change from an unstable spelling
+// to a fixed "+00:00". See the packet for the rebuild proving that.
+// UI.2 adds assets/ to the product-path provenance scope. Brand PNG/SVG
+// bytes feed the shipped artifact, so an artwork commit must advance the
+// product commit date exactly as src/, scripts/, and vendor/ do.
 const BUILD_DATE_SOURCE_PATHS = Object.freeze(['assets', 'src', 'scripts', 'vendor']);
 
 function readBuildCommitDate() {
   const result = spawnSync(
     'git',
-    ['log', '-1', '--format=%cI', 'HEAD', '--', ...BUILD_DATE_SOURCE_PATHS],
+    ['log', '-1', '--format=%ct %ci', 'HEAD', '--', ...BUILD_DATE_SOURCE_PATHS],
     { cwd: projectRoot, encoding: 'utf8' }
   );
-  if (!result.error && result.status === 0 && result.stdout && result.stdout.trim()) {
-    return result.stdout.trim();
+  if (result.error || result.status !== 0 || !result.stdout || !result.stdout.trim()) {
+    return BUILD_DATE_UNKNOWN;
   }
-  return 'unknown (no git commit metadata available)';
+
+  return parseCommitDateOutput(result.stdout);
 }
 
 // P0.17 - Help framework. Compiles docs/00-overview/glossary.md and

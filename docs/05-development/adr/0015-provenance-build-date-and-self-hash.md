@@ -118,14 +118,67 @@ This asks "what is the date of the most recent commit, reachable from `HEAD`, th
 
 Confirmed by building the same commit from two different checkout paths (a fresh worktree at a separate filesystem path) under different locale/timezone, per the review protocol's determinism requirement — see the regenerated [p0.16-provenance-panel.md](../packets/p0.16-provenance-panel.md) packet §3 for the actual commands and hashes. Also confirmed directly: a synthetic two-commit repository (one product commit, one docs-only commit as the new `HEAD`) embeds the first commit's date, not the second's — `test/provenance.test.js`, "a commit touching only docs/ ... does not change the build date."
 
+## Amendment (2026-08-15): the date's *rendering* is ours, not git's
+
+**Status of this amendment:** Accepted. It changes how the value this ADR governs is spelled, not which commit it comes from. The 2026-08-06 amendment's decision is untouched.
+
+### Context
+
+`readBuildCommitDate()` ran `git log -1 --format=%cI` and embedded whatever string git returned. `%cI` is documented as "strict ISO 8601", and different git versions disagree about how to spell a zero UTC offset under that standard:
+
+```
+git 2.43.0    2026-08-15T04:18:45+00:00     (25 bytes)
+newer git     2026-08-15T04:18:45Z          (20 bytes)
+```
+
+Same commit object — `committer … 1786767525 +0000` — same instant, five bytes of difference in `build/coldbox.html`. **The artifact's size and hash therefore depended on which git the builder had installed**, which is a direct violation of AGENTS.md §3's reproducible-build constraint and of [build.md](../build.md)'s determinism requirements.
+
+It went unnoticed for the whole of Phases 0–2 because every commit in this repository's history was made at a non-zero UTC offset, and both renderings spell those identically (`-07:00` either way). Only a commit made at `+0000` diverges. A container-based agent session is UTC-configured by default, so the first agent to commit product code from one exposed it — observed directly: a branch built on two machines from the identical commit produced 2,622,481 and 2,622,476 bytes.
+
+**The symptom had already been seen and misdiagnosed.** P0.18 review R2-F1 hit exactly this `'Z' vs '+00:00'` divergence, correctly identified the cause at the string level, and concluded it was a *test* comparing against a hardcoded spelling — fixing the test to capture git's own answer instead. The reasoning ended at the test boundary. The same version-dependent string was flowing into the shipped bytes the entire time, and the fix that made the test robust also removed the signal that would have caught it. That is the more useful lesson here than the bug itself: a determinism failure was observed, explained, and closed without asking whether the same input reached the artifact.
+
+### Decision
+
+Ask git only for values that have no rendering to disagree about, and format the string here:
+
+```
+git log -1 --format=%ct %ci HEAD -- <BUILD_DATE_SOURCE_PATHS>
+```
+
+`%ct` is a Unix timestamp — an integer. The numeric UTC offset is taken from `%ci`, git's long-standing `YYYY-MM-DD HH:MM:SS ±HHMM` format, and **only** the offset is read from it; the instant always comes from the integer, so even a change in how `%ci` renders dates cannot move the output. Both are parsed strictly by `scripts/build-date.js`, and anything unexpected degrades to the same labeled `unknown (no git commit metadata available)` that missing git metadata already produced. The field is informational, so it fails soft — but it never guesses.
+
+**The canonical form keeps an explicit numeric offset and never `Z`:** `YYYY-MM-DDTHH:MM:SS±HH:MM`, fixed length, seconds precision.
+
+The formatter lives in its own module rather than inside `scripts/build.js` so it can be unit-tested as a pure function over a table of offsets, instead of being observable only through a full build.
+
+### Rationale
+
+**Why explicit-numeric rather than `Z`.** It is what every commit in this repository has already embedded, because every one of them was at a non-zero offset. Choosing it makes this change **byte-neutral on all existing history**: rebuilding `main` after the fix reproduces `73ce748f871166f717de4c22d31dcb4c6b8d048337a0eea78f1e4a7b676aafc1` at 2,597,939 bytes, the exact artifact recorded in [dependencies.md](../dependencies.md#bundle-budget) from a real CI run. Choosing `Z` would have been equally consistent going forward and would have silently rewritten the embedded date of every historical commit, invalidating that recorded figure and every packet hash in the archive.
+
+**Why not normalise the `%cI` string instead** — rewriting a trailing `Z` to `+00:00`. It fixes the one divergence we found and leaves the output shape defined by an external tool's formatter, which is the property that failed. Taking the machine values and owning the rendering removes the class, not the instance.
+
+**Why not `Date#toISOString()` on the raw timestamp.** That re-expresses every commit in UTC and discards the committer's offset, changing every date already embedded. The offset is preserved and only its spelling is fixed.
+
+### Consequences
+
+**Positive:** the artifact no longer depends on the builder's git version. Cross-OS hash comparison in CI ([ADR-0017](0017-ci-workflow-structure.md)) now means what it claims for commits made at any offset, including the UTC ones that agent sessions produce.
+
+**Negative:** the build carries its own date formatter, which is code that did not exist before and has to be correct. It is ~50 lines, pure, and covered by unit vectors cross-checked against real git commits at six offsets.
+
+**Risk carried forward:** `%ci`'s offset field is still an external format. If git ever changed it, the strict parse fails closed to the labeled unknown rather than emitting a wrong date — a visible, non-silent degradation, and one `test/build-date.test.js` would catch immediately.
+
+### Verification
+
+`test/build-date.test.js`: real commits created at six offsets, with the formatter's output compared against git's own `%cI` for each non-UTC case (proving byte-neutrality on historical commits) and pinned to `+00:00` for the UTC case (proving the fix). Plus locale/timezone independence, malformed-input degradation, out-of-range refusal, and an end-to-end build of a synthetic UTC product commit. `test/provenance.test.js`'s two build-date assertions were rewritten off `%cI` for the same reason this amendment exists.
+
 ## Amendment (2026-08-15): `assets/` joins the build-date path list
 
-**Status of this amendment:** Accepted. It adds one entry to the path list the 2026-08-06 amendment introduced; the decision it records is unchanged.
+**Status of this amendment:** Accepted. It adds one entry to the path list the 2026-08-06 amendment introduced. The same-day P0.22 rendering amendment remains authoritative; this amendment changes only which product paths feed that query.
 
 [UI.2](../ROADMAP.md) added `assets/brand/`, a build-input directory holding the traced wordmark SVG and the favicon PNGs that `scripts/build.js` embeds ([ADR-0047](0047-brand-assets-traced-once-and-embedded.md)). The query is now:
 
 ```
-git log -1 --format=%cI HEAD -- assets src scripts vendor
+git log -1 --format=%ct %ci HEAD -- assets src scripts vendor
 ```
 
 This is precisely the residual risk the 2026-08-06 amendment recorded — "if a future contributor adds a new top-level directory that also feeds the build ... without adding it to `BUILD_DATE_SOURCE_PATHS`, a commit to that new directory would silently fail to advance the build date." A brand-artwork change alters the shipped bytes, so it must move the build date with it. `test/brand-assets.test.js` pins `assets` into the list, alongside `test/provenance.test.js`'s existing coverage of the mechanism, so dropping it again would be a deliberate reviewed change rather than a silent one.
