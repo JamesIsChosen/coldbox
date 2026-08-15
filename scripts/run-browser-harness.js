@@ -3468,6 +3468,121 @@ async function verifySeedForge(browser, engine) {
   }
 }
 
+async function verifyReleasedSecretSwitcher(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    const coldFrame = await getColdFrame(page, engine);
+    await coldFrame.locator('#cold-secret-switcher[data-state="empty"]').waitFor({ state: 'attached', timeout: 10000 });
+
+    const officialMnemonic = [
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
+      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
+    ].join(' ');
+
+    async function releaseValidated(label) {
+      await coldFrame.locator('#cold-seed-forge-validation-passphrase-input').fill('TREZOR');
+      await coldFrame.locator('#cold-seed-forge-validation-passphrase-confirm').fill('TREZOR');
+      await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(officialMnemonic);
+      await coldFrame.locator('#cold-seed-forge-validate').click();
+      await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
+      await coldFrame.locator('#cold-seed-forge-validation-release-label').fill(label);
+      await coldFrame.locator('#cold-seed-forge-validation-release').click();
+      await coldFrame.locator('#cold-secret-list [data-secret-id]').filter({ hasText: label }).waitFor({ state: 'visible', timeout: 5000 });
+    }
+
+    await releaseValidated('Primary backup');
+    await coldFrame.locator('#cold-seed-forge-generate').click();
+    await coldFrame.locator('#cold-seed-forge-generated:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-seed-forge-generated-release-label').fill('Spare backup');
+    await coldFrame.locator('#cold-seed-forge-generated-release').click();
+    await coldFrame.locator('#cold-secret-list [data-secret-id]').filter({ hasText: 'Spare backup' }).waitFor({ state: 'visible', timeout: 5000 });
+
+    const records = coldFrame.locator('#cold-secret-list [role="listitem"]');
+    assert.equal(await records.count(), 2, `${engine}: two Seed Forge releases must be present in the switcher`);
+    assert.equal(await coldFrame.locator('#cold-secret-list button[aria-pressed="true"]').count(), 1);
+    assert.match(await coldFrame.locator('#cold-secret-list').textContent(), /Primary backup/);
+    assert.match(await coldFrame.locator('#cold-secret-list').textContent(), /Spare backup/);
+    assert.match(await coldFrame.locator('#cold-secret-list').textContent(), /b4e3f5ed/);
+    const focusedFingerprint = (await coldFrame.locator('#cold-secret-focus-summary').textContent()).match(/[0-9a-f]{8}/i)[0];
+    assert.match(focusedFingerprint, /^[0-9a-f]{8}$/);
+
+    const focusedReadyMarker = await coldFrame.locator('#cold-ready').textContent();
+    await records.nth(0).locator('button[data-secret-action="focus"]').click();
+    await coldFrame.locator('#cold-secret-focus-summary').filter({ hasText: 'Primary backup' }).waitFor({ state: 'visible' });
+    assert.equal(await coldFrame.locator('#cold-secret-list button[aria-pressed="true"]').count(), 1);
+    assert.equal(await coldFrame.locator('#cold-ready').textContent(), focusedReadyMarker, `${engine}: focus changed without a reload`);
+    assert.equal(await coldFrame.locator('#cold-seed-xor-source').isDisabled(), true);
+    assert.equal(await coldFrame.locator('#cold-codex32-secret-hex').isDisabled(), true);
+    assert.equal(await coldFrame.locator('#cold-shamir39-source').isDisabled(), true);
+    assert.equal(await coldFrame.locator('#cold-raw-sss-source').isDisabled(), true);
+    assert.equal(await coldFrame.locator('#cold-qr-seed-source').inputValue(), 'focused');
+    assert.equal(await coldFrame.locator('#cold-slip39-seed-source').inputValue(), 'focused');
+    const focusedIndicators = coldFrame.locator('[data-secret-focus-indicator][data-state="focused"]');
+    assert.equal(await focusedIndicators.count(), 6, `${engine}: every destructive, splitting, or exporting panel must show focus`);
+    const primaryFingerprint = (await coldFrame.locator('#cold-secret-focus-summary').textContent()).match(/[0-9a-f]{8}/i)[0];
+    assert.ok((await focusedIndicators.allTextContents()).every((text) => text.includes(primaryFingerprint)));
+    await coldFrame.locator('#cold-verification-wallet-use').click();
+    await coldFrame.locator('#cold-verification-wallet-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal((await coldFrame.locator('#cold-verification-wallet-fingerprint').textContent()).trim(), primaryFingerprint);
+
+    await records.nth(1).locator('button[data-secret-action="focus"]').click();
+    await coldFrame.locator('#cold-secret-focus-summary').filter({ hasText: 'Spare backup' }).waitFor({ state: 'visible' });
+    const spareFingerprint = (await coldFrame.locator('#cold-secret-focus-summary').textContent()).match(/[0-9a-f]{8}/i)[0];
+    assert.notEqual(spareFingerprint, primaryFingerprint);
+    assert.ok((await focusedIndicators.allTextContents()).every((text) => text.includes(spareFingerprint)));
+    await coldFrame.locator('#cold-verification-wallet-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal((await coldFrame.locator('#cold-verification-wallet-fingerprint').textContent()).trim(), spareFingerprint);
+    assert.equal(await coldFrame.locator('#cold-secret-list button[aria-pressed="true"]').count(), 1);
+    assert.equal(await page.evaluate((label) => document.body.textContent.includes(label), 'Primary backup'), false, `${engine}: released labels must stay out of the warm shell`);
+    assert.equal(await page.evaluate((fingerprint) => document.body.textContent.includes(fingerprint), spareFingerprint), false, `${engine}: released fingerprints must stay out of the warm shell`);
+
+    await coldFrame.locator('#cold-secret-registry-clear').click();
+    await coldFrame.locator('#cold-secret-switcher[data-state="empty"][data-released-secret-count="0"]').waitFor({ state: 'attached' });
+    assert.equal(await coldFrame.locator('#cold-secret-registry-empty').isHidden(), false);
+    assert.equal(await coldFrame.locator('[data-secret-focus-indicator][data-state="empty"]').count(), 6);
+
+    await releaseValidated('Shortcut test');
+    await coldFrame.locator('body').press('Control+Alt+Shift+L');
+    await coldFrame.locator('#cold-secret-switcher[data-state="empty"][data-released-secret-count="0"]').waitFor({ state: 'attached' });
+
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    await createPreparedVault(page, coldFrame, 'ui3 lock test phrase', 'UI3 Lock ' + engine + ' ' + String(Date.now()));
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await releaseValidated('Vault lock test');
+    await lockVaultDiscardingUnsaved(page);
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-secret-switcher[data-state="empty"][data-released-secret-count="0"]').waitFor({ state: 'attached' });
+
+    await coldFrame.evaluate(() => {
+      const nativeSetTimeout = window.setTimeout.bind(window);
+      window.setTimeout = function (handler, delay) {
+        return nativeSetTimeout(handler, delay === 300000 ? 2000 : delay);
+      };
+    });
+    await createPreparedVault(page, coldFrame, 'ui3 idle test phrase', 'UI3 Idle ' + engine + ' ' + String(Date.now()));
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await releaseValidated('Idle test');
+    await coldFrame.locator('#cold-secret-switcher[data-state="empty"][data-released-secret-count="0"]').waitFor({ state: 'attached', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+
+    await releaseValidated('Teardown test');
+    await coldFrame.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+    await coldFrame.locator('#cold-secret-switcher[data-state="empty"][data-released-secret-count="0"]').waitFor({ state: 'attached' });
+
+    await releaseValidated('Panic test');
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('body').press('Escape');
+    await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-secret-switcher[data-released-secret-count="0"]').count(), 1);
+
+    console.log(`${engine}: released-secret registry, public switcher, focus indicators, boundary isolation, clear shortcut, realm teardown, and panic clearing passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifySeedXor(browser, engine) {
   const { page } = await openPage(browser, buildPath);
   try {
@@ -4315,6 +4430,7 @@ async function run() {
       await verifyDeviceRegistry(browser, engine);
       await verifyEntropyLab(browser, engine);
       await verifySeedForge(browser, engine);
+      await verifyReleasedSecretSwitcher(browser, engine);
       await verifySeedXor(browser, engine);
       await verifyCodex32(browser, engine);
       await verifyShamirBackups(browser, engine);

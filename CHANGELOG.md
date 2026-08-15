@@ -12,6 +12,11 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
+### Added - UI.3 released-secret switcher (2026-08-15)
+
+- Seed Forge results can be released into a cold-realm, session-only registry with a user label and public master fingerprint. Several results may be held, exactly one is focused, and every split, backup-share, SeedQR, and verification panel shows the focused fingerprint before use.
+- Focus changes clear stale derived outputs and re-point the dependent panels without re-entry. Vault lock, idle timeout, panic hide, realm teardown, and the `Ctrl+Alt+Shift+L` clear shortcut zeroize and remove the registry; nothing is persisted or sent to the warm shell. See [ADR-0045](docs/05-development/adr/0045-released-secret-model.md).
+
 ### Fixed - Build date rendering no longer depends on the builder's git version (2026-08-15)
 
 - `scripts/build.js` embedded whatever string `git log --format=%cI` returned. For a commit
