@@ -1,6 +1,6 @@
 # ADR-0028: Cold-only BIP-39 Seed Forge and master fingerprint
 
-**Status:** Accepted
+**Status:** Accepted · amended by [ADR-0045](0045-released-secret-model.md)
 **Date:** 2026-08-09
 **Review date:** 2026-08-10
 

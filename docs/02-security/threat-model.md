@@ -175,6 +175,14 @@ Screen recording, cameras, compromised GPU drivers. Masking helps against a pers
 
 Tor hides your IP but the query content still reveals interest in those addresses. Only a self-hosted node fully solves it.
 
+### Vault names, and what the filesystem discloses
+
+**Today, the vault name is the filename.** The canonical file is `<public-name>--<id8>.cbx`, so the name you chose is disclosed to every process and service that can list the directory — cloud sync, backup software, file indexers, and anyone looking at a file manager — whether or not you ever open the vault. A vault called `retirement-cold-storage` announces itself. Treat a vault name as public, and do not put anything in it you would not write on the outside of the envelope.
+
+**This is decided to change, and has not shipped yet.** [ADR-0046](../05-development/adr/0046-vault-name-availability-at-unlock.md) moves the name inside the encrypted container and makes the canonical filename `coldbox--<id8>.cbx`, carrying no user-chosen text. Roadmap item UI.10 implements it; until UI.10 ships, the paragraph above is what holds. When it does ship, what remains observable is the file's existence, size, modification time, and `id8` — a fragment of a random identifier not derived from anything you chose.
+
+**In neither state does a vault name cross cold → warm.** That invariant is unchanged. Under ADR-0046 it stops depending on a filter and becomes trivially true, because nothing on the warm side needs the name at all. The device-local nickname the picker will show is warm-only: never sent to the sealed realm, never written into the vault, never placed in a filename, and it does not travel with a copied `.cbx`.
+
 ### Weak passphrases
 
 The strength meter is advisory. A memorable-but-weak passphrase defeats good cryptography.

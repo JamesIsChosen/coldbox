@@ -261,8 +261,72 @@ Nothing above this phase is safe to build until the container is trustworthy.
 - [x] P2.7 Backup Health dashboard
   *Deps: P2.6*
   **Validation policy (recorded 2026-08-14):** Under [ADR-0043](adr/0043-scoped-mobile-validation-deferral.md), the maintainer-approved physical-mobile `file://` validation deferral is non-blocking for this warm-only item-level review. The packet records the mobile rows as `DEFERRED`; this does not claim mobile support, alter the release device gate, or close P0.19.
-- [ ] P2.8 Printable cards and hand-computation worksheets
+
+## Phase UI — Interface restructure
+
+Inserted between P2.7 and P2.8 by UI.1, so that every item from P2.8 onward is built inside the new interface rather than built twice. The design is the August 2026 sealed-realm reorganisation handoff; the decisions it depends on are [ADR-0044](adr/0044-panel-scoped-calm-rule.md), [ADR-0045](adr/0045-released-secret-model.md) and [ADR-0046](adr/0046-vault-name-availability-at-unlock.md).
+
+The IDs are lettered rather than numbered into Phase 2 because `P2.8` is referenced by roughly fifteen archived packets and review reports as "printable cards"; renumbering it would falsify that record.
+
+**Six of these ten are the handoff's own build order (UI.3–UI.8), and it is load-bearing.** The released-secret state has to exist before anything can be tested against it; the phrase fields cannot be deleted until it does; the floating menu is built once because forty-odd surfaces use it.
+
+- [x] **UI.1 Design reconciliation**
   *Deps: P2.7*
+  Land the three ADRs, rewrite [design-system.md](../01-spec/design-system.md) §6 from realm-scoped to panel-scoped, add `.realm-strip` as a named component, reconcile the light-mode token conflict, correct the stale bundle-size figures, and create this phase. No `src/` change.
+  **Accept:** ADR-0044, ADR-0045 and ADR-0046 exist, are indexed, and are linked from every document whose behaviour they change; §6 no longer contains a realm-scoped surface entry; §7's superseded second reason is corrected; `.realm-strip` is specified with angle, band width, both palettes and the no-motion requirement; the three conflicting light tokens are resolved in favour of the shipped values with the decision recorded; [dependencies.md](dependencies.md#bundle-budget) is the **single** home for the measured artifact size, target and hard cap, and carries a real measurement with its provenance rather than an estimate, while [SPEC.md](../01-spec/SPEC.md) restates none of those figures anywhere and links to it instead — a grep for the size, the target or the cap outside `dependencies.md` returns only historical records; ADR-0009, ADR-0023, ADR-0025 and ADR-0028 carry amendment markers pointing at the new records; no file under `src/` is modified.
+
+- [ ] **UI.2 Brand assets — wordmark and favicons**
+  *Deps: UI.1*
+  Replace the CSS text wordmark in `.app-bar` with the supplied Coldbox logo, and add favicons. Both embedded, both offline, both reproducible.
+  **Source assets:** `coldbox-logo.png` (1494×514 RGBA, two flat colours) and `favicon-c-lower-{16,32,48}x{...}.png`, supplied by the maintainer 2026-08-14. The wordmark ships as SVG traced from the PNG with `potrace --flat -O 1.0 -t 8 -a 1.3 -u 10` over a black mask and a cyan mask, combined into one two-path document — 419,715 bytes of PNG becomes ~25 KB of SVG, against ~560 KB had the PNG been embedded as base64. The traced SVG is committed as a source asset; it is not re-traced at build time.
+  **Accept:** the wordmark is an inline SVG carrying `--fill-cyan` and `--fill-ink` rather than literal hex, so it follows the theme and §3's no-inline-hex rule; it renders legibly at app-bar height and at 320px viewport width; it carries an accessible name of `Coldbox`; the favicons are `data:` URIs at 16, 32 and 48 px and resolve with no network and no sibling file from `file://`; `scripts/lint.js` passes, which means no external URL and no fetched asset; the build remains reproducible across two runs; the size delta is recorded against [dependencies.md](dependencies.md#bundle-budget); [design-system.md](../01-spec/design-system.md) §5 `.app-bar` is updated to describe the logo rather than the five-layer text-shadow wordmark it replaces; the `Pre-release · Not audited` badge and §2's copy rules are untouched; and **the SVG contains no `<script>`, no `<foreignObject>`, no `href`/`xlink:href`, and no external reference of any kind** — the CSP would block execution regardless, but a new content type entering the document is checked rather than assumed.
+
+- [ ] **UI.3 Released-secret state and the secret switcher** 🌐
+  *Deps: UI.1*
+  The session-scoped registry from [ADR-0045](adr/0045-released-secret-model.md), in `src/cold/main.js`, plus the switcher strip. Nothing else in this phase can be tested without it.
+  **Accept:** a secret released from Seed Forge appears in the switcher with its label and public master fingerprint; several secrets can be released and exactly one is focused; changing focus re-points every dependent panel with no reload and no re-entry; the registry is cleared and its buffers zeroized by each of vault lock, idle timeout, panic and realm teardown, each covered by a test; no released secret, and no derivative of one, appears in any message to the warm shell; the empty registry renders a designed empty state that explains what cleared it; nothing is persisted to any vault compartment or storage; **the focused secret's public master fingerprint is visible on any panel that performs a destructive, splitting or exporting action**, because acting on the wrong secret is the failure mode a multi-secret switcher introduces and the fingerprint is the only thing that distinguishes them; and the keyboard shortcut that clears the registry is confirmed not to collide with the panic binding — if it does, one of the two changes and the change is recorded in the packet.
+
+- [ ] **UI.4 Sealed-realm tool grouping and hub** 🌐
+  *Deps: UI.3*
+  Restructure `src/cold/index.html` into the six sealed groups and delete the six secret-entry fields, re-pointing each tool at the focused secret.
+  **Accept:** `#cold-seed-xor-source`, `#cold-codex32-secret-hex`, `#cold-shamir39-source`, `#cold-raw-sss-source` and `#cold-slip39-seed-source` no longer exist and their tools read the focused secret instead; `#cold-seed-forge-mnemonic-input` remains as the realm's single entry point; **a test asserts the declared secret-input registry specified in [ADR-0045](adr/0045-released-secret-model.md) holds**: every input in `src/` that accepts secret material is declared with a category, no undeclared one exists, and **exactly one carries the category `seed-entry`**. **This item removes seed/source-loading inputs and only those** — the five listed above, leaving Seed Forge's. The registry must enumerate the legitimate sealed inputs that are not seed entry — vault passphrase and confirmation, keyfile, recovery re-authentication, recovery-share entry, concealment re-authentication, secret notes, the BIP-39 passphrase fields, and the share-combine fields — **every one of which stays.** A tool that reconstructs from shares must still accept share words; removing those inputs would break recovery, which is the opposite of this item's purpose. A naive count of secret-accepting inputs is not an acceptable implementation of this criterion; it was tried in an earlier draft and was false on the day it was written; every migrated tool derives what it displays from the focused secret and **has no seed/source-loading input of its own** — it may still have the inputs its own job requires; every secret value is masked on first paint; each tool's existing behaviour and test coverage is preserved, not reduced; the cold CSP is byte-identical to before the restructure and a test asserts cold still has no network capability.
+
+- [ ] **UI.5 Shared shell chrome — app bar, nav rail, realm strip** 🌐
+  *Deps: UI.4*
+  One shell across both realms: masthead, ten-group nav rail, and the `.realm-strip` specified in [design-system.md](../01-spec/design-system.md) §5.
+  **Accept:** the rail reaches every built surface in both realms, including sealed tools, without scrolling the document; **groups render their unbuilt items disabled and labelled with roadmap ID and phase**, and a disabled item is not focusable as a control and is announced as unavailable; the realm strip changes unmistakably at the boundary and its stripes do not animate under any state, including `prefers-reduced-motion` being absent; the rail collapses to a five-slot bottom bar plus a More sheet below the phone breakpoint; 44px minimum touch targets hold; both realms stay hash-pinned into the parent CSP exactly as before.
+
+- [ ] **UI.6 Floating record menu** 🌐
+  *Deps: UI.5*
+  One component, built once, used by every surface that holds a record.
+  **Accept:** opening a record shows the complete record — all fields, tags, concealment state and provenance — not a summary; a QR appears for every public address, xpub, descriptor or npub; **no QR is offered for secret material from this component**, which remains SeedQR Studio's job behind its own plaintext acknowledgement; the panel is calm per §6 whenever it renders a secret; it is fully keyboard-navigable with a visible focus ring and returns focus on close; it is one implementation, and a reviewer can confirm that by finding one.
+
+- [ ] **UI.7 Send-to routing** 🌐
+  *Deps: UI.6*
+  The typed routes that replace copy-paste between tools.
+  **Accept:** every value that has a consumer offers a Send to row into it; **no send-to path writes secret material to the clipboard**, asserted by a test; where copy still exists for public values it runs the existing P1.12 clipboard round-trip check; a send-to into a cold tool never round-trips through the warm shell; routes are enumerable and each one is covered.
+
+- [ ] **UI.8 Warm-realm workspaces**
+  *Deps: UI.7*
+  Regroup the warm shell into the four warm groups. Additive; breaks nothing.
+  **Accept:** Records, Money, Vault files and Reference each reach their built surfaces; existing warm behaviour and routes are preserved or explicitly redirected; no warm surface gains access to anything sealed.
+
+- [ ] **UI.9 Tool map compiled from ROADMAP.md**
+  *Deps: UI.5*
+  A build step that compiles this file into the in-app tool map, the way [help-content.js](../../scripts/help-content.js) compiles `docs/`.
+  **Accept:** the tool map's content is generated at build time from this file and no item status is transcribed by hand anywhere in `src/`; the build fails closed if this file cannot be parsed; the output is deterministic across two builds; `scripts/check-docs.js` covers the new relationship; a status changed here and nowhere else changes the app on the next build.
+
+- [ ] **UI.10 Vault naming in the sealed realm, and a name-free filename** 🌐
+  *Deps: UI.4*
+  Implements [ADR-0046](adr/0046-vault-name-availability-at-unlock.md) end to end: the name joins the unlock phrase, confirmation, KDF profile and keyfile on one sealed creation screen and is stored inside the encrypted public compartment; the canonical filename stops carrying user-chosen text; the warm picker gains a device-local nickname.
+  **Accept:** naming, phrase, confirmation, KDF profile and keyfile are on one screen inside the sealed realm; the name is written by cold into the encrypted public compartment under a bounded, typed field and is authenticated with the rest of it; **no name and no derivative of one crosses cold → warm in any message**, asserted by a test, and **no new message type is added in either direction**; the canonical filename is `coldbox--<id8>.cbx` and contains no user-chosen text; every historical filename form enumerated in [ADR-0026](adr/0026-canonical-vault-save-and-live-transfer.md) §5 remains readable and existing vaults open without migration; the warm picker shows `id8` plus an optional device-local nickname that is never sent to cold, never written into the vault and never placed in a filename; the real name can be renamed in cold while unlocked without writing a new file, and the nickname can be renamed in warm at any time; **the name survives a warm registry edit**: cold omits the name from the public projection it sends warm, carries its own stored name forward when re-encrypting after `publicData.replace`, and **rejects — failing closed — any inbound replace payload carrying a name field**, with a test proving that a full registry mutation round-trip leaves the stored name byte-identical and a negative test proving an injected name field is refused rather than merged; **whether the compartment addition requires a vault-format version bump is determined against [vault-format.md](../01-spec/vault-format.md) and recorded with its reasoning in the packet — the format must not change silently**; [architecture.md](../01-spec/architecture.md), [vault-format.md](../01-spec/vault-format.md) and [ADR-0025](adr/0025-vault-identity-library-and-save-ux.md)/[ADR-0026](adr/0026-canonical-vault-save-and-live-transfer.md)'s amended clauses are updated in this item; the retirement of duplicate-name refusal is reflected wherever ADR-0026 §37 is relied upon; and **every document that currently assumes a name-bearing filename is updated in this item** — the enumerated set, swept at UI.1, is [quick-start.md](../00-overview/quick-start.md), [SPEC.md](../01-spec/SPEC.md) (canonical save and Vault Library), [vault-format.md](../01-spec/vault-format.md), [threat-model.md](../02-security/threat-model.md) (which states the pre-UI.10 behaviour deliberately), [testing.md](testing.md) device-matrix step 5, and [ADR-0013](adr/0013-save-integrity-in-warm-shell.md); `test/p0.19-doc-semantics.test.js` asserts the old filename form against an **archived packet** and must keep passing unchanged, since that packet is a historical record and rewriting it would falsify history.
+
+## Phase 2 — Backup, continued
+
+Phase 2's last item resumes here, after the interface work, so that it is built once and in the new shell.
+
+- [ ] P2.8 Printable cards and hand-computation worksheets
+  *Deps: P2.7, UI.9, UI.10*
 
 ## Phase 3 — Portfolio and online
 

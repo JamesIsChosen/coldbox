@@ -117,7 +117,15 @@ Check the changelog for security fixes, confirm test vectors still pass, and con
 
 ## Bundle budget
 
-Target ≤ 3 MB, hard cap 4.5 MB. Current estimate ≈ 1.7 MB.
+Target ≤ 4 MB, hard cap 4.5 MB.
+
+**Last measured: 2,597,939 bytes (≈ 2.60 MB)** — `build/coldbox.html`, SHA-256 `73ce748f871166f717de4c22d31dcb4c6b8d048337a0eea78f1e4a7b676aafc1`.
+
+Provenance: exact-tip CI at `ce4bba40bd1df404f32148104fbf8d451866cf2c`, built on both Windows and Ubuntu with matching hashes across operating systems, alongside 378/378 tests, upstream vendor verification, and the Chromium and Firefox harnesses. This is the same artifact P2.7 produced, which is how UI.1's zero-byte bundle claim was independently confirmed rather than argued.
+
+Update this line from a CI run, not a local build: a local figure can drift from the reproducible one, which is exactly how the superseded 2,597,956-byte estimate came to sit here.
+
+The target moved from 3 MB to 4 MB in UI.1. The old figure sat below the artifact that already existed, which is the worst state for a budget to be in — it reads as headroom that is not there. 4 MB leaves genuine room for Phases 3–5 while keeping the 4.5 MB hard cap meaningful. The table below is the original per-component projection, retained for its shape rather than its total. Only the help-content row has been replaced with a measurement; every other row is a pre-implementation estimate and the total under-counts the real artifact substantially. Do not quote the total as a size.
 
 | Component | Est. |
 |---|---|
@@ -128,7 +136,7 @@ Target ≤ 3 MB, hard cap 4.5 MB. Current estimate ≈ 1.7 MB.
 | Chain formatters | 60 KB |
 | Wordlists | 186 KB |
 | Reference excerpts | 120 KB |
-| Help content | 180 KB |
+| Help content | ≈ 344 KB (measured — see below) |
 | Portfolio engine + charts | 60 KB |
 | Price/balance adapters | 35 KB |
 | App code, CSS, icons | 450 KB |
@@ -136,7 +144,11 @@ Target ≤ 3 MB, hard cap 4.5 MB. Current estimate ≈ 1.7 MB.
 
 For comparison, the Ian Coleman BIP39 standalone is 4.55 MB on its own.
 
+**Help content row, measured (2026-08-07, full P0.17 backfill).** P0.17's compiled `HELP_CONTENT` (the complete glossary and all nine guides, JSON-embedded per-depth HTML) measures **≈ 344 KB**, not the 180 KB originally estimated. Most of the gap is the build-time JSON-escaping helper (`jsonScriptLiteral()`, shared with `PROVENANCE_LIBRARIES` and the cold-realm document) expanding every `<`/`>` in the compiled HTML to a 6-character `\uXXXX` escape — an earlier draft also duplicated a full plain-text copy of every depth for search, which alone cost roughly another third; deriving search text from the already-embedded HTML at runtime instead (see [ADR-0016](adr/0016-help-content-compiler-and-search.md)) removed that. Recorded here rather than silently reconciled, per [doc-hygiene.md](doc-hygiene.md) rule 4. *(Relocated from SPEC §16 in UI.1, so that the measurement lives with the budget it belongs to.)*
+
 Every PR states its size impact. The budget exists because this file must open quickly on a phone.
+
+The size is reported by CI but not enforced by it ([ADR-0017](adr/0017-ci-workflow-structure.md)). Making the hard cap a failing gate is worth doing and is not yet a roadmap item; until it is, the cap is honoured by review.
 
 ---
 
