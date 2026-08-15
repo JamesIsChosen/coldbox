@@ -257,8 +257,9 @@ does not add a rendered surface or mobile behavior.
 ## 8. Assumptions made
 
 1. **P0.22 is the tracking mechanism for this remediation.** The roadmap item is a defect fix
-   authorized by the existing ADR-0015 decision, not new product scope. It remains `[~]` until
-   an independent reviewer verifies the acceptance criteria and moves it to `[x]`.
+   authorized by the existing ADR-0015 decision, not new product scope. The authoritative item
+   state is maintained in [ROADMAP.md](../ROADMAP.md); review closeout follows
+   [review-protocol.md](../review-protocol.md), and this packet does not duplicate that state.
 2. **Explicit numeric offset is the right canonical form**, chosen because it is byte-neutral on
    existing history. `Z` would have been equally valid ISO-8601 and equally deterministic, but it
    would rewrite every historical embedded date and invalidate the recorded CI figure and every
@@ -347,7 +348,7 @@ from a version-dependent 20-or-25-byte string to a fixed 25-byte one.
 | [ADR-0015](../adr/0015-provenance-build-date-and-self-hash.md) | New amendment: the rendering is ours, not git's. Records the defect, why explicit-numeric was chosen over `Z`, the rejected alternatives, and that P0.18 R2-F1 saw this and closed it at the test boundary |
 | [build.md](../build.md) | Step 7 now separates *which commit* the date comes from (unchanged) from *how it is spelled* (new) |
 | [CHANGELOG.md](../../../CHANGELOG.md) | Unreleased `### Fixed` entry |
-| [ROADMAP.md](../ROADMAP.md) | P0.22 defect item, left at `[~]` for independent review |
+| [ROADMAP.md](../ROADMAP.md) | P0.22 defect item and acceptance criterion; item state remains authoritative there |
 
 No help content: this is build machinery with no user-facing surface. No new dated review
 obligation. The bundle figure in `dependencies.md` is unchanged and deliberately not touched —
