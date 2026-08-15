@@ -24,13 +24,15 @@ The check operates on the `Address` records in the vault's public compartment, s
 Clipboard I/O is warm-shell-resident because `navigator.clipboard.readText()` requires a secure context and a user gesture, and is effectively unavailable in an opaque-origin `sandbox` iframe under `file://`. Cold-realm re-derivation is a separate, stronger claim tracked per address in `verificationState`. See [address-verification.md](../01-spec/address-verification.md) and [ADR-0021](../05-development/adr/0021-clipboard-address-verification.md).
 :::
 
+If you have released a Seed Forge result for the cold-only tools, the Address Check still compares the complete pasted value, but it does not change the registry's cold-verification state from that session-only result. Use the focused cold verification panel for cold-local derivation; this separation keeps a released-secret derivative out of the warm/public compartment.
+
 ---
 
 ## The round trip
 
 This is the flow that catches the attack. **Step 4 is the one people skip, and it's the one that matters.**
 
-1. Open the address in Coldbox. Where it can, Coldbox re-derives it from your seed first.
+1. Open the address in Coldbox. Where the transitional Seed Forge path permits it, Coldbox re-derives it from the current seed first; a released-secret session keeps this warm-origin check comparison-only.
 2. Copy it.
 3. Paste it into the destination — an exchange withdrawal field, a wallet's send box.
 4. **Copy it back out of that field**, and paste it into Coldbox's Address Check.
