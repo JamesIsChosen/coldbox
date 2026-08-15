@@ -87,7 +87,7 @@ Per BIP-32, the master fingerprint is the first 4 bytes of `HASH160(compressed m
 
 **Released secret** (also *secret switcher entry*, *focused secret*)
 ::: plain
-The wallet you temporarily choose for Coldbox's offline tools after Seed Forge checks it. You can keep several ready, but the fingerprint shown beside an action tells you which one is in use. Locking or clearing the session removes them; this is not a backup.
+The released secret you temporarily choose for Coldbox's offline tools after Seed Forge checks it. You can keep several ready, but the fingerprint shown beside an action tells you which one is in use. Locking or clearing the session removes them; this is not a backup.
 :::
 ::: working
 A session-only Seed Forge result held inside the sealed realm with a label and public master fingerprint. Several entries may exist, but exactly one is focused, and split, backup-share, SeedQR, and verification panels recalculate from that focus.

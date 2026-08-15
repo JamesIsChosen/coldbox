@@ -17,6 +17,12 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 - Seed Forge results can be released into a cold-realm, session-only registry with a user label and public master fingerprint. Several results may be held, exactly one is focused, and every split, backup-share, SeedQR, and verification panel shows the focused fingerprint before use.
 - Focus changes clear stale derived outputs and re-point the dependent panels without re-entry. Vault lock, idle timeout, panic hide, realm teardown, and the `Ctrl+Alt+Shift+L` clear shortcut zeroize and remove the registry; nothing is persisted or sent to the warm shell. See [ADR-0045](docs/05-development/adr/0045-released-secret-model.md).
 
+### Fixed - UI.3 released-secret review remediation (2026-08-15)
+
+- Warm-origin address verification remains a public registry comparison when a released secret is focused; it no longer derives or persists an xpub through `publicData.updated` from the released-secret session.
+- The Seed Forge release action now uses the cold design tokens' dark ink on pink, with an automated WCAG contrast assertion protecting the rule.
+- The glossary's plain-language definition now names the released secret directly instead of calling it a wallet.
+
 ### Fixed - Build date rendering no longer depends on the builder's git version (2026-08-15)
 
 - `scripts/build.js` embedded whatever string `git log --format=%cI` returned. For a commit

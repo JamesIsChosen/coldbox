@@ -1394,7 +1394,7 @@ body {
   border-radius: 0.3rem;
   background: var(--cold-pink);
   box-shadow: 0.15rem 0.15rem 0 var(--cold-drop);
-  color: #ffffff;
+  color: var(--cold-ink);
   font: inherit;
   font-size: 0.68rem;
   font-weight: 800;

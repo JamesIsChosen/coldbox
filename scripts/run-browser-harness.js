@@ -78,6 +78,31 @@ const FILE_READER_ORDER_CONTROL_SCRIPT = `(function () {
   };
 })();`;
 
+// UI.3 boundary regression: record every cold-to-warm MessagePort delivery in
+// the warm document. The test only reads message types and enum state from the
+// captured records, never printing payloads or secret-adjacent values.
+const COLD_TO_WARM_CAPTURE_SCRIPT = `(${function () {
+  if (window.parent !== window || typeof window.MessagePort !== 'function') {
+    return;
+  }
+  var captured = [];
+  window.__coldboxCapturedColdToWarm = captured;
+  var originalAddEventListener = window.MessagePort.prototype.addEventListener;
+  window.MessagePort.prototype.addEventListener = function (type, listener, options) {
+    if (type !== 'message' || typeof listener !== 'function') {
+      return originalAddEventListener.call(this, type, listener, options);
+    }
+    var wrapped = function () {
+      var event = arguments[0];
+      if (event && event.data && typeof event.data.type === 'string') {
+        captured.push(event.data);
+      }
+      return listener.apply(this, arguments);
+    };
+    return originalAddEventListener.call(this, type, wrapped, options);
+  };
+}.toString()})();`;
+
 // P2.5 stale-completion coverage: hold the next cold AES-GCM encryption after
 // recovery configuration has begun. The harness can release that real
 // operation after forcing the warm shell online, proving that the
@@ -1512,7 +1537,9 @@ async function verifyStaleAddressDisplay(browser, engine) {
 }
 
 async function verifyAddressVerification(browser, engine) {
-  const { page } = await openPage(browser, buildPath);
+  const { page } = await openPage(browser, buildPath, 'reachable', {
+    initScript: COLD_TO_WARM_CAPTURE_SCRIPT
+  });
   try {
     const coldFrame = await getColdFrame(page, engine);
     const phrase = 'address verification harness phrase';
@@ -1616,6 +1643,49 @@ async function verifyAddressVerification(browser, engine) {
     await page.locator('#address-verify-status[data-state="match"]').waitFor({ state: 'visible', timeout: 15000 });
     assert.match(await page.locator('#address-verify-status').textContent(), /cold-verified/);
 
+    // Once the validated phrase is released, a warm-origin verification must
+    // remain comparison-only. The old implementation derived the focused
+    // release again, wrote verifiedAgainstXpub into public data, and emitted
+    // publicData.updated; this assertion is intentionally red on that code.
+    await coldFrame.locator('#cold-seed-forge-validation-release-label').fill('Address verification release');
+    await coldFrame.locator('#cold-seed-forge-validation-release').click();
+    await coldFrame.locator('#cold-secret-list [data-secret-id]').filter({ hasText: 'Address verification release' }).waitFor({ state: 'visible', timeout: 5000 });
+    const capturedBeforeReleasedVerification = await page.evaluate(() => (
+      window.__coldboxCapturedColdToWarm ? window.__coldboxCapturedColdToWarm.length : 0
+    ));
+
+    await page.locator('#address-verify-record').selectOption(secondaryAddressId);
+    await page.locator('#address-verify-candidate').fill(fixtureBytes.secondary);
+    await page.locator('#address-verify-cold').click();
+    await page.locator('#address-verify-status[data-state="match"]').waitFor({ state: 'visible', timeout: 15000 });
+    assert.doesNotMatch(await page.locator('#address-verify-status').textContent(), /cold-verified/);
+
+    const releasedVerificationCapture = await page.evaluate((start) => {
+      const messages = (window.__coldboxCapturedColdToWarm || []).slice(start);
+      return {
+        types: messages.map((message) => message.type),
+        publicDataUpdatedCount: messages.filter((message) => message.type === 'publicData.updated').length,
+        verificationStates: messages
+          .filter((message) => message.type === 'address.verifyResult')
+          .map((message) => message.payload && message.payload.verificationState)
+      };
+    }, capturedBeforeReleasedVerification);
+    assert.ok(releasedVerificationCapture.types.includes('address.verifyResult'), `${engine}: released verification must return a result`);
+    assert.equal(releasedVerificationCapture.publicDataUpdatedCount, 0, `${engine}: released verification must not replace public data`);
+    assert.deepEqual(releasedVerificationCapture.verificationStates, ['unverified'], `${engine}: released verification must not return a persisted cold state`);
+
+    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#page-registry:not([hidden])').waitFor({ state: 'visible' });
+    const releasedSecondaryCard = page.locator('#registry-address-list .registry-record').filter({ hasText: fixtureBytes.secondary });
+    await releasedSecondaryCard.waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(
+      await releasedSecondaryCard.locator('.registry-record-verification').getAttribute('data-verification-state'),
+      'unverified',
+      `${engine}: released verification must not persist a public derived state`
+    );
+
+    await page.locator('#nav-rail a[data-route="verify"]').click();
+    await page.locator('#page-verify:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#address-verify-record').selectOption(primaryAddressId);
     await page.locator('#address-verify-candidate').fill(fixtureBytes.secondary);
     await page.locator('#address-verify-compare').click();

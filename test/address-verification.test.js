@@ -97,5 +97,9 @@ test('cold address verification selects the chain-aware derivation helper', () =
   const source = fs.readFileSync(path.join(projectRoot, 'src', 'cold', 'main.js'), 'utf8');
   assert.match(source, /verification\.deriveRegistryAddress\(current\.bytes, account, wallet, address\)/);
   assert.match(source, /verification\.markAddressColdVerified\(/);
+  assert.match(
+    source,
+    /var current = releasedSecretModeActive\(\) \? null : currentSeedForgeWallet\(\);/
+  );
   assert.doesNotMatch(source, /verification\.deriveWalletIdentity\(current\.bytes[\s\S]{0,500}address\.index/);
 });

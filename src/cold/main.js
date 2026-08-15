@@ -5339,7 +5339,12 @@ __COLDBOX_QR_ENCODER__
       comparison.outcome = 'different-account';
     }
 
-    var current = currentSeedForgeWallet();
+    // A released secret is a cold-only session object. Warm-origin address
+    // verification may still compare the candidate with public registry data,
+    // but it must not derive or persist a public value from the focused
+    // released secret. Keep the unreleased Seed Forge fields' transitional
+    // re-derivation path until UI.4 removes those fields.
+    var current = releasedSecretModeActive() ? null : currentSeedForgeWallet();
     if (address && account && current && verification && addressVerification) {
       try {
         var wallet = findPublicRecord(publicData.wallets, account.walletId);
