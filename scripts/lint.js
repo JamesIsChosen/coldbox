@@ -11,6 +11,7 @@ const secretSourcePrefixes = Object.freeze([
 ]);
 const toolingJavaScriptFiles = Object.freeze([
   path.join(projectRoot, 'scripts', 'build.js'),
+  path.join(projectRoot, 'scripts', 'build-date.js'),
   path.join(projectRoot, 'scripts', 'crypto-bundle.js'),
   path.join(projectRoot, 'scripts', 'font-bundle.js'),
   path.join(projectRoot, 'scripts', 'help-content.js'),

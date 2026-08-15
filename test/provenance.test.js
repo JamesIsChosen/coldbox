@@ -115,12 +115,31 @@ test('build date is the commit date of the most recent commit touching src/scrip
   // the paths the build actually reads from - not the build script's own
   // BUILD_DATE_SOURCE_PATHS constant, so a bug there wouldn't be masked by
   // the test using the same buggy value.
-  const gitLog = spawnSync('git', ['log', '-1', '--format=%cI', 'HEAD', '--', 'src', 'scripts', 'vendor'], {
+  //
+  // This used to compare against `--format=%cI` directly. That is exactly the
+  // string the 2026-08-15 ADR-0015 amendment removed from the build, because
+  // git renders a +0000 commit as either "...+00:00" or "...Z" depending on
+  // its version - so the assertion would pass or fail on the reviewer's git
+  // version rather than on the product's behaviour, the moment any product
+  // commit was made at UTC. Re-derived from `%ct` plus the numeric offset
+  // instead, written out longhand rather than imported from
+  // scripts/build-date.js, so this stays an independent reimplementation of
+  // the contract rather than a call into the code it is checking.
+  const gitLog = spawnSync('git', ['log', '-1', '--format=%ct %ci', 'HEAD', '--', 'src', 'scripts', 'vendor'], {
     cwd: projectRoot,
     encoding: 'utf8'
   });
   assert.equal(gitLog.status, 0, 'this checkout is expected to have git metadata for HEAD');
-  assert.equal(buildDate, gitLog.stdout.trim());
+
+  const fields = /^(\d+) \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} ([+-])(\d{2})(\d{2})$/
+    .exec(gitLog.stdout.trim());
+  assert.ok(fields, `unexpected git output: ${JSON.stringify(gitLog.stdout)}`);
+  const [, seconds, sign, hours, minutes] = fields;
+  const offsetSeconds = (sign === '-' ? -1 : 1) * ((Number(hours) * 3600) + (Number(minutes) * 60));
+  const wallClock = new Date((Number(seconds) + offsetSeconds) * 1000).toISOString().slice(0, 19);
+
+  assert.equal(buildDate, `${wallClock}${sign}${hours}:${minutes}`);
+  assert.equal(buildDate.endsWith('Z'), false, 'the version-dependent Z spelling must never be embedded');
 });
 
 test('a commit touching only docs/ (governance-only, e.g. a packet update) does not change the build date embedded from an earlier product-affecting commit (F4)', () => {
@@ -140,25 +159,21 @@ test('a commit touching only docs/ (governance-only, e.g. a packet update) does 
       env: { ...gitEnvBase, GIT_AUTHOR_DATE: '2020-01-01T00:00:00Z', GIT_COMMITTER_DATE: '2020-01-01T00:00:00Z' }
     });
 
-    // Re-derive the expected build date from git itself, the same way
-    // readBuildCommitDate() does, rather than hardcoding a specific
-    // ISO-8601 spelling. R2-F1: different git versions render the strict
-    // ISO offset for this same UTC instant differently ('Z' vs '+00:00')
-    // depending on how the commit date was supplied; comparing against a
-    // hand-typed string made this test's pass/fail depend on the reviewing
-    // machine's git version rather than on the actual product behavior
-    // under test (that the governance-only commit below does not move the
-    // embedded build date). Capturing git's own answer for the 2020 commit
-    // right after creating it, and comparing the final build's embedded
-    // date against that captured value, is representation-independent by
-    // construction: whatever spelling this git version produces here is
-    // the same spelling readBuildCommitDate() will produce later, because
-    // both call the identical `git log --format=%cI` command.
-    const productCommitLog = execFileSync(
-      'git',
-      ['log', '-1', '--format=%cI', 'HEAD'],
-      { cwd: root, encoding: 'utf8' }
-    ).trim();
+    // The expected build date for this 2020 commit, which is at +0000 — the
+    // exact case the spelling defect lived in.
+    //
+    // History of this block, because it is instructive. P0.18 review R2-F1
+    // observed that different git versions render this same UTC instant as
+    // 'Z' or '+00:00', and fixed it by capturing git's own `%cI` answer here
+    // and comparing the build against that, on the reasoning that "both call
+    // the identical `git log --format=%cI` command" so the spellings must
+    // agree. That reasoning was sound for this test and wrong about the
+    // product: the same version-dependent string was going into
+    // build/coldbox.html the whole time, making the artifact hash depend on
+    // the builder's git version. The 2026-08-15 ADR-0015 amendment fixed the
+    // build; this assertion now pins the fixed contract instead of deferring
+    // to whatever git says.
+    const productCommitLog = '2020-01-01T00:00:00+00:00';
 
     // A second, governance-only commit: touches a file outside src/scripts/vendor.
     fs.mkdirSync(path.join(root, 'docs'), { recursive: true });
@@ -181,10 +196,9 @@ test('a commit touching only docs/ (governance-only, e.g. a packet update) does 
     // Must reflect the 2020 product commit, not the 2030 governance-only
     // commit that is literal HEAD. This is the exact scenario F4 describes:
     // committing a packet must not change the product's own build date (or,
-    // by extension, its bytes and hash). Compared against git's own
-    // independently-captured answer for that commit (see above), not a
-    // hardcoded string, so this assertion can't fail merely because a
-    // different git version spells the same UTC instant differently.
+    // by extension, its bytes and hash). The expected value is now a fixed
+    // string (see above), because the canonical spelling is the build's own
+    // and no longer varies with the git version doing the asking.
     assert.equal(buildDate, productCommitLog);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
