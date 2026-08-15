@@ -3,7 +3,17 @@
 **Branch:** `ui.1-design-reconciliation` · **PR:** #55
 **Base:** `main` @ `94cf73b` (Merge PR #54: P2.7 Backup Health dashboard)
 **Roadmap item:** [UI.1 Design reconciliation](../ROADMAP.md) — Phase UI
-**Date:** 2026-08-15 · **Revision 6** (remediation of the round-4 FAIL at `a5a7cb8`)
+**Date:** 2026-08-15 · **Revision 7** (maintainer-authorized remediation of the round-5 FAIL at `dea4f32`)
+
+---
+
+## 0. Remediation of review round 5 — maintainer-authorized exception
+
+Round 5 returned **FAIL with 2 findings** at `dea4f32c8fb24a5479d4079bc539b9cb5711628f`, preserved at [`ui.1-design-reconciliation.review-5.md`](ui.1-design-reconciliation.review-5.md). The maintainer explicitly authorized a one-time exception allowing the independent-review runner to repair the remaining packet-history defect directly instead of routing it back to the development agent. The exception does **not** authorize a self-PASS, a ROADMAP `[x]` change, or a merge.
+
+- **R5-F1 repaired here:** the packet now consistently records that the fresh-clone / different-path / timezone / locale / Chromium / Firefox portion of the old environment finding **closed at `86685d7`**. Only the reviewer-owned deliberate-corruption/non-zero-exit test remained after that run. Obsolete §6/§10 statements claiming the fresh clone never happened or that a clone-capable environment is still needed are removed.
+- Relative commit-distance prose is removed rather than maintained as a brittle counter. Evidence is identified by exact SHA.
+- **R5-F2 is not claimed closed by prose.** It is an executable reviewer gate. The same authorized runner that writes this repair commits and pushes it first, then fresh-clones that new exact tip and performs the deliberate vendor corruption, restoration, full gates, reproducible builds, and Chromium/Firefox. Its evidence ZIP is external reviewer evidence; this packet does not anticipate its result.
 
 ---
 
@@ -150,7 +160,7 @@ Makes the August 2026 sealed-realm reorganisation legal to build. It lands three
 
 ## 3. How to verify
 
-**Nothing in this section is exact-tip evidence for the current head.** The current head is the round-4 remediation commit. Every run recorded below was performed at an **earlier** commit on this branch, and each is labelled with the tip it belongs to. Read them as prior-tip evidence, which is what they are.
+**Nothing in this section anticipates exact-tip reviewer evidence for the post-round-5 repair commit.** Every completed run recorded below belongs to an earlier exact SHA and is labelled that way. The maintainer-authorized repair runner commits and pushes this packet first and then performs its fresh-clone verification against that resulting SHA; its ZIP is reviewer evidence outside this author/remediation section.
 
 **Prior-tip reviewer-owned verification, at `86685d7` (round 3, run by the reviewer, not by me).** `86685d7` is **two commits behind the current head** — `a5a7cb8` was the round-3 remediation and the current head is the round-4 remediation. A fresh clone from GitHub into a new temp path with head and base confirmed, on the pinned **Node 24.16.0**: `npm ci` · real-upstream vendor verification · lint, docs and tests · **two builds under different caller timezone and locale** · Chromium and Firefox. Both builds identical at
 
@@ -161,9 +171,9 @@ Makes the August 2026 sealed-realm reorganisation legal to build. It lands three
 
 and the repository clean afterwards. This is the protocol's reviewer-owned fresh-clone check, which rounds 1 and 2 could not perform — **it exists, at `86685d7`, and it does not exist at the current tip.** It is prior-tip evidence and revision 5 was wrong to say otherwise; that was R4-F2.
 
-**Prior-tip hosted CI, at `ce4bba4` (the round-1 tip), agrees**: 378/378 tests, Windows and Ubuntu builds, cross-OS reproducibility, both browsers — same artifact, same hash. That hash is **identical to the P2.7 product artifact**, which is what independently confirms this PR's zero-byte bundle claim across every revision of it. `ce4bba4` is four commits behind the current head.
+**Prior-tip hosted CI, at `ce4bba4` (the round-1 tip), agrees**: 378/378 tests, Windows and Ubuntu builds, cross-OS reproducibility, both browsers — same artifact, same hash. That hash is **identical to the P2.7 product artifact**, which is what independently confirms this PR's zero-byte bundle claim across every revision of it. `ce4bba4` is prior-tip evidence only; exact-SHA attribution is authoritative and relative commit-distance prose is intentionally omitted.
 
-**Exact-tip status of the current head: none yet.** No hosted CI run and no reviewer-owned run has completed at the round-4 remediation commit at the time this revision is written. The round-4 reviewer recorded that the exact-tip GitHub Actions run for `a5a7cb8` was still in progress when they reviewed; the current head is newer still. **This line is to be replaced with the run and its result once it completes — it must not be filled in by anticipation, and the absence of exact-tip evidence is not to be papered over with the prior-tip runs above.**
+**Exact-tip reviewer evidence for the post-round-5 repair commit is intentionally not anticipated here.** This revision is written before that commit exists. Under the maintainer-authorized exception, the repair runner creates and pushes the narrow governance commit first, then fresh-clones that exact pushed SHA and performs the remaining reviewer gates. The result belongs in the runner evidence / subsequent closeout review, not retroactively in this pre-verification packet text.
 
 **What is not verified at any tip:** the reviewer-owned deliberate-corruption check. Round 3 could not execute it — the runner's corruption-target selector failed to find a tracked `vendor/**/package.tgz` although ten exist, which the reviewer identified as a bug in the runner and explicitly declined to charge against UI.1. Round 4 did not rerun the suite at all, because the branch already failed on documentation findings. It remains the one outstanding protocol check, and round 4's handoff specifies how it must be run on the next textually clean tip: against a known tracked `vendor/**/package.tgz`, proving that **both** `npm run verify-vendor` and `npm run build` exit non-zero before the file is restored.
 
@@ -226,7 +236,7 @@ No new tests: this PR adds records and criteria, not behaviour. The tests the de
 
 **What I could not run, and why.** I work through a remote folder bridge that can create and modify files but **cannot delete them**. `npm test` in full, `npm run build`, and the two-build reproducibility check all write and then remove temporary files. I did not run them rather than leave orphans behind — `build/` already holds four such orphans dated 10–12 Aug from earlier remote sessions. **Treat every claim in §3 marked author-run as narrow, and the CI results as the real evidence.**
 
-**F7 is unresolved and is not mine to resolve.** The round-1 reviewer could not resolve `github.com`, so the protocol's reviewer-owned fresh clone under a different path/timezone/locale, and the deliberate-corruption run that must exit non-zero, did not happen. CI covers much of the same ground but the protocol assigns those checks to the reviewer deliberately. **The re-review needs a clone-capable environment**; without one, F7 recurs regardless of the state of this branch.
+**Round-1 F7 environment portion is closed; only deliberate corruption remained after round 3.** The round-1 reviewer could not resolve `github.com`, but the round-3 reviewer-owned runner later cloned the branch fresh from GitHub into a different temp path, confirmed head/base, ran under differing timezone/locale settings, and completed Chromium/Firefox. That evidence belongs to exact tip `86685d7` and is prior-tip evidence here. The one protocol sub-gate that runner did not execute was deliberate vendor corruption because its target selector was defective; that remaining non-zero-exit check is the R5-F2 reviewer gate and is not an environment/DNS finding.
 
 ## 7. Device matrix
 
@@ -275,7 +285,7 @@ No new tests: this PR adds records and criteria, not behaviour. The tests the de
 - **A regression I introduced was caught by an existing test, not by me.** Enumerating the historical filename forms verbatim in UI.10's criteria tripped `test/p0.19-doc-semantics.test.js`, which forbids canonical-filename text near a generation suffix in `ROADMAP.md` — precisely the drift P0.19 fought. Fixed by referencing ADR-0026 §5 rather than restating its list, which is better doc-hygiene anyway. Worth recording because it is the third defect in this branch found by something other than my own review.
 - `threat-model.md`'s new section was initially written in the present tense, describing the post-UI.10 filename as though it had shipped. Corrected in the same pass: it now states today's behaviour first, marks the change as decided-not-shipped, and names UI.10 as the item that lands it.
 
-**Known limitations shipping with this change.** Ten roadmap items whose criteria have never met an implementation. Phase UI's ordering is load-bearing and enforced only by document order plus `Deps:` lines. F7 remains open and needs an environment, not an edit.
+**Known limitations shipping with this change.** Ten roadmap items whose criteria have never met an implementation. Phase UI's ordering is load-bearing and enforced only by document order plus `Deps:` lines. The old F7 clone/environment gap closed at `86685d7`; the only remaining reviewer-coverage item after that run was deliberate corruption/non-zero-exit verification, tracked as R5-F2 until executed on the final repaired tip.
 
 **Follow-up work this creates.** UI.2–UI.10, filed. The bundle-cap gate, unfiled, recommended. Relocating the stray `CHANGELOG.md` bullets — pre-existing, wants a maintainer decision.
 
