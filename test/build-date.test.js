@@ -171,6 +171,29 @@ test('unparseable git output degrades to the labeled unknown rather than a guess
   }
 });
 
+test('direct formatter inputs fail closed for invalid sign, negative, and noncanonical offsets', () => {
+  for (const [label, seconds, sign, hours, minutes] of [
+    ['invalid sign', '1786767525', 'x', '00', '00'],
+    ['missing sign', '1786767525', '', '00', '00'],
+    ['negative hours', '1786767525', '+', '-1', '00'],
+    ['negative minutes', '1786767525', '+', '00', '-1'],
+    ['one-digit hours', '1786767525', '+', '0', '00'],
+    ['one-digit minutes', '1786767525', '+', '00', '0'],
+    ['numeric hours', '1786767525', '+', 0, '00'],
+    ['numeric minutes', '1786767525', '+', '00', 0],
+    ['whitespace in hours', '1786767525', '+', ' 00', '00'],
+    ['whitespace in minutes', '1786767525', '+', '00', '00 '],
+    ['negative seconds', '-1', '+', '00', '00'],
+    ['noncanonical seconds', ' 1786767525', '+', '00', '00']
+  ]) {
+    assert.equal(
+      formatCommitDate(seconds, sign, hours, minutes),
+      null,
+      `${label} must be rejected by the formatter itself`
+    );
+  }
+});
+
 test('an out-of-range offset or an unrepresentable instant is refused, not rounded', () => {
   assert.equal(formatCommitDate('1786767525', '+', '24', '00'), null, 'hour 24 is not a valid offset');
   assert.equal(formatCommitDate('1786767525', '+', '00', '60'), null, 'minute 60 is not a valid offset');

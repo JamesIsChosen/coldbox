@@ -37,6 +37,9 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 - See the [ADR-0015](docs/05-development/adr/0015-provenance-build-date-and-self-hash.md)
   amendment of 2026-08-15 and `test/build-date.test.js`, whose vectors are real commits
   created at six offsets and cross-checked against git's own rendering.
+- Review remediation is tracked as P0.22: `formatCommitDate()` now rejects invalid signs,
+  negative or noncanonical offset components, and malformed seconds before doing arithmetic;
+  direct-input negative tests cover the fail-closed contract.
 
 ### Changed - UI.1 Design reconciliation for the interface restructure (2026-08-14)
 

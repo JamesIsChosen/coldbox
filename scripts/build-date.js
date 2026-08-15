@@ -17,6 +17,10 @@ const BUILD_DATE_UNKNOWN = 'unknown (no git commit metadata available)';
 // the numeric offset is taken from it, never the instant, so even a change to
 // how `%ci` renders dates cannot move the output.
 const GIT_OUTPUT_PATTERN = /^(\d+) \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} ([+-])(\d{2})(\d{2})$/;
+const UNIX_SECONDS_PATTERN = /^\d+$/;
+const OFFSET_SIGN_PATTERN = /^[+-]$/;
+const OFFSET_HOURS_PATTERN = /^(?:[01]\d|2[0-3])$/;
+const OFFSET_MINUTES_PATTERN = /^[0-5]\d$/;
 
 // Canonical form: seconds precision, explicit numeric offset, never "Z".
 //
@@ -26,13 +30,26 @@ const GIT_OUTPUT_PATTERN = /^(\d+) \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} ([+-])(\d
 // byte-neutral on all existing history, so the recorded CI artifact hash stays
 // valid and the fix can be verified by rebuilding a known commit.
 function formatCommitDate(unixSeconds, offsetSign, offsetHours, offsetMinutes) {
+  // Keep the formatter fail-closed even when called directly. The parser
+  // already enforces these shapes, but relying on the caller would make the
+  // exported pure function accept malformed offsets and emit malformed dates.
+  if (
+    typeof unixSeconds !== 'string' ||
+    !UNIX_SECONDS_PATTERN.test(unixSeconds) ||
+    typeof offsetSign !== 'string' ||
+    !OFFSET_SIGN_PATTERN.test(offsetSign) ||
+    typeof offsetHours !== 'string' ||
+    !OFFSET_HOURS_PATTERN.test(offsetHours) ||
+    typeof offsetMinutes !== 'string' ||
+    !OFFSET_MINUTES_PATTERN.test(offsetMinutes)
+  ) {
+    return null;
+  }
+
   const seconds = Number(unixSeconds);
   const hours = Number(offsetHours);
   const minutes = Number(offsetMinutes);
-  if (!Number.isSafeInteger(seconds) || !Number.isInteger(hours) || !Number.isInteger(minutes)) {
-    return null;
-  }
-  if (hours > 23 || minutes > 59) {
+  if (!Number.isSafeInteger(seconds)) {
     return null;
   }
 
