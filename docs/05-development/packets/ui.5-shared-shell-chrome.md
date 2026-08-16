@@ -260,12 +260,12 @@ Mobile reference SHA-256: af0c1fe08e689f755869a6eb4cc06dcaf0f4d44b7dfe6426d6a322
 ## Packet-head CI refresh
 
 The packet refresh is included in reviewed head
-`436defd5ceb36b498ed99c4c1ce2840d640afec9` and was checked out by exact-head
-CI run `31945345999`. That run passed the complete verification matrix:
+`01c0f5518605c5e717e4e776b3e69c6316ba6a31` and was checked out by exact-head
+CI run `31947264326`. That run passed the complete verification matrix:
 
 ```text
 Full CI unit/vector tests: 424 passed, 0 skipped
-Ubuntu/Windows reproducible build hash: 24f85e3d34ae1aab2398acde9fe854e63645a9c199987fa184088feb0793f7de
+Ubuntu/Windows reproducible build hash: f54995a664fed6760fe11e31f47e85669fda380a4dfbdd97d2d46e10277416b8
 Cross-OS build comparison: passed
 Browser harness: passed in Chromium and Firefox over file://
 Approved reference scan: Clean=True, findings=0, skipped=0
