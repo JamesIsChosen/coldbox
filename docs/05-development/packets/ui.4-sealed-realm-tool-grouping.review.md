@@ -106,3 +106,116 @@ Roadmap acceptance, verbatim:
 UI.4's runtime shape is substantially consistent with the intended focused-secret model, and exact-head CI plus independently downloaded cross-OS artifacts support the claimed build and browser results. It cannot PASS, however, because the new registry test does not establish the acceptance invariant it is specifically required to prove, the authoritative roadmap contains a direct contradiction about what UI.4 deletes, and mandatory independent review variations/failure injection could not be completed in this environment. A fresh review can PASS only after F1 and F2 are addressed and F3's required independent verification is actually executed.
 
 FAIL
+
+---
+
+# Re-review: UI.4 — Sealed-realm tool grouping and hub
+
+**VERDICT: PASS**
+
+Findings: 0
+Reviewed commit: `d1aa23072209def2a4efb09ed73adc850f07bef2`
+Reviewed by: ChatGPT (GPT-5.6 Sol)
+Review mode: READ-ONLY (CI-witnessed, run `31927730786`)
+Date: 2026-08-15
+CI run: `31927730786`
+CI URL: https://github.com/JamesIsChosen/coldbox/actions/runs/31927730786
+
+## 1. What I verified
+
+I re-reviewed PR #59 at the exact requested head `d1aa23072209def2a4efb09ed73adc850f07bef2` under the revised ADR-0048 Mode B rules. I read the complete PR diff plus `AGENTS.md`, the UI.4 roadmap contract, `review-protocol.md`, ADR-0044, ADR-0045, ADR-0048, the implementation packet, the existing historical review, the relevant specification/design-system/architecture/threat-model material, the affected user guides, and `CONTRIBUTING.md`. I did not treat the implementation packet as evidence for its own claims.
+
+### CI witness and exact-head check
+
+GitHub Actions run `31927730786` concluded `success`. Its `head_sha` is exactly `d1aa23072209def2a4efb09ed73adc850f07bef2`, and the run is associated with PR #59. The fact that the run was author-triggered is not a defect under ADR-0048; exact commit pinning plus workflow audit is the Mode B execution witness.
+
+### Workflow/check audit
+
+I audited `.github/workflows/ci.yml` as it exists at the reviewed SHA, not at a later branch tip.
+
+- **Pinned Node:** `.nvmrc` contains `24.16.0`. Both build legs and the browser job use `actions/setup-node` with `node-version-file: .nvmrc`; the matrix legs also contain an explicit step that compares `node --version` against `.nvmrc` and fails on a mismatch.
+- **Vendor verification:** both Ubuntu and Windows run `npm run verify-vendor`; the qualifying run completed local and upstream verification successfully.
+- **Forbidden-pattern lint:** both operating systems run `npm run lint`; the run reports the forbidden-construct/syntax/LF lint passed.
+- **Documentation checks:** both operating systems run `npm run check-docs`; the run completed with zero documentation warnings.
+- **Complete TAP test suite:** both operating systems run `npm test -- --test-reporter=tap`, which invokes the repository's complete Node test suite (`node --test --test-concurrency=1`). The workflow preserves the real test exit code and fails if the test command fails.
+- **Explicit zero-skip assertion:** the workflow parses the TAP `# skipped` summary and exits non-zero for a nonzero skip count. In this qualifying run the summary was present on both operating systems and was followed by the workflow's own `skipped=0` output, so no required Node test silently self-skipped.
+- **Two builds per OS:** each Ubuntu/Windows leg runs the build twice, records SHA-256 sidecars, compares them, and fails on mismatch.
+- **Cross-OS comparison:** the dedicated comparison job downloads both OS sidecars and fails unless the hashes are equal.
+- **Committed browser harness:** the browser job checks out the exact PR head, uses the pinned Node version, installs the declared Chromium and Firefox Playwright binaries, builds, then runs the committed `npm run test:browser` harness. `scripts/run-browser-harness.js` requires the browser binaries, launches both engines, exercises the built artifact through `file://`, and returns a nonzero process exit on any thrown assertion.
+
+### No-silent-skip evidence from run `31927730786`
+
+The Ubuntu and Windows TAP summaries both show:
+
+```text
+1..409
+# tests 409
+# pass 409
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+skipped=0
+```
+
+Thus each required operating-system leg executed 409 tests, passed 409, failed 0, and skipped 0. The browser job did not degrade to one engine: its log records the committed harness completing in both Chromium and Firefox, including explicit `file://` checks, and ends with `Browser harness passed in Chromium and Firefox.`
+
+### Reproducible artifact
+
+All required build comparisons agree on:
+
+```text
+c9b728b05fc912e82a5bf7c2205065425d0db3afae2836e79c02a4d41cc91fe4
+```
+
+- Ubuntu first build: match.
+- Ubuntu second build: match; in-job comparison passed.
+- Windows first build: match.
+- Windows second build: match; in-job comparison passed.
+- Cross-OS sidecar comparison: match.
+- Browser-harness build/dependency-free comparison: the same digest.
+
+### UI.4 implementation and remediation
+
+The five duplicate source-loading controls are removed from the cold HTML and their old fallback/source-selection paths are removed from `src/cold/main.js`: `#cold-seed-xor-source`, `#cold-codex32-secret-hex`, `#cold-shamir39-source`, `#cold-raw-sss-source`, and `#cold-slip39-seed-source`. The affected generation paths now refuse to proceed without a focused released secret. `#cold-seed-forge-mnemonic-input` remains and is the registry's only `seed-entry`.
+
+The prior F1 is fixed materially, not cosmetically. `test/ui.4-sealed-realm.test.js` recursively walks every `.html` and `.js` under `src/`. For every static `<input>`, `<textarea>`, and `<select>` it requires an explicit public/secret input-surface classification; secret controls must be in the cold document and match the ADR-0045 registry/category, while public controls must not be registry-declared. Its JavaScript audit enumerates every `createElement(...)` form-control site, requires literal element types, restricts dynamic secret inputs to the registry-checked `createDeclaredSecretInput()` factory, and accounts for the single detached warm textarea as public. Prefix-based dynamic share/validation fields are also checked against the registry.
+
+The negative regression coverage proves the audit fails closed: an undeclared static password control is rejected; a raw dynamic `document.createElement('input')` path is rejected; and non-literal dynamic form-element construction is rejected. The registry declares exactly one `seed-entry`, and it is `cold-seed-forge-mnemonic-input`.
+
+The legitimate non-seed secret inputs required by the roadmap remain: vault passphrase and confirmation, keyfile, recovery re-authentication, recovery-share inputs, concealment re-authentication, secret-note fields, BIP-39 passphrase fields, entropy inputs, share passphrases, and share-combine/correction inputs. The browser harness still reconstructs from shares and exercises the migrated Seed XOR, codex32, Shamir39/raw SSS, SLIP-39, SeedQR, focused-secret, masking, negative, warm-isolation, lock, and teardown paths in both engines.
+
+The prior F2 is fixed: the authoritative UI.4 roadmap summary now says the item removes the **five** duplicate seed/source-loading fields while retaining Seed Forge's single seed-entry field, matching its acceptance paragraph and ADR-0045.
+
+The old F3 is not carried forward as a defect. ADR-0048 and the revised review protocol explicitly support READ-ONLY CI-witnessed Mode B and make the trigger identity immaterial; this review therefore does not require reviewer-initiated CI or a local reproduction of the pinned execution environment. The separate physical-device/iOS/manual gates are not UI.4 acceptance criteria and are not inferred from CI.
+
+Finally, the historical FAIL report is preserved byte-for-byte. The review file's blob SHA at the commit that first recorded that historical report (`8aa9100da0dd37c06cdeed9c2daf290ae6d55511`) is `09b39499fe44ceba5449d10b223f4587c3a824ad`, and the blob at the reviewed SHA is the same `09b39499fe44ceba5449d10b223f4587c3a824ad`. This fresh report is appended after it; the historical verdict and findings are not rewritten.
+
+## 2. What I could not verify
+
+None that is required for UI.4 acceptance under READ-ONLY CI-witnessed Mode B. This verdict does not claim physical-device, iOS, Tor, or other human-only validation, and it does not convert those separate gates into verified results.
+
+## 3. Acceptance criteria
+
+Roadmap acceptance, verbatim:
+
+> **Accept:** `#cold-seed-xor-source`, `#cold-codex32-secret-hex`, `#cold-shamir39-source`, `#cold-raw-sss-source` and `#cold-slip39-seed-source` no longer exist and their tools read the focused secret instead; `#cold-seed-forge-mnemonic-input` remains as the realm's single entry point; **a test asserts the declared secret-input registry specified in [ADR-0045](../adr/0045-released-secret-model.md) holds**: every input in `src/` that accepts secret material is declared with a category, no undeclared one exists, and **exactly one carries the category `seed-entry`**. **This item removes seed/source-loading inputs and only those** — the five listed above, leaving Seed Forge's. The registry must enumerate the legitimate sealed inputs that are not seed entry — vault passphrase and confirmation, keyfile, recovery re-authentication, recovery-share entry, concealment re-authentication, secret notes, the BIP-39 passphrase fields, and the share-combine fields — **every one of which stays.** A tool that reconstructs from shares must still accept share words; removing those inputs would break recovery, which is the opposite of this item's purpose. A naive count of secret-accepting inputs is not an acceptable implementation of this criterion; it was tried in an earlier draft and was false on the day it was written; every migrated tool derives what it displays from the focused secret and **has no seed/source-loading input of its own** — it may still have the inputs its own job requires; every secret value is masked on first paint; each tool's existing behaviour and test coverage is preserved, not reduced; the cold CSP is byte-identical to before the restructure and a test asserts cold still has no network capability.
+
+| # | Criterion | Met? | Evidence |
+|---|---|---|---|
+| 1 | The five named duplicate seed/source fields no longer exist, and migrated tools read the focused secret instead. | ✅ | Exact diff/source inspection; all five IDs and fallback loaders are removed; generation paths require `focusedReleasedSecret()`; Chromium/Firefox migrated-tool flows pass. |
+| 2 | `#cold-seed-forge-mnemonic-input` remains and exactly one registry category is `seed-entry`. | ✅ | Retained cold HTML control plus `COLD_SECRET_INPUT_REGISTRY`; UI.4 registry test passes in both 409-test OS legs. |
+| 3 | The declared secret-input registry mechanically covers the complete `src/` input surface and undeclared secret inputs fail closed. | ✅ | Recursive all-`src/**/*.html` static-form audit plus all-`src/**/*.js` dynamic form creation audit; negative mutations reject undeclared static, raw dynamic, and non-literal dynamic controls. |
+| 4 | Only the duplicate seed/source loaders are removed; legitimate authentication, recovery, note, entropy, passphrase, and share-combine inputs remain. | ✅ | Registry/source inspection and retained full/browser recovery, notes, entropy, and backup flows. |
+| 5 | Migrated tools preserve focused-secret behavior, first-paint masking, functional coverage, recovery, isolation, and teardown. | ✅ | Committed Chromium/Firefox `file://` harness passes focused-secret, masking, split/reconstruction, negative, warm-isolation, lock, and teardown assertions; full suite is 409/409 on both OSes. |
+| 6 | Cold CSP remains byte-identical to the pre-restructure policy and cold network capability remains absent. | ✅ | UI.4 source test compares the exact cold CSP literal including `connect-src 'none'`; committed browser CSP/network probes pass in Chromium and Firefox. |
+
+## 4. Findings
+
+None.
+
+## 5. Verdict rationale
+
+The exact reviewed SHA has a successful qualifying Mode B CI witness whose audited workflow executes the pinned toolchain, vendor/lint/docs checks, complete zero-skip TAP suite, deterministic double builds on Ubuntu and Windows, cross-OS hash comparison, and the committed Chromium/Firefox `file://` harness. The prior registry-coverage defect is fixed with a whole-`src/` mechanical audit plus fail-closed mutations, the roadmap contradiction is corrected, and the old environment-based F3 no longer blocks under accepted ADR-0048 Mode B. Every UI.4 acceptance criterion is satisfied and I found no blocking, advisory, cosmetic, or documentation finding.
+
+PASS
