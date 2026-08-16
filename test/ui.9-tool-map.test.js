@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const test = require('node:test');
+const { compileToolMap } = require('../scripts/tool-map.js');
 
 const projectRoot = path.resolve(__dirname, '..');
 const warmHtml = fs.readFileSync(path.join(projectRoot, 'src', 'index.html'), 'utf8');
@@ -73,7 +74,9 @@ test('built Tool map contains the current roadmap status and all parsed items', 
   assert.equal(build.status, 0, `${build.stdout}\n${build.stderr}`);
   const built = fs.readFileSync(path.join(projectRoot, 'build', 'coldbox.html'), 'utf8');
   assert.match(built, /"source":"docs\/05-development\/ROADMAP\.md"/);
-  assert.match(built, /"id":"UI\.9"[\s\S]{0,240}"status":"in-progress"/);
+  const ui9 = compileToolMap(projectRoot).items.find((item) => item.id === 'UI.9');
+  assert.ok(ui9);
+  assert.match(built, new RegExp(`"id":"UI\\.9"[\\s\\S]{0,240}"status":"${ui9.status}"`));
   assert.match(built, /"id":"P0\.1"/);
   assert.doesNotMatch(built, /__COLDBOX_TOOL_MAP__/);
 });
