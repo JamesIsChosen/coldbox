@@ -88,10 +88,11 @@ ordering correction.
 
 ## Known deferrals
 
-The physical iOS/Android/device rows are not part of this warm/browser shell
-checkpoint. Any required physical validation remains an explicit, non-blocking
-item-scoped deferral under ADR-0043 and does not claim release/device-gate
-closure for P0.19 or UI.11.
+UI.5 is marked browser-verifiable (`🌐`) in the roadmap. Physical iOS,
+Android, and other device execution is therefore outside this checkpoint's
+acceptance evidence; it remains part of the separate release/device gate and
+does not claim closure for P0.19 or UI.11. No ADR-0043 deferral is claimed:
+that ADR is explicitly scoped to P2.7 only.
 
 ## Self-assessment
 

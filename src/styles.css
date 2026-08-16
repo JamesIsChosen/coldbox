@@ -436,7 +436,7 @@ samp {
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  min-height: 2.45rem;
+  min-height: 44px;
   margin: 0.25rem 0;
   padding: 0.5rem 0.7rem;
   border: var(--outline-width-thin) solid transparent;
@@ -2639,8 +2639,8 @@ samp {
   }
 
   .icon-button-small {
-    width: 1.9rem;
-    min-height: 1.9rem;
+    width: 44px;
+    min-height: 44px;
     padding: 0;
     border-radius: var(--radius-sm);
     font-size: 1.1rem;
@@ -2654,6 +2654,7 @@ samp {
 
   .mobile-more-link {
     display: block;
+    min-height: 44px;
     padding: 0.7rem 0.65rem;
     border: var(--outline-width-thin) solid var(--outline);
     border-radius: var(--radius-sm);

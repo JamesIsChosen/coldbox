@@ -1099,6 +1099,12 @@ async function verifyBuiltFile(browser, engine) {
     await harness.expectElementVisible('#nav-rail');
     await harness.expectElementVisible('#theme-toggle');
     await harness.expectElementVisible('#nav-rail .nav-link[aria-current="page"]');
+    const warmRailTouchRect = await page.locator('#nav-rail .nav-link').first().evaluate((link) => {
+      const rect = link.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    });
+    assert.ok(warmRailTouchRect.width >= 44, `${engine}: warm rail target width is below 44 CSS px`);
+    assert.ok(warmRailTouchRect.height >= 44, `${engine}: warm rail target height is below 44 CSS px`);
     assert.equal(
       await page.locator('#current-section').textContent(),
       'Dashboard',
@@ -1170,6 +1176,14 @@ async function verifyBuiltFile(browser, engine) {
     await harness.expectElementVisible('#page-prices:not([hidden])');
     await page.locator('#mobile-more-tab').click();
     assert.equal(await page.locator('#mobile-more-menu').isVisible(), true);
+    const warmMoreTouchRects = await page.locator('#mobile-more-menu .mobile-more-link').first().evaluate((link) => {
+      const linkRect = link.getBoundingClientRect();
+      const closeRect = document.getElementById('mobile-more-close').getBoundingClientRect();
+      return { linkHeight: linkRect.height, closeWidth: closeRect.width, closeHeight: closeRect.height };
+    });
+    assert.ok(warmMoreTouchRects.linkHeight >= 44, `${engine}: warm More target height is below 44 CSS px`);
+    assert.ok(warmMoreTouchRects.closeWidth >= 44, `${engine}: warm More close width is below 44 CSS px`);
+    assert.ok(warmMoreTouchRects.closeHeight >= 44, `${engine}: warm More close height is below 44 CSS px`);
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#mobile-more-menu').isVisible(), false);
     assert.equal(

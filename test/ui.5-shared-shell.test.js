@@ -52,8 +52,10 @@ test('each realm has a calm striped boundary strip and five-slot phone navigatio
 });
 
 test('navigation touch targets are at least 44px and unavailable items cannot receive focus', () => {
-  assert.match(warmCss, /\.nav-link\s*\{[\s\S]*?min-height:\s*2\.45rem/);
+  assert.match(warmCss, /\.nav-link\s*\{[\s\S]*?min-height:\s*44px/);
   assert.match(warmCss, /\.mobile-tab\s*\{[\s\S]*?min-height:\s*3rem/);
+  assert.match(warmCss, /\.mobile-more-link\s*\{[\s\S]*?min-height:\s*44px/);
+  assert.match(warmCss, /\.icon-button-small\s*\{[\s\S]*?width:\s*44px[\s\S]*?min-height:\s*44px/);
   assert.match(coldCss, /\.cold-nav-link\s*\{[\s\S]*?min-height:\s*2\.75rem/);
   assert.match(coldCss, /\.cold-mobile-tabs a\s*\{[\s\S]*?min-height:\s*2\.75rem/);
   assert.match(warmHtml, /<button class="nav-link nav-link-unavailable" type="button" disabled/);
