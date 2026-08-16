@@ -264,6 +264,20 @@ __COLDBOX_CONCEALMENT__
   var qrPublicDownloadSvg = document.getElementById('qr-public-download-svg');
   var qrPublicDownloadPng = document.getElementById('qr-public-download-png');
   var qrPublicArtifact = null;
+  var recordMenu = document.getElementById('record-menu');
+  var recordMenuPanel = recordMenu ? recordMenu.querySelector('.record-menu-panel') : null;
+  var recordMenuKind = document.getElementById('record-menu-kind');
+  var recordMenuTitle = document.getElementById('record-menu-title');
+  var recordMenuStatus = document.getElementById('record-menu-status');
+  var recordMenuProvenance = document.getElementById('record-menu-provenance');
+  var recordMenuFields = document.getElementById('record-menu-fields');
+  var recordMenuQr = document.getElementById('record-menu-qr');
+  var recordMenuQrList = document.getElementById('record-menu-qr-list');
+  var recordMenuClose = document.getElementById('record-menu-close');
+  var recordMenuCloseFooter = document.getElementById('record-menu-close-footer');
+  var recordMenuEdit = document.getElementById('record-menu-edit');
+  var recordMenuReturnFocus = null;
+  var recordMenuRecord = null;
   var deviceLocked = document.getElementById('device-locked');
   var deviceWorkspace = document.getElementById('device-workspace');
   var deviceStatus = document.getElementById('device-status');
@@ -3332,10 +3346,189 @@ __COLDBOX_CONCEALMENT__
           recordNode.appendChild(title);
           recordNode.appendChild(detail);
           recordNode.appendChild(status);
+          recordNode.appendChild(recordMenuTrigger('backup', evaluation.recordId));
           backupHealthRecords.appendChild(recordNode);
         });
       }
     }
+  }
+
+  function recordMenuCollection(kind) {
+    return kind === 'wallet' ? 'wallets'
+      : kind === 'account' ? 'accounts'
+        : kind === 'address' ? 'addresses'
+          : kind === 'device' ? 'devices'
+            : kind === 'note' ? 'notes'
+              : 'backups';
+  }
+
+  function recordMenuLabel(kind) {
+    return kind.charAt(0).toUpperCase() + kind.slice(1) + ' record';
+  }
+
+  function recordMenuFieldLabel(key) {
+    return key.replace(/([A-Z])/g, ' $1').replace(/^./, function (value) {
+      return value.toUpperCase();
+    });
+  }
+
+  function recordMenuValue(value) {
+    if (value === null || value === undefined || value === '') {
+      return '—';
+    }
+    if (typeof value === 'boolean') {
+      return value ? 'Yes' : 'No';
+    }
+    if (Array.isArray(value)) {
+      return value.length ? value.map(recordMenuValue).join(', ') : '—';
+    }
+    if (typeof value === 'object') {
+      try {
+        return JSON.stringify(value, null, 2);
+      } catch (error) {
+        return '[unserializable public value]';
+      }
+    }
+    return String(value);
+  }
+
+  function recordMenuPublicPayloads(record) {
+    var payloads = [];
+    var candidates = [
+      ['Address', record && record.address],
+      ['Extended public key', record && record.xpub],
+      ['Descriptor', record && record.descriptor],
+      ['Nostr public key', record && record.npub]
+    ];
+    if (record && Array.isArray(record.xpubs)) {
+      record.xpubs.forEach(function (xpub, index) {
+        candidates.push(['Extended public key ' + String(index + 1), xpub]);
+      });
+    }
+    candidates.forEach(function (candidate) {
+      if (typeof candidate[1] !== 'string' || candidate[1].trim() === ''
+        || (protocol && protocol.isSecretContent && protocol.isSecretContent(candidate[1]))) {
+        return;
+      }
+      payloads.push({ label: candidate[0], value: candidate[1].trim() });
+    });
+    return payloads;
+  }
+
+  function recordMenuQrNode(payload) {
+    var item = document.createElement('article');
+    item.className = 'record-menu-qr-item';
+    var heading = document.createElement('h4');
+    heading.textContent = payload.label;
+    item.appendChild(heading);
+    var output = document.createElement('div');
+    output.className = 'record-menu-qr-output';
+    output.setAttribute('aria-label', payload.label + ' QR');
+    if (typeof qrcode !== 'function') {
+      output.textContent = 'Pinned QR encoder unavailable.';
+    } else {
+      try {
+        var code = qrcode(0, 'M');
+        code.addData(payload.value, 'Byte');
+        code.make();
+        output.innerHTML = code.createSvgTag({
+          cellSize: 4,
+          margin: 4,
+          scalable: true,
+          title: payload.label + ' public QR',
+          alt: payload.label + ' public QR'
+        });
+      } catch (error) {
+        output.textContent = 'QR generation failed closed.';
+      }
+    }
+    item.appendChild(output);
+    var value = document.createElement('code');
+    value.className = 'record-menu-qr-payload';
+    value.textContent = payload.value;
+    item.appendChild(value);
+    return item;
+  }
+
+  function recordMenuProvenanceItem(label, value) {
+    var item = document.createElement('div');
+    item.className = 'record-menu-provenance-item';
+    var title = document.createElement('strong');
+    title.textContent = label;
+    item.appendChild(title);
+    var text = document.createElement('span');
+    text.textContent = value;
+    item.appendChild(text);
+    return item;
+  }
+
+  function closeRecordMenu() {
+    if (!recordMenu || recordMenu.hidden) {
+      return;
+    }
+    recordMenu.hidden = true;
+    recordMenuRecord = null;
+    if (recordMenuReturnFocus && typeof recordMenuReturnFocus.focus === 'function') {
+      recordMenuReturnFocus.focus();
+    }
+    recordMenuReturnFocus = null;
+  }
+
+  function openRecordMenu(kind, id, trigger) {
+    if (!recordMenu || !registryStore || vaultState !== 'unlocked') {
+      return;
+    }
+    var record = registryStore.find(recordMenuCollection(kind), id);
+    if (!record) {
+      return;
+    }
+    recordMenuRecord = { kind: kind, id: id };
+    recordMenuReturnFocus = trigger || document.activeElement;
+    recordMenuKind.textContent = recordMenuLabel(kind);
+    recordMenuTitle.textContent = record.label || record.title || record.shareLabel
+      || (kind === 'address' ? 'Address #' + String(record.index) : 'Unlabeled ' + kind);
+    recordMenuStatus.textContent = 'Complete public record details. Secret material is never displayed by this menu.';
+    recordMenuProvenance.textContent = '';
+    recordMenuProvenance.appendChild(recordMenuProvenanceItem('Compartment', 'Public registry'));
+    recordMenuProvenance.appendChild(recordMenuProvenanceItem('Record type', recordMenuLabel(kind)));
+    recordMenuProvenance.appendChild(recordMenuProvenanceItem('Visibility', record.hidden === true ? 'Concealed until revealed' : 'Visible'));
+    recordMenuProvenance.appendChild(recordMenuProvenanceItem('Record ID', record.id));
+    recordMenuFields.textContent = '';
+    Object.keys(record).sort().forEach(function (key) {
+      var term = document.createElement('dt');
+      term.textContent = recordMenuFieldLabel(key);
+      var definition = document.createElement('dd');
+      var value = record[key];
+      if (typeof value === 'string' && protocol && protocol.isSecretContent && protocol.isSecretContent(value)) {
+        definition.textContent = '[secret-shaped value withheld]';
+        definition.setAttribute('data-secret-withheld', 'true');
+      } else {
+        definition.textContent = recordMenuValue(value);
+      }
+      recordMenuFields.appendChild(term);
+      recordMenuFields.appendChild(definition);
+    });
+    recordMenuQrList.textContent = '';
+    var payloads = recordMenuPublicPayloads(record);
+    recordMenuQr.hidden = payloads.length === 0;
+    payloads.forEach(function (payload) {
+      recordMenuQrList.appendChild(recordMenuQrNode(payload));
+    });
+    recordMenuEdit.hidden = ['wallet', 'account', 'address', 'device', 'note', 'backup'].indexOf(kind) === -1;
+    recordMenu.hidden = false;
+    recordMenuClose.focus();
+  }
+
+  function recordMenuTrigger(kind, id) {
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'vault-button record-menu-trigger';
+    button.textContent = 'View complete record';
+    button.setAttribute('data-record-menu-trigger', 'true');
+    button.setAttribute('data-registry-kind', kind);
+    button.setAttribute('data-registry-id', id);
+    button.setAttribute('aria-haspopup', 'dialog');
+    return button;
   }
 
   function registryButton(action, kind, id, label) {
@@ -3413,6 +3606,7 @@ __COLDBOX_CONCEALMENT__
     }
     var actions = document.createElement('div');
     actions.className = 'registry-record-actions';
+    actions.appendChild(recordMenuTrigger(kind, record.id));
     actions.appendChild(registryButton('edit', kind, record.id, 'Edit'));
     actions.appendChild(registryButton('delete', kind, record.id, 'Hide'));
     if (kind === 'backup') {
@@ -4382,10 +4576,19 @@ __COLDBOX_CONCEALMENT__
   function handleRegistryListAction(event) {
     var target = event.target;
     while (target && target !== event.currentTarget
-      && target.getAttribute && !target.getAttribute('data-registry-action')) {
+      && target.getAttribute && !target.getAttribute('data-registry-action')
+      && !target.getAttribute('data-record-menu-trigger')) {
       target = target.parentNode;
     }
     if (!target || !target.getAttribute) {
+      return;
+    }
+    if (target.getAttribute('data-record-menu-trigger') === 'true') {
+      openRecordMenu(
+        target.getAttribute('data-registry-kind'),
+        target.getAttribute('data-registry-id'),
+        target
+      );
       return;
     }
     var action = target.getAttribute('data-registry-action');
@@ -5793,6 +5996,62 @@ __COLDBOX_CONCEALMENT__
       list.addEventListener('click', handleRegistryListAction);
     }
   });
+  if (backupHealthRecords) {
+    backupHealthRecords.addEventListener('click', function (event) {
+      var trigger = event.target.closest ? event.target.closest('[data-record-menu-trigger="true"]') : null;
+      if (trigger) {
+        openRecordMenu(trigger.getAttribute('data-registry-kind'), trigger.getAttribute('data-registry-id'), trigger);
+      }
+    });
+  }
+  if (recordMenuClose) {
+    recordMenuClose.addEventListener('click', closeRecordMenu);
+  }
+  if (recordMenuCloseFooter) {
+    recordMenuCloseFooter.addEventListener('click', closeRecordMenu);
+  }
+  if (recordMenu) {
+    recordMenu.addEventListener('click', function (event) {
+      if (event.target && event.target.getAttribute('data-record-menu-close') === 'true') {
+        closeRecordMenu();
+      }
+    });
+    recordMenu.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeRecordMenu();
+        return;
+      }
+      if (event.key !== 'Tab' || !recordMenuPanel) {
+        return;
+      }
+      var focusable = Array.prototype.slice.call(recordMenuPanel.querySelectorAll(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      ));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      var first = focusable[0];
+      var last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    });
+  }
+  if (recordMenuEdit) {
+    recordMenuEdit.addEventListener('click', function () {
+      if (recordMenuRecord) {
+        var current = recordMenuRecord;
+        closeRecordMenu();
+        editRegistryRecord(current.kind, current.id);
+      }
+    });
+  }
   if (registrySearch) {
     registrySearch.addEventListener('input', function () {
       registrySearchTerm = registrySearch.value.trim().toLowerCase();

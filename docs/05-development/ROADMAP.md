@@ -309,7 +309,7 @@ Every later roadmap item that activates a screen listed in the [approved referen
   One shell across both realms: masthead, ten-group nav rail, and the `.realm-strip` specified in [design-system.md](../01-spec/design-system.md) §5.
   **Accept:** the rail reaches every built surface in both realms, including sealed tools, without scrolling the document; **groups render their unbuilt items disabled and labelled with roadmap ID and phase**, and a disabled item is not focusable as a control and is announced as unavailable; the realm strip changes unmistakably at the boundary and its stripes do not animate under any state, including `prefers-reduced-motion` being absent; the rail collapses to a five-slot bottom bar plus a More sheet below the phone breakpoint; 44px minimum touch targets hold; both realms stay hash-pinned into the parent CSP exactly as before.
 
-- [ ] **UI.6 Floating record menu** 🌐
+- [~] **UI.6 Floating record menu** 🌐
   *Deps: UI.5*
   One component, built once, used by every surface that holds a record.
   **Accept:** opening a record shows the complete record — all fields, tags, concealment state and provenance — not a summary; a QR appears for every public address, xpub, descriptor or npub; **no QR is offered for secret material from this component**, which remains SeedQR Studio's job behind its own plaintext acknowledgement; the panel is calm per §6 whenever it renders a secret; it is fully keyboard-navigable with a visible focus ring and returns focus on close; it is one implementation, and a reviewer can confirm that by finding one.

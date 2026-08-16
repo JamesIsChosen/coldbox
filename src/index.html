@@ -962,6 +962,33 @@ __COLDBOX_WORDMARK__
           </section>
         </section>
       </main>
+
+      <section class="record-menu" id="record-menu" role="dialog" aria-modal="true" aria-labelledby="record-menu-title" aria-describedby="record-menu-status" hidden>
+        <div class="record-menu-backdrop" data-record-menu-close="true"></div>
+        <div class="record-menu-panel" role="document">
+          <header class="record-menu-header">
+            <div>
+              <p class="panel-kicker" id="record-menu-kind">Public record</p>
+              <h2 id="record-menu-title">Record details</h2>
+            </div>
+            <button class="icon-button" id="record-menu-close" type="button" aria-label="Close record details">×</button>
+          </header>
+          <p class="record-menu-status" id="record-menu-status" role="status" aria-live="polite">Complete public record details.</p>
+          <div class="record-menu-provenance" id="record-menu-provenance"></div>
+          <dl class="record-menu-fields" id="record-menu-fields"></dl>
+          <section class="record-menu-qr" id="record-menu-qr" aria-labelledby="record-menu-qr-title" hidden>
+            <div class="record-menu-section-heading">
+              <h3 id="record-menu-qr-title">Public QR payloads</h3>
+              <p>These codes contain public values only. Secret-shaped values are refused and never rendered by this menu.</p>
+            </div>
+            <div class="record-menu-qr-list" id="record-menu-qr-list"></div>
+          </section>
+          <footer class="record-menu-footer">
+            <button class="vault-button" id="record-menu-edit" type="button">Edit record</button>
+            <button class="vault-button" id="record-menu-close-footer" type="button">Done</button>
+          </footer>
+        </div>
+      </section>
     </div>
 
     <nav class="mobile-tabs" id="mobile-tabs" aria-label="Mobile navigation">
