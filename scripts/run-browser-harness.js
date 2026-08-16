@@ -1198,10 +1198,26 @@ async function verifyBuiltFile(browser, engine) {
     for (const expected of ['Vault session', 'Entropy Lab', 'Validate phrase', 'Child seeds', 'Passphrase Studio', 'Descriptors', 'SeedQR studio', 'Backup Health', 'Recovery Assistant', 'Verify Bench', 'Reveal hidden', 'Secret notes', 'No secret yet', 'Lock & wipe']) {
       assert.ok(coldMoreText.some((item) => item.includes(expected)), `${engine}: cold More is missing ${expected}`);
     }
-    for (const id of ['P4.6', 'P4.5', 'P4.9', 'P4.3']) {
+    for (const id of ['P1.5', 'P4.5', 'P4.9', 'P4.3']) {
       const unavailable = coldFrame.locator(`.cold-mobile-more-links [data-roadmap-id="${id}"]`);
       assert.equal(await unavailable.getAttribute('aria-disabled'), 'true', `${engine}: cold More future ${id} must be unavailable`);
     }
+    await coldFrame.evaluate(() => {
+      document.querySelector('.cold-mobile-more-links a[data-cold-more-target="cold-concealment-controls"]').click();
+    });
+    await coldFrame.locator('#cold-concealment-controls:not([hidden])').waitFor({ state: 'visible' });
+    assert.equal(await coldFrame.evaluate(() => document.activeElement && document.activeElement.id), 'cold-vault-passphrase');
+    await coldFrame.evaluate(() => {
+      document.querySelector('.cold-mobile-more-links a[data-cold-more-target="cold-secret-notes"]').click();
+    });
+    await coldFrame.locator('#cold-secret-notes:not([hidden])').waitFor({ state: 'visible' });
+    assert.equal(await coldFrame.evaluate(() => document.activeElement && document.activeElement.id), 'cold-secret-notes');
+    await coldFrame.evaluate(() => {
+      document.querySelector('.cold-mobile-more-links a[data-cold-more-target="cold-vault-controls"]').click();
+    });
+    await coldFrame.locator('#cold-vault-controls').waitFor({ state: 'visible' });
+    assert.equal(await coldFrame.evaluate(() => document.activeElement && document.activeElement.id), 'cold-vault-status');
+    await coldFrame.evaluate(() => { document.getElementById('cold-concealment-controls').hidden = true; document.getElementById('cold-secret-notes').hidden = true; });
     await coldFrame.locator('.cold-mobile-more').evaluate((details) => { details.open = false; });
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#mobile-more-menu').isVisible(), false);

@@ -14,7 +14,7 @@ const coldCss = fs.readFileSync(path.join(root, 'src', 'cold', 'styles.css'), 'u
 
 const groups = ['Forge', 'Derive', 'Split', 'Carry', 'Recover', 'Verify', 'Records', 'Money', 'Vault files', 'Reference'];
 const warmMoreInventory = ['Devices', 'QR Studio', 'Address bench', 'Prices &amp; FX · P3.1 · Phase 3', 'Tax &amp; exports · P3.9 · Phase 3', 'Reference · P4.10 · Phase 4', 'Verify this file', 'Provenance &amp; legal', 'Learn', 'Tool map · UI.9 · UI 9', 'Enter sealed realm'];
-const coldMoreInventory = ['Vault session', 'Entropy Lab', 'Validate phrase', 'Child seeds · P4.6 · Phase 4', 'Passphrase Studio · P4.5 · Phase 4', 'Descriptors · P4.9 · Phase 4', 'SeedQR studio', 'Backup Health', 'Recovery Assistant · P4.3 · Phase 4', 'Verify Bench', 'Reveal hidden', 'Secret notes', 'No secret yet', 'Lock &amp; wipe'];
+const coldMoreInventory = ['Vault session', 'Entropy Lab', 'Validate phrase', 'Child seeds · P1.5 · Phase 1', 'Passphrase Studio · P4.5 · Phase 4', 'Descriptors · P4.9 · Phase 4', 'SeedQR studio', 'Backup Health', 'Recovery Assistant · P4.3 · Phase 4', 'Verify Bench', 'Reveal hidden', 'Secret notes', 'No secret yet', 'Lock &amp; wipe'];
 
 test('UI.5 implements the ten approved realm navigation groups', () => {
   for (const label of groups.slice(0, 6)) {
@@ -73,9 +73,13 @@ test('mobile More sheets match the approved route inventories', () => {
   for (const id of ['UI.9', 'P3.1', 'P3.9', 'P4.10']) {
     assert.match(warmHtml, new RegExp(`mobile-more-link-unavailable[^>]*aria-disabled="true"[^>]*data-roadmap-id="${id.replace('.', '\\.') }"`));
   }
-  for (const id of ['P4.6', 'P4.5', 'P4.9', 'P4.3']) {
+  for (const id of ['P1.5', 'P4.5', 'P4.9', 'P4.3']) {
     assert.match(coldHtml, new RegExp(`cold-mobile-more-link-unavailable[^>]*aria-disabled="true"[^>]*data-roadmap-id="${id.replace('.', '\\.') }"`));
   }
+  assert.match(coldHtml, /href="#cold-concealment-controls" data-cold-more-target="cold-concealment-controls"/);
+  assert.match(coldHtml, /href="#cold-secret-notes" data-cold-more-target="cold-secret-notes"/);
+  assert.match(coldHtml, /href="#cold-vault-controls" data-cold-more-target="cold-vault-controls"/);
+  assert.match(coldHtml, /P4\.6 · Phase 4/);
 });
 
 test('warm and cold shells carry the same chrome vocabulary', () => {
