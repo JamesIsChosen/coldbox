@@ -42,7 +42,7 @@ node --check src/cold/main.js
 npm run lint
 Lint passed: forbidden constructs, JavaScript syntax, and LF source line endings are valid.
 npm run build
-Built build/coldbox.html (f944c6f4bc1d5b44c41c6a3c2eb1d47fd8529e9feeb8d10707bfeb9767af0400)
+Built build/coldbox.html (f0fd7fbef416222b27effd13fa26cb6aa07511f2a8f23de6a49eab49b9e25a8f)
 ```
 
 The first hosted browser run on the initial UI.5 head found that the legacy
@@ -73,6 +73,20 @@ mobile overflow baseline first, then exercises the desktop rail/switcher/
 quick-link routes and returns to mobile for the More-link route. Product
 markup, styles, and routing behavior are unchanged by this harness-only
 ordering correction.
+
+The fresh review then required a numeric 44px floor for the warm desktop rail,
+the warm More links, and the More close control. Those controls now use
+explicit `44px` minimum dimensions; the UI.5 test checks those numeric rules,
+and the browser harness computes the rendered desktop rail and mobile More
+rectangles. The exact implementation head for that remediation is
+`5fa3cf835bef5b94e98e07fe5748bc54243ff033`. Exact-head CI run
+`31939849010` passed its Ubuntu, Windows, Chromium/Firefox, approved-reference
+secret-scan, and cross-OS hash jobs; release attestation was skipped because
+this is a pull request.
+
+The packet closeout is documentation-only after that implementation head. The
+next exact-head CI run and the fresh reviewer must still verify the closeout
+head itself.
 
 ## Review focus
 
