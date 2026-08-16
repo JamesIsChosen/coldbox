@@ -1624,6 +1624,10 @@ async function verifyUi6RecordMenu(browser, engine) {
     assert.equal(await page.locator('#record-menu-close').evaluate((node) => document.activeElement === node), true, `${engine}: menu must focus its close control`);
 
     await page.keyboard.press('Tab');
+    assert.equal(await page.locator('#record-menu-send-to-list [data-record-send-to="verify"]').evaluate((node) => document.activeElement === node), true, `${engine}: menu tab order must reach Address bench`);
+    await page.keyboard.press('Tab');
+    assert.equal(await page.locator('#record-menu-send-to-list [data-record-send-to="qr"]').evaluate((node) => document.activeElement === node), true, `${engine}: menu tab order must reach QR Studio`);
+    await page.keyboard.press('Tab');
     assert.equal(await page.locator('#record-menu-edit').evaluate((node) => document.activeElement === node), true, `${engine}: menu tab order must reach Edit`);
     await page.keyboard.press('Tab');
     assert.equal(await page.locator('#record-menu-close-footer').evaluate((node) => document.activeElement === node), true, `${engine}: menu tab order must reach Done`);
