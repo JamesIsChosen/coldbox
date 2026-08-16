@@ -1171,11 +1171,20 @@ async function verifyBuiltFile(browser, engine) {
     await page.waitForFunction(() => window.location.hash === '#dashboard');
     await harness.atViewport(360, 640);
 
-    await page.locator('#mobile-tabs a[data-route="prices"]').click();
-    await page.waitForFunction(() => window.location.hash === '#prices');
-    await harness.expectElementVisible('#page-prices:not([hidden])');
+    const unavailableMoney = page.locator('#mobile-tabs button[data-roadmap-id="P3.4"]');
+    assert.equal(await unavailableMoney.isDisabled(), true, `${engine}: future Money tab must be unavailable`);
+    assert.equal(await unavailableMoney.getAttribute('aria-disabled'), 'true');
+    assert.match(await unavailableMoney.textContent(), /Money.*P3\.4.*Phase 3/);
     await page.locator('#mobile-more-tab').click();
     assert.equal(await page.locator('#mobile-more-menu').isVisible(), true);
+    const warmMoreText = await page.locator('#mobile-more-menu .mobile-more-link').allTextContents();
+    for (const expected of ['Devices', 'QR Studio', 'Address bench', 'Verify this file', 'Provenance & legal', 'Learn', 'Tool map', 'Enter sealed realm', 'Prices & FX', 'Tax & exports', 'Reference']) {
+      assert.ok(warmMoreText.some((item) => item.includes(expected)), `${engine}: warm More is missing ${expected}`);
+    }
+    for (const id of ['UI.9', 'P3.1', 'P3.9', 'P4.10']) {
+      const unavailable = page.locator(`#mobile-more-menu [data-roadmap-id="${id}"]`);
+      assert.equal(await unavailable.getAttribute('aria-disabled'), 'true', `${engine}: warm More future ${id} must be unavailable`);
+    }
     const warmMoreTouchRects = await page.locator('#mobile-more-menu .mobile-more-link').first().evaluate((link) => {
       const linkRect = link.getBoundingClientRect();
       const closeRect = document.getElementById('mobile-more-close').getBoundingClientRect();
@@ -1184,6 +1193,16 @@ async function verifyBuiltFile(browser, engine) {
     assert.ok(warmMoreTouchRects.linkHeight >= 44, `${engine}: warm More target height is below 44 CSS px`);
     assert.ok(warmMoreTouchRects.closeWidth >= 44, `${engine}: warm More close width is below 44 CSS px`);
     assert.ok(warmMoreTouchRects.closeHeight >= 44, `${engine}: warm More close height is below 44 CSS px`);
+    await coldFrame.locator('.cold-mobile-more summary').click();
+    const coldMoreText = await coldFrame.locator('.cold-mobile-more-links > *').allTextContents();
+    for (const expected of ['Vault session', 'Entropy Lab', 'Validate phrase', 'Child seeds', 'Passphrase Studio', 'Descriptors', 'SeedQR studio', 'Backup Health', 'Recovery Assistant', 'Verify Bench', 'Reveal hidden', 'Secret notes', 'No secret yet', 'Lock & wipe']) {
+      assert.ok(coldMoreText.some((item) => item.includes(expected)), `${engine}: cold More is missing ${expected}`);
+    }
+    for (const id of ['P4.6', 'P4.5', 'P4.9', 'P4.3']) {
+      const unavailable = coldFrame.locator(`.cold-mobile-more-links [data-roadmap-id="${id}"]`);
+      assert.equal(await unavailable.getAttribute('aria-disabled'), 'true', `${engine}: cold More future ${id} must be unavailable`);
+    }
+    await coldFrame.locator('.cold-mobile-more summary').click();
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#mobile-more-menu').isVisible(), false);
     assert.equal(

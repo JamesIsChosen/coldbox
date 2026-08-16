@@ -2598,6 +2598,20 @@ samp {
     color: var(--fill-ink);
   }
 
+  .mobile-tab-unavailable {
+    border-style: dashed;
+    color: var(--faint);
+    cursor: not-allowed;
+    opacity: 0.62;
+  }
+
+  .mobile-tab-unavailable:hover,
+  .mobile-tab-unavailable:focus-visible {
+    background: transparent;
+    color: var(--faint);
+    transform: none;
+  }
+
   .mobile-tab-icon {
     color: var(--faint);
     font-family: var(--font-display);
