@@ -93,10 +93,11 @@ The remediation adds a separately witnessable CI job named
 `Approved UI reference secret scan`. At the final exact head it checks SHA-256
 identity for temporary copies of both references, runs the same
 `Invoke-ColdboxSecretScan` implementation, and fails unless `FindingCount` and
-`SkippedCount` are both zero. The exact reviewed head is
-`bdada0dea19a4af7412028e5936e66df43b34239`; CI run `31933440474` completed
-successfully at that head. The run URL and individual job results are recorded
-in the final evidence section below.
+`SkippedCount` are both zero. Because any packet edit necessarily creates a new
+commit, the authoritative 40-character reviewed head SHA, CI run ID, run URL
+and individual job results are supplied in the handoff for the current review
+and must be checked against the PR head; they are deliberately not duplicated
+as mutable values in this packet.
 
 ### Focused tests
 
@@ -417,24 +418,13 @@ fails on any finding or skipped candidate file. It also requires the clean and
 zero-skipped report lines. The job never writes to the immutable reference
 directory.
 
-Final exact-head evidence for this packet:
-
-```text
-head SHA: bdada0dea19a4af7412028e5936e66df43b34239
-CI run: 31933440474
-CI URL: https://github.com/JamesIsChosen/coldbox/actions/runs/31933440474
-event: pull_request
-conclusion: success
-
-Compare build hash across operating systems: PASS (95131884851)
-build (ubuntu-latest): PASS (95131644358)
-build (windows-latest): PASS (95131644322)
-Approved UI reference secret scan: PASS (95131644372)
-Browser harness (Chromium + Firefox): PASS (95131644300)
-Release build attestation: SKIPPED (95131885071; release/tag condition)
-```
-
-The secret-scan job checked out the exact PR head, copied exactly the desktop
-and mobile `.html.reference` files to a temporary directory, verified both
-copy hashes, invoked `Invoke-ColdboxSecretScan`, and required zero findings and
-zero skipped candidates without modifying the frozen reference directory.
+The exact-head CI witness is intentionally supplied in the handoff rather than
+copied into this mutable packet. The reviewer must independently confirm that
+the supplied run's `headSha` equals the supplied 40-character PR head and that
+the build, browser, cross-OS hash, and `Approved UI reference secret scan` jobs
+are green (with release attestation skipped only under its documented
+release/tag condition). The secret-scan job checks out that exact PR head,
+copies exactly the desktop and mobile `.html.reference` files to a temporary
+directory, verifies both copy hashes, invokes `Invoke-ColdboxSecretScan`, and
+requires zero findings and zero skipped candidates without modifying the frozen
+reference directory.
