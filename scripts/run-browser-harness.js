@@ -1207,7 +1207,7 @@ async function verifyBuiltFile(browser, engine) {
     for (const expected of ['Devices', 'QR Studio', 'Address bench', 'Verify this file', 'Provenance & legal', 'Learn', 'Tool map', 'Enter sealed realm', 'Prices & FX', 'Tax & exports', 'Reference']) {
       assert.ok(warmMoreText.some((item) => item.includes(expected)), `${engine}: warm More is missing ${expected}`);
     }
-    for (const id of ['UI.9', 'P3.1', 'P3.9', 'P4.10']) {
+    for (const id of ['P3.1', 'P3.9', 'P4.10']) {
       const unavailable = page.locator(`#mobile-more-menu [data-roadmap-id="${id}"]`);
       assert.equal(await unavailable.getAttribute('aria-disabled'), 'true', `${engine}: warm More future ${id} must be unavailable`);
     }
@@ -1219,6 +1219,9 @@ async function verifyBuiltFile(browser, engine) {
     assert.ok(warmMoreTouchRects.linkHeight >= 44, `${engine}: warm More target height is below 44 CSS px`);
     assert.ok(warmMoreTouchRects.closeWidth >= 44, `${engine}: warm More close width is below 44 CSS px`);
     assert.ok(warmMoreTouchRects.closeHeight >= 44, `${engine}: warm More close height is below 44 CSS px`);
+    await page.locator('#mobile-more-menu a[data-route="tool-map"]').click();
+    await page.locator('#page-tool-map:not([hidden])').waitFor({ state: 'visible' });
+    assert.ok(await page.locator('#tool-map-list .tool-map-entry').count() >= 20, `${engine}: generated Tool map is empty or incomplete`);
     await coldFrame.locator('.cold-mobile-more').evaluate((details) => { details.open = true; });
     const coldMoreText = await coldFrame.locator('.cold-mobile-more-links > *').allTextContents();
     for (const expected of ['Vault session', 'Entropy Lab', 'Validate phrase', 'Child seeds', 'Passphrase Studio', 'Descriptors', 'SeedQR studio', 'Backup Health', 'Recovery Assistant', 'Verify Bench', 'Reveal hidden', 'Secret notes', 'No secret yet', 'Lock & wipe']) {
