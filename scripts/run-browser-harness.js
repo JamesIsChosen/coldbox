@@ -1219,6 +1219,7 @@ async function verifyBuiltFile(browser, engine) {
     assert.equal(await coldFrame.evaluate(() => document.activeElement && document.activeElement.id), 'cold-vault-status');
     await coldFrame.evaluate(() => { document.getElementById('cold-concealment-controls').hidden = true; document.getElementById('cold-secret-notes').hidden = true; });
     await coldFrame.locator('.cold-mobile-more').evaluate((details) => { details.open = false; });
+    await page.locator('#mobile-more-tab').focus();
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#mobile-more-menu').isVisible(), false);
     assert.equal(
