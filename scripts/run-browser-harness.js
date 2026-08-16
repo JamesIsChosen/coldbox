@@ -1621,13 +1621,13 @@ async function verifyUi6RecordMenu(browser, engine) {
     assert.match(await page.locator('#record-menu-provenance').textContent(), /Public registry/);
     assert.equal(await page.locator('#record-menu-qr:not([hidden])').count(), 1, `${engine}: public address needs a QR section`);
     assert.equal(await page.locator('#record-menu-qr-list svg').count(), 1, `${engine}: public address needs one rendered QR`);
-    assert.equal(await page.locator('#record-menu-close').isFocused(), true, `${engine}: menu must focus its close control`);
+    assert.equal(await page.locator('#record-menu-close').evaluate((node) => document.activeElement === node), true, `${engine}: menu must focus its close control`);
 
     await page.keyboard.press('Tab');
-    assert.equal(await page.locator('#record-menu-close-footer').isFocused(), true, `${engine}: menu tab order must reach Done`);
+    assert.equal(await page.locator('#record-menu-close-footer').evaluate((node) => document.activeElement === node), true, `${engine}: menu tab order must reach Done`);
     await page.keyboard.press('Escape');
     await page.locator('#record-menu[hidden]').waitFor({ state: 'attached' });
-    assert.equal(await addressTrigger.isFocused(), true, `${engine}: closing the menu must return focus to its trigger`);
+    assert.equal(await addressTrigger.evaluate((node) => document.activeElement === node), true, `${engine}: closing the menu must return focus to its trigger`);
     console.log(`${engine}: UI.6 shared record menu, complete fields, public QR, and focus return passed`);
   } finally {
     await closePage(page);
