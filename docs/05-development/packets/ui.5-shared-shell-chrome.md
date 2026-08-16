@@ -300,3 +300,22 @@ entry without creating duplicate route selectors. The cold rail now exposes
 Reveal hidden, Active secret, Lock / wipe, and the disabled UI.9 Tool map
 entry, matching the approved desktop reference inventory while preserving the
 mobile Child seeds P1.5/P4.6 distinction and the existing CSP and realm split.
+
+## Fresh-review exact-head record
+
+The reviewed PR head for this handoff is
+`cc0d6f25c097b562f36f825540bdb4dfedea901b`. Exact-head CI run `31950206414`
+checked out that full SHA and passed every required job. The packet update is
+documentation-only; the product source and the reproducible build remain the
+same as the rail-parity source head above.
+
+```text
+Focused UI.5 tests: 8 passed, 0 failed, 0 skipped
+Full CI unit/vector tests: 425 passed, 0 failed, 0 skipped
+Ubuntu/Windows reproducible build hash: 68809b12ebd8dbeabbb6c0cf749153b1acf2d76ace648c48b707279145e2b3cc
+Cross-OS build comparison: passed
+Browser harness: passed in Chromium and Firefox over file://
+Approved reference scan: Clean=True, findings=0, skipped=0
+Desktop reference SHA-256: fb7ff0643bda8f12a0a7e64daea91f51d74276cfc9bfb66c80baaf874bb2ded9
+Mobile reference SHA-256: af0c1fe08e689f755869a6eb4cc06dcaf0f4d44b7dfe6426d6a322b464c7d7f8
+```
