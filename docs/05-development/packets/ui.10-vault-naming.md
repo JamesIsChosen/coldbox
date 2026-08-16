@@ -43,7 +43,7 @@ The focused UI.10 and affected save/transfer tests are included in the 442-test 
 
 ### Exact-head CI closeout witness
 
-The current pushed head is `f5d5f4fe4dbd0883f2b75161d4b88ce13e6480c8`. GitHub Actions run `31967455681` is green at that exact SHA: Ubuntu build, Windows build, cross-OS hash comparison, approved-reference secret scan, and Chromium + Firefox browser harness all passed (the release attestation is intentionally skipped because this is not a release tag). The remediation adds an explicit warm nickname editor and locked/unlocked browser coverage; the nickname remains local-only and canonicalizes spaces to hyphens.
+The current pushed head is `6d4947111357f13b3f433dad70577c5e39fe0efc`. GitHub Actions run `31967853755` is green at that exact SHA: Ubuntu build, Windows build, cross-OS hash comparison, approved-reference secret scan, and Chromium + Firefox browser harness all passed (the release attestation is intentionally skipped because this is not a release tag). The remediation adds an explicit warm nickname editor and locked/unlocked browser coverage; the nickname remains local-only and canonicalizes spaces to hyphens.
 
 ## Acceptance criteria
 
