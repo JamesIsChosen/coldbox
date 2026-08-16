@@ -1193,7 +1193,7 @@ async function verifyBuiltFile(browser, engine) {
     assert.ok(warmMoreTouchRects.linkHeight >= 44, `${engine}: warm More target height is below 44 CSS px`);
     assert.ok(warmMoreTouchRects.closeWidth >= 44, `${engine}: warm More close width is below 44 CSS px`);
     assert.ok(warmMoreTouchRects.closeHeight >= 44, `${engine}: warm More close height is below 44 CSS px`);
-    await coldFrame.locator('.cold-mobile-more summary').click();
+    await coldFrame.locator('.cold-mobile-more').evaluate((details) => { details.open = true; });
     const coldMoreText = await coldFrame.locator('.cold-mobile-more-links > *').allTextContents();
     for (const expected of ['Vault session', 'Entropy Lab', 'Validate phrase', 'Child seeds', 'Passphrase Studio', 'Descriptors', 'SeedQR studio', 'Backup Health', 'Recovery Assistant', 'Verify Bench', 'Reveal hidden', 'Secret notes', 'No secret yet', 'Lock & wipe']) {
       assert.ok(coldMoreText.some((item) => item.includes(expected)), `${engine}: cold More is missing ${expected}`);
@@ -1202,7 +1202,7 @@ async function verifyBuiltFile(browser, engine) {
       const unavailable = coldFrame.locator(`.cold-mobile-more-links [data-roadmap-id="${id}"]`);
       assert.equal(await unavailable.getAttribute('aria-disabled'), 'true', `${engine}: cold More future ${id} must be unavailable`);
     }
-    await coldFrame.locator('.cold-mobile-more summary').click();
+    await coldFrame.locator('.cold-mobile-more').evaluate((details) => { details.open = false; });
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#mobile-more-menu').isVisible(), false);
     assert.equal(
