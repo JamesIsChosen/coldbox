@@ -11,6 +11,79 @@ __COLDBOX_COLD_STYLES__
   </style>
 </head>
 <body>
+  <div class="cold-app-shell">
+  <header class="cold-app-bar">
+    <a class="cold-brand" href="#cold-tool-hub" aria-label="Coldbox sealed realm">Coldbox</a>
+    <span class="cold-brand-badge">Pre-release · Not audited</span>
+    <div class="cold-realm-switcher" role="group" aria-label="Realm navigation">
+      <span class="cold-realm-switcher-button">☼ Warm shell</span>
+      <span class="cold-realm-switcher-button cold-realm-switcher-button-active">✻ Sealed realm</span>
+    </div>
+  </header>
+  <div class="realm-strip realm-strip-cold" role="status" aria-label="Sealed realm boundary">
+    <span>▲ sealed realm · no network exists in here ▲</span>
+  </div>
+  <div class="cold-app-layout">
+    <aside class="cold-nav-rail" aria-label="Sealed realm navigation">
+      <div class="cold-nav-scroll">
+        <nav class="cold-nav-group" aria-label="Forge">
+          <p class="cold-nav-group-title">Forge</p>
+          <a class="cold-nav-link" href="#cold-group-session"><span aria-hidden="true">V</span><span>Vault session</span><small>P0.13</small></a>
+          <a class="cold-nav-link" href="#cold-group-entropy"><span aria-hidden="true">E</span><span>Entropy Lab</span><small>P1.1</small></a>
+          <a class="cold-nav-link" href="#cold-group-seed-forge"><span aria-hidden="true">S</span><span>Seed Forge</span><small>P1.3</small></a>
+          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P4.5" data-phase="Phase 4"><span aria-hidden="true">P</span><span>Passphrase Studio</span><small>P4.5 · Phase 4</small></button>
+          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P1.7" data-phase="Phase 1"><span aria-hidden="true">N</span><span>Secret notes</span><small>P1.7 · Phase 1</small></button>
+        </nav>
+        <nav class="cold-nav-group" aria-label="Derive">
+          <p class="cold-nav-group-title">Derive</p>
+          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P1.4" data-phase="Phase 1"><span aria-hidden="true">∿</span><span>Derivation paths</span><small>P1.4 · Phase 1</small></button>
+          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P1.4" data-phase="Phase 1"><span aria-hidden="true">A</span><span>Addresses</span><small>P1.4 · Phase 1</small></button>
+          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P4.6" data-phase="Phase 4"><span aria-hidden="true">C</span><span>Child seeds</span><small>P4.6 · Phase 4</small></button>
+          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P4.9" data-phase="Phase 4"><span aria-hidden="true">D</span><span>Descriptors</span><small>P4.9 · Phase 4</small></button>
+        </nav>
+        <nav class="cold-nav-group" aria-label="Split">
+          <p class="cold-nav-group-title">Split</p>
+          <a class="cold-nav-link" href="#cold-group-backups"><span aria-hidden="true">B</span><span>Split lab</span><small>P2.1</small></a>
+          <a class="cold-nav-link" href="#cold-group-backups"><span aria-hidden="true">H</span><span>Backup Health</span><small>P2.7</small></a>
+          <a class="cold-nav-link" href="#cold-group-qr"><span aria-hidden="true">Q</span><span>SeedQR studio</span><small>P1.10</small></a>
+        </nav>
+        <nav class="cold-nav-group" aria-label="Carry">
+          <p class="cold-nav-group-title">Carry</p>
+          <a class="cold-nav-link" href="#cold-group-qr"><span aria-hidden="true">Q</span><span>SeedQR &amp; print</span><small>P1.10</small></a>
+          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P4.8" data-phase="Phase 4"><span aria-hidden="true">↗</span><span>Animated QR</span><small>P4.8 · Phase 4</small></button>
+        </nav>
+        <nav class="cold-nav-group" aria-label="Recover">
+          <p class="cold-nav-group-title">Recover</p>
+          <a class="cold-nav-link" href="#cold-group-recovery"><span aria-hidden="true">↺</span><span>Recovery Assistant</span><small>P4.3</small></a>
+          <a class="cold-nav-link" href="#cold-verification"><span aria-hidden="true">✓</span><span>Verify Bench</span><small>P1.9</small></a>
+        </nav>
+        <nav class="cold-nav-group" aria-label="Verify">
+          <p class="cold-nav-group-title">Verify</p>
+          <a class="cold-nav-link" href="#cold-verification"><span aria-hidden="true">✓</span><span>Fingerprint &amp; address</span><small>P1.9</small></a>
+          <a class="cold-nav-link" href="#cold-realm-status"><span aria-hidden="true">◌</span><span>Airgap guard</span><small>P0.8</small></a>
+          <a class="cold-nav-link" href="#cold-tool-hub"><span aria-hidden="true">?</span><span>Learn</span><small>P0.17</small></a>
+        </nav>
+      </div>
+      <p class="cold-nav-note">Same rail, same buttons, same halftone as the warm shell. Only the boundary strip and secret switcher change.</p>
+    </aside>
+    <nav class="cold-mobile-tabs" aria-label="Mobile sealed realm navigation">
+      <a href="#cold-group-seed-forge"><span aria-hidden="true">S</span><span>Forge</span></a>
+      <a href="#cold-verification"><span aria-hidden="true">∿</span><span>Derive</span></a>
+      <a href="#cold-group-backups"><span aria-hidden="true">B</span><span>Split</span></a>
+      <a href="#cold-secret-switcher"><span aria-hidden="true">★</span><span>Secret</span></a>
+      <a href="#cold-tool-hub"><span aria-hidden="true">⊞</span><span>Hub</span></a>
+    </nav>
+    <details class="cold-mobile-more">
+      <summary>More</summary>
+      <div class="cold-mobile-more-links">
+        <a href="#cold-group-session">Vault session</a>
+        <a href="#cold-group-entropy">Entropy Lab</a>
+        <a href="#cold-group-qr">SeedQR studio</a>
+        <a href="#cold-group-recovery">Recovery</a>
+        <a href="#cold-verification">Verify Bench</a>
+        <a href="#cold-tool-hub">Learn &amp; hub</a>
+      </div>
+    </details>
   <main id="cold-realm-status" aria-live="polite">
     <p class="eyebrow">Sealed realm</p>
     <p id="cold-ready">Cold realm checking</p>
@@ -797,6 +870,8 @@ __COLDBOX_COLD_STYLES__
     </section>
     </section>
   </main>
+  </div>
+  </div>
   <script>
 __COLDBOX_CRYPTO_VENDOR_SOURCE__
 __COLDBOX_CRYPTO_LAYER__

@@ -1105,12 +1105,16 @@ async function verifyBuiltFile(browser, engine) {
       `${engine}: dashboard should be the default route`
     );
 
-    await page.locator('#nav-rail a[data-route="portfolio"]').click();
-    await page.waitForFunction(() => window.location.hash === '#portfolio');
-    await harness.expectElementVisible('#page-portfolio:not([hidden])');
+    const unavailablePortfolio = page.locator('#nav-rail button[data-roadmap-id="P3.4"]');
+    assert.equal(await unavailablePortfolio.isDisabled(), true, `${engine}: unbuilt Portfolio must be disabled in the rail`);
+    assert.equal(await unavailablePortfolio.getAttribute('aria-disabled'), 'true');
+    assert.match(await unavailablePortfolio.textContent(), /P3\.4.*Phase 3/);
+    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.waitForFunction(() => window.location.hash === '#registry');
+    await harness.expectElementVisible('#page-registry:not([hidden])');
     assert.equal(
       await page.locator('#current-section').textContent(),
-      'Portfolio',
+      'Registry',
       `${engine}: route navigation did not update the current section`
     );
 
