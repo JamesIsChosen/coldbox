@@ -10,7 +10,7 @@ In scope: sealed creation controls, bounded authenticated name storage and renam
 
 ## How to verify
 
-The exact commands and observed results from commit `b2ef5af` are:
+The exact commands and observed results from the implementation and remediation head are:
 
 ```text
 $ npm test
@@ -25,15 +25,15 @@ $ npm run verify-vendor
 Vendor verification passed against local files and upstream releases.
 
 $ npm run check-docs
-Documentation hygiene check passed: 250 markdown file(s) checked, 0 warning(s).
+Documentation hygiene check passed: 251 markdown file(s) checked, 0 warning(s).
 
 $ npm run build
-Built build/coldbox.html (d7d695792648e09646d94b91a78510101e45541110dfa058fdddf495b907af92)
+Built build/coldbox.html (ff973e59cccc84121da6ffbba5e55f6e22162782aa1806cae492993b16c0c000)
 
 $ npm run build
-Built build/coldbox.html (d7d695792648e09646d94b91a78510101e45541110dfa058fdddf495b907af92)
-BUILD1_SHA256=d7d695792648e09646d94b91a78510101e45541110dfa058fdddf495b907af92
-BUILD2_SHA256=d7d695792648e09646d94b91a78510101e45541110dfa058fdddf495b907af92
+Built build/coldbox.html (ff973e59cccc84121da6ffbba5e55f6e22162782aa1806cae492993b16c0c000)
+BUILD1_SHA256=ff973e59cccc84121da6ffbba5e55f6e22162782aa1806cae492993b16c0c000
+BUILD2_SHA256=ff973e59cccc84121da6ffbba5e55f6e22162782aa1806cae492993b16c0c000
 
 $ npm run test:browser
 Browser harness passed in Chromium and Firefox.
@@ -43,7 +43,7 @@ The focused UI.10 and affected save/transfer tests are included in the 442-test 
 
 ### Exact-head CI closeout witness
 
-The current pushed head is `c8cfe6e8992912e7945ad6fa13e6f52cc53d2b3e`. GitHub Actions run `31965331928` is green at that exact SHA: Ubuntu build, Windows build, cross-OS hash comparison, approved-reference secret scan, and Chromium + Firefox browser harness all passed (the release attestation is intentionally skipped because this is not a release tag). The final harness-only follow-up stabilized Firefox's existing recovery reveal interaction with a DOM click dispatch and allowed the slow normal-unlock path a longer wait; it does not alter product behavior or the generated artifact.
+The current pushed head is `f5d5f4fe4dbd0883f2b75161d4b88ce13e6480c8`. GitHub Actions run `31967455681` is green at that exact SHA: Ubuntu build, Windows build, cross-OS hash comparison, approved-reference secret scan, and Chromium + Firefox browser harness all passed (the release attestation is intentionally skipped because this is not a release tag). The remediation adds an explicit warm nickname editor and locked/unlocked browser coverage; the nickname remains local-only and canonicalizes spaces to hyphens.
 
 ## Acceptance criteria
 
@@ -67,7 +67,7 @@ The name is now encrypted inside the vault rather than disclosed in filesystem m
 
 ## Test evidence
 
-New/changed tests cover name normalization, authenticated save/reopen, rename, replacement preservation, inbound injection rejection, canonical and historical filename parsing, name-free transfer frames, payload-free creation, local nickname wiring, and browser library selection. The negative replacement test fails closed on an injected name field. Browser verification ran the committed Chromium and Firefox harness over `file://`, including cold/warm isolation and the name-free library flow. No cryptographic vectors were changed.
+New/changed tests cover name normalization, authenticated save/reopen, rename, replacement preservation, inbound injection rejection, canonical and historical filename parsing, name-free transfer frames, payload-free creation, local nickname wiring, and browser library selection. The focused affected-suite run passed 99/99. The browser harness now edits the device-local nickname while both unlocked and locked, verifies localStorage persistence, and verifies that the canonical filename and Vault ID remain unchanged; Chromium and Firefox passed over `file://`. No cryptographic vectors were changed.
 
 ## Device matrix
 
@@ -96,7 +96,7 @@ The main residual risk is compatibility with an external reader that assumes the
 
 ## Bundle impact
 
-The single-file product remains one deterministic HTML artifact. The two builds above produced the identical SHA-256 `d7d695792648e09646d94b91a78510101e45541110dfa058fdddf495b907af92`; no runtime dependency was added.
+The single-file product remains one deterministic HTML artifact. The two builds above produced the identical SHA-256 `ff973e59cccc84121da6ffbba5e55f6e22162782aa1806cae492993b16c0c000`; no runtime dependency was added.
 
 ## Docs updated
 
