@@ -810,6 +810,29 @@ test('P1.6 openSession replaces only the public compartment and persists registr
   assert.equal(reopened.secretData.seeds[0].storedSecret.mnemonic, 'test-only-secret');
 });
 
+test('UI.10 cold-owned vault name survives warm replacement and inbound name injection is refused', async () => {
+  const context = createRealContext();
+  const passphrase = 'ui10 sealed naming phrase';
+  const vault = await context.__coldboxVault.create({
+    passphrase,
+    profile: 'fast',
+    publicData: { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Retirement cold storage', wallets: [] },
+    secretData: {}
+  });
+  const session = await context.__coldboxVault.openSession(vault, passphrase, 'offline');
+  assert.equal(session.publicData.name, 'Retirement cold storage');
+  assert.equal(session.renameVault('New durable name'), 'New durable name');
+  const replacement = session.replacePublicData({ id: session.publicData.id, wallets: [{ id: 'wallet-1' }] });
+  assert.equal(replacement.name, 'New durable name');
+  assert.throws(
+    () => session.replacePublicData({ id: session.publicData.id, name: 'warm forged name', wallets: [] }),
+    /serialization/
+  );
+  const saved = await session.save();
+  const reopened = await context.__coldboxVault.openSession(saved, passphrase, 'offline');
+  assert.equal(reopened.publicData.name, 'New durable name');
+});
+
 test('P1.11 warm public replacement cannot manufacture or rewrite cold verification authority', async () => {
   const context = createRealContext();
   const passphrase = 'verification authority passphrase';

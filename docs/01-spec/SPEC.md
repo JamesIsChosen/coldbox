@@ -390,7 +390,7 @@ Each compartment serializes to JSON, then is **padded to the next 64 KiB boundar
 
 A new vault has two identifiers with deliberately different trust/privacy properties:
 
-- **Vault name** — a user-chosen **public** warm-shell label used for the Vault Library and filename. It must never contain secrets.
+- **Vault name** — a bounded, typed name entered and owned inside the sealed realm, stored in the authenticated public compartment, and never projected to warm. The warm picker has only `id8` and an optional device-local nickname.
 - **Vault ID** — a random non-secret UUID generated inside the cold realm and stored in the authenticated public compartment. It survives moving the `.cbx` to another device and namespaces save-integrity bookkeeping. It is not a device/browser fingerprint; see [ADR-0025](../05-development/adr/0025-vault-identity-library-and-save-ux.md).
 
 Creation is a distinct flow: choose the public vault name, then enter **new unlock phrase** and **confirm unlock phrase** inside the cold realm. Confirmation exists only for creation; opening an existing vault asks for the phrase once. A mismatch creates nothing and must produce a visible inline mismatch error beside the confirmation input, not only a generic status line. On success the vault is **UNLOCKED · NOT SAVED** until a save path receives encrypted bytes.
@@ -399,13 +399,13 @@ Durable vault storage has one format: `.cbx`.
 
 | Path | Where | Mechanism |
 |---|---|---|
-| **Canonical File System Access save** | Chrome/Edge desktop where exposed | `showSaveFilePicker()` for the first canonical `<name>--<id8>.cbx`; later dirty saves reuse that handle and verify byte-for-byte |
+| **Canonical File System Access save** | Chrome/Edge desktop where exposed | `showSaveFilePicker()` for the first canonical `coldbox--<id8>.cbx`; later dirty saves reuse that handle and verify byte-for-byte |
 | **Canonical download replacement** | Desktop, most Android, other running contexts with downloads | `<a download>` + `createObjectURL`; Coldbox cannot verify or force filesystem overwrite, so the result is **Saved · unverified** |
 | **Encrypted text handoff (advanced)** | Supported running contexts | Base64 textarea / `navigator.share` where available; this is a transport convenience, **not** a canonical save and does not change save status |
 
 **Save vault** is the primary post-create action. An unchanged vault whose canonical save/download has already completed cannot be saved again merely to create another look-alike copy. When later editing makes a vault dirty, a retained File System Access handle updates the same canonical file. Download-only browsers can only create an explicitly unverified replacement because browser-controlled collision/overwrite behavior is outside Coldbox's control.
 
-Loading uses a **Vault Library**. Coldbox cannot silently enumerate the filesystem: the user explicitly grants a folder where `showDirectoryPicker()` is supported or selects multiple `.cbx` files as the portable fallback. Current filenames are `<public-name>--<id8>.cbx`; a different Vault ID cannot reuse a public name already known in the current session, best-effort browser-profile registry, or user-granted library. This is not disk-wide uniqueness. Filename metadata remains advisory until unlock confirms the full authenticated Vault ID. Historical `--0047`/`coldbox-vault-0047.cbx` names remain readable and migrate to the canonical name on a future save.
+Loading uses a **Vault Library**. Coldbox cannot silently enumerate the filesystem: the user explicitly grants a folder where `showDirectoryPicker()` is supported or selects multiple `.cbx` files as the portable fallback. Current filenames are `coldbox--<id8>.cbx`; filename metadata remains advisory until unlock confirms the full authenticated Vault ID. Historical name-bearing and generational forms remain readable and are replaced by the name-free canonical form on a future save.
 
 **Live animated QR is separate from saving.** It appears only for an already-unlocked vault that was loaded from durable `.cbx` storage or has completed a verified canonical save, and only as a device-to-device transfer to a receiver that does not already have that vault in its granted library. No QR file/frame download exists. The sender repeatedly renders encrypted `.cbx` bytes with a random Transfer ID; the receiver collects them by user-initiated camera, verifies the reconstructed SHA-256, then still uses the ordinary `vault.open` path and normal passphrase. The received vault starts **Not saved** until that device writes its canonical `.cbx`. QR receive is progressive enhancement; if the browser lacks camera/QR-decoder support, the UI directs the user to transfer `.cbx` instead. See [ADR-0026](../05-development/adr/0026-canonical-vault-save-and-live-transfer.md).
 

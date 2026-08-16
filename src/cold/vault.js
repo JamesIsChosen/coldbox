@@ -25,6 +25,7 @@
   var RECOVERY_HEADER_MARKER = 0x80000000;
   var MAX_WRAPPED_BLOCK_LENGTH = 65535;
   var PUBLIC_SCHEMA_VERSION = 2;
+  var MAX_VAULT_NAME_LENGTH = 80;
   var ERROR_MESSAGE = 'Vault authentication failed.';
   var SERIALIZE_ERROR = 'Vault serialization failed.';
   var SIZE_LIMIT_ERROR = 'Vault exceeds the 64 MiB size limit.';
@@ -246,6 +247,17 @@
 
   function isRecord(value) {
     return Boolean(value) && Object.prototype.toString.call(value) === '[object Object]';
+  }
+
+  function normalizeVaultName(value, errorFactory) {
+    if (typeof value !== 'string') {
+      throw errorFactory();
+    }
+    var name = value.trim();
+    if (!name || name.length > MAX_VAULT_NAME_LENGTH || /[\u0000-\u001f\u007f]/.test(name)) {
+      throw errorFactory();
+    }
+    return name;
   }
 
   function migratePublicData(value) {
@@ -746,6 +758,19 @@
       }
       requireProfiles(serializationError);
       var publicData = options.publicData === undefined ? {} : options.publicData;
+      if (!isRecord(publicData)) {
+        throw serializationError();
+      }
+      if (hasOwn(publicData, 'name')) {
+        var namedPublicData;
+        try {
+          namedPublicData = JSON.parse(JSON.stringify(publicData));
+        } catch (error) {
+          throw serializationError();
+        }
+        namedPublicData.name = normalizeVaultName(namedPublicData.name, serializationError);
+        publicData = namedPublicData;
+      }
       var hasSecret = options.secretData !== undefined && options.secretData !== null;
       if (hasSecret && networkState() !== 'offline') {
         throw serializationError();
@@ -1376,6 +1401,12 @@
         close();
         throw serializationError();
       }
+      // The durable name is cold-owned. Warm registry edits must omit it;
+      // accepting an inbound name would let the warm realm rewrite metadata
+      // it is deliberately forbidden to receive.
+      if (hasOwn(publicData, 'name')) {
+        throw serializationError();
+      }
       var currentId = state.publicData && state.publicData.id;
       var nextId = publicData.id;
       if (currentId !== undefined || nextId !== undefined) {
@@ -1384,12 +1415,34 @@
         }
       }
       var nextPublicData = migratePublicData(clonePublicData(publicData));
+      if (state.publicData && hasOwn(state.publicData, 'name')) {
+        nextPublicData.name = state.publicData.name;
+      }
       preserveColdVerificationAuthority(state.publicData, nextPublicData);
       var nextPublicPlain = paddedJson(nextPublicData);
       zeroBytes(state.publicPlain);
       state.publicData = nextPublicData;
       state.publicPlain = nextPublicPlain;
       return getPublicData();
+    }
+
+    function renameVault(name) {
+      if (closed || saving || operationInFlight || !state.publicData) {
+        throw serializationError();
+      }
+      requireVaultHealth(serializationError);
+      if (networkState() !== state.mode) {
+        close();
+        throw serializationError();
+      }
+      var nextName = normalizeVaultName(name, serializationError);
+      var nextPublicData = clonePublicData(state.publicData);
+      nextPublicData.name = nextName;
+      var nextPublicPlain = paddedJson(nextPublicData);
+      zeroBytes(state.publicPlain);
+      state.publicData = nextPublicData;
+      state.publicPlain = nextPublicPlain;
+      return nextName;
     }
 
     function markBackupVerified(backupId, method, candidateBytes, verifiedAt) {
@@ -1715,6 +1768,7 @@
       get publicData() { return getPublicData(); },
       getPublicData: getPublicData,
       replacePublicData: replacePublicData,
+      renameVault: renameVault,
       markBackupVerified: markBackupVerified,
       getSecretData: getSecretData,
       replaceSecretData: replaceSecretData,

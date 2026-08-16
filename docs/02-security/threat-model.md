@@ -113,7 +113,7 @@ survivability analysis, and inheritance rehearsal remain human checks.
 
 ### Vault rollback
 
-Current vaults use one canonical `<name>--<id8>.cbx` rather than user-visible generations. Rollback detection is still only advisory: historical generational files retain their numeric high-water check, while current canonical files can only use browser-local per-Vault-ID history plus a trustworthy filesystem timestamp to warn that a copy appears older. Missing history/timestamps degrade silently. See [vault-format.md](../01-spec/vault-format.md#rollback-detection) and [ADR-0026](../05-development/adr/0026-canonical-vault-save-and-live-transfer.md).
+Current vaults use one canonical `coldbox--<id8>.cbx` rather than user-visible generations. Rollback detection is still only advisory: historical generational files retain their numeric high-water check, while current canonical files can only use browser-local per-Vault-ID history plus a trustworthy filesystem timestamp to warn that a copy appears older. Missing history/timestamps degrade silently. See [vault-format.md](../01-spec/vault-format.md#rollback-detection) and [ADR-0026](../05-development/adr/0026-canonical-vault-save-and-live-transfer.md).
 
 ### Network-status deception / stale interface state
 
@@ -177,9 +177,9 @@ Tor hides your IP but the query content still reveals interest in those addresse
 
 ### Vault names, and what the filesystem discloses
 
-**Today, the vault name is the filename.** The canonical file is `<public-name>--<id8>.cbx`, so the name you chose is disclosed to every process and service that can list the directory — cloud sync, backup software, file indexers, and anyone looking at a file manager — whether or not you ever open the vault. A vault called `retirement-cold-storage` announces itself. Treat a vault name as public, and do not put anything in it you would not write on the outside of the envelope.
+**The vault name is encrypted metadata.** The canonical file is `coldbox--<id8>.cbx`, so the name is not disclosed to processes that list the directory. The remaining observable metadata is the file's existence, size, modification time, and an `id8` fragment of the random Vault ID.
 
-**This is decided to change, and has not shipped yet.** [ADR-0046](../05-development/adr/0046-vault-name-availability-at-unlock.md) moves the name inside the encrypted container and makes the canonical filename `coldbox--<id8>.cbx`, carrying no user-chosen text. Roadmap item UI.10 implements it; until UI.10 ships, the paragraph above is what holds. When it does ship, what remains observable is the file's existence, size, modification time, and `id8` — a fragment of a random identifier not derived from anything you chose.
+This is the UI.10 behavior specified by [ADR-0046](../05-development/adr/0046-vault-name-availability-at-unlock.md). The warm picker uses only `id8` plus an optional device-local nickname, which is never written into the vault or filename.
 
 **In neither state does a vault name cross cold → warm.** That invariant is unchanged. Under ADR-0046 it stops depending on a filter and becomes trivially true, because nothing on the warm side needs the name at all. The device-local nickname the picker will show is warm-only: never sent to the sealed realm, never written into the vault, never placed in a filename, and it does not travel with a copied `.cbx`.
 

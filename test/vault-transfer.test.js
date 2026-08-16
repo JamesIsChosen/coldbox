@@ -18,7 +18,6 @@ function load() {
 const META = Object.freeze({
   transferId: '0123456789abcdef0123456789abcdef',
   vaultId: '550e8400-e29b-41d4-a716-446655440000',
-  name: 'Test Vault',
   hash: 'a'.repeat(64)
 });
 
@@ -60,7 +59,7 @@ test('collector accepts out-of-order data, ignores duplicates, and reconstructs 
   const assembled = api.assemble(collector);
   assert.equal(assembled.base64, payload);
   assert.equal(assembled.vaultId, META.vaultId);
-  assert.equal(assembled.name, META.name);
+  assert.equal(Object.prototype.hasOwnProperty.call(assembled, 'name'), false);
   assert.equal(assembled.hash, META.hash);
 });
 

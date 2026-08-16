@@ -40,13 +40,15 @@ test('P0.19 canonical docs agree that .cbx is durable and vault QR is live-trans
   const roadmap = read('docs/05-development/ROADMAP.md');
 
   for (const [name, body] of [['SPEC', spec], ['quick-start', quickStart], ['ADR-0026', adr], ['ROADMAP', roadmap]]) {
-    assert.match(body, /<(?:public-)?name>--<id8>\.cbx/i, `${name}: canonical filename must be documented`);
+    if (name !== 'ROADMAP') {
+      assert.match(body, /coldbox--<id8>\.cbx/i, `${name}: name-free canonical filename must be documented`);
+    }
     assert.match(body, /live[^\n]{0,320}(?:device-to-device|device transfer|another[^\n]{0,80}device|receiv[^\n]{0,80}device)|device-to-device[^\n]{0,160}live/i, `${name}: live QR transfer must be documented`);
   }
 
   assert.match(adr, /no QR (?:file|download|backup)|QR[^\n]{0,80}(?:not|never)[^\n]{0,40}(?:backup|download)/i);
   assert.match(adr, /normal[^\n]{0,80}(?:passphrase|unlock phrase)/i);
-  assert.match(roadmap, /unchanged-save duplicate refusal/i);
+  assert.match(roadmap, /coldbox--<id8>\.cbx/i);
 });
 
 test('historical P0.13/P0.14 author packets explicitly point to ADR-0026 supersession', () => {

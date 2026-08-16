@@ -432,17 +432,17 @@ test('P0.19 vault IDs create portable per-vault advisory-history namespaces', ()
   assertGeneration(api.readGenerationFor(storage, secondNamespace), { counter: 2, savedAt: '2026-08-08T13:00:00.000Z' });
 });
 
-test('P0.19 canonical filenames carry public name and id8 without a user-visible generation', () => {
+test('UI.10 canonical filenames carry only id8 and historical names remain readable', () => {
   const api = load();
   const vaultId = '550e8400-e29b-41d4-a716-446655440000';
 
   assert.equal(api.sanitizeVaultName('  Bitcoin Savings / 2026  '), 'Bitcoin-Savings-2026');
-  assert.equal(api.filenameForVault('Bitcoin Savings / 2026', vaultId), 'Bitcoin-Savings-2026--550e8400.cbx');
+  assert.equal(api.filenameForVault('Bitcoin Savings / 2026', vaultId), 'coldbox--550e8400.cbx');
 
-  const parsed = api.parseVaultFilename('Bitcoin-Savings-2026--550e8400.cbx');
+  const parsed = api.parseVaultFilename('coldbox--550e8400.cbx');
   assert.equal(parsed.legacy, false);
   assert.equal(parsed.canonical, true);
-  assert.equal(parsed.name, 'Bitcoin-Savings-2026');
+  assert.equal(parsed.name, null);
   assert.equal(parsed.id8, '550e8400');
   assert.equal(parsed.counter, null);
 
@@ -450,6 +450,10 @@ test('P0.19 canonical filenames carry public name and id8 without a user-visible
   assert.equal(historicalGeneration.legacy, true);
   assert.equal(historicalGeneration.canonical, false);
   assert.equal(historicalGeneration.counter, 7);
+
+  const historicalCanonical = api.parseVaultFilename('Bitcoin-Savings-2026--550e8400.cbx');
+  assert.equal(historicalCanonical.legacy, true);
+  assert.equal(historicalCanonical.name, 'Bitcoin-Savings-2026');
 
   const legacy = api.parseVaultFilename('coldbox-vault-0047.cbx');
   assert.equal(legacy.legacy, true);

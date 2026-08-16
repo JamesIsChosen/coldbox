@@ -21,7 +21,8 @@
   var GENERATION_STORAGE_PREFIX = 'coldbox-vault-generation:';
   var NAME_REGISTRY_STORAGE_KEY = 'coldbox-vault-name-registry:v1';
   var FILENAME_PATTERN = /^coldbox-vault-(\d{4,9})\.cbx$/;
-  var CANONICAL_VAULT_FILENAME_PATTERN = /^(.+?)--([0-9a-f]{8})\.cbx$/i;
+  var CANONICAL_VAULT_FILENAME_PATTERN = /^coldbox--([0-9a-f]{8})\.cbx$/i;
+  var HISTORICAL_CANONICAL_VAULT_FILENAME_PATTERN = /^(.+?)--([0-9a-f]{8})\.cbx$/i;
   var LEGACY_GENERATIONAL_VAULT_FILENAME_PATTERN = /^(.+?)--([0-9a-f]{8})--(\d{4,9})\.cbx$/i;
   var VAULT_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   var LEGACY_SALT_OFFSET = 21;
@@ -291,12 +292,11 @@
   }
 
   function filenameForVault(name, vaultId) {
-    var safeName = sanitizeVaultName(name);
     var shortId = id8(vaultId);
-    if (!safeName || !shortId) {
+    if (!shortId) {
       throw new Error('Invalid vault filename metadata.');
     }
-    return safeName + '--' + shortId + '.cbx';
+    return 'coldbox--' + shortId + '.cbx';
   }
 
   function parseVaultFilename(name) {
@@ -309,8 +309,18 @@
       return Object.freeze({
         legacy: false,
         canonical: true,
-        name: canonical[1],
-        id8: canonical[2].toLowerCase(),
+        name: null,
+        id8: canonical[1].toLowerCase(),
+        counter: null
+      });
+    }
+    var historicalCanonical = HISTORICAL_CANONICAL_VAULT_FILENAME_PATTERN.exec(trimmed);
+    if (historicalCanonical) {
+      return Object.freeze({
+        legacy: true,
+        canonical: false,
+        name: historicalCanonical[1],
+        id8: historicalCanonical[2].toLowerCase(),
         counter: null
       });
     }

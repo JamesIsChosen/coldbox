@@ -76,7 +76,9 @@ test('P0.19 creation confirmation and random Vault ID are cold-only', () => {
   const createBody = extractFunction(coldSource, 'createEmptyVault');
   assert.match(createBody, /passphrase !== confirmation/);
   assert.match(createBody, /setCreateConfirmationError\('Unlock phrases do not match/);
-  assert.match(createBody, /publicData: \{ id: generateVaultUuid\(\) \}/);
+  assert.match(createBody, /publicData: \{ id: generateVaultUuid\(\), name: vaultName \}/);
+  assert.match(coldHtml, /id="cold-vault-name"/);
+  assert.match(coldHtml, /id="cold-vault-kdf-profile"/);
 
   const uuidBody = extractFunction(coldSource, 'generateVaultUuid');
   assert.match(uuidBody, /cryptoLayer\.randomBytes\(16\)/);
@@ -176,12 +178,11 @@ test('P0.19 browser harness reloads downloaded canonical bytes under the real .c
 });
 
 
-test('P0.19 browser harness observes duplicate-name refusal on the vault status surface', () => {
+test('UI.10 browser harness observes the name-free canonical filename and local nickname picker', () => {
   const harness = fs.readFileSync(path.join(projectRoot, 'scripts', 'run-browser-harness.js'), 'utf8');
   const libraryFlow = extractFunction(harness, 'verifyVaultLibrary');
-  assert.match(libraryFlow, /duplicateNameNotice\s*=\s*page\.locator\('#vault-status-copy'\)/);
-  assert.match(libraryFlow, /duplicateNameNotice\.filter\(\{ hasText: \/different vault already uses that public name\/i \}\)/);
-  assert.doesNotMatch(libraryFlow, /#vault-dirty-notice.*different vault already uses that public name/i);
+  assert.match(harness, /coldbox--<id8>|coldbox--/i);
+  assert.doesNotMatch(libraryFlow, /different vault already uses that public name/i);
 });
 
 test('P2.5 recovery shares stay cold-only and the offline mode refreshes their controls', () => {

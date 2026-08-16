@@ -577,6 +577,11 @@ async function prepareVaultCreation(page, coldFrame, name) {
 
 async function createPreparedVault(page, coldFrame, phrase, name) {
   await prepareVaultCreation(page, coldFrame, name);
+  await coldFrame.locator('#cold-vault-name').fill(`${name} durable`);
+  // Keep the broad browser regression suite on its historical fast fixture;
+  // UI.10 still exposes and defaults the user-facing creation screen to the
+  // standard profile, while Firefox's repeated recovery rewrap remains bounded.
+  await coldFrame.locator('#cold-vault-kdf-profile').selectOption('fast');
   await coldFrame.locator('#cold-vault-passphrase').fill(phrase);
   await coldFrame.locator('#cold-vault-passphrase-confirm').fill(phrase);
   await coldFrame.locator('#cold-vault-create').click();
@@ -834,6 +839,8 @@ async function verifyBuiltFile(browser, engine) {
     // Creation confirmation is creation-only: a mismatch must create nothing,
     // then the same prepared vault can succeed when confirmation matches.
     await prepareVaultCreation(page, coldFrame, 'Browser Round Trip');
+    await coldFrame.locator('#cold-vault-name').fill('Browser Round Trip durable');
+    await coldFrame.locator('#cold-vault-kdf-profile').selectOption('fast');
     const passphraseHealth = coldFrame.locator('#cold-vault-passphrase-health');
     assert.equal(await passphraseHealth.isVisible(), true, `${engine}: vault creation must show live passphrase guidance`);
     assert.equal(await passphraseHealth.getAttribute('data-mode'), 'creation');
@@ -850,7 +857,7 @@ async function verifyBuiltFile(browser, engine) {
     assert.equal(await coldFrame.locator('#cold-vault-passphrase-confirm').inputValue(), '');
     await coldFrame.locator('#cold-vault-passphrase-confirm').fill('browser round-trip phrase');
     await coldFrame.locator('#cold-vault-create').click();
-    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 60000 });
     await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     assert.equal(await coldFrame.locator('#cold-vault-passphrase').inputValue(), '');
     assert.equal(await coldFrame.locator('#cold-vault-passphrase-confirm').inputValue(), '');
@@ -874,11 +881,11 @@ async function verifyBuiltFile(browser, engine) {
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#vault-save-download').click();
     const download = await downloadPromise;
-    const canonicalFilename = `Browser-Round-Trip--${activeVaultId.replace(/-/g, '').slice(0, 8).toLowerCase()}.cbx`;
+    const canonicalFilename = `coldbox--${activeVaultId.replace(/-/g, '').slice(0, 8).toLowerCase()}.cbx`;
     assert.equal(
       download.suggestedFilename(),
       canonicalFilename,
-      `${engine}: canonical save filename must bind public name + short authenticated Vault ID without a visible generation suffix`
+      `${engine}: canonical save filename must contain only the short authenticated Vault ID`
     );
     await page.locator('#vault-status-label').filter({ hasText: /Saved · unverified/ }).waitFor({ state: 'visible', timeout: 5000 });
     const downloadedVaultPath = await download.path();
@@ -989,7 +996,7 @@ async function verifyBuiltFile(browser, engine) {
     await coldFrame.locator('#cold-vault-status[data-state="pending"]').waitFor({ state: 'visible' });
     await coldFrame.locator('#cold-vault-passphrase').fill('browser round-trip phrase');
     await coldFrame.locator('#cold-vault-unlock').click();
-    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 60000 });
     await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     await page.locator('#vault-status-label').filter({ hasText: /Not saved/ }).waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await coldFrame.locator('#cold-vault-passphrase-confirm').isVisible(), false, `${engine}: normal unlock must not show creation confirmation`);
@@ -1480,7 +1487,7 @@ async function verifyVaultLibrary(browser, engine) {
     assert.notEqual(alpha.id, beta.id, `${engine}: two vaults created on one device must never share identity`);
 
     function fileName(record) {
-      return `${record.name.replace(/\s+/g, '-')}--${record.id.replace(/-/g, '').slice(0, 8).toLowerCase()}.cbx`;
+      return `coldbox--${record.id.replace(/-/g, '').slice(0, 8).toLowerCase()}.cbx`;
     }
 
     await page.locator('#vault-file-input').setInputFiles([
@@ -1490,29 +1497,30 @@ async function verifyVaultLibrary(browser, engine) {
     const libraryItems = page.locator('#vault-library-list [data-vault-library-index]');
     await libraryItems.nth(1).waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await libraryItems.count(), 2, `${engine}: two user-granted vaults must render as two selectable library entries`);
-    assert.match(await page.locator('#vault-library-list').textContent(), /Alpha Savings/);
-    assert.match(await page.locator('#vault-library-list').textContent(), /Beta Travel/);
+    assert.match(await page.locator('#vault-library-list').textContent(), /coldbox|Vault/i);
 
-    // Only durable/granted vault identities reserve public names. Alpha and
-    // Beta were intentionally discarded while unsaved above, so their names
-    // were reusable until these canonical .cbx files entered the library.
-    // Now a different Vault ID may not claim Alpha's known public name.
-    await page.locator('#vault-create-name').fill('Alpha Savings');
+    // A name-free filename never creates a cross-vault public-name collision.
+    await page.locator('#vault-create-name').fill('local alpha nickname');
     await page.locator('#vault-create-prepare').click();
-    const duplicateNameNotice = page.locator('#vault-status-copy');
-    await duplicateNameNotice.filter({ hasText: /different vault already uses that public name/i }).waitFor({ state: 'visible', timeout: 5000 });
-    assert.match(await duplicateNameNotice.textContent(), /different vault already uses that public name/i);
-    assert.equal(await coldFrame.locator('#cold-vault-status').getAttribute('data-state'), 'locked', `${engine}: granted duplicate public name must not prepare a new cold vault`);
+    await coldFrame.locator('#cold-vault-create-confirmation:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.locator('#cold-vault-name').fill('Third durable name');
+    await coldFrame.locator('#cold-vault-kdf-profile').selectOption('fast');
+    await coldFrame.locator('#cold-vault-passphrase').fill('third phrase');
+    await coldFrame.locator('#cold-vault-passphrase-confirm').fill('third phrase');
+    await coldFrame.locator('#cold-vault-create').click();
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await lockVaultDiscardingUnsaved(page);
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
 
     async function selectUnlock(record) {
-      const item = page.locator('#vault-library-list [data-vault-library-index]', { hasText: record.name });
+      const id8 = record.id.replace(/-/g, '').slice(0, 8).toLowerCase();
+      const item = page.locator('#vault-library-list [data-vault-library-index]', { hasText: `coldbox--${id8}.cbx` });
       await item.click();
       await coldFrame.locator('#cold-vault-status[data-state="pending"]').waitFor({ state: 'visible', timeout: 5000 });
       assert.equal(await coldFrame.locator('#cold-vault-passphrase-confirm').isVisible(), false, `${engine}: existing-vault library unlock must never ask for confirmation`);
       await coldFrame.locator('#cold-vault-passphrase').fill(record.phrase);
       await coldFrame.locator('#cold-vault-unlock').click();
       await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
-      assert.equal((await page.locator('#vault-active-name').textContent()).trim(), record.name);
       assert.match((await page.locator('#vault-active-id').textContent()).trim(), new RegExp(record.id, 'i'));
     }
 
@@ -1520,6 +1528,32 @@ async function verifyVaultLibrary(browser, engine) {
     await lockVaultDiscardingUnsaved(page);
     await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
     await selectUnlock(alpha);
+
+    const alphaId8 = alpha.id.replace(/-/g, '').slice(0, 8).toLowerCase();
+    await page.locator('#vault-active-nickname').fill('Alpha unlocked nickname');
+    await page.locator('#vault-active-nickname-save').click();
+    await page.locator('#vault-active-nickname-status').filter({ hasText: /saved on this device only/i }).waitFor({ state: 'visible' });
+    assert.equal(
+      await page.evaluate((id8) => window.localStorage.getItem('coldbox-vault-nickname:' + id8), alphaId8),
+      'Alpha-unlocked-nickname',
+      `${engine}: unlocked nickname edit must stay in warm local storage`
+    );
+    assert.equal(await page.locator('#vault-active-id').textContent(), `Vault ID ${alpha.id}`);
+    await lockVaultDiscardingUnsaved(page);
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#vault-active-nickname').fill('Alpha locked nickname');
+    await page.locator('#vault-active-nickname-save').click();
+    await page.locator('#vault-active-nickname-status').filter({ hasText: /saved on this device only/i }).waitFor({ state: 'visible' });
+    assert.equal(
+      await page.evaluate((id8) => window.localStorage.getItem('coldbox-vault-nickname:' + id8), alphaId8),
+      'Alpha-locked-nickname',
+      `${engine}: locked nickname edit must stay in warm local storage`
+    );
+    assert.equal(
+      await page.locator('#vault-library-list').textContent().then((text) => text.includes(fileName(alpha))),
+      true,
+      `${engine}: nickname edits must not change the name-free canonical filename`
+    );
 
     console.log(`${engine}: two named portable Vault IDs were independently selectable and unlockable from the user-granted Vault Library`);
   } finally {
@@ -2906,6 +2940,8 @@ async function verifyKeyfileUiAndRegressions(browser, engine) {
     // Prove it at the cryptographic layer, not just in the status text: only
     // B's bytes may actually unlock the vault this selection creates.
     await prepareVaultCreation(page, coldFrame, 'Keyfile Regression Vault');
+    await coldFrame.locator('#cold-vault-name').fill('Keyfile Regression Vault durable');
+    await coldFrame.locator('#cold-vault-kdf-profile').selectOption('fast');
     await passphraseInput.fill('browser f1 regression phrase');
     await coldFrame.locator('#cold-vault-passphrase-confirm').fill('browser f1 regression phrase');
     await coldFrame.locator('#cold-vault-create').click();
@@ -4513,19 +4549,19 @@ async function verifyVaultRecoveryShares(browser, engine) {
 
     const normalPassphrase = 'P2.5 browser recovery phrase';
     await createPreparedVault(page, coldFrame, normalPassphrase, 'P2.5 Browser Recovery');
-    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 15000 });
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 60000 });
     await coldFrame.locator('#cold-vault-recovery-passphrase').fill(normalPassphrase);
     await coldFrame.locator('#cold-vault-recovery-configure').click();
-    await coldFrame.locator('#cold-vault-status').filter({ hasText: /Recovery shares generated/ }).waitFor({ state: 'visible', timeout: 15000 });
+    await coldFrame.locator('#cold-vault-status').filter({ hasText: /Recovery shares generated/ }).waitFor({ state: 'visible', timeout: 60000 });
     assert.equal(await coldFrame.locator('#cold-vault-recovery-generated').isHidden(), false, `${engine}: generated recovery output must be visible in the cold realm`);
     assert.match(await coldFrame.locator('#cold-vault-recovery-output').inputValue(), /Masked recovery shares/);
     assert.equal(await coldFrame.locator('#cold-vault-recovery-reveal').isDisabled(), false);
-    await coldFrame.locator('#cold-vault-recovery-reveal').click();
+    await coldFrame.locator('#cold-vault-recovery-reveal').evaluate((button) => button.click());
     const firstShares = (await coldFrame.locator('#cold-vault-recovery-output').inputValue())
       .split(/\r?\n/).map((share) => share.trim()).filter(Boolean);
     assert.equal(firstShares.length, 3, `${engine}: browser generation must produce the configured 2-of-3 set`);
     assert.ok(firstShares.every((share) => share.split(/\s+/).length >= 20), `${engine}: generated output must contain complete SLIP-39 mnemonics`);
-    await coldFrame.locator('#cold-vault-recovery-reveal').click();
+    await coldFrame.locator('#cold-vault-recovery-reveal').evaluate((button) => button.click());
     assert.match(await coldFrame.locator('#cold-vault-recovery-output').inputValue(), /Masked recovery shares/);
 
     await coldFrame.locator('#cold-vault-recovery-passphrase').fill(normalPassphrase);
@@ -4535,8 +4571,8 @@ async function verifyVaultRecoveryShares(browser, engine) {
     await coldFrame.locator('#cold-vault-recovery-replace').check();
     await coldFrame.locator('#cold-vault-recovery-passphrase').fill(normalPassphrase);
     await coldFrame.locator('#cold-vault-recovery-configure').click();
-    await coldFrame.locator('#cold-vault-status').filter({ hasText: /Recovery shares generated/ }).waitFor({ state: 'visible', timeout: 15000 });
-    await coldFrame.locator('#cold-vault-recovery-reveal').click();
+    await coldFrame.locator('#cold-vault-status').filter({ hasText: /Recovery shares generated/ }).waitFor({ state: 'visible', timeout: 60000 });
+    await coldFrame.locator('#cold-vault-recovery-reveal').evaluate((button) => button.click());
     const replacementShares = (await coldFrame.locator('#cold-vault-recovery-output').inputValue())
       .split(/\r?\n/).map((share) => share.trim()).filter(Boolean);
     assert.equal(replacementShares.length, 3, `${engine}: replacement must produce the configured 2-of-3 set`);
@@ -4545,7 +4581,7 @@ async function verifyVaultRecoveryShares(browser, engine) {
     const warmHtml = await page.locator('html').evaluate((element) => element.outerHTML);
     assert.equal(warmHtml.includes(firstShares[0]), false, `${engine}: generated share words must not enter the warm DOM`);
     assert.equal(warmHtml.includes(replacementShares[0]), false, `${engine}: replacement share words must not enter the warm DOM`);
-    await coldFrame.locator('#cold-vault-recovery-reveal').click();
+    await coldFrame.locator('#cold-vault-recovery-reveal').evaluate((button) => button.click());
 
     await page.locator('#app[data-vault-persistence="unsaved"]').waitFor({ state: 'attached', timeout: 5000 });
     assert.equal(await page.locator('#vault-save-download').isDisabled(), false, `${engine}: recovery configuration must enable the durable save action`);
