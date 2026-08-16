@@ -93,8 +93,10 @@ The remediation adds a separately witnessable CI job named
 `Approved UI reference secret scan`. At the final exact head it checks SHA-256
 identity for temporary copies of both references, runs the same
 `Invoke-ColdboxSecretScan` implementation, and fails unless `FindingCount` and
-`SkippedCount` are both zero. Its run ID is recorded in the final evidence
-section below.
+`SkippedCount` are both zero. The exact reviewed head is
+`bdada0dea19a4af7412028e5936e66df43b34239`; CI run `31933440474` completed
+successfully at that head. The run URL and individual job results are recorded
+in the final evidence section below.
 
 ### Focused tests
 
@@ -215,9 +217,9 @@ The roadmap criterion is copied verbatim below:
 | Secret-shaped-content scan | Both candidate text files passed the repository's vendored-BIP39/xprv/vault scan with zero findings and zero skipped binaries before import. | Scanner output above |
 | Canonical exact-parity semantics | `ui-parity.md` defines precedence, binding visual properties, state classification, zero-unexpected-pixel comparison, no masks, device evidence, rolling closure and nine finite deviations. | Deviation synchronization test; docs check |
 | Structural rationale | ADR-0049 records immutable evidence, quarantine, the final gate, alternatives and risks. | ADR index and docs check |
-| Drift and bypass failures | The test hard-codes approved evidence, parses both template payloads without execution, rejects a one-byte and metadata mutation, synchronizes deviation IDs, scans the complete transitive product-input graph, runs the build, proves an imported-helper violation exits non-zero, and pins roadmap dependencies. | Seven focused tests above |
-| Prototype remains non-build data | References have a non-HTML final extension; no product input names them; the real artifact contains neither bundler markers nor the mobile board marker. | Build-isolation test; empty product-input diff |
-| No product-source change | `git diff main -- src` and the broader product-input diff are empty. | Command above |
+| Drift and bypass failures | The test hard-codes approved evidence, parses both template payloads without execution, rejects a one-byte and metadata mutation, synchronizes deviation IDs, scans the complete transitive product-input graph, runs the build, proves an imported-helper violation exits non-zero, and pins roadmap dependencies. | Eight focused tests above |
+| Prototype remains non-build data | References have a non-HTML final extension; no product input names them; the real artifact contains neither bundler markers nor the mobile board marker. | Build-isolation test; graph reports no approved-reference violations |
+| No product-source change | `git diff main -- src` is empty. The broader product-input diff contains only the intentional guard-only `scripts/build-input-graph.js` module, which is not consumed by the product build. | Commands above |
 
 ## 5. Security impact
 
@@ -415,5 +417,24 @@ fails on any finding or skipped candidate file. It also requires the clean and
 zero-skipped report lines. The job never writes to the immutable reference
 directory.
 
-The final exact-head SHA and CI run ID, including this job's result, are recorded
-in the handoff and in the verification evidence added before push.
+Final exact-head evidence for this packet:
+
+```text
+head SHA: bdada0dea19a4af7412028e5936e66df43b34239
+CI run: 31933440474
+CI URL: https://github.com/JamesIsChosen/coldbox/actions/runs/31933440474
+event: pull_request
+conclusion: success
+
+Compare build hash across operating systems: PASS (95131884851)
+build (ubuntu-latest): PASS (95131644358)
+build (windows-latest): PASS (95131644322)
+Approved UI reference secret scan: PASS (95131644372)
+Browser harness (Chromium + Firefox): PASS (95131644300)
+Release build attestation: SKIPPED (95131885071; release/tag condition)
+```
+
+The secret-scan job checked out the exact PR head, copied exactly the desktop
+and mobile `.html.reference` files to a temporary directory, verified both
+copy hashes, invoked `Invoke-ColdboxSecretScan`, and required zero findings and
+zero skipped candidates without modifying the frozen reference directory.
