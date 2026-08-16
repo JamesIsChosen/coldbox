@@ -1624,13 +1624,44 @@ async function verifyUi6RecordMenu(browser, engine) {
     assert.equal(await page.locator('#record-menu-close').evaluate((node) => document.activeElement === node), true, `${engine}: menu must focus its close control`);
 
     await page.keyboard.press('Tab');
+    assert.equal(await page.locator('#record-menu-send-to-list [data-record-send-to="verify"]').evaluate((node) => document.activeElement === node), true, `${engine}: menu tab order must reach Address bench`);
+    await page.keyboard.press('Tab');
+    assert.equal(await page.locator('#record-menu-send-to-list [data-record-send-to="qr"]').evaluate((node) => document.activeElement === node), true, `${engine}: menu tab order must reach QR Studio`);
+    await page.keyboard.press('Tab');
     assert.equal(await page.locator('#record-menu-edit').evaluate((node) => document.activeElement === node), true, `${engine}: menu tab order must reach Edit`);
     await page.keyboard.press('Tab');
     assert.equal(await page.locator('#record-menu-close-footer').evaluate((node) => document.activeElement === node), true, `${engine}: menu tab order must reach Done`);
     await page.keyboard.press('Escape');
     await page.locator('#record-menu[hidden]').waitFor({ state: 'attached' });
     assert.equal(await addressTrigger.evaluate((node) => document.activeElement === node), true, `${engine}: closing the menu must return focus to its trigger`);
-    console.log(`${engine}: UI.6 shared record menu, complete fields, public QR, and focus return passed`);
+
+    await addressTrigger.click();
+    await page.locator('#record-menu-send-to:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#record-menu-send-to-list [data-record-send-to="verify"]').click();
+    await page.locator('#page-verify:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await page.locator('#address-verify-record').inputValue(), await addressTrigger.getAttribute('data-registry-id'), `${engine}: Address bench send-to route selected the wrong record`);
+
+    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#registry-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    const reopenedAddressTrigger = page.locator('#registry-address-list [data-record-menu-trigger="true"]');
+    await reopenedAddressTrigger.click();
+    await page.locator('#record-menu-send-to-list [data-record-send-to="qr"]').click();
+    await page.locator('#page-qr:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await page.locator('#qr-public-address').inputValue(), '1BoatSLRHtKNngkdXEeobR76b53LETtpyT', `${engine}: QR Studio send-to route lost the address`);
+
+    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#registry-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    const walletId = await page.locator('#registry-wallet-list [data-record-menu-trigger="true"]').getAttribute('data-registry-id');
+    await page.locator('#nav-rail a[data-route="backup"]').click();
+    await page.locator('#backup-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#backup-subject-id').fill(walletId);
+    await page.locator('#backup-share-label').fill('UI6 backup');
+    await page.locator('#backup-form button[type="submit"]').click();
+    await page.locator('#backup-status').filter({ hasText: /Public registry change written/ }).waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#backup-list [data-record-menu-trigger="true"]').click();
+    await page.locator('#record-menu-send-to-list [data-record-send-to="cold-backup-verify"]').click();
+    await page.locator('#backup-status').filter({ hasText: /Type the physical shares into the sealed realm/ }).waitFor({ state: 'visible', timeout: 5000 });
+    console.log(`${engine}: UI.6 shared record menu and UI.7 typed send-to routes passed`);
   } finally {
     await closePage(page);
   }

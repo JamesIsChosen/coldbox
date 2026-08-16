@@ -271,6 +271,8 @@ __COLDBOX_CONCEALMENT__
   var recordMenuStatus = document.getElementById('record-menu-status');
   var recordMenuProvenance = document.getElementById('record-menu-provenance');
   var recordMenuFields = document.getElementById('record-menu-fields');
+  var recordMenuSendTo = document.getElementById('record-menu-send-to');
+  var recordMenuSendToList = document.getElementById('record-menu-send-to-list');
   var recordMenuQr = document.getElementById('record-menu-qr');
   var recordMenuQrList = document.getElementById('record-menu-qr-list');
   var recordMenuClose = document.getElementById('record-menu-close');
@@ -3462,6 +3464,62 @@ __COLDBOX_CONCEALMENT__
     return item;
   }
 
+  function recordMenuSendButton(label, route) {
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'vault-button';
+    button.textContent = label;
+    button.setAttribute('data-record-send-to', route);
+    return button;
+  }
+
+  function renderRecordMenuSendTo(kind, record) {
+    recordMenuSendToList.textContent = '';
+    var routes = [];
+    if (kind === 'address' && record && typeof record.address === 'string') {
+      routes.push(['Address bench', 'verify']);
+      routes.push(['QR Studio', 'qr']);
+    }
+    if (kind === 'backup') {
+      routes.push(['Verify shares in sealed realm', 'cold-backup-verify']);
+    }
+    recordMenuSendTo.hidden = routes.length === 0;
+    routes.forEach(function (route) {
+      recordMenuSendToList.appendChild(recordMenuSendButton(route[0], route[1]));
+    });
+  }
+
+  function sendRecordToRoute(route) {
+    if (!recordMenuRecord || !registryStore) {
+      return;
+    }
+    var current = recordMenuRecord;
+    var record = registryStore.find(recordMenuCollection(current.kind), current.id);
+    if (!record) {
+      closeRecordMenu();
+      return;
+    }
+    closeRecordMenu();
+    if (route === 'cold-backup-verify' && current.kind === 'backup') {
+      requestBackupVerification(current.id);
+      return;
+    }
+    if (route !== 'verify' && route !== 'qr') {
+      return;
+    }
+    window.location.hash = route;
+    window.setTimeout(function () {
+      if (route === 'verify' && addressVerifyRecord) {
+        addressVerifyRecord.value = current.id;
+        addressVerifyRecord.focus();
+        setAddressVerificationStatus('Address sent from the public registry. Compare the complete value or request a cold re-derivation.', 'idle');
+      } else if (route === 'qr' && qrPublicAddress) {
+        qrPublicAddress.value = record.address;
+        qrPublicAddress.focus();
+      }
+    }, 0);
+  }
+
   function closeRecordMenu() {
     if (!recordMenu || recordMenu.hidden) {
       return;
@@ -3508,6 +3566,7 @@ __COLDBOX_CONCEALMENT__
       recordMenuFields.appendChild(term);
       recordMenuFields.appendChild(definition);
     });
+    renderRecordMenuSendTo(kind, record);
     recordMenuQrList.textContent = '';
     var payloads = recordMenuPublicPayloads(record);
     recordMenuQr.hidden = payloads.length === 0;
@@ -6014,6 +6073,13 @@ __COLDBOX_CONCEALMENT__
     recordMenu.addEventListener('click', function (event) {
       if (event.target && event.target.getAttribute('data-record-menu-close') === 'true') {
         closeRecordMenu();
+        return;
+      }
+      var sendButton = event.target && event.target.closest
+        ? event.target.closest('[data-record-send-to]')
+        : null;
+      if (sendButton) {
+        sendRecordToRoute(sendButton.getAttribute('data-record-send-to'));
       }
     });
     recordMenu.addEventListener('keydown', function (event) {

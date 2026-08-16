@@ -3034,6 +3034,9 @@ samp {
 .record-menu-fields dt { color: var(--muted); font-weight: 700; }
 .record-menu-fields dd { white-space: pre-wrap; }
 .record-menu-qr { margin-top: 1.4rem; padding-top: 1.2rem; border-top: 2px solid var(--line); }
+.record-menu-send-to { margin-top: 1.4rem; padding-top: 1.2rem; border-top: 2px solid var(--line); }
+.record-menu-send-to-list { display: flex; flex-wrap: wrap; gap: 0.65rem; }
+.record-menu-send-to-list .vault-button { min-height: 2.75rem; }
 .record-menu-section-heading { margin-bottom: 0.8rem; }
 .record-menu-section-heading p { max-width: 24rem; margin: 0; color: var(--muted); font-size: 0.9rem; }
 .record-menu-qr-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem; }
