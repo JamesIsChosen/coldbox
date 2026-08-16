@@ -1624,6 +1624,8 @@ async function verifyUi6RecordMenu(browser, engine) {
     assert.equal(await page.locator('#record-menu-close').evaluate((node) => document.activeElement === node), true, `${engine}: menu must focus its close control`);
 
     await page.keyboard.press('Tab');
+    assert.equal(await page.locator('#record-menu-edit').evaluate((node) => document.activeElement === node), true, `${engine}: menu tab order must reach Edit`);
+    await page.keyboard.press('Tab');
     assert.equal(await page.locator('#record-menu-close-footer').evaluate((node) => document.activeElement === node), true, `${engine}: menu tab order must reach Done`);
     await page.keyboard.press('Escape');
     await page.locator('#record-menu[hidden]').waitFor({ state: 'attached' });
