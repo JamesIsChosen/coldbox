@@ -134,6 +134,11 @@ The KDF status must remain explicit: a missing `'wasm-unsafe-eval'` causes the A
 
 ## Browser harness — automated
 
+The UI.5 shell checkpoint also asserts the ten approved warm/cold navigation
+groups, roadmap-labelled unavailable controls, calm realm strips, and the
+five-slot mobile rails in `test/ui.5-shared-shell.test.js` before the hosted
+browser harness runs.
+
 From P0.3a, Playwright drives headless Chromium and Firefox against the built file over `file://`. This is where every browser-observable acceptance criterion is verified.
 
 ```bash
