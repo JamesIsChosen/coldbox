@@ -93,7 +93,7 @@ test('desktop rails expose the approved built and unavailable navigation entries
   assert.match(coldHtml, /href="#cold-concealment-controls" data-cold-more-target="cold-concealment-controls"[\s\S]*Reveal hidden/);
   assert.match(coldHtml, /href="#cold-secret-switcher"[\s\S]*Active secret/);
   assert.match(coldHtml, /href="#cold-vault-controls" data-cold-more-target="cold-vault-controls"[\s\S]*Lock \/ wipe/);
-  assert.match(coldHtml, /data-roadmap-id="UI\.9" data-phase="UI 9"[\s\S]*Tool map/);
+  assert.match(coldHtml, /class="cold-nav-link cold-nav-link-unavailable" aria-disabled="true"[\s\S]*Tool map/);
 });
 
 test('warm and cold shells carry the same chrome vocabulary', () => {

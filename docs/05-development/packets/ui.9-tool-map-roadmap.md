@@ -45,9 +45,15 @@ The independent reviewer must rerun the complete suite, build twice under differ
 - `scripts/build.js`
 - `scripts/check-docs.js`
 - `src/index.html`
+- `src/cold/index.html`
 - `src/main.js`
 - `src/styles.css`
 - `test/tool-map.test.js`
 - `test/ui.9-tool-map.test.js`
 - `docs/05-development/ROADMAP.md`
 - `CHANGELOG.md`
+
+## Remediation of independent review findings
+
+- F1 closed: the sealed source retains a noninteractive Tool map label without UI.9 status, phase, or availability metadata. The regression now scans every HTML, JavaScript, and CSS file under `src/` for those hand-transcribed fields.
+- F2 closed: the UI.9 test copies an isolated repository fixture, mutates `ROADMAP.md` to malformed and duplicate-ID forms, runs the actual `scripts/build.js` entry point, and requires a nonzero exit with no product output. Parser-level tests remain in place as unit coverage.
