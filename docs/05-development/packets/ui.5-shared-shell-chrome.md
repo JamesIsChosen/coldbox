@@ -127,6 +127,32 @@ sealed-boundary routes in both Chromium and Firefox. The focused static test
 also rejects the old combined cold More entries and active future mobile
 links.
 
+## Final route-remediation witness
+
+The follow-up route remediation is at implementation head
+`56eac29b831442d9621ea1599eaf707e47c7d56c`. Exact-head CI run `31943319683`
+checked out that head and passed every required job.
+
+```text
+Full CI unit/vector tests: 424 passed, 0 skipped
+Documentation hygiene: 241 markdown files, 0 warnings
+Vendor verification: passed against local files and upstream releases
+Ubuntu/Windows reproducible build hash: 0043600d32837dc7e4d90db0d6f215ffa9de18ba98e2a6d47ad87f149fcda31f
+Cross-OS build comparison: passed
+Browser harness: passed in Chromium and Firefox over file:// (including activated cold More targets)
+Approved reference scan: Clean=True, findings=0, skipped=0
+Desktop reference SHA-256: fb7ff0643bda8f12a0a7e64daea91f51d74276cfc9bfb66c80baaf874bb2ded9
+Mobile reference SHA-256: af0c1fe08e689f755869a6eb4cc06dcaf0f4d44b7dfe6426d6a322b464c7d7f8
+Release attestation: skipped for pull request
+```
+
+The desktop rail keeps the canonical P4.6 Child seeds ownership while the
+mobile More sheet preserves the frozen mobile reference’s P1.5 label. The
+cold More links for Reveal hidden, Secret notes, and Lock &amp; wipe now
+activate their actual cold targets, expose a locked-state explanation when
+needed, and make the target focusable; the browser harness activates each
+route in both engines.
+
 ## Review focus
 
 - Confirm the ten group labels and their realm ownership match the approved
