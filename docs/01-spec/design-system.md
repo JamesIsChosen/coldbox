@@ -5,6 +5,12 @@ Authoritative for anything a user can see. Where [SPEC.md §15](SPEC.md) and thi
 
 Rationale for the visual direction is in [ADR-0009](../05-development/adr/0009-comic-visual-language.md). This document is the *what*; the ADR is the *why*.
 
+The maintainer-approved desktop and mobile visual baseline, its finite deviation
+register and the evidence required to claim parity live in
+[ui-parity.md](ui-parity.md). Both contracts apply: this document governs the
+system, while that one prevents an implementation from satisfying the system in
+a visibly different arrangement than the approved handoff.
+
 ---
 
 ## 1. The idea in one paragraph
@@ -385,6 +391,7 @@ Also required, and not testable by contrast alone:
 ## References
 
 - [ADR-0009](../05-development/adr/0009-comic-visual-language.md) — why this direction
+- [Approved UI parity](ui-parity.md) — immutable desktop/mobile baseline, deviations and acceptance evidence
 - [SPEC.md §15](SPEC.md) — UI and interaction, secret display rules
 - [csp-policy.md](../02-security/csp-policy.md) — why `font-src data:`
 - [dependencies.md](../05-development/dependencies.md) — vendored font provenance

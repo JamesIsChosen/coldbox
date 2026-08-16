@@ -24,6 +24,10 @@
 *.sig    binary
 *.sha256 binary
 
+# Approved UI handoff snapshots are immutable evidence. Preserve the exact
+# maintainer-supplied bytes so their recorded hashes survive every checkout.
+*.html.reference binary
+
 # Vault files should never be committed, but if one ever is, don't corrupt it
 *.cbx binary
 

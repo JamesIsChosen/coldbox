@@ -1,0 +1,183 @@
+{
+  "schema": "coldbox.approved-ui-reference.v1",
+  "approval": {
+    "authority": "maintainer",
+    "date": "2026-08-15",
+    "contract": "../../../01-spec/ui-parity.md"
+  },
+  "references": {
+    "desktop": {
+      "file": "coldbox-desktop-mockup.html.reference",
+      "bytes": 526996,
+      "sha256": "fb7ff0643bda8f12a0a7e64daea91f51d74276cfc9bfb66c80baaf874bb2ded9",
+      "renderViewport": {
+        "width": 1440,
+        "height": 940
+      },
+      "comparisonRegion": {
+        "kind": "full-viewport",
+        "width": 1440,
+        "height": 940
+      },
+      "screens": [
+        "dashboard",
+        "portfolio",
+        "qrpublic",
+        "addrbench",
+        "registry",
+        "devices",
+        "vault",
+        "unlock",
+        "learn",
+        "empty",
+        "entropy",
+        "forge",
+        "secret",
+        "paths",
+        "addresses",
+        "children",
+        "shares",
+        "qr",
+        "lock",
+        "map",
+        "prices",
+        "taxes",
+        "reference",
+        "settings",
+        "verifyfile",
+        "provenance",
+        "passphrase",
+        "conceal",
+        "notes",
+        "descriptors",
+        "backuphealth",
+        "recovery",
+        "verifybench",
+        "hub"
+      ]
+    },
+    "mobile": {
+      "file": "coldbox-mobile-mockup.html.reference",
+      "bytes": 322927,
+      "sha256": "af0c1fe08e689f755869a6eb4cc06dcaf0f4d44b7dfe6426d6a322b464c7d7f8",
+      "renderViewport": {
+        "width": 880,
+        "height": 1000
+      },
+      "comparisonRegion": {
+        "kind": "product-frame",
+        "width": 390,
+        "height": 844
+      },
+      "screens": [
+        "hub",
+        "secret",
+        "forge",
+        "paths",
+        "addresses",
+        "shares",
+        "entropy",
+        "settings",
+        "dashboard",
+        "portfolio",
+        "registry",
+        "unlock",
+        "empty",
+        "lock",
+        "passphrase",
+        "notes",
+        "descriptors",
+        "recovery",
+        "verifybench",
+        "qrpublic",
+        "addrbench",
+        "prices",
+        "taxes",
+        "reference",
+        "provenance",
+        "map",
+        "children",
+        "qr",
+        "conceal",
+        "validate",
+        "backuphealth",
+        "verifyfile",
+        "devices",
+        "learn",
+        "vault"
+      ]
+    }
+  },
+  "navigation": {
+    "groups": [
+      {
+        "realm": "cold",
+        "label": "Forge"
+      },
+      {
+        "realm": "cold",
+        "label": "Derive"
+      },
+      {
+        "realm": "cold",
+        "label": "Split"
+      },
+      {
+        "realm": "cold",
+        "label": "Carry"
+      },
+      {
+        "realm": "cold",
+        "label": "Recover"
+      },
+      {
+        "realm": "cold",
+        "label": "Verify"
+      },
+      {
+        "realm": "warm",
+        "label": "Records"
+      },
+      {
+        "realm": "warm",
+        "label": "Money"
+      },
+      {
+        "realm": "warm",
+        "label": "Vault files"
+      },
+      {
+        "realm": "warm",
+        "label": "Reference"
+      }
+    ],
+    "mobileBottomBar": {
+      "cold": [
+        "Forge",
+        "Derive",
+        "Split",
+        "Secret",
+        "Hub"
+      ],
+      "warm": [
+        "Home",
+        "Money",
+        "Records",
+        "Vault",
+        "Set"
+      ]
+    }
+  },
+  "allowedDeviationIds": [
+    "PAR-001",
+    "PAR-002",
+    "PAR-003",
+    "PAR-004",
+    "PAR-005",
+    "PAR-006",
+    "PAR-007",
+    "PAR-008",
+    "PAR-009"
+  ],
+  "allowedPixelMasks": []
+}
