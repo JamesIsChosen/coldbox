@@ -319,7 +319,7 @@ Every later roadmap item that activates a screen listed in the [approved referen
   The typed routes that replace copy-paste between tools.
   **Accept:** every value that has a consumer offers a Send to row into it; **no send-to path writes secret material to the clipboard**, asserted by a test; where copy still exists for public values it runs the existing P1.12 clipboard round-trip check; a send-to into a cold tool never round-trips through the warm shell; routes are enumerable and each one is covered.
 
-- [~] **UI.8 Warm-realm workspaces**
+- [x] **UI.8 Warm-realm workspaces**
   *Deps: UI.7*
   Regroup the warm shell into the four warm groups. Additive; breaks nothing.
   **Accept:** Records, Money, Vault files and Reference each reach their built surfaces; existing warm behaviour and routes are preserved or explicitly redirected; no warm surface gains access to anything sealed.
