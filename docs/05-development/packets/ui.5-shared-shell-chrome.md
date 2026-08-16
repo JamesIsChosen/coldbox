@@ -272,3 +272,31 @@ Approved reference scan: Clean=True, findings=0, skipped=0
 Desktop reference SHA-256: fb7ff0643bda8f12a0a7e64daea91f51d74276cfc9bfb66c80baaf874bb2ded9
 Mobile reference SHA-256: af0c1fe08e689f755869a6eb4cc06dcaf0f4d44b7dfe6426d6a322b464c7d7f8
 ```
+
+## Current exact-head rail-parity witness
+
+The current product source head is
+`7d23b7474d3aedb9b0f2a28e4dad35a44de9fc6b`. Exact-head CI run
+`31949826815` checked out that SHA and passed the complete verification matrix,
+including the corrected warm route selector, complete approved desktop rails,
+all-route cold More close behavior, and the independent frozen-reference scan.
+
+```text
+Focused UI.5 tests: 8 passed, 0 failed, 0 skipped
+Full CI unit/vector tests: 425 passed, 0 failed, 0 skipped
+Documentation hygiene: passed
+Vendor verification: passed against local files and upstream releases
+Ubuntu/Windows reproducible build hash: 68809b12ebd8dbeabbb6c0cf749153b1acf2d76ace648c48b707279145e2b3cc
+Cross-OS build comparison: passed
+Browser harness: passed in Chromium and Firefox over file://
+Approved reference scan: Clean=True, findings=0, skipped=0
+Desktop reference SHA-256: fb7ff0643bda8f12a0a7e64daea91f51d74276cfc9bfb66c80baaf874bb2ded9
+Mobile reference SHA-256: af0c1fe08e689f755869a6eb4cc06dcaf0f4d44b7dfe6426d6a322b464c7d7f8
+Release attestation: skipped for pull request
+```
+
+The warm rail now exposes Verify this file and the disabled UI.9 Tool map
+entry without creating duplicate route selectors. The cold rail now exposes
+Reveal hidden, Active secret, Lock / wipe, and the disabled UI.9 Tool map
+entry, matching the approved desktop reference inventory while preserving the
+mobile Child seeds P1.5/P4.6 distinction and the existing CSP and realm split.
