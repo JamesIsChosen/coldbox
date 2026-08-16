@@ -35,7 +35,7 @@ test('unbuilt navigation entries are disabled controls with roadmap and phase la
     assert.match(item, /aria-disabled="true"/);
     assert.match(item, /data-roadmap-id="[A-Z0-9.]+"/);
     assert.match(item, /data-phase="(?:Phase|UI) [0-9.]+"/);
-    assert.match(item, /· Phase [0-9.]+/);
+    assert.match(item, /· (?:Phase|UI) [0-9.]+/);
   }
   assert.match(coldHtml, /data-roadmap-id="P4\.3" data-phase="Phase 4"/);
   assert.doesNotMatch(coldHtml, /<a class="cold-nav-link" href="#cold-group-recovery">[\s\S]*Recovery Assistant/);
@@ -83,6 +83,17 @@ test('mobile More sheets match the approved route inventories', () => {
   assert.match(coldHtml, /<a class="cold-nav-link" href="#cold-secret-notes" data-cold-more-target="cold-secret-notes"[\s\S]*Secret notes/);
   assert.doesNotMatch(coldHtml, /<button class="cold-nav-link cold-nav-link-unavailable"[^>]*data-roadmap-id="P1\.7"[\s\S]*Secret notes/);
   assert.match(coldHtml, /P4\.6 · Phase 4/);
+});
+
+test('desktop rails expose the approved built and unavailable navigation entries', () => {
+  for (const label of ['Verify this file', 'Tool map']) assert.ok(warmHtml.includes(`<span>${label}</span>`), `warm rail is missing ${label}`);
+  assert.match(warmHtml, /<a class="nav-link" href="#reference" data-route="reference">[\s\S]*Verify this file/);
+  assert.match(warmHtml, /data-roadmap-id="UI\.9" data-phase="UI 9"[\s\S]*Tool map/);
+  for (const label of ['Reveal hidden', 'Active secret', 'Lock / wipe', 'Tool map']) assert.ok(coldHtml.includes(`<span>${label}</span>`), `cold rail is missing ${label}`);
+  assert.match(coldHtml, /href="#cold-concealment-controls" data-cold-more-target="cold-concealment-controls"[\s\S]*Reveal hidden/);
+  assert.match(coldHtml, /href="#cold-secret-switcher"[\s\S]*Active secret/);
+  assert.match(coldHtml, /href="#cold-vault-controls" data-cold-more-target="cold-vault-controls"[\s\S]*Lock \/ wipe/);
+  assert.match(coldHtml, /data-roadmap-id="UI\.9" data-phase="UI 9"[\s\S]*Tool map/);
 });
 
 test('warm and cold shells carry the same chrome vocabulary', () => {
