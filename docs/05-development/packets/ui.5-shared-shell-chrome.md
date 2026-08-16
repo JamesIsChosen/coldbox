@@ -88,6 +88,45 @@ The packet closeout is documentation-only after that implementation head. The
 next exact-head CI run and the fresh reviewer must still verify the closeout
 head itself.
 
+## Final remediation evidence (implementation head)
+
+The route-inventory remediation and browser-harness corrections are present at
+implementation head `6059adef0d62462b387cab06c15e7f5ef20111d2`. Exact-head CI
+run `31941743557` checked out that SHA and passed Ubuntu, Windows,
+Chromium/Firefox, cross-OS hash comparison, and the approved-reference secret
+scan; pull-request release attestation was skipped.
+
+```text
+Focused UI.5 tests: 7 passed, 0 failed, 0 skipped
+Full CI unit/vector tests: 424 passed, 0 skipped
+Documentation hygiene: 241 markdown files, 0 warnings
+Vendor verification: passed against local files and upstream releases
+Ubuntu/Windows reproducible build hash: 0c805752c828a94dfca184f0f74781c00bcb25fc2600c10d59037703cb1ce9e4
+Browser harness: passed in Chromium and Firefox over file://
+Approved reference scan: Clean=True, findings=0, skipped=0
+Desktop reference SHA-256: fb7ff0643bda8f12a0a7e64daea91f51d74276cfc9bfb66c80baaf874bb2ded9
+Mobile reference SHA-256: af0c1fe08e689f755869a6eb4cc06dcaf0f4d44b7dfe6426d6a322b464c7d7f8
+```
+
+The approved mobile More inventories are now represented in their frozen
+order. Warm entries are Devices, QR Studio, Address bench, future Prices & FX,
+future Tax & exports, future Reference, Verify this file, Provenance & legal,
+Learn, future Tool map, and Enter sealed realm. Cold entries are Vault session,
+Entropy Lab, Validate phrase, future Child seeds (canonical P4.6), future
+Passphrase Studio, future Descriptors, SeedQR studio, Backup Health, future
+Recovery Assistant, Verify Bench, Reveal hidden, Secret notes, No secret yet,
+and Lock & wipe. Future entries are non-focusable disabled elements with
+roadmap/phase labels. The mobile Money slot is likewise a disabled P3.4
+control and cannot open the unbuilt Prices or Portfolio routes. The sealed
+Backup Health card explicitly distinguishes its cold backup workspace from the
+warm public schedule dashboard.
+
+The browser harness asserts both complete More inventories, the unavailable
+future controls, the disabled Money slot, 44px rendered targets, and the
+sealed-boundary routes in both Chromium and Firefox. The focused static test
+also rejects the old combined cold More entries and active future mobile
+links.
+
 ## Review focus
 
 - Confirm the ten group labels and their realm ownership match the approved
