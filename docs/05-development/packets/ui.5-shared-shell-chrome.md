@@ -66,6 +66,14 @@ scrolls to the boundary, and focuses its keyboard target. The browser harness
 now exercises the desktop rail, realm switcher, app-bar quick link, and mobile
 More link; the focused UI.5 suite also guards the route implementation.
 
+The first exact-head CI run for the router fix exposed that the newly added
+desktop route sequence ran before the harness's existing 360px overflow
+baseline, making that baseline state-dependent. The harness now records the
+mobile overflow baseline first, then exercises the desktop rail/switcher/
+quick-link routes and returns to mobile for the More-link route. Product
+markup, styles, and routing behavior are unchanged by this harness-only
+ordering correction.
+
 ## Review focus
 
 - Confirm the ten group labels and their realm ownership match the approved
