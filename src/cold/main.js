@@ -6700,6 +6700,66 @@ __COLDBOX_QR_ENCODER__
   window.addEventListener('pagehide', function () {
     clearReleasedSecrets('realm teardown');
   });
+  document.addEventListener('click', function (event) {
+    var link = event.target && typeof event.target.closest === 'function'
+      ? event.target.closest('a[data-cold-more-target]')
+      : null;
+    if (!link) {
+      return;
+    }
+    var targetId = link.getAttribute('data-cold-more-target');
+    var target = targetId ? document.getElementById(targetId) : null;
+    if (!target) {
+      return;
+    }
+    event.preventDefault();
+    target.hidden = false;
+    target.setAttribute('tabindex', '-1');
+    target.scrollIntoView({ block: 'nearest' });
+    if (targetId === 'cold-concealment-controls') {
+      if (concealmentStatus && !vaultUnlocked) {
+        concealmentStatus.textContent = 'Unlock the vault before revealing hidden records.';
+      }
+      if (vaultUnlocked && concealmentPassphrase) {
+        concealmentPassphrase.focus();
+      } else {
+        var lockedStatus = document.getElementById('cold-vault-status');
+        if (lockedStatus) {
+          lockedStatus.setAttribute('tabindex', '-1');
+          lockedStatus.focus();
+        }
+      }
+    } else if (targetId === 'cold-secret-notes') {
+      target.focus();
+    } else if (targetId === 'cold-vault-controls') {
+      var lockTarget = document.getElementById('cold-vault-lock');
+      if (lockTarget && !lockTarget.disabled) {
+        lockTarget.focus();
+      } else {
+        var vaultStatus = document.getElementById('cold-vault-status');
+        if (vaultStatus) {
+          vaultStatus.setAttribute('tabindex', '-1');
+          vaultStatus.focus();
+        }
+      }
+    }
+    var moreSheet = link.closest('.cold-mobile-more');
+    if (moreSheet) {
+      moreSheet.open = false;
+    }
+  });
+  document.addEventListener('click', function (event) {
+    var mobileMoreLink = event.target && typeof event.target.closest === 'function'
+      ? event.target.closest('.cold-mobile-more-links a')
+      : null;
+    if (!mobileMoreLink) {
+      return;
+    }
+    var mobileMoreSheet = mobileMoreLink.closest('.cold-mobile-more');
+    if (mobileMoreSheet) {
+      mobileMoreSheet.open = false;
+    }
+  });
   window.addEventListener('message', handleGlobalMessage);
   document.documentElement.setAttribute('data-cold-state', 'checking');
   document.documentElement.setAttribute('data-airgap-state', 'checking');

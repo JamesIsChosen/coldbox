@@ -828,7 +828,26 @@ __COLDBOX_CONCEALMENT__
   function routeFromLocation() {
     var hash = window.location.hash.replace(/^#/, '').trim();
     var route = hash.split('/')[0];
+    if (route === 'cold-realm-status') {
+      return 'cold-realm-status';
+    }
     return Object.prototype.hasOwnProperty.call(routeDetails, route) ? route : 'dashboard';
+  }
+
+  function focusColdRealmTarget() {
+    if (!coldRealmStatus) {
+      return;
+    }
+    try {
+      coldRealmStatus.scrollIntoView({ behavior: 'auto', block: 'start' });
+    } catch (error) {
+      coldRealmStatus.scrollIntoView();
+    }
+    try {
+      coldRealmStatus.focus({ preventScroll: true });
+    } catch (error) {
+      coldRealmStatus.focus();
+    }
   }
 
   function normalizeLocation(route) {
@@ -5505,6 +5524,16 @@ __COLDBOX_CONCEALMENT__
     var hashSegments = rawHash.split('/');
     var topicSegment = hashSegments.length > 1 ? hashSegments.slice(1).join('/') : null;
     var route = routeFromLocation();
+    if (route === 'cold-realm-status') {
+      closeMoreMenu();
+      if (announcement) {
+        announcement.textContent = 'Sealed realm';
+      }
+      if (shouldFocus) {
+        focusColdRealmTarget();
+      }
+      return;
+    }
     var detail = routeDetails[route];
     normalizeLocation(route);
 

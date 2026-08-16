@@ -347,7 +347,7 @@ test('roadmap dependencies cannot bypass the parity contract or final gate', () 
 
   // The author leaves UI.4a at [~]; the independent reviewer closes it at [x].
   assert.match(roadmap, /- \[(?:~|x)\] \*\*UI\.4a Approved desktop\/mobile mock parity contract\*\*[\s\S]*?\*Deps: UI\.4\*/);
-  assert.match(roadmap, /- \[ \] \*\*UI\.5 Shared shell chrome[\s\S]*?\*Deps: UI\.4a\*/);
+  assert.match(roadmap, /- \[(?: |~|x)\] \*\*UI\.5 Shared shell chrome[\s\S]*?\*Deps: UI\.4a\*/);
   assert.match(roadmap, /- \[ \] \*\*UI\.10 Vault naming[\s\S]*?\*Deps: UI\.4a\*/);
   assert.match(roadmap, /- \[ \] \*\*UI\.11 Approved desktop\/mobile visual parity certification\*\*[\s\S]*?\*Deps: UI\.8, UI\.9, UI\.10\*/);
   assert.match(roadmap, /- \[ \] P2\.8 Printable cards[\s\S]*?\*Deps: P2\.7, UI\.11\*/);

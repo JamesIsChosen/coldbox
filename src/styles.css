@@ -66,6 +66,7 @@ __COLDBOX_FONT_FACES__
   /* Drives the nav rail's sticky offset; kept in one place so the two cannot
      drift apart and leave a gap or a clipped rail. */
   --app-bar-height: 4.6rem;
+  --realm-strip-height: 2.1rem;
 
   --font-display: 'Coldbox Display', Impact, 'Haettenschweiler', 'Arial Narrow Bold', sans-serif;
   --font-text: 'Coldbox Text', 'Comic Sans MS', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -192,10 +193,10 @@ samp {
 
 .nav-rail {
   position: sticky;
-  top: var(--app-bar-height);
+  top: calc(var(--app-bar-height) + var(--realm-strip-height));
   display: flex;
   flex-direction: column;
-  height: calc(100vh - var(--app-bar-height));
+  height: calc(100vh - var(--app-bar-height) - var(--realm-strip-height));
   min-height: 34rem;
   padding: 1.25rem 0.8rem 1rem;
   overflow: hidden;
@@ -292,6 +293,71 @@ samp {
   margin-left: auto;
 }
 
+.realm-switcher {
+  display: inline-flex;
+  align-items: stretch;
+  min-height: 2.75rem;
+  margin-left: 1rem;
+  overflow: hidden;
+  border: var(--outline-width) solid var(--drop);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  box-shadow: var(--shadow-hard);
+}
+
+.realm-switcher-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.4rem 0.9rem;
+  border-right: var(--outline-width-thin) solid var(--drop);
+  color: var(--paper-ink);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.realm-switcher-button:last-child {
+  border-right: 0;
+}
+
+.realm-switcher-button:hover,
+.realm-switcher-button:focus-visible,
+.realm-switcher-button-active {
+  background: var(--fill-cyan);
+  color: var(--fill-ink);
+}
+
+.realm-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--realm-strip-height);
+  padding: 0.25rem 0.65rem;
+  border-bottom: var(--outline-width) solid var(--drop);
+  background: repeating-linear-gradient(45deg, var(--fill-cyan) 0 14px, var(--fill-ink) 14px 28px);
+  color: var(--fill-ink);
+  text-align: center;
+}
+
+.realm-strip span {
+  display: inline-block;
+  padding: 0.18rem 0.7rem;
+  border: var(--outline-width-thin) solid var(--drop);
+  background: var(--paper);
+  box-shadow: 0.15rem 0.15rem 0 var(--drop);
+  font-family: var(--font-display);
+  font-size: 0.86rem;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
 .comic-btn {
   display: inline-flex;
   align-items: center;
@@ -370,7 +436,7 @@ samp {
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  min-height: 2.45rem;
+  min-height: 44px;
   margin: 0.25rem 0;
   padding: 0.5rem 0.7rem;
   border: var(--outline-width-thin) solid transparent;
@@ -379,6 +445,40 @@ samp {
   font-size: 0.84rem;
   font-weight: 700;
   transition: transform 90ms ease, background-color 90ms ease, border-color 90ms ease, color 90ms ease, box-shadow 90ms ease;
+}
+
+.nav-tag {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: right;
+}
+
+.nav-link-unavailable {
+  width: 100%;
+  border-color: transparent;
+  background: transparent;
+  color: var(--faint);
+  cursor: not-allowed;
+  opacity: 0.62;
+  text-align: left;
+}
+
+.nav-link-unavailable:hover,
+.nav-link-unavailable:focus-visible {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--faint);
+  transform: none;
+}
+
+.nav-link-unavailable .nav-icon {
+  color: var(--faint);
 }
 
 .nav-link:hover {
@@ -2340,6 +2440,25 @@ samp {
     padding: 0.7rem 1rem;
   }
 
+  .realm-switcher {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .realm-switcher-button {
+    flex: 1 1 50%;
+    justify-content: center;
+  }
+
+  .realm-strip {
+    min-height: 2rem;
+  }
+
+  :root {
+    --realm-strip-height: 2rem;
+  }
+
   .app-bar-actions .comic-btn:not(.comic-btn-toggle) {
     display: none;
   }
@@ -2479,6 +2598,20 @@ samp {
     color: var(--fill-ink);
   }
 
+  .mobile-tab-unavailable {
+    border-style: dashed;
+    color: var(--faint);
+    cursor: not-allowed;
+    opacity: 0.62;
+  }
+
+  .mobile-tab-unavailable:hover,
+  .mobile-tab-unavailable:focus-visible {
+    background: transparent;
+    color: var(--faint);
+    transform: none;
+  }
+
   .mobile-tab-icon {
     color: var(--faint);
     font-family: var(--font-display);
@@ -2520,8 +2653,8 @@ samp {
   }
 
   .icon-button-small {
-    width: 1.9rem;
-    min-height: 1.9rem;
+    width: 44px;
+    min-height: 44px;
     padding: 0;
     border-radius: var(--radius-sm);
     font-size: 1.1rem;
@@ -2535,6 +2668,7 @@ samp {
 
   .mobile-more-link {
     display: block;
+    min-height: 44px;
     padding: 0.7rem 0.65rem;
     border: var(--outline-width-thin) solid var(--outline);
     border-radius: var(--radius-sm);
@@ -2553,6 +2687,13 @@ samp {
     background: var(--fill-cyan);
     box-shadow: 0.15rem 0.15rem 0 var(--drop);
     color: var(--fill-ink);
+  }
+
+  .mobile-more-link-unavailable {
+    border-style: dashed;
+    color: var(--faint);
+    cursor: not-allowed;
+    opacity: 0.62;
   }
 }
 

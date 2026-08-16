@@ -21,9 +21,13 @@ __COLDBOX_STYLES__
 __COLDBOX_WORDMARK__
       </a>
       <p class="brand-badge">Pre-release · Not audited</p>
+      <div class="realm-switcher" role="group" aria-label="Realm navigation">
+        <a class="realm-switcher-button realm-switcher-button-active" href="#dashboard" aria-current="page">☼ Warm shell</a>
+        <a class="realm-switcher-button" href="#cold-realm-status">✻ Sealed realm</a>
+      </div>
       <nav class="app-bar-actions" aria-label="Quick links">
         <a class="comic-btn" href="#vault" data-route="vault">Vault</a>
-        <a class="comic-btn" href="#seed-forge" data-route="seed-forge">Seed Forge</a>
+        <a class="comic-btn" href="#cold-realm-status">Seed Forge</a>
         <button class="comic-btn comic-btn-toggle" id="theme-toggle" type="button" aria-pressed="false">
           <span class="theme-toggle-icon" aria-hidden="true">☼</span>
           <span id="theme-toggle-label">Light mode</span>
@@ -31,34 +35,47 @@ __COLDBOX_WORDMARK__
       </nav>
     </header>
 
+    <div class="realm-strip realm-strip-warm" id="warm-realm-strip" role="status" aria-label="Warm shell boundary">
+      <span>☼ warm shell · public data only · no secret arrives here ☼</span>
+    </div>
+
     <div class="app-layout">
       <aside class="nav-rail" id="nav-rail" aria-label="Primary navigation">
         <div class="nav-scroll">
-          <nav class="nav-group" aria-label="Workspace">
-            <p class="nav-group-title">Workspace</p>
-            <a class="nav-link" href="#vault" data-route="vault"><span class="nav-icon" aria-hidden="true">V</span><span>Vault</span></a>
-            <a class="nav-link" href="#dashboard" data-route="dashboard"><span class="nav-icon" aria-hidden="true">D</span><span>Dashboard</span></a>
-            <a class="nav-link" href="#portfolio" data-route="portfolio"><span class="nav-icon" aria-hidden="true">P</span><span>Portfolio</span></a>
-            <a class="nav-link" href="#prices" data-route="prices"><span class="nav-icon" aria-hidden="true">$</span><span>Prices</span></a>
-            <a class="nav-link" href="#registry" data-route="registry"><span class="nav-icon" aria-hidden="true">R</span><span>Registry</span></a>
-            <a class="nav-link" href="#devices" data-route="devices"><span class="nav-icon" aria-hidden="true">W</span><span>Devices</span></a>
+          <nav class="nav-group" aria-label="Records">
+            <p class="nav-group-title">Records</p>
+            <a class="nav-link" href="#registry" data-route="registry"><span class="nav-icon" aria-hidden="true">R</span><span>Registry</span><span class="nav-tag">P1.6</span></a>
+            <a class="nav-link" href="#devices" data-route="devices"><span class="nav-icon" aria-hidden="true">W</span><span>Devices</span><span class="nav-tag">P1.8</span></a>
+            <a class="nav-link" href="#verify" data-route="verify"><span class="nav-icon" aria-hidden="true">✓</span><span>Address bench</span><span class="nav-tag">P1.9</span></a>
+            <a class="nav-link" href="#qr" data-route="qr"><span class="nav-icon" aria-hidden="true">Q</span><span>QR Studio</span><span class="nav-tag">P1.10</span></a>
           </nav>
 
-          <nav class="nav-group" aria-label="Tools">
-            <p class="nav-group-title">Tools</p>
-            <a class="nav-link" href="#entropy" data-route="entropy"><span class="nav-icon" aria-hidden="true">E</span><span>Entropy Lab</span></a>
-            <a class="nav-link" href="#seed-forge" data-route="seed-forge"><span class="nav-icon" aria-hidden="true">S</span><span>Seed Forge</span></a>
-            <a class="nav-link" href="#derivation" data-route="derivation"><span class="nav-icon" aria-hidden="true">∿</span><span>Derivation</span></a>
-            <a class="nav-link" href="#backup" data-route="backup"><span class="nav-icon" aria-hidden="true">B</span><span>Backup Lab</span></a>
-            <a class="nav-link" href="#qr" data-route="qr"><span class="nav-icon" aria-hidden="true">Q</span><span>QR Studio</span></a>
-            <a class="nav-link" href="#recovery" data-route="recovery"><span class="nav-icon" aria-hidden="true">↺</span><span>Recovery</span></a>
+          <nav class="nav-group" aria-label="Money">
+            <p class="nav-group-title">Money</p>
+            <a class="nav-link" href="#dashboard" data-route="dashboard"><span class="nav-icon" aria-hidden="true">D</span><span>Dashboard</span></a>
+            <button class="nav-link nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P3.4" data-phase="Phase 3"><span class="nav-icon" aria-hidden="true">P</span><span>Portfolio</span><span class="nav-tag">P3.4 · Phase 3</span></button>
+            <button class="nav-link nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P3.1" data-phase="Phase 3"><span class="nav-icon" aria-hidden="true">$</span><span>Prices &amp; FX</span><span class="nav-tag">P3.1 · Phase 3</span></button>
+            <button class="nav-link nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P3.9" data-phase="Phase 3"><span class="nav-icon" aria-hidden="true">T</span><span>Tax &amp; exports</span><span class="nav-tag">P3.9 · Phase 3</span></button>
+          </nav>
+
+          <nav class="nav-group" aria-label="Vault files">
+            <p class="nav-group-title">Vault files</p>
+            <a class="nav-link" href="#vault" data-route="vault"><span class="nav-icon" aria-hidden="true">V</span><span>Vault files</span><span class="nav-tag">P0.13</span></a>
+            <a class="nav-link" href="#backup" data-route="backup"><span class="nav-icon" aria-hidden="true">H</span><span>Backup Health</span><span class="nav-tag">P2.7</span></a>
           </nav>
 
           <nav class="nav-group" aria-label="Reference">
             <p class="nav-group-title">Reference</p>
-            <a class="nav-link" href="#verify" data-route="verify"><span class="nav-icon" aria-hidden="true">✓</span><span>Verify Bench</span></a>
-            <a class="nav-link" href="#reference" data-route="reference"><span class="nav-icon" aria-hidden="true">i</span><span>Reference</span></a>
-            <a class="nav-link" href="#learn" data-route="learn"><span class="nav-icon" aria-hidden="true">?</span><span>Learn</span></a>
+            <button class="nav-link nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P4.10" data-phase="Phase 4"><span class="nav-icon" aria-hidden="true">i</span><span>Reference</span><span class="nav-tag">P4.10 · Phase 4</span></button>
+            <a class="nav-link" href="#learn" data-route="learn"><span class="nav-icon" aria-hidden="true">?</span><span>Learn</span><span class="nav-tag">P0.17</span></a>
+            <a class="nav-link" href="#reference" data-route="reference"><span class="nav-icon" aria-hidden="true">⌗</span><span>Verify this file</span><span class="nav-tag">P0.16</span></a>
+            <a class="nav-link" href="#reference"><span class="nav-icon" aria-hidden="true">#</span><span>Provenance &amp; legal</span><span class="nav-tag">P0.16</span></a>
+            <button class="nav-link nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="UI.9" data-phase="UI 9"><span class="nav-icon" aria-hidden="true">⊞</span><span>Tool map</span><span class="nav-tag">UI.9 · UI 9</span></button>
+          </nav>
+
+          <nav class="nav-group nav-group-sealed" aria-label="Sealed work">
+            <p class="nav-group-title">Sealed work</p>
+            <a class="nav-link" href="#cold-realm-status"><span class="nav-icon" aria-hidden="true">✻</span><span>Enter sealed realm</span></a>
           </nav>
         </div>
 
@@ -85,7 +102,7 @@ __COLDBOX_WORDMARK__
 
         <p class="sr-only" id="route-announcement" aria-live="polite"></p>
 
-        <section class="realm-status" id="cold-realm-status" data-cold-state="starting" aria-labelledby="cold-realm-status-title" aria-live="polite">
+        <section class="realm-status" id="cold-realm-status" tabindex="-1" data-cold-state="starting" aria-labelledby="cold-realm-status-title" aria-live="polite">
           <div class="realm-status-copy">
             <p class="eyebrow">Security boundary / P0.8</p>
             <h2 id="cold-realm-status-title"><span id="cold-realm-status-title-text">Establishing the sealed realm</span>
@@ -948,27 +965,27 @@ __COLDBOX_WORDMARK__
     </div>
 
     <nav class="mobile-tabs" id="mobile-tabs" aria-label="Mobile navigation">
-      <a class="mobile-tab" href="#dashboard" data-route="dashboard"><span class="mobile-tab-icon" aria-hidden="true">D</span><span>Dashboard</span></a>
-      <a class="mobile-tab" href="#portfolio" data-route="portfolio"><span class="mobile-tab-icon" aria-hidden="true">P</span><span>Portfolio</span></a>
-      <a class="mobile-tab" href="#prices" data-route="prices"><span class="mobile-tab-icon" aria-hidden="true">$</span><span>Prices</span></a>
-      <a class="mobile-tab" href="#registry" data-route="registry"><span class="mobile-tab-icon" aria-hidden="true">R</span><span>Registry</span></a>
-      <button class="mobile-tab" id="mobile-more-tab" type="button" aria-controls="mobile-more-menu" aria-expanded="false"><span class="mobile-tab-icon" aria-hidden="true">•••</span><span>More</span></button>
+      <a class="mobile-tab" href="#dashboard" data-route="dashboard"><span class="mobile-tab-icon" aria-hidden="true">⌂</span><span>Home</span></a>
+      <button class="mobile-tab mobile-tab-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P3.4" data-phase="Phase 3" data-route="portfolio"><span class="mobile-tab-icon" aria-hidden="true">$</span><span>Money · P3.4 · Phase 3</span></button>
+      <a class="mobile-tab" href="#registry" data-route="registry"><span class="mobile-tab-icon" aria-hidden="true">R</span><span>Records</span></a>
+      <a class="mobile-tab" href="#vault" data-route="vault"><span class="mobile-tab-icon" aria-hidden="true">V</span><span>Vault</span></a>
+      <button class="mobile-tab" id="mobile-more-tab" type="button" aria-controls="mobile-more-menu" aria-expanded="false"><span class="mobile-tab-icon" aria-hidden="true">⚙</span><span>Set</span></button>
     </nav>
 
     <div class="mobile-more-menu" id="mobile-more-menu" hidden>
       <div class="mobile-more-header"><span>More sections</span><button class="icon-button icon-button-small" id="mobile-more-close" type="button" aria-label="Close more sections">×</button></div>
       <div class="mobile-more-links">
-        <a class="mobile-more-link" href="#vault" data-route="vault">Vault</a>
         <a class="mobile-more-link" href="#devices" data-route="devices">Devices</a>
-        <a class="mobile-more-link" href="#entropy" data-route="entropy">Entropy Lab</a>
-        <a class="mobile-more-link" href="#seed-forge" data-route="seed-forge">Seed Forge</a>
-        <a class="mobile-more-link" href="#derivation" data-route="derivation">Derivation</a>
-        <a class="mobile-more-link" href="#backup" data-route="backup">Backup Lab</a>
         <a class="mobile-more-link" href="#qr" data-route="qr">QR Studio</a>
-        <a class="mobile-more-link" href="#recovery" data-route="recovery">Recovery</a>
-        <a class="mobile-more-link" href="#verify" data-route="verify">Verify Bench</a>
-        <a class="mobile-more-link" href="#reference" data-route="reference">Reference</a>
+        <a class="mobile-more-link" href="#verify" data-route="verify">Address bench</a>
+        <span class="mobile-more-link mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P3.1" data-phase="Phase 3">Prices &amp; FX · P3.1 · Phase 3</span>
+        <span class="mobile-more-link mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P3.9" data-phase="Phase 3">Tax &amp; exports · P3.9 · Phase 3</span>
+        <span class="mobile-more-link mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P4.10" data-phase="Phase 4">Reference · P4.10 · Phase 4</span>
+        <a class="mobile-more-link" href="#reference" data-route="reference">Verify this file</a>
+        <a class="mobile-more-link" href="#reference" data-route="reference">Provenance &amp; legal</a>
         <a class="mobile-more-link" href="#learn" data-route="learn">Learn</a>
+        <span class="mobile-more-link mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="UI.9" data-phase="UI 9">Tool map · UI.9 · UI 9</span>
+        <a class="mobile-more-link" href="#cold-realm-status">Enter sealed realm</a>
       </div>
     </div>
 

@@ -1099,18 +1099,28 @@ async function verifyBuiltFile(browser, engine) {
     await harness.expectElementVisible('#nav-rail');
     await harness.expectElementVisible('#theme-toggle');
     await harness.expectElementVisible('#nav-rail .nav-link[aria-current="page"]');
+    const warmRailTouchRect = await page.locator('#nav-rail .nav-link').first().evaluate((link) => {
+      const rect = link.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    });
+    assert.ok(warmRailTouchRect.width >= 44, `${engine}: warm rail target width is below 44 CSS px`);
+    assert.ok(warmRailTouchRect.height >= 44, `${engine}: warm rail target height is below 44 CSS px`);
     assert.equal(
       await page.locator('#current-section').textContent(),
       'Dashboard',
       `${engine}: dashboard should be the default route`
     );
 
-    await page.locator('#nav-rail a[data-route="portfolio"]').click();
-    await page.waitForFunction(() => window.location.hash === '#portfolio');
-    await harness.expectElementVisible('#page-portfolio:not([hidden])');
+    const unavailablePortfolio = page.locator('#nav-rail button[data-roadmap-id="P3.4"]');
+    assert.equal(await unavailablePortfolio.isDisabled(), true, `${engine}: unbuilt Portfolio must be disabled in the rail`);
+    assert.equal(await unavailablePortfolio.getAttribute('aria-disabled'), 'true');
+    assert.match(await unavailablePortfolio.textContent(), /P3\.4.*Phase 3/);
+    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.waitForFunction(() => window.location.hash === '#registry');
+    await harness.expectElementVisible('#page-registry:not([hidden])');
     assert.equal(
       await page.locator('#current-section').textContent(),
-      'Portfolio',
+      'Registry',
       `${engine}: route navigation did not update the current section`
     );
 
@@ -1137,11 +1147,95 @@ async function verifyBuiltFile(browser, engine) {
       true,
       `${engine}: warm shell overflows horizontally at 360px`
     );
-    await page.locator('#mobile-tabs a[data-route="prices"]').click();
-    await page.waitForFunction(() => window.location.hash === '#prices');
-    await harness.expectElementVisible('#page-prices:not([hidden])');
+
+    await harness.atViewport(1440, 900);
+    const assertColdRealmTarget = async (label) => {
+      await page.waitForFunction(() => window.location.hash === '#cold-realm-status');
+      assert.equal(
+        await page.evaluate(() => document.activeElement && document.activeElement.id),
+        'cold-realm-status',
+        `${engine}: ${label} did not focus the sealed-realm boundary target`
+      );
+    };
+    await page.locator('#nav-rail .nav-group-sealed a[href="#cold-realm-status"]').click();
+    await assertColdRealmTarget('sealed rail link');
+    await page.locator('.realm-switcher a[href="#dashboard"]').click();
+    await page.waitForFunction(() => window.location.hash === '#dashboard');
+    await page.locator('.realm-switcher a[href="#cold-realm-status"]').click();
+    await assertColdRealmTarget('realm switcher');
+    await page.locator('.realm-switcher a[href="#dashboard"]').click();
+    await page.waitForFunction(() => window.location.hash === '#dashboard');
+    await page.locator('.app-bar-actions a[href="#cold-realm-status"]').click();
+    await assertColdRealmTarget('app-bar quick link');
+    await page.locator('#nav-rail a[data-route="dashboard"]').click();
+    await page.waitForFunction(() => window.location.hash === '#dashboard');
+    await coldFrame.locator('a.cold-nav-link[data-cold-more-target="cold-secret-notes"]').click();
+    await coldFrame.locator('#cold-secret-notes:not([hidden])').waitFor({ state: 'visible' });
+    assert.equal(await coldFrame.locator('#cold-secret-notes').getAttribute('tabindex'), '-1');
+    await coldFrame.evaluate(() => { document.getElementById('cold-secret-notes').hidden = true; });
+    await harness.atViewport(360, 640);
+
+    const unavailableMoney = page.locator('#mobile-tabs button[data-roadmap-id="P3.4"]');
+    assert.equal(await unavailableMoney.isDisabled(), true, `${engine}: future Money tab must be unavailable`);
+    assert.equal(await unavailableMoney.getAttribute('aria-disabled'), 'true');
+    assert.match(await unavailableMoney.textContent(), /Money.*P3\.4.*Phase 3/);
     await page.locator('#mobile-more-tab').click();
     assert.equal(await page.locator('#mobile-more-menu').isVisible(), true);
+    const warmMoreText = await page.locator('#mobile-more-menu .mobile-more-link').allTextContents();
+    for (const expected of ['Devices', 'QR Studio', 'Address bench', 'Verify this file', 'Provenance & legal', 'Learn', 'Tool map', 'Enter sealed realm', 'Prices & FX', 'Tax & exports', 'Reference']) {
+      assert.ok(warmMoreText.some((item) => item.includes(expected)), `${engine}: warm More is missing ${expected}`);
+    }
+    for (const id of ['UI.9', 'P3.1', 'P3.9', 'P4.10']) {
+      const unavailable = page.locator(`#mobile-more-menu [data-roadmap-id="${id}"]`);
+      assert.equal(await unavailable.getAttribute('aria-disabled'), 'true', `${engine}: warm More future ${id} must be unavailable`);
+    }
+    const warmMoreTouchRects = await page.locator('#mobile-more-menu .mobile-more-link').first().evaluate((link) => {
+      const linkRect = link.getBoundingClientRect();
+      const closeRect = document.getElementById('mobile-more-close').getBoundingClientRect();
+      return { linkHeight: linkRect.height, closeWidth: closeRect.width, closeHeight: closeRect.height };
+    });
+    assert.ok(warmMoreTouchRects.linkHeight >= 44, `${engine}: warm More target height is below 44 CSS px`);
+    assert.ok(warmMoreTouchRects.closeWidth >= 44, `${engine}: warm More close width is below 44 CSS px`);
+    assert.ok(warmMoreTouchRects.closeHeight >= 44, `${engine}: warm More close height is below 44 CSS px`);
+    await coldFrame.locator('.cold-mobile-more').evaluate((details) => { details.open = true; });
+    const coldMoreText = await coldFrame.locator('.cold-mobile-more-links > *').allTextContents();
+    for (const expected of ['Vault session', 'Entropy Lab', 'Validate phrase', 'Child seeds', 'Passphrase Studio', 'Descriptors', 'SeedQR studio', 'Backup Health', 'Recovery Assistant', 'Verify Bench', 'Reveal hidden', 'Secret notes', 'No secret yet', 'Lock & wipe']) {
+      assert.ok(coldMoreText.some((item) => item.includes(expected)), `${engine}: cold More is missing ${expected}`);
+    }
+    for (const id of ['P1.5', 'P4.5', 'P4.9', 'P4.3']) {
+      const unavailable = coldFrame.locator(`.cold-mobile-more-links [data-roadmap-id="${id}"]`);
+      assert.equal(await unavailable.getAttribute('aria-disabled'), 'true', `${engine}: cold More future ${id} must be unavailable`);
+    }
+    for (const href of ['#cold-group-session', '#cold-group-entropy', '#cold-seed-forge-validator', '#cold-group-qr', '#cold-group-backups', '#cold-verification', '#cold-secret-switcher']) {
+      await coldFrame.locator('.cold-mobile-more').evaluate((details) => { details.open = true; });
+      await coldFrame.evaluate((route) => {
+        document.querySelector(`.cold-mobile-more-links a[href="${route}"]`).click();
+      }, href);
+      assert.equal(await coldFrame.locator('.cold-mobile-more').getAttribute('open'), null, `${engine}: ${href} did not close More`);
+    }
+    await coldFrame.evaluate(() => {
+      document.querySelector('.cold-mobile-more-links a[data-cold-more-target="cold-concealment-controls"]').click();
+    });
+    await coldFrame.locator('#cold-concealment-controls:not([hidden])').waitFor({ state: 'visible' });
+    assert.equal(await coldFrame.locator('.cold-mobile-more').getAttribute('open'), null, `${engine}: Reveal hidden did not close More`);
+    assert.equal(await coldFrame.locator('#cold-vault-status').isVisible(), true);
+    assert.equal(await coldFrame.locator('#cold-vault-status').getAttribute('tabindex'), '-1');
+    await coldFrame.evaluate(() => {
+      document.querySelector('.cold-mobile-more-links a[data-cold-more-target="cold-secret-notes"]').click();
+    });
+    await coldFrame.locator('#cold-secret-notes:not([hidden])').waitFor({ state: 'visible' });
+    assert.equal(await coldFrame.locator('.cold-mobile-more').getAttribute('open'), null, `${engine}: Secret notes did not close More`);
+    assert.equal(await coldFrame.locator('#cold-secret-notes').getAttribute('tabindex'), '-1');
+    await coldFrame.evaluate(() => {
+      document.querySelector('.cold-mobile-more-links a[data-cold-more-target="cold-vault-controls"]').click();
+    });
+    await coldFrame.locator('#cold-vault-controls').waitFor({ state: 'visible' });
+    assert.equal(await coldFrame.locator('.cold-mobile-more').getAttribute('open'), null, `${engine}: Lock & wipe did not close More`);
+    assert.equal(await coldFrame.locator('#cold-vault-status').isVisible(), true);
+    assert.equal(await coldFrame.locator('#cold-vault-status').getAttribute('tabindex'), '-1');
+    await coldFrame.evaluate(() => { document.getElementById('cold-concealment-controls').hidden = true; document.getElementById('cold-secret-notes').hidden = true; });
+    await coldFrame.locator('.cold-mobile-more').evaluate((details) => { details.open = false; });
+    await page.locator('#mobile-more-tab').focus();
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#mobile-more-menu').isVisible(), false);
     assert.equal(
@@ -1150,7 +1244,12 @@ async function verifyBuiltFile(browser, engine) {
       `${engine}: Escape did not return focus to the mobile overflow tab`
     );
     await page.locator('#mobile-more-tab').click();
-    await page.locator('#mobile-more-menu a[data-route="reference"]').click();
+    await page.locator('#mobile-more-menu a[href="#cold-realm-status"]').click();
+    await assertColdRealmTarget('mobile More link');
+    await page.locator('#mobile-tabs a[data-route="dashboard"]').click();
+    await page.waitForFunction(() => window.location.hash === '#dashboard');
+    await page.locator('#mobile-more-tab').click();
+    await page.locator('#mobile-more-menu a[data-route="reference"]').first().click();
     await page.waitForFunction(() => window.location.hash === '#reference');
     await harness.expectElementVisible('#page-reference:not([hidden])');
     assert.equal(await page.locator('#mobile-more-menu').isVisible(), false);
