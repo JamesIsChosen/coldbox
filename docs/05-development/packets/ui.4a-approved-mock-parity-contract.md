@@ -121,7 +121,7 @@ $ npm run lint
 Lint passed: forbidden constructs, JavaScript syntax, and LF source line endings are valid.
 
 $ npm run check-docs
-Documentation hygiene check passed: 235 markdown file(s) checked, 0 warning(s).
+Documentation hygiene check passed: 236 markdown file(s) checked, 0 warning(s).
 
 $ npm run verify-vendor
 Local vendor verified: 10 pinned packages
@@ -162,15 +162,15 @@ requires a non-zero exit with `brand-assets.js` in the diagnostic.
 
 ```text
 $ npm run build
-Built build/coldbox.html (278c4b67559112bc298df267a9081dc6435c771ccef82a00cbe8a7c154d42dc5)
+Built build/coldbox.html (9bb3ef11505d76c059bd196fa6aea02b9a9ab35ee491cf723924411f88b8b2d7)
 
 $ npm run build
-Built build/coldbox.html (278c4b67559112bc298df267a9081dc6435c771ccef82a00cbe8a7c154d42dc5)
+Built build/coldbox.html (9bb3ef11505d76c059bd196fa6aea02b9a9ab35ee491cf723924411f88b8b2d7)
 
-first=278c4b67559112bc298df267a9081dc6435c771ccef82a00cbe8a7c154d42dc5
-first-sidecar=278c4b67559112bc298df267a9081dc6435c771ccef82a00cbe8a7c154d42dc5
-second=278c4b67559112bc298df267a9081dc6435c771ccef82a00cbe8a7c154d42dc5
-second-sidecar=278c4b67559112bc298df267a9081dc6435c771ccef82a00cbe8a7c154d42dc5
+first=9bb3ef11505d76c059bd196fa6aea02b9a9ab35ee491cf723924411f88b8b2d7
+first-sidecar=9bb3ef11505d76c059bd196fa6aea02b9a9ab35ee491cf723924411f88b8b2d7
+second=9bb3ef11505d76c059bd196fa6aea02b9a9ab35ee491cf723924411f88b8b2d7
+second-sidecar=9bb3ef11505d76c059bd196fa6aea02b9a9ab35ee491cf723924411f88b8b2d7
 REPRODUCIBLE=PASS
 ```
 
@@ -195,8 +195,8 @@ $ npm test
 During development, an earlier 414-test revision first passed 409 and failed
 five; every failure was `spawnSync git EPERM` in tests that create disposable Git
 repositories. That unchanged revision passed 414/414 with the required
-permission. The final suite above adds the reference-mutation regression and
-passes 417/417 with the same permission.
+permission. The final suite above adds the imported-helper and symlink graph
+regressions and passes 417/417 with the same permission.
 
 `npm run test:browser` was not run. UI.4a has no browser-verifiable criterion and
 changes no rendered product input; rendering the untrusted prototypes is
@@ -351,9 +351,11 @@ and real mobile sign-off. Every later manifest screen inherits the same contract
 
 ## 11. Bundle impact
 
-Product build before: 2,667,256 bytes. Product build after: 2,667,256 bytes.
-Delta: **0 bytes (0 KiB)**. The build hash remains
-`278c4b67559112bc298df267a9081dc6435c771ccef82a00cbe8a7c154d42dc5`.
+Product build before: 2,667,256 bytes. Product build after: 2,667,239 bytes.
+Delta: **-17 bytes**. The remediation changes only governance/build-input
+evidence; the byte delta is the expected provenance-date update caused by the
+new committed `scripts/` guard file. The remediation-tip build hash is
+`9bb3ef11505d76c059bd196fa6aea02b9a9ab35ee491cf723924411f88b8b2d7`.
 
 The two repository-only reference snapshots add 849,923 bytes to source history;
 neither enters `build/coldbox.html`. The artifact remains inside the canonical
