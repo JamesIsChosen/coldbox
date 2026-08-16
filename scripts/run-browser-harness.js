@@ -1216,7 +1216,7 @@ async function verifyBuiltFile(browser, engine) {
     await page.locator('#mobile-tabs a[data-route="dashboard"]').click();
     await page.waitForFunction(() => window.location.hash === '#dashboard');
     await page.locator('#mobile-more-tab').click();
-    await page.locator('#mobile-more-menu a[data-route="reference"]').click();
+    await page.locator('#mobile-more-menu a[data-route="reference"]').first().click();
     await page.waitForFunction(() => window.location.hash === '#reference');
     await harness.expectElementVisible('#page-reference:not([hidden])');
     assert.equal(await page.locator('#mobile-more-menu').isVisible(), false);
