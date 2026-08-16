@@ -314,7 +314,7 @@ Every later roadmap item that activates a screen listed in the [approved referen
   One component, built once, used by every surface that holds a record.
   **Accept:** opening a record shows the complete record — all fields, tags, concealment state and provenance — not a summary; a QR appears for every public address, xpub, descriptor or npub; **no QR is offered for secret material from this component**, which remains SeedQR Studio's job behind its own plaintext acknowledgement; the panel is calm per §6 whenever it renders a secret; it is fully keyboard-navigable with a visible focus ring and returns focus on close; it is one implementation, and a reviewer can confirm that by finding one.
 
-- [~] **UI.7 Send-to routing** 🌐
+- [x] **UI.7 Send-to routing** 🌐
   *Deps: UI.6*
   The typed routes that replace copy-paste between tools.
   **Accept:** every value that has a consumer offers a Send to row into it; **no send-to path writes secret material to the clipboard**, asserted by a test; where copy still exists for public values it runs the existing P1.12 clipboard round-trip check; a send-to into a cold tool never round-trips through the warm shell; routes are enumerable and each one is covered.
