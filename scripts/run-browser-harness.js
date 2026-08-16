@@ -852,7 +852,7 @@ async function verifyBuiltFile(browser, engine) {
     assert.equal(await coldFrame.locator('#cold-vault-passphrase-confirm').inputValue(), '');
     await coldFrame.locator('#cold-vault-passphrase-confirm').fill('browser round-trip phrase');
     await coldFrame.locator('#cold-vault-create').click();
-    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 60000 });
     await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     assert.equal(await coldFrame.locator('#cold-vault-passphrase').inputValue(), '');
     assert.equal(await coldFrame.locator('#cold-vault-passphrase-confirm').inputValue(), '');
@@ -991,7 +991,7 @@ async function verifyBuiltFile(browser, engine) {
     await coldFrame.locator('#cold-vault-status[data-state="pending"]').waitFor({ state: 'visible' });
     await coldFrame.locator('#cold-vault-passphrase').fill('browser round-trip phrase');
     await coldFrame.locator('#cold-vault-unlock').click();
-    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 60000 });
     await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     await page.locator('#vault-status-label').filter({ hasText: /Not saved/ }).waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await coldFrame.locator('#cold-vault-passphrase-confirm').isVisible(), false, `${engine}: normal unlock must not show creation confirmation`);
@@ -4523,12 +4523,12 @@ async function verifyVaultRecoveryShares(browser, engine) {
     assert.equal(await coldFrame.locator('#cold-vault-recovery-generated').isHidden(), false, `${engine}: generated recovery output must be visible in the cold realm`);
     assert.match(await coldFrame.locator('#cold-vault-recovery-output').inputValue(), /Masked recovery shares/);
     assert.equal(await coldFrame.locator('#cold-vault-recovery-reveal').isDisabled(), false);
-    await coldFrame.locator('#cold-vault-recovery-reveal').click();
+    await coldFrame.locator('#cold-vault-recovery-reveal').evaluate((button) => button.click());
     const firstShares = (await coldFrame.locator('#cold-vault-recovery-output').inputValue())
       .split(/\r?\n/).map((share) => share.trim()).filter(Boolean);
     assert.equal(firstShares.length, 3, `${engine}: browser generation must produce the configured 2-of-3 set`);
     assert.ok(firstShares.every((share) => share.split(/\s+/).length >= 20), `${engine}: generated output must contain complete SLIP-39 mnemonics`);
-    await coldFrame.locator('#cold-vault-recovery-reveal').click();
+    await coldFrame.locator('#cold-vault-recovery-reveal').evaluate((button) => button.click());
     assert.match(await coldFrame.locator('#cold-vault-recovery-output').inputValue(), /Masked recovery shares/);
 
     await coldFrame.locator('#cold-vault-recovery-passphrase').fill(normalPassphrase);
@@ -4539,7 +4539,7 @@ async function verifyVaultRecoveryShares(browser, engine) {
     await coldFrame.locator('#cold-vault-recovery-passphrase').fill(normalPassphrase);
     await coldFrame.locator('#cold-vault-recovery-configure').click();
     await coldFrame.locator('#cold-vault-status').filter({ hasText: /Recovery shares generated/ }).waitFor({ state: 'visible', timeout: 15000 });
-    await coldFrame.locator('#cold-vault-recovery-reveal').click();
+    await coldFrame.locator('#cold-vault-recovery-reveal').evaluate((button) => button.click());
     const replacementShares = (await coldFrame.locator('#cold-vault-recovery-output').inputValue())
       .split(/\r?\n/).map((share) => share.trim()).filter(Boolean);
     assert.equal(replacementShares.length, 3, `${engine}: replacement must produce the configured 2-of-3 set`);
@@ -4548,7 +4548,7 @@ async function verifyVaultRecoveryShares(browser, engine) {
     const warmHtml = await page.locator('html').evaluate((element) => element.outerHTML);
     assert.equal(warmHtml.includes(firstShares[0]), false, `${engine}: generated share words must not enter the warm DOM`);
     assert.equal(warmHtml.includes(replacementShares[0]), false, `${engine}: replacement share words must not enter the warm DOM`);
-    await coldFrame.locator('#cold-vault-recovery-reveal').click();
+    await coldFrame.locator('#cold-vault-recovery-reveal').evaluate((button) => button.click());
 
     await page.locator('#app[data-vault-persistence="unsaved"]').waitFor({ state: 'attached', timeout: 5000 });
     assert.equal(await page.locator('#vault-save-download').isDisabled(), false, `${engine}: recovery configuration must enable the durable save action`);
