@@ -1169,6 +1169,10 @@ async function verifyBuiltFile(browser, engine) {
     await assertColdRealmTarget('app-bar quick link');
     await page.locator('#nav-rail a[data-route="dashboard"]').click();
     await page.waitForFunction(() => window.location.hash === '#dashboard');
+    await coldFrame.locator('a.cold-nav-link[data-cold-more-target="cold-secret-notes"]').click();
+    await coldFrame.locator('#cold-secret-notes:not([hidden])').waitFor({ state: 'visible' });
+    assert.equal(await coldFrame.locator('#cold-secret-notes').getAttribute('tabindex'), '-1');
+    await coldFrame.evaluate(() => { document.getElementById('cold-secret-notes').hidden = true; });
     await harness.atViewport(360, 640);
 
     const unavailableMoney = page.locator('#mobile-tabs button[data-roadmap-id="P3.4"]');

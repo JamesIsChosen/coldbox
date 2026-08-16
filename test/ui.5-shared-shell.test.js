@@ -79,6 +79,8 @@ test('mobile More sheets match the approved route inventories', () => {
   assert.match(coldHtml, /href="#cold-concealment-controls" data-cold-more-target="cold-concealment-controls"/);
   assert.match(coldHtml, /href="#cold-secret-notes" data-cold-more-target="cold-secret-notes"/);
   assert.match(coldHtml, /href="#cold-vault-controls" data-cold-more-target="cold-vault-controls"/);
+  assert.match(coldHtml, /<a class="cold-nav-link" href="#cold-secret-notes" data-cold-more-target="cold-secret-notes"[\s\S]*Secret notes/);
+  assert.doesNotMatch(coldHtml, /<button class="cold-nav-link cold-nav-link-unavailable"[^>]*data-roadmap-id="P1\.7"[\s\S]*Secret notes/);
   assert.match(coldHtml, /P4\.6 · Phase 4/);
 });
 
