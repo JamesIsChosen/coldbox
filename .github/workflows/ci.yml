@@ -122,7 +122,28 @@ jobs:
         run: npm run check-docs
 
       - name: Unit and vector tests
-        run: npm test
+        # A skipped test is not a passed test. Read-only reviewers rely on this
+        # run as their execution witness (ADR-0048), so a suite that self-skips
+        # on a missing dependency would report green while checking nothing.
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'test.log'
+          & npm test -- --test-reporter=tap *> $log
+          $exitCode = $LASTEXITCODE
+          Get-Content -LiteralPath $log
+          if ($exitCode -ne 0) {
+            exit $exitCode
+          }
+          $skipLine = Get-Content -LiteralPath $log | Where-Object { $_ -match '^# skipped\s+(\d+)' } | Select-Object -First 1
+          $skipped = 0
+          if ($skipLine -match '^# skipped\s+(\d+)') {
+            $skipped = [int]$Matches[1]
+          }
+          Write-Host "skipped=$skipped"
+          if ($skipped -ne 0) {
+            Write-Error "$skipped test(s) skipped. CI is a review witness; skips are not passes."
+            exit 1
+          }
 
       - name: Build (first pass)
         run: npm run build

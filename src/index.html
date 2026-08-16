@@ -361,7 +361,7 @@ __COLDBOX_WORDMARK__
               <span class="card-icon" aria-hidden="true">01</span>
               <h2>Vault Library</h2>
               <p>Coldbox can list only vault files or folders you explicitly grant. Select a named vault first; its unlock phrase is entered separately inside the sealed realm. Public names must be unique among vault identities this browser profile or granted library already knows.</p>
-              <input class="sr-only" id="vault-file-input" type="file" accept=".cbx,application/octet-stream" multiple>
+              <input class="sr-only" id="vault-file-input" type="file" accept=".cbx,application/octet-stream" multiple data-input-surface="public">
               <div class="vault-actions">
                 <button class="vault-button" id="vault-load-file" type="button">Choose vault files</button>
                 <button class="vault-button" id="vault-choose-folder" type="button">Choose vault folder</button>
@@ -371,7 +371,7 @@ __COLDBOX_WORDMARK__
               <hr>
               <h3>Create a new vault</h3>
               <label class="vault-label" for="vault-create-name">Public vault name</label>
-              <input id="vault-create-name" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="e.g. Bitcoin Savings">
+              <input id="vault-create-name" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="e.g. Bitcoin Savings" data-input-surface="public">
               <p class="vault-help">This name is public and appears in filenames/library. Do not put a passphrase, seed phrase, private key, or other secret here.</p>
               <div class="vault-actions">
                 <button class="vault-button" id="vault-create-prepare" type="button">Continue creation in sealed realm</button>
@@ -393,7 +393,7 @@ __COLDBOX_WORDMARK__
               <h2>Encrypted text handoff (advanced)</h2>
               <p>For unusual airgapped workflows, Coldbox can expose the encrypted <code>.cbx</code> bytes as Base64 text. This is not a canonical save and does not count as a verified backup. QR is deliberately not available here.</p>
               <label class="vault-label" for="vault-manual-data">Encrypted vault Base64</label>
-              <textarea id="vault-manual-data" rows="7" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Encrypted bytes appear here or can be pasted here."></textarea>
+              <textarea id="vault-manual-data" rows="7" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Encrypted bytes appear here or can be pasted here." data-input-surface="public"></textarea>
               <div class="vault-actions">
                 <button class="vault-button" id="vault-save-manual" type="button">Prepare encrypted text</button>
                 <button class="vault-button" id="vault-manual-copy" type="button" disabled>Copy text</button>
@@ -428,7 +428,7 @@ __COLDBOX_WORDMARK__
               <div id="vault-transfer-receipt" class="vault-transfer-receipt" hidden>
                 <p id="vault-transfer-receipt-summary"></p>
                 <label class="vault-label" for="vault-transfer-receive-name">Local public vault name</label>
-                <input id="vault-transfer-receive-name" type="text" maxlength="80" autocomplete="off" spellcheck="false">
+                <input id="vault-transfer-receive-name" type="text" maxlength="80" autocomplete="off" spellcheck="false" data-input-surface="public">
                 <p class="vault-help">The sender's public name is suggested. Change it if that name already belongs to a different Vault ID on this device.</p>
                 <div class="vault-actions">
                   <button class="vault-button vault-button-primary" id="vault-transfer-load" type="button">Load received vault</button>
@@ -482,11 +482,11 @@ __COLDBOX_WORDMARK__
                 <span class="card-icon" aria-hidden="true">01</span>
                 <h2>Wallet</h2>
                 <form id="registry-wallet-form" class="registry-form">
-                  <input id="registry-wallet-id" type="hidden">
+                  <input id="registry-wallet-id" type="hidden" data-input-surface="public">
                   <label class="vault-label" for="registry-wallet-label">Label</label>
-                  <input id="registry-wallet-label" class="registry-input" type="text" maxlength="256" autocomplete="off">
+                  <input id="registry-wallet-label" class="registry-input" type="text" maxlength="256" autocomplete="off" data-input-surface="public">
                   <label class="vault-label" for="registry-wallet-type">Type</label>
-                  <select id="registry-wallet-type" class="registry-input">
+                  <select id="registry-wallet-type" class="registry-input" data-input-surface="public">
                     <option value="singlesig">Single-signature</option>
                     <option value="multisig">Multisig</option>
                     <option value="watch-only">Watch-only</option>
@@ -494,18 +494,18 @@ __COLDBOX_WORDMARK__
                     <option value="custodial">Custodial</option>
                   </select>
                   <label class="vault-label" for="registry-wallet-network">Network</label>
-                  <input id="registry-wallet-network" class="registry-input" type="text" maxlength="64" value="bitcoin" autocomplete="off">
+                  <input id="registry-wallet-network" class="registry-input" type="text" maxlength="64" value="bitcoin" autocomplete="off" data-input-surface="public">
                   <label class="vault-label" for="registry-wallet-script">Script type</label>
-                  <input id="registry-wallet-script" class="registry-input" type="text" maxlength="64" value="p2wpkh" autocomplete="off">
+                  <input id="registry-wallet-script" class="registry-input" type="text" maxlength="64" value="p2wpkh" autocomplete="off" data-input-surface="public">
                   <label class="vault-label" for="registry-wallet-path">Primary path</label>
-                  <input id="registry-wallet-path" class="registry-input" type="text" maxlength="128" placeholder="m/84'/0'/0'" autocomplete="off">
+                  <input id="registry-wallet-path" class="registry-input" type="text" maxlength="128" placeholder="m/84'/0'/0'" autocomplete="off" data-input-surface="public">
                   <label class="vault-label" for="registry-wallet-fingerprint">Fingerprint</label>
-                  <input id="registry-wallet-fingerprint" class="registry-input" type="text" maxlength="8" pattern="[0-9a-fA-F]{8}" autocomplete="off">
+                  <input id="registry-wallet-fingerprint" class="registry-input" type="text" maxlength="8" pattern="[0-9a-fA-F]{8}" autocomplete="off" data-input-surface="public">
                   <label class="vault-label" for="registry-wallet-notes">Notes</label>
-                  <textarea id="registry-wallet-notes" class="registry-input" rows="3" maxlength="10000" autocomplete="off"></textarea>
+                  <textarea id="registry-wallet-notes" class="registry-input" rows="3" maxlength="10000" autocomplete="off" data-input-surface="public"></textarea>
                   <label class="vault-label" for="registry-wallet-tags">Tags</label>
-                  <input id="registry-wallet-tags" class="registry-input" type="text" maxlength="512" placeholder="longterm, coinbase" autocomplete="off">
-                  <label class="registry-checkbox"><input id="registry-wallet-hidden" type="checkbox"> Hide this record</label>
+                  <input id="registry-wallet-tags" class="registry-input" type="text" maxlength="512" placeholder="longterm, coinbase" autocomplete="off" data-input-surface="public">
+                  <label class="registry-checkbox"><input id="registry-wallet-hidden" type="checkbox" data-input-surface="public"> Hide this record</label>
                   <div class="registry-form-actions">
                     <button class="vault-button vault-button-primary" type="submit">Save wallet</button>
                     <button class="vault-button" id="registry-wallet-cancel" type="button" hidden>Cancel edit</button>
@@ -516,20 +516,20 @@ __COLDBOX_WORDMARK__
                 <span class="card-icon" aria-hidden="true">02</span>
                 <h2>Account</h2>
                 <form id="registry-account-form" class="registry-form">
-                  <input id="registry-account-id" type="hidden">
+                  <input id="registry-account-id" type="hidden" data-input-surface="public">
                   <label class="vault-label" for="registry-account-wallet">Wallet</label>
-                  <select id="registry-account-wallet" class="registry-input"></select>
+                  <select id="registry-account-wallet" class="registry-input" data-input-surface="public"></select>
                   <label class="vault-label" for="registry-account-asset">Asset</label>
-                  <input id="registry-account-asset" class="registry-input" type="text" maxlength="64" value="BTC" autocomplete="off">
+                  <input id="registry-account-asset" class="registry-input" type="text" maxlength="64" value="BTC" autocomplete="off" data-input-surface="public">
                   <label class="vault-label" for="registry-account-path">Path</label>
-                  <input id="registry-account-path" class="registry-input" type="text" maxlength="128" placeholder="m/84'/0'/0'" autocomplete="off">
+                  <input id="registry-account-path" class="registry-input" type="text" maxlength="128" placeholder="m/84'/0'/0'" autocomplete="off" data-input-surface="public">
                   <label class="vault-label" for="registry-account-label">Label</label>
-                  <input id="registry-account-label" class="registry-input" type="text" maxlength="256" autocomplete="off">
+                  <input id="registry-account-label" class="registry-input" type="text" maxlength="256" autocomplete="off" data-input-surface="public">
                   <label class="vault-label" for="registry-account-notes">Notes</label>
-                  <textarea id="registry-account-notes" class="registry-input" rows="3" maxlength="10000" autocomplete="off"></textarea>
+                  <textarea id="registry-account-notes" class="registry-input" rows="3" maxlength="10000" autocomplete="off" data-input-surface="public"></textarea>
                   <label class="vault-label" for="registry-account-tags">Tags</label>
-                  <input id="registry-account-tags" class="registry-input" type="text" maxlength="512" placeholder="savings, longterm" autocomplete="off">
-                  <label class="registry-checkbox"><input id="registry-account-hidden" type="checkbox"> Hide this record</label>
+                  <input id="registry-account-tags" class="registry-input" type="text" maxlength="512" placeholder="savings, longterm" autocomplete="off" data-input-surface="public">
+                  <label class="registry-checkbox"><input id="registry-account-hidden" type="checkbox" data-input-surface="public"> Hide this record</label>
                   <div class="registry-form-actions">
                     <button class="vault-button vault-button-primary" type="submit">Save account</button>
                     <button class="vault-button" id="registry-account-cancel" type="button" hidden>Cancel edit</button>
@@ -540,21 +540,21 @@ __COLDBOX_WORDMARK__
                 <span class="card-icon" aria-hidden="true">03</span>
                 <h2>Address</h2>
                 <form id="registry-address-form" class="registry-form">
-                  <input id="registry-address-id" type="hidden">
+                  <input id="registry-address-id" type="hidden" data-input-surface="public">
                   <label class="vault-label" for="registry-address-account">Account</label>
-                  <select id="registry-address-account" class="registry-input"></select>
+                  <select id="registry-address-account" class="registry-input" data-input-surface="public"></select>
                   <label class="vault-label" for="registry-address-index">Index</label>
-                  <input id="registry-address-index" class="registry-input" type="number" min="0" max="2147483647" value="0" autocomplete="off">
+                  <input id="registry-address-index" class="registry-input" type="number" min="0" max="2147483647" value="0" autocomplete="off" data-input-surface="public">
                   <label class="vault-label" for="registry-address-value">Address</label>
-                  <input id="registry-address-value" class="registry-input" type="text" maxlength="256" autocomplete="off" spellcheck="false">
+                  <input id="registry-address-value" class="registry-input" type="text" maxlength="256" autocomplete="off" spellcheck="false" data-input-surface="public">
                   <label class="vault-label" for="registry-address-label">Label</label>
-                  <input id="registry-address-label" class="registry-input" type="text" maxlength="256" autocomplete="off">
-                  <label class="registry-checkbox"><input id="registry-address-change" type="checkbox"> Change address</label>
+                  <input id="registry-address-label" class="registry-input" type="text" maxlength="256" autocomplete="off" data-input-surface="public">
+                  <label class="registry-checkbox"><input id="registry-address-change" type="checkbox" data-input-surface="public"> Change address</label>
                   <label class="vault-label" for="registry-address-notes">Notes</label>
-                  <textarea id="registry-address-notes" class="registry-input" rows="3" maxlength="10000" autocomplete="off"></textarea>
+                  <textarea id="registry-address-notes" class="registry-input" rows="3" maxlength="10000" autocomplete="off" data-input-surface="public"></textarea>
                   <label class="vault-label" for="registry-address-tags">Tags</label>
-                  <input id="registry-address-tags" class="registry-input" type="text" maxlength="512" placeholder="coinbase, receive" autocomplete="off">
-                  <label class="registry-checkbox"><input id="registry-address-hidden" type="checkbox"> Hide this record</label>
+                  <input id="registry-address-tags" class="registry-input" type="text" maxlength="512" placeholder="coinbase, receive" autocomplete="off" data-input-surface="public">
+                  <label class="registry-checkbox"><input id="registry-address-hidden" type="checkbox" data-input-surface="public"> Hide this record</label>
                   <div class="registry-form-actions">
                     <button class="vault-button vault-button-primary" type="submit">Save address</button>
                     <button class="vault-button" id="registry-address-cancel" type="button" hidden>Cancel edit</button>
@@ -567,16 +567,16 @@ __COLDBOX_WORDMARK__
               <h2>Public note</h2>
               <p class="registry-help">Public notes remain in the public compartment. Secret notes are created only inside the sealed realm and never appear in this form.</p>
               <form id="registry-note-form" class="registry-form">
-                <input id="registry-note-id" type="hidden">
+                <input id="registry-note-id" type="hidden" data-input-surface="public">
                 <label class="vault-label" for="registry-note-title">Title</label>
-                <input id="registry-note-title" class="registry-input" type="text" maxlength="256" autocomplete="off" required>
+                <input id="registry-note-title" class="registry-input" type="text" maxlength="256" autocomplete="off" required data-input-surface="public">
                 <label class="vault-label" for="registry-note-body">Body (Markdown)</label>
-                <textarea id="registry-note-body" class="registry-input" rows="5" maxlength="20000" autocomplete="off" required></textarea>
+                <textarea id="registry-note-body" class="registry-input" rows="5" maxlength="20000" autocomplete="off" required data-input-surface="public"></textarea>
                 <label class="vault-label" for="registry-note-links">Linked record IDs</label>
-                <input id="registry-note-links" class="registry-input" type="text" maxlength="4096" placeholder="UUIDs separated by commas" autocomplete="off">
+                <input id="registry-note-links" class="registry-input" type="text" maxlength="4096" placeholder="UUIDs separated by commas" autocomplete="off" data-input-surface="public">
                 <label class="vault-label" for="registry-note-tags">Tags</label>
-                <input id="registry-note-tags" class="registry-input" type="text" maxlength="512" placeholder="taxlot-2024, longterm" autocomplete="off">
-                <label class="registry-checkbox"><input id="registry-note-hidden" type="checkbox"> Hide this note</label>
+                <input id="registry-note-tags" class="registry-input" type="text" maxlength="512" placeholder="taxlot-2024, longterm" autocomplete="off" data-input-surface="public">
+                <label class="registry-checkbox"><input id="registry-note-hidden" type="checkbox" data-input-surface="public"> Hide this note</label>
                 <div class="registry-form-actions">
                   <button class="vault-button vault-button-primary" type="submit">Save note</button>
                   <button class="vault-button" id="registry-note-cancel" type="button" hidden>Cancel edit</button>
@@ -585,8 +585,8 @@ __COLDBOX_WORDMARK__
             </article>
             <div class="registry-filter-bar">
               <label class="vault-label" for="registry-search">Search public records and tags</label>
-              <input id="registry-search" class="registry-input" type="search" maxlength="128" autocomplete="off" placeholder="e.g. #coinbase or savings">
-              <label class="registry-checkbox"><input id="registry-show-hidden" type="checkbox"> Reveal hidden records</label>
+              <input id="registry-search" class="registry-input" type="search" maxlength="128" autocomplete="off" placeholder="e.g. #coinbase or savings" data-input-surface="public">
+              <label class="registry-checkbox"><input id="registry-show-hidden" type="checkbox" data-input-surface="public"> Reveal hidden records</label>
               <p class="registry-help" id="registry-hidden-help">Hidden records stay out of views and search until you re-enter the vault phrase inside the sealed realm.</p>
             </div>
             <div class="registry-lists">
@@ -611,35 +611,35 @@ __COLDBOX_WORDMARK__
                 <h2>Hardware wallet</h2>
                 <p class="registry-help">Record what the device is and where it is. This page does not connect to, unlock, or sign with a hardware wallet.</p>
                 <form id="device-form" class="registry-form">
-                  <input id="device-id" type="hidden">
+                  <input id="device-id" type="hidden" data-input-surface="public">
                   <label class="vault-label" for="device-vendor">Vendor</label>
-                  <input id="device-vendor" class="registry-input" type="text" maxlength="128" autocomplete="off" required>
+                  <input id="device-vendor" class="registry-input" type="text" maxlength="128" autocomplete="off" required data-input-surface="public">
                   <label class="vault-label" for="device-model">Model</label>
-                  <input id="device-model" class="registry-input" type="text" maxlength="128" autocomplete="off" required>
+                  <input id="device-model" class="registry-input" type="text" maxlength="128" autocomplete="off" required data-input-surface="public">
                   <label class="vault-label" for="device-serial">Serial (optional)</label>
-                  <input id="device-serial" class="registry-input" type="text" maxlength="128" autocomplete="off">
+                  <input id="device-serial" class="registry-input" type="text" maxlength="128" autocomplete="off" data-input-surface="public">
                   <label class="vault-label" for="device-firmware">Firmware</label>
-                  <input id="device-firmware" class="registry-input" type="text" maxlength="128" autocomplete="off" required>
+                  <input id="device-firmware" class="registry-input" type="text" maxlength="128" autocomplete="off" required data-input-surface="public">
                   <label class="vault-label" for="device-firmware-date">Firmware installed</label>
-                  <input id="device-firmware-date" class="registry-input" type="date">
+                  <input id="device-firmware-date" class="registry-input" type="date" data-input-surface="public">
                   <label class="vault-label" for="device-purchased-from">Purchased from</label>
-                  <input id="device-purchased-from" class="registry-input" type="text" maxlength="256" autocomplete="off">
+                  <input id="device-purchased-from" class="registry-input" type="text" maxlength="256" autocomplete="off" data-input-surface="public">
                   <label class="vault-label" for="device-purchased-at">Purchased on</label>
-                  <input id="device-purchased-at" class="registry-input" type="date">
-                  <label class="registry-checkbox"><input id="device-tamper-check" type="checkbox"> Tamper-evidence check passed</label>
+                  <input id="device-purchased-at" class="registry-input" type="date" data-input-surface="public">
+                  <label class="registry-checkbox"><input id="device-tamper-check" type="checkbox" data-input-surface="public"> Tamper-evidence check passed</label>
                   <label class="vault-label" for="device-tamper-notes">Tamper check notes</label>
-                  <textarea id="device-tamper-notes" class="registry-input" rows="3" maxlength="10000" autocomplete="off"></textarea>
+                  <textarea id="device-tamper-notes" class="registry-input" rows="3" maxlength="10000" autocomplete="off" data-input-surface="public"></textarea>
                   <label class="vault-label" for="device-pin-set-at">PIN set on</label>
-                  <input id="device-pin-set-at" class="registry-input" type="date">
+                  <input id="device-pin-set-at" class="registry-input" type="date" data-input-surface="public">
                   <label class="vault-label" for="device-pin-changed-at">PIN last changed</label>
-                  <input id="device-pin-changed-at" class="registry-input" type="date">
-                  <label class="registry-checkbox"><input id="device-phrase-wallet-used" type="checkbox"> BIP-39 passphrase wallet used</label>
+                  <input id="device-pin-changed-at" class="registry-input" type="date" data-input-surface="public">
+                  <label class="registry-checkbox"><input id="device-phrase-wallet-used" type="checkbox" data-input-surface="public"> BIP-39 passphrase wallet used</label>
                   <label class="vault-label" for="device-seed-fingerprints">Seed fingerprints</label>
-                  <input id="device-seed-fingerprints" class="registry-input" type="text" maxlength="512" placeholder="8-hex-character fingerprints, comma-separated" autocomplete="off" spellcheck="false">
+                  <input id="device-seed-fingerprints" class="registry-input" type="text" maxlength="512" placeholder="8-hex-character fingerprints, comma-separated" autocomplete="off" spellcheck="false" data-input-surface="public">
                   <label class="vault-label" for="device-location">Physical location</label>
-                  <input id="device-location" class="registry-input" type="text" maxlength="256" autocomplete="off">
+                  <input id="device-location" class="registry-input" type="text" maxlength="256" autocomplete="off" data-input-surface="public">
                   <label class="vault-label" for="device-status-value">Lifecycle status</label>
-                  <select id="device-status-value" class="registry-input">
+                  <select id="device-status-value" class="registry-input" data-input-surface="public">
                     <option value="in-use">In use</option>
                     <option value="retired">Retired</option>
                     <option value="lost">Lost</option>
@@ -647,8 +647,8 @@ __COLDBOX_WORDMARK__
                     <option value="rma">RMA</option>
                   </select>
                   <label class="vault-label" for="device-notes">Notes</label>
-                  <textarea id="device-notes" class="registry-input" rows="4" maxlength="10000" autocomplete="off"></textarea>
-                  <label class="registry-checkbox"><input id="device-hidden" type="checkbox"> Hide this device</label>
+                  <textarea id="device-notes" class="registry-input" rows="4" maxlength="10000" autocomplete="off" data-input-surface="public"></textarea>
+                  <label class="registry-checkbox"><input id="device-hidden" type="checkbox" data-input-surface="public"> Hide this device</label>
                   <div class="registry-form-actions">
                     <button class="vault-button vault-button-primary" type="submit">Save device</button>
                     <button class="vault-button" id="device-cancel" type="button" hidden>Cancel edit</button>
@@ -660,8 +660,8 @@ __COLDBOX_WORDMARK__
                 <h2>Device register</h2>
                 <div class="registry-filter-bar">
                   <label class="vault-label" for="device-search">Search devices</label>
-                  <input id="device-search" class="registry-input" type="search" maxlength="128" autocomplete="off" placeholder="e.g. Trezor or home safe">
-                  <label class="registry-checkbox"><input id="device-show-hidden" type="checkbox"> Reveal hidden devices</label>
+                  <input id="device-search" class="registry-input" type="search" maxlength="128" autocomplete="off" placeholder="e.g. Trezor or home safe" data-input-surface="public">
+                  <label class="registry-checkbox"><input id="device-show-hidden" type="checkbox" data-input-surface="public"> Reveal hidden devices</label>
                   <p class="registry-help" id="device-hidden-help">Hidden devices stay out of the list and search until you re-enter the vault phrase inside the sealed realm.</p>
                 </div>
                 <div id="device-list" class="registry-list"></div>
@@ -698,11 +698,11 @@ __COLDBOX_WORDMARK__
                 <h2>Record a backup</h2>
                 <p class="registry-help">This record contains public location and schedule metadata only. The completion date can be written only after a cold-local reconstruction succeeds.</p>
                 <form id="backup-form" class="registry-form">
-                  <input id="backup-id" type="hidden">
+                  <input id="backup-id" type="hidden" data-input-surface="public">
                   <label class="vault-label" for="backup-subject-id">Public subject UUID</label>
-                  <input id="backup-subject-id" class="registry-input" type="text" maxlength="36" autocomplete="off" spellcheck="false" placeholder="Seed or wallet record UUID" required>
+                  <input id="backup-subject-id" class="registry-input" type="text" maxlength="36" autocomplete="off" spellcheck="false" placeholder="Seed or wallet record UUID" required data-input-surface="public">
                   <label class="vault-label" for="backup-method">Method</label>
-                  <select id="backup-method" class="registry-input">
+                  <select id="backup-method" class="registry-input" data-input-surface="public">
                     <option value="slip39">SLIP-39</option>
                     <option value="codex32">codex32</option>
                     <option value="seedxor">Seed XOR</option>
@@ -714,26 +714,26 @@ __COLDBOX_WORDMARK__
                     <option value="encrypted-file">Encrypted file</option>
                   </select>
                   <label class="vault-label" for="backup-share-label">Share set label</label>
-                  <input id="backup-share-label" class="registry-input" type="text" maxlength="256" autocomplete="off" required>
+                  <input id="backup-share-label" class="registry-input" type="text" maxlength="256" autocomplete="off" required data-input-surface="public">
                   <div class="backup-form-inline">
                     <div>
                       <label class="vault-label" for="backup-threshold">Shares required</label>
-                      <input id="backup-threshold" class="registry-input" type="number" min="1" max="2047" step="1" value="2" required>
+                      <input id="backup-threshold" class="registry-input" type="number" min="1" max="2047" step="1" value="2" required data-input-surface="public">
                     </div>
                     <div>
                       <label class="vault-label" for="backup-verify-every">Verify every (days)</label>
-                      <input id="backup-verify-every" class="registry-input" type="number" min="1" max="3650" step="1" value="365" required>
+                      <input id="backup-verify-every" class="registry-input" type="number" min="1" max="3650" step="1" value="365" required data-input-surface="public">
                     </div>
                   </div>
                   <label class="vault-label" for="backup-group-config">Group configuration (optional JSON)</label>
-                  <textarea id="backup-group-config" class="registry-input" rows="3" maxlength="4096" spellcheck="false" autocomplete="off" placeholder='{"groups":[{"threshold":2,"count":3}]}'></textarea>
+                  <textarea id="backup-group-config" class="registry-input" rows="3" maxlength="4096" spellcheck="false" autocomplete="off" placeholder='{"groups":[{"threshold":2,"count":3}]}' data-input-surface="public"></textarea>
                   <label class="vault-label" for="backup-location">Location</label>
-                  <input id="backup-location" class="registry-input" type="text" maxlength="256" autocomplete="off">
+                  <input id="backup-location" class="registry-input" type="text" maxlength="256" autocomplete="off" data-input-surface="public">
                   <label class="vault-label" for="backup-custodian">Custodian</label>
-                  <input id="backup-custodian" class="registry-input" type="text" maxlength="256" autocomplete="off">
+                  <input id="backup-custodian" class="registry-input" type="text" maxlength="256" autocomplete="off" data-input-surface="public">
                   <label class="vault-label" for="backup-notes">Notes</label>
-                  <textarea id="backup-notes" class="registry-input" rows="4" maxlength="10000" autocomplete="off"></textarea>
-                  <label class="registry-checkbox"><input id="backup-hidden" type="checkbox"> Hide this record</label>
+                  <textarea id="backup-notes" class="registry-input" rows="4" maxlength="10000" autocomplete="off" data-input-surface="public"></textarea>
+                  <label class="registry-checkbox"><input id="backup-hidden" type="checkbox" data-input-surface="public"> Hide this record</label>
                   <div class="registry-form-actions">
                     <button class="vault-button vault-button-primary" type="submit">Save backup record</button>
                     <button class="vault-button" id="backup-cancel" type="button" hidden>Cancel edit</button>
@@ -745,7 +745,7 @@ __COLDBOX_WORDMARK__
                 <h2>Backup register</h2>
                 <p class="registry-help">Unverified records stay visibly incomplete. “Verify shares” opens the cold-only reconstruction control in the sealed realm above.</p>
                 <label class="vault-label" for="backup-search">Search backup records</label>
-                <input id="backup-search" class="registry-input" type="search" maxlength="128" autocomplete="off" placeholder="e.g. home safe or slip39">
+                <input id="backup-search" class="registry-input" type="search" maxlength="128" autocomplete="off" placeholder="e.g. home safe or slip39" data-input-surface="public">
                 <div id="backup-list" class="registry-list"></div>
               </article>
             </div>
@@ -763,25 +763,25 @@ __COLDBOX_WORDMARK__
             <div class="qr-public-form">
               <div>
                 <label for="qr-public-network">Address family</label>
-                <select id="qr-public-network">
+                <select id="qr-public-network" data-input-surface="public">
                   <option value="bitcoin">Bitcoin / BIP-21</option>
                   <option value="ethereum">Ethereum / EIP-681</option>
                 </select>
               </div>
               <div>
                 <label for="qr-public-address">Full receiving address</label>
-                <input id="qr-public-address" type="text" maxlength="256" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" placeholder="bc1… or 0x…">
+                <input id="qr-public-address" type="text" maxlength="256" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" placeholder="bc1… or 0x…" data-input-surface="public">
               </div>
               <div>
                 <label for="qr-public-amount">Amount (optional)</label>
-                <input id="qr-public-amount" type="text" inputmode="decimal" maxlength="40" autocomplete="off" placeholder="BTC or ETH amount">
+                <input id="qr-public-amount" type="text" inputmode="decimal" maxlength="40" autocomplete="off" placeholder="BTC or ETH amount" data-input-surface="public">
               </div>
               <div>
                 <label for="qr-public-label">Bitcoin label (optional)</label>
-                <input id="qr-public-label" type="text" maxlength="128" autocomplete="off" placeholder="BIP-21 only">
+                <input id="qr-public-label" type="text" maxlength="128" autocomplete="off" placeholder="BIP-21 only" data-input-surface="public">
               </div>
               <div class="qr-public-options">
-                <label><input id="qr-public-uri" type="checkbox" checked> Include a payment URI</label>
+                <label><input id="qr-public-uri" type="checkbox" checked data-input-surface="public"> Include a payment URI</label>
                 <button id="qr-public-generate" class="comic-btn" type="button">Generate address QR</button>
               </div>
             </div>
@@ -810,11 +810,11 @@ __COLDBOX_WORDMARK__
             <div class="address-verification-grid">
               <div>
                 <label class="vault-label" for="address-verify-record">Recorded address</label>
-                <select class="registry-input" id="address-verify-record" disabled><option value="">Unlock a vault to choose an address</option></select>
+                <select class="registry-input" id="address-verify-record" disabled data-input-surface="public"><option value="">Unlock a vault to choose an address</option></select>
               </div>
               <div>
                 <label class="vault-label" for="address-verify-candidate">Pasted address</label>
-                <input class="registry-input" id="address-verify-candidate" type="text" maxlength="256" autocomplete="off" spellcheck="false" placeholder="Paste the complete address">
+                <input class="registry-input" id="address-verify-candidate" type="text" maxlength="256" autocomplete="off" spellcheck="false" placeholder="Paste the complete address" data-input-surface="public">
               </div>
             </div>
             <div class="registry-form-actions">
@@ -824,7 +824,7 @@ __COLDBOX_WORDMARK__
             </div>
             <p class="registry-status" id="address-verify-status" data-state="idle" role="status" aria-live="polite">Unlock a vault to compare against recorded public addresses.</p>
             <div class="clipboard-canary" id="clipboard-canary-panel">
-              <label class="registry-checkbox"><input id="clipboard-canary-toggle" type="checkbox"> Enable the opt-in clipboard volatility canary</label>
+              <label class="registry-checkbox"><input id="clipboard-canary-toggle" type="checkbox" data-input-surface="public"> Enable the opt-in clipboard volatility canary</label>
               <p class="registry-help" id="clipboard-canary-status" data-state="off" role="status" aria-live="polite">Off by default. It is never enabled by pasting or by another verification action.</p>
               <button class="vault-button" id="clipboard-canary-retry" type="button" hidden>Retry clipboard permission</button>
             </div>
@@ -832,7 +832,7 @@ __COLDBOX_WORDMARK__
             <details class="address-batch-check">
               <summary>Batch-check a pasted address list</summary>
               <label class="vault-label" for="address-verify-batch">One address per line</label>
-              <textarea class="registry-input" id="address-verify-batch" rows="5" maxlength="20000" placeholder="Paste a payout list or CSV address column"></textarea>
+              <textarea class="registry-input" id="address-verify-batch" rows="5" maxlength="20000" placeholder="Paste a payout list or CSV address column" data-input-surface="public"></textarea>
               <button class="vault-button" id="address-verify-batch-run" type="button">Check every row</button>
               <div class="address-batch-results" id="address-verify-batch-results" role="status" aria-live="polite"></div>
             </details>
@@ -884,7 +884,7 @@ __COLDBOX_WORDMARK__
               <p class="provenance-value provenance-library-hash" id="provenance-expected-hash">Loading…</p>
               <div class="provenance-drop-zone" id="provenance-drop-zone" tabindex="0" role="button" aria-describedby="provenance-drop-result" aria-label="Drop this app's HTML file here, or choose a file, to compare its hash against this running copy">
                 <p>Drag <code>coldbox.html</code> here, or <button type="button" class="comic-btn" id="provenance-drop-choose">choose a file</button>.</p>
-                <input class="sr-only" id="provenance-drop-input" type="file" accept=".html,text/html">
+                <input class="sr-only" id="provenance-drop-input" type="file" accept=".html,text/html" data-input-surface="public">
               </div>
               <p class="provenance-drop-result" id="provenance-drop-result" data-state="idle" aria-live="polite"></p>
             </article>
@@ -926,7 +926,7 @@ __COLDBOX_WORDMARK__
 
             <div class="help-search">
               <label class="vault-label" for="help-search-input">Search help, offline</label>
-              <input type="search" id="help-search-input" placeholder="e.g. xpub, SLIP-39, airgapped" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off">
+              <input type="search" id="help-search-input" placeholder="e.g. xpub, SLIP-39, airgapped" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off" data-input-surface="public">
               <div class="help-search-results" id="help-search-results" role="listbox" aria-label="Search results" hidden></div>
             </div>
 

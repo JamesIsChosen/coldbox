@@ -38,7 +38,11 @@ For a backup meant to outlive its tooling, that's a genuinely different security
 
 **Wallet adoption is the catch.** A Bitcoin Core import PR exists but is unmerged, and no major hardware wallet reads codex32 directly.
 
-**So treat it as a backup format, not an interchange format.** You recover the direct BIP-32 master-seed bytes and must use a wallet or tool that explicitly supports that input domain. Do not relabel those bytes as BIP-39 entropy or turn arbitrary bytes into a BIP-39 mnemonic. Codex32 is for archival durability, not operational convenience.
+**So treat it as a backup format, not an interchange format.** You recover the
+direct BIP-32 master-seed bytes and must use a wallet or tool that explicitly
+supports that input domain. Do not relabel those bytes as BIP-39 entropy or
+turn arbitrary bytes into a BIP-39 mnemonic. Codex32 is for archival
+durability, not operational convenience.
 
 ---
 
@@ -63,11 +67,16 @@ For a backup meant to outlive its tooling, that's a genuinely different security
 
 **Offline.** Green banner.
 
-1. In the sealed Backup Lab → codex32 panel, enter the direct 16-to-64-byte BIP-32 master seed as hexadecimal. This is not BIP-39 entropy, a mnemonic, or a passphrase.
-2. Choose a configuration (2-of-3 is a sensible default) and a four-character identifier.
+1. In the sealed Seed Forge panel, validate or generate the phrase and its
+   exact BIP-39 passphrase, then release it and confirm the focused fingerprint.
+2. Open Backup Lab → codex32. The panel uses the focused Seed Forge seed
+   bytes; it has no second raw-hex source field. Choose a configuration
+   (2-of-3 is a sensible default) and a four-character identifier.
 3. Generate, then reveal the masked shares briefly while writing each one to a separate offline copy.
 
-Shares are 48 characters for a 128-bit seed, using bech32's character set. Each carries an identifier, a share index, and a checksum.
+Share length follows the focused BIP-32 seed byte length (the Seed Forge
+derived seed is 64 bytes), using bech32's character set. Each carries an
+identifier, a share index, and a checksum.
 
 ## Generating by hand
 

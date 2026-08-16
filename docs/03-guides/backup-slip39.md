@@ -71,10 +71,13 @@ Powerful, and easy to overcomplicate. If you can't explain your configuration fr
 
 **Go offline.** Green banner.
 
-1. Backup Lab → SLIP-39 → enter your seed phrase.
-2. Choose your configuration.
-3. Optionally set a share passphrase — a second secret, needing its own backup. This option applies to seed-backup shares in the Backup Lab, not to vault recovery shares.
-4. Generate.
+1. In **Seed Forge**, validate or generate the BIP-39 phrase and its exact
+   passphrase, release it, and confirm the focused fingerprint.
+2. Open Backup Lab → SLIP-39. The generator uses the focused phrase entropy;
+   there is no second seed-entry field.
+3. Choose your configuration.
+4. Optionally set a share passphrase — a second secret, needing its own backup. This option applies to seed-backup shares in the Backup Lab, not to vault recovery shares.
+5. Generate.
 
 Each share is 20 words (128-bit seed) or 33 words (256-bit), from SLIP-39's own 1024-word list. **These are not BIP-39 words** and are not interchangeable.
 

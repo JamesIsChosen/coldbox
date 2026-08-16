@@ -201,6 +201,86 @@ body {
   outline-offset: 0.18rem;
 }
 
+/* The hub and group headers are navigation chrome. They may carry the sealed
+   realm's comic voice; the panels nested inside them retain their existing
+   calm, secret-bearing treatment. */
+#cold-tool-hub {
+  margin-top: 0.8rem;
+  padding: 0.75rem;
+  border: 0.16rem solid var(--cold-yellow);
+  border-radius: 0.35rem;
+  background: var(--cold-surface);
+  box-shadow: 0.2rem 0.2rem 0 var(--cold-drop);
+}
+
+#cold-tool-hub h1,
+.cold-tool-group-header h2 {
+  margin: 0.15rem 0 0;
+  color: var(--cold-text);
+  font-size: 1.05rem;
+  line-height: 1.15;
+}
+
+#cold-tool-hub-help,
+.cold-tool-group-header > p:last-child {
+  max-width: 48rem;
+  margin: 0.45rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.cold-tool-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+.cold-tool-hub-link {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.6rem;
+  border: 0.13rem solid var(--cold-drop);
+  border-radius: 0.3rem;
+  background: var(--cold-yellow);
+  box-shadow: 0.15rem 0.15rem 0 var(--cold-drop);
+  color: var(--cold-ink);
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+}
+
+.cold-tool-hub-link:focus-visible {
+  outline: 0.2rem solid var(--cold-pink);
+  outline-offset: 0.18rem;
+}
+
+.cold-tool-group {
+  margin-top: 1rem;
+  padding: 0.7rem;
+  border: 0.14rem dashed var(--cold-muted);
+  border-radius: 0.45rem;
+}
+
+.cold-tool-group-header {
+  padding: 0.1rem 0.1rem 0.15rem;
+}
+
+.cold-tool-group-header p:last-child {
+  margin-bottom: 0;
+}
+
+.cold-focused-source {
+  margin: 0.45rem 0;
+  color: var(--cold-green);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
 #cold-vault-keyfile {
   margin-top: 0.6rem;
   padding: 0.5rem 0.6rem;
@@ -1586,7 +1666,6 @@ body {
 }
 
 .cold-seed-xor-grid select,
-#cold-seed-xor-source,
 .cold-seed-xor-part-fields input,
 #cold-seed-xor-split,
 #cold-seed-xor-combine,
@@ -1609,11 +1688,6 @@ body {
   border-top: 0.13rem solid var(--cold-outline);
 }
 
-#cold-seed-xor-source {
-  display: block;
-  width: min(100%, 48rem);
-}
-
 #cold-seed-xor-split,
 #cold-seed-xor-combine,
 #cold-seed-xor-reveal,
@@ -1632,7 +1706,6 @@ body {
 #cold-seed-xor-reveal:disabled,
 #cold-seed-xor-combined-reveal:disabled,
 .cold-seed-xor-grid select:disabled,
-#cold-seed-xor-source:disabled,
 .cold-seed-xor-part-fields input:disabled {
   background: var(--cold-disabled-fill);
   box-shadow: none;
@@ -1720,7 +1793,6 @@ body {
 }
 
 .cold-seed-xor-grid select:focus-visible,
-#cold-seed-xor-source:focus-visible,
 .cold-seed-xor-part-fields input:focus-visible,
 #cold-seed-xor-split:focus-visible,
 #cold-seed-xor-combine:focus-visible,

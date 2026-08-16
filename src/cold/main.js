@@ -178,7 +178,6 @@ __COLDBOX_QR_ENCODER__
   var seedXorLanguage = document.getElementById('cold-seed-xor-language');
   var seedXorCount = document.getElementById('cold-seed-xor-count');
   var seedXorMode = document.getElementById('cold-seed-xor-mode');
-  var seedXorSource = document.getElementById('cold-seed-xor-source');
   var seedXorSplitButton = document.getElementById('cold-seed-xor-split');
   var seedXorSplitStatus = document.getElementById('cold-seed-xor-split-status');
   var seedXorGenerated = document.getElementById('cold-seed-xor-generated');
@@ -190,7 +189,6 @@ __COLDBOX_QR_ENCODER__
   var seedXorCombined = document.getElementById('cold-seed-xor-combined');
   var seedXorCombinedRevealButton = document.getElementById('cold-seed-xor-combined-reveal');
   var codex32Panel = document.getElementById('cold-codex32');
-  var codex32SecretHex = document.getElementById('cold-codex32-secret-hex');
   var codex32Threshold = document.getElementById('cold-codex32-threshold');
   var codex32Count = document.getElementById('cold-codex32-count');
   var codex32Identifier = document.getElementById('cold-codex32-identifier');
@@ -212,7 +210,6 @@ __COLDBOX_QR_ENCODER__
   var shamir39Language = document.getElementById('cold-shamir39-language');
   var shamir39Threshold = document.getElementById('cold-shamir39-threshold');
   var shamir39Shares = document.getElementById('cold-shamir39-shares');
-  var shamir39Source = document.getElementById('cold-shamir39-source');
   var shamir39SplitButton = document.getElementById('cold-shamir39-split');
   var shamir39Status = document.getElementById('cold-shamir39-status');
   var shamir39Generated = document.getElementById('cold-shamir39-generated');
@@ -226,7 +223,6 @@ __COLDBOX_QR_ENCODER__
   var rawSssBits = document.getElementById('cold-raw-sss-bits');
   var rawSssThreshold = document.getElementById('cold-raw-sss-threshold');
   var rawSssShares = document.getElementById('cold-raw-sss-shares');
-  var rawSssSource = document.getElementById('cold-raw-sss-source');
   var rawSssSplitButton = document.getElementById('cold-raw-sss-split');
   var rawSssStatus = document.getElementById('cold-raw-sss-status');
   var rawSssGenerated = document.getElementById('cold-raw-sss-generated');
@@ -268,7 +264,6 @@ __COLDBOX_QR_ENCODER__
   var verificationBackupRun = document.getElementById('cold-verification-backup-run');
   var verificationBackupStatus = document.getElementById('cold-verification-backup-status');
   var qrStudio = document.getElementById('cold-qr-studio');
-  var qrSeedSource = document.getElementById('cold-qr-seed-source');
   var qrLanguage = document.getElementById('cold-qr-language');
   var qrFormat = document.getElementById('cold-qr-format');
   var qrLayout = document.getElementById('cold-qr-layout');
@@ -285,7 +280,6 @@ __COLDBOX_QR_ENCODER__
   var qrCardCode = document.getElementById('cold-qr-card-code');
   var qrCardGrid = document.getElementById('cold-qr-card-grid');
   var slip39Panel = document.getElementById('cold-slip39-lab');
-  var slip39SeedSource = document.getElementById('cold-slip39-seed-source');
   var slip39GroupThreshold = document.getElementById('cold-slip39-group-threshold');
   var slip39Groups = document.getElementById('cold-slip39-groups');
   var slip39Passphrase = document.getElementById('cold-slip39-passphrase');
@@ -339,6 +333,56 @@ __COLDBOX_QR_ENCODER__
   var slip39RevealTimer = null;
   var generatedWalletRevision = 0;
   var validationWalletRevision = 0;
+
+  // ADR-0045: every cold input that accepts secret material is declared here.
+  // The per-word validation fields are declared separately: they are editable
+  // validation mirrors, not additional seed-loading entry points.
+  var COLD_SECRET_INPUT_REGISTRY = Object.freeze([
+    { category: 'seed-entry', ids: ['cold-seed-forge-mnemonic-input'] },
+    { category: 'seed-validation', prefixes: ['cold-seed-forge-word-'] },
+    { category: 'vault-auth', ids: ['cold-vault-passphrase', 'cold-vault-passphrase-confirm'] },
+    { category: 'keyfile', ids: ['cold-vault-keyfile-input'] },
+    { category: 'recovery-auth', ids: ['cold-vault-recovery-passphrase'] },
+    { category: 'recovery-share', ids: ['cold-vault-recovery-input', 'cold-codex32-recovery-input', 'cold-slip39-recovery-input', 'cold-backup-verification-input'], prefixes: ['cold-seed-xor-part-', 'cold-shamir39-combine-', 'cold-raw-sss-combine-'] },
+    { category: 'concealment-auth', ids: ['cold-concealment-passphrase'] },
+    { category: 'secret-note', ids: ['cold-secret-note-search', 'cold-secret-note-title', 'cold-secret-note-body', 'cold-secret-note-tags'] },
+    { category: 'bip39-passphrase', ids: ['cold-seed-forge-generated-passphrase-input', 'cold-seed-forge-generated-passphrase-confirm', 'cold-seed-forge-validation-passphrase-input', 'cold-seed-forge-validation-passphrase-confirm'] },
+    { category: 'entropy-input', ids: ['cold-entropy-dice-face', 'cold-entropy-hex-input'] },
+    { category: 'share-passphrase', ids: ['cold-slip39-passphrase', 'cold-backup-verification-passphrase'] },
+    { category: 'share-combine', ids: ['cold-codex32-correction-input'] }
+  ]);
+
+  function declaredSecretInputCategory(id) {
+    for (var entryIndex = 0; entryIndex < COLD_SECRET_INPUT_REGISTRY.length; entryIndex += 1) {
+      var entry = COLD_SECRET_INPUT_REGISTRY[entryIndex];
+      if (entry.ids && entry.ids.indexOf(id) !== -1) {
+        return entry.category;
+      }
+      if (entry.prefixes) {
+        for (var prefixIndex = 0; prefixIndex < entry.prefixes.length; prefixIndex += 1) {
+          var prefix = entry.prefixes[prefixIndex];
+          var suffix = id.indexOf(prefix) === 0 ? id.slice(prefix.length) : '';
+          if (suffix && /^\d+$/.test(suffix)) {
+            return entry.category;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  function createDeclaredSecretInput(id, category) {
+    if (declaredSecretInputCategory(id) !== category) {
+      throw new Error('Secret input is not declared: ' + id);
+    }
+    var input = document.createElement('input');
+    input.type = 'password';
+    input.id = id;
+    input.setAttribute('data-input-surface', 'secret');
+    input.setAttribute('data-secret-input-category', category);
+    return input;
+  }
+
   var seedForgeWalletRevision = 0;
   var linkedVerificationWallet = null;
   var qrArtifact = null;
@@ -751,21 +795,6 @@ __COLDBOX_QR_ENCODER__
     output.textContent = text;
   }
 
-  function parseCodex32Hex(value) {
-    var text = String(value || '').replace(/\s+/g, '');
-    if (!/^[0-9a-f]+$/i.test(text) || text.length % 2 !== 0) {
-      throw new Error('Enter an even number of hexadecimal characters.');
-    }
-    if (text.length < 32 || text.length > 128) {
-      throw new Error('The BIP-32 master seed must be 16 through 64 bytes.');
-    }
-    var bytes = new Uint8Array(text.length / 2);
-    for (var index = 0; index < bytes.length; index += 1) {
-      bytes[index] = Number.parseInt(text.slice(index * 2, index * 2 + 2), 16);
-    }
-    return bytes;
-  }
-
   function renderCodex32Generated() {
     if (!codex32Generated) {
       return;
@@ -805,9 +834,6 @@ __COLDBOX_QR_ENCODER__
     }
     codex32GeneratedShares = [];
     codex32GeneratedRevealed = false;
-    if (codex32SecretHex) {
-      codex32SecretHex.value = '';
-    }
     if (codex32Generated) {
       codex32Generated.value = '';
     }
@@ -838,7 +864,6 @@ __COLDBOX_QR_ENCODER__
     var focused = focusedReleasedSecret();
     codex32Panel.setAttribute('data-state', ready ? 'ready' : 'locked');
     [
-      codex32SecretHex,
       codex32Threshold,
       codex32Count,
       codex32Identifier,
@@ -852,6 +877,9 @@ __COLDBOX_QR_ENCODER__
         control.disabled = !ready;
       }
     });
+    if (codex32GenerateButton) {
+      codex32GenerateButton.disabled = !ready || !focused;
+    }
     if (codex32RevealButton) {
       codex32RevealButton.disabled = !ready || codex32GeneratedShares.length === 0;
     }
@@ -860,10 +888,6 @@ __COLDBOX_QR_ENCODER__
     }
     if (codex32UseCorrectionButton) {
       codex32UseCorrectionButton.disabled = !ready || !codex32CorrectionCandidate;
-    }
-    if (codex32SecretHex && (focused || releasedSecretModeActive())) {
-      codex32SecretHex.value = '';
-      codex32SecretHex.disabled = true;
     }
   }
 
@@ -874,13 +898,10 @@ __COLDBOX_QR_ENCODER__
     var secretBytes = null;
     try {
       var focused = focusedReleasedSecret();
-      if (focused) {
-        secretBytes = new Uint8Array(focused.seedBytes);
-      } else if (releasedSecretModeActive()) {
-        throw new Error('No released secret is focused; generation is refused.');
-      } else {
-        secretBytes = parseCodex32Hex(codex32SecretHex ? codex32SecretHex.value : '');
+      if (!focused) {
+        throw new Error('Release and focus a Seed Forge secret first.');
       }
+      secretBytes = new Uint8Array(focused.seedBytes);
       var threshold = Number(codex32Threshold ? codex32Threshold.value : 3);
       var count = Number(codex32Count ? codex32Count.value : 5);
       var identifier = codex32Identifier ? codex32Identifier.value.trim().toLowerCase() : '';
@@ -899,9 +920,6 @@ __COLDBOX_QR_ENCODER__
       codex32GeneratedRevealed = false;
       renderCodex32Generated();
       zeroBytes(generated.bytes);
-      if (codex32SecretHex) {
-        codex32SecretHex.value = '';
-      }
       setCodex32Status(
         codex32GenerateStatus,
         'ready',
@@ -2347,30 +2365,14 @@ __COLDBOX_QR_ENCODER__
   }
 
   function slip39SourceBytes() {
-    if (!slip39 || !seedForge || !slip39SeedSource) {
+    if (!slip39 || !seedForge) {
       return null;
     }
     var focused = focusedReleasedSecret();
-    if (focused) {
-      return new Uint8Array(seedForge.mnemonicToEntropy(focused.mnemonic, focused.language));
-    }
-    if (releasedSecretModeActive()) {
+    if (!focused) {
       return null;
     }
-    if (slip39SeedSource.value === 'generated') {
-      if (!generatedMnemonic || !generatedSeedBytes || generatedWalletRevision <= 0) {
-        return null;
-      }
-      return new Uint8Array(seedForge.mnemonicToEntropy(generatedMnemonic, generatedLanguage));
-    }
-    if (slip39SeedSource.value === 'validated') {
-      if (!validationPhraseText || !validationSeedBytes || validationWalletRevision <= 0) {
-        return null;
-      }
-      var language = seedForgeLanguage ? seedForgeLanguage.value : 'english';
-      return new Uint8Array(seedForge.mnemonicToEntropy(validationPhraseText, language));
-    }
-    return null;
+    return new Uint8Array(seedForge.mnemonicToEntropy(focused.mnemonic, focused.language));
   }
 
   function slip39SourceAvailable() {
@@ -2458,10 +2460,9 @@ __COLDBOX_QR_ENCODER__
       return;
     }
     var ready = Boolean(slip39 && seedForge && vaultCryptoReady);
-    var focused = focusedReleasedSecret();
     var sourceReady = ready && slip39SourceAvailable();
     slip39Panel.setAttribute('data-state', ready ? 'ready' : 'locked');
-    [slip39SeedSource, slip39GroupThreshold, slip39Groups, slip39Passphrase, slip39RecoveryInput]
+    [slip39GroupThreshold, slip39Groups, slip39Passphrase, slip39RecoveryInput]
       .forEach(function (control) {
         if (control) {
           control.disabled = !ready;
@@ -2486,13 +2487,6 @@ __COLDBOX_QR_ENCODER__
     if (slip39RevealButton) {
       slip39RevealButton.disabled = !ready || !slip39ShareText;
     }
-    if (slip39SeedSource && focused) {
-      slip39SeedSource.value = 'focused';
-      slip39SeedSource.disabled = true;
-    } else if (slip39SeedSource && releasedSecretModeActive()) {
-      slip39SeedSource.value = 'focused';
-      slip39SeedSource.disabled = true;
-    }
   }
 
   function generateSlip39Shares() {
@@ -2509,7 +2503,7 @@ __COLDBOX_QR_ENCODER__
     try {
       source = slip39SourceBytes();
       if (!source) {
-        throw new Error('A valid generated or validated phrase is required.');
+        throw new Error('Release and focus a Seed Forge secret first.');
       }
       var options = parseSlip39Options();
       clearSlip39Outputs();
@@ -2604,15 +2598,6 @@ __COLDBOX_QR_ENCODER__
     }
     if (slip39RecoverButton) {
       slip39RecoverButton.addEventListener('click', recoverSlip39Shares);
-    }
-    if (slip39SeedSource) {
-      slip39SeedSource.addEventListener('change', function () {
-        clearSlip39Outputs();
-        if (slip39CompatibilityAck) {
-          slip39CompatibilityAck.checked = false;
-        }
-        updateSlip39Controls();
-      });
     }
     [slip39GroupThreshold, slip39Groups, slip39Passphrase].forEach(function (control) {
       if (control) {
@@ -2972,11 +2957,7 @@ __COLDBOX_QR_ENCODER__
     if (seedForgeGeneratedSeedReveal) {
       seedForgeGeneratedSeedReveal.disabled = true;
     }
-    if (slip39SeedSource && slip39SeedSource.value === 'generated') {
-      clearSlip39Outputs();
-    } else {
-      updateSlip39Controls();
-    }
+    updateSlip39Controls();
   }
 
   function replaceGeneratedSeed(bytes) {
@@ -3028,11 +3009,7 @@ __COLDBOX_QR_ENCODER__
     if (seedForgeValidationSeedReveal) {
       seedForgeValidationSeedReveal.disabled = true;
     }
-    if (slip39SeedSource && slip39SeedSource.value === 'validated') {
-      clearSlip39Outputs();
-    } else {
-      updateSlip39Controls();
-    }
+    updateSlip39Controls();
   }
 
   function replaceValidationSeed(bytes) {
@@ -3539,13 +3516,11 @@ __COLDBOX_QR_ENCODER__
       shamir39Language,
       shamir39Threshold,
       shamir39Shares,
-      shamir39Source,
       shamir39SplitButton,
       shamir39CombineButton,
       rawSssBits,
       rawSssThreshold,
       rawSssShares,
-      rawSssSource,
       rawSssSplitButton,
       rawSssCombineButton
     ].forEach(function (control) {
@@ -3573,32 +3548,30 @@ __COLDBOX_QR_ENCODER__
         shamir39Language.value = focused.language;
       }
     }
-    if (focused || releasedSecretModeActive()) {
-      [shamir39Source, rawSssSource].forEach(function (source) {
-        if (source) {
-          source.value = '';
-          source.disabled = true;
-        }
-      });
+    if (shamir39SplitButton) {
+      shamir39SplitButton.disabled = !ready || !focused;
+    }
+    if (rawSssSplitButton) {
+      rawSssSplitButton.disabled = !ready || !focused;
     }
   }
 
   function splitShamir39Phrase() {
     var focused = focusedReleasedSecret();
-    var source = focused ? focused.mnemonic : (shamir39Source ? shamir39Source.value : '');
+    var source = focused ? focused.mnemonic : '';
     var threshold = Number(shamir39Threshold && shamir39Threshold.value);
     var shares = Number(shamir39Shares && shamir39Shares.value);
-    if (releasedSecretModeActive() && !focused) {
+    if (!focused) {
       setShamirStatus(shamir39Status, 'error', 'Split refused: release and focus a Seed Forge secret first.');
       return;
     }
-    if (!shamir || !source) {
-      setShamirStatus(shamir39Status, 'error', 'Enter a BIP-39 phrase before splitting.');
+    if (!shamir) {
+      setShamirStatus(shamir39Status, 'error', 'Shamir39 is unavailable; splitting refused.');
       return;
     }
     try {
       var result = shamir.shamir39.split(source, {
-        language: focused ? focused.language : (shamir39Language ? shamir39Language.value : 'english'),
+        language: focused.language,
         threshold: threshold,
         shares: shares
       });
@@ -3618,26 +3591,21 @@ __COLDBOX_QR_ENCODER__
       }
       setShamirStatus(shamir39Status, 'error', 'Shamir39 refused the input: ' + error.message);
     } finally {
-      if (shamir39Source) {
-        shamir39Source.value = '';
-      }
       updateShamirControls();
     }
   }
 
   function splitRawSssSecret() {
     var focused = focusedReleasedSecret();
-    var source = focused
-      ? bytesToHex(focused.seedBytes)
-      : (rawSssSource ? rawSssSource.value : '');
+    var source = focused ? bytesToHex(focused.seedBytes) : '';
     var threshold = Number(rawSssThreshold && rawSssThreshold.value);
     var shares = Number(rawSssShares && rawSssShares.value);
-    if (releasedSecretModeActive() && !focused) {
+    if (!focused) {
       setShamirStatus(rawSssStatus, 'error', 'Split refused: release and focus a Seed Forge secret first.');
       return;
     }
-    if (!shamir || !source) {
-      setShamirStatus(rawSssStatus, 'error', 'Enter an even-length hexadecimal secret before splitting.');
+    if (!shamir) {
+      setShamirStatus(rawSssStatus, 'error', 'Raw SSS is unavailable; splitting refused.');
       return;
     }
     try {
@@ -3663,9 +3631,6 @@ __COLDBOX_QR_ENCODER__
       }
       setShamirStatus(rawSssStatus, 'error', 'Raw SSS refused the input: ' + error.message);
     } finally {
-      if (rawSssSource) {
-        rawSssSource.value = '';
-      }
       updateShamirControls();
     }
   }
@@ -3724,8 +3689,10 @@ __COLDBOX_QR_ENCODER__
     for (var index = 0; index < 8; index += 1) {
       var label = document.createElement('label');
       label.textContent = labelPrefix + ' ' + String(index + 1);
-      var input = document.createElement('input');
-      input.type = 'password';
+      var inputId = labelPrefix === 'Shamir39 share'
+        ? 'cold-shamir39-combine-' + String(index + 1)
+        : 'cold-raw-sss-combine-' + String(index + 1);
+      var input = createDeclaredSecretInput(inputId, 'recovery-share');
       input.autocomplete = 'off';
       input.spellcheck = false;
       input.setAttribute('autocorrect', 'off');
@@ -3842,12 +3809,6 @@ __COLDBOX_QR_ENCODER__
     rawSssResultRevealed = false;
     clearShamirInputs(shamir39CombineInputs);
     clearShamirInputs(rawSssCombineInputs);
-    if (shamir39Source) {
-      shamir39Source.value = '';
-    }
-    if (rawSssSource) {
-      rawSssSource.value = '';
-    }
     renderShamirParts(shamir39GeneratedParts, shamir39Parts, false);
     renderShamirParts(rawSssGeneratedParts, rawSssParts, false);
     if (shamir39Generated) {
@@ -3984,7 +3945,7 @@ __COLDBOX_QR_ENCODER__
     if (seedXorPanel) {
       seedXorPanel.setAttribute('data-state', ready ? 'ready' : 'locked');
     }
-    [seedXorLanguage, seedXorCount, seedXorMode, seedXorSource, seedXorSplitButton, seedXorCombineButton]
+    [seedXorLanguage, seedXorCount, seedXorMode, seedXorCombineButton]
       .forEach(function (control) {
         if (control) {
           control.disabled = !ready;
@@ -3996,9 +3957,8 @@ __COLDBOX_QR_ENCODER__
     if (focused && seedXorLanguage) {
       seedXorLanguage.value = focused.language;
     }
-    if (seedXorSource && (focused || releasedSecretModeActive())) {
-      seedXorSource.value = '';
-      seedXorSource.disabled = true;
+    if (seedXorSplitButton) {
+      seedXorSplitButton.disabled = !ready || !focused;
     }
   }
 
@@ -4036,9 +3996,6 @@ __COLDBOX_QR_ENCODER__
 
   function clearSeedXorSession() {
     clearSeedXorResults();
-    if (seedXorSource) {
-      seedXorSource.value = '';
-    }
     seedXorPartInputs.forEach(function (input) { input.value = ''; });
     if (seedXorLanguage) {
       seedXorLanguage.value = 'english';
@@ -4073,9 +4030,7 @@ __COLDBOX_QR_ENCODER__
         var field = document.createElement('div');
         field.className = 'cold-seed-xor-part-field';
         var label = document.createElement('label');
-        var input = document.createElement('input');
-        input.type = 'password';
-        input.id = 'cold-seed-xor-part-' + String(index + 1);
+        var input = createDeclaredSecretInput('cold-seed-xor-part-' + String(index + 1), 'recovery-share');
         input.autocomplete = 'off';
         input.spellcheck = false;
         input.autocorrect = 'off';
@@ -4102,24 +4057,21 @@ __COLDBOX_QR_ENCODER__
     if (seedXorSplitButton) {
       seedXorSplitButton.addEventListener('click', function () {
         var focused = focusedReleasedSecret();
-        var source = focused ? focused.mnemonic : (seedXorSource ? seedXorSource.value : '');
-        if (releasedSecretModeActive() && !focused) {
+        var source = focused ? focused.mnemonic : '';
+        if (!focused) {
           setSeedXorStatus(seedXorSplitStatus, 'error', 'Split refused: release and focus a Seed Forge secret first.');
           updateSeedXorControls();
           return;
         }
-        if (seedXorSource) {
-          seedXorSource.value = '';
-        }
         clearSeedXorGenerated();
         if (!source.trim()) {
-          setSeedXorStatus(seedXorSplitStatus, 'error', 'Split refused: enter a BIP-39 phrase.');
+          setSeedXorStatus(seedXorSplitStatus, 'error', 'Split refused: the focused Seed Forge phrase is empty.');
           updateSeedXorControls();
           return;
         }
         try {
           var result = seedXor.split(source, {
-            language: focused ? focused.language : (seedXorLanguage ? seedXorLanguage.value : 'english'),
+            language: focused.language,
             count: seedXorCount ? Number(seedXorCount.value) : 2,
             mode: seedXorMode ? seedXorMode.value : 'deterministic'
           });
@@ -4238,16 +4190,20 @@ __COLDBOX_QR_ENCODER__
 
   function currentSeedForgeWallet() {
     var focused = focusedReleasedSecret();
-    if (focused) {
-      return {
-        source: focused.label,
-        id: focused.id,
-        fingerprint: focused.fingerprint,
-        mnemonic: focused.mnemonic,
-        language: focused.language,
-        bytes: focused.seedBytes
-      };
+    if (!focused) {
+      return null;
     }
+    return {
+      source: focused.label,
+      id: focused.id,
+      fingerprint: focused.fingerprint,
+      mnemonic: focused.mnemonic,
+      language: focused.language,
+      bytes: focused.seedBytes
+    };
+  }
+
+  function currentUnreleasedSeedForgeWallet() {
     if (releasedSecretModeActive()) {
       return null;
     }
@@ -4255,7 +4211,12 @@ __COLDBOX_QR_ENCODER__
       return { source: 'Generated', bytes: generatedSeedBytes, mnemonic: generatedMnemonic, language: generatedLanguage };
     }
     if (validationSeedBytes && validationWalletRevision > 0) {
-      return { source: 'Validated', bytes: validationSeedBytes, mnemonic: validationPhraseText, language: seedForgeLanguage ? seedForgeLanguage.value : 'english' };
+      return {
+        source: 'Validated',
+        bytes: validationSeedBytes,
+        mnemonic: validationPhraseText,
+        language: seedForgeLanguage ? seedForgeLanguage.value : 'english'
+      };
     }
     if (generatedSeedBytes && generatedWalletRevision > 0) {
       return { source: 'Generated', bytes: generatedSeedBytes, mnemonic: generatedMnemonic, language: generatedLanguage };
@@ -4364,22 +4325,7 @@ __COLDBOX_QR_ENCODER__
     if (focused) {
       return { mnemonic: focused.mnemonic, language: focused.language };
     }
-    if (releasedSecretModeActive()) {
-      return null;
-    }
-    if (qrSeedSource && qrSeedSource.value === 'validated') {
-      if (!validationSeedBytes || !validationPhraseText) {
-        return null;
-      }
-      return {
-        mnemonic: validationPhraseText,
-        language: qrLanguage ? qrLanguage.value : (seedForgeLanguage ? seedForgeLanguage.value : 'english')
-      };
-    }
-    if (!generatedMnemonic || !generatedSeedBytes) {
-      return null;
-    }
-    return { mnemonic: generatedMnemonic, language: qrLanguage ? qrLanguage.value : generatedLanguage };
+    return null;
   }
 
   function clearQrArtifact() {
@@ -4496,10 +4442,9 @@ __COLDBOX_QR_ENCODER__
       return;
     }
     var seed = currentQrSeed();
-    var focused = focusedReleasedSecret();
     var ready = vaultCryptoReady && Boolean(seed) && Boolean(qrSecretConfirm && qrSecretConfirm.checked);
     qrStudio.setAttribute('data-state', vaultCryptoReady ? 'ready' : 'locked');
-    [qrSeedSource, qrLanguage, qrFormat, qrLayout, qrGrid, qrSecretConfirm].forEach(function (control) {
+    [qrLanguage, qrFormat, qrLayout, qrGrid, qrSecretConfirm].forEach(function (control) {
       if (control) {
         control.disabled = !vaultCryptoReady;
       }
@@ -4509,10 +4454,7 @@ __COLDBOX_QR_ENCODER__
         button.disabled = !ready;
       }
     });
-    if (qrSeedSource && (focused || releasedSecretModeActive())) {
-      qrSeedSource.value = 'focused';
-      qrSeedSource.disabled = true;
-    }
+    var focused = focusedReleasedSecret();
     if (focused && qrLanguage) {
       qrLanguage.value = focused.language;
     }
@@ -4614,17 +4556,6 @@ __COLDBOX_QR_ENCODER__
         qrLanguage.appendChild(option);
       });
       qrLanguage.value = 'english';
-    }
-    if (qrSeedSource) {
-      qrSeedSource.addEventListener('change', function () {
-        if (qrLanguage) {
-          qrLanguage.value = qrSeedSource.value === 'generated'
-            ? generatedLanguage
-            : (seedForgeLanguage ? seedForgeLanguage.value : 'english');
-        }
-        clearQrArtifact();
-        updateQrControls();
-      });
     }
     if (qrLanguage) {
       qrLanguage.addEventListener('change', function () {
@@ -4906,13 +4837,13 @@ __COLDBOX_QR_ENCODER__
         field.setAttribute('data-state', 'empty');
         var label = document.createElement('label');
         label.textContent = 'Word ' + String(index + 1);
-        var input = document.createElement('input');
-        input.type = 'password';
+        var input = createDeclaredSecretInput('cold-seed-forge-word-' + String(index + 1), 'seed-validation');
         input.autocomplete = 'off';
         input.spellcheck = false;
         input.setAttribute('autocorrect', 'off');
         input.setAttribute('autocapitalize', 'off');
         input.setAttribute('aria-label', 'Seed word ' + String(index + 1));
+        label.htmlFor = input.id;
         input.disabled = true;
         var status = document.createElement('span');
         status.className = 'cold-seed-forge-word-status';
@@ -5342,9 +5273,10 @@ __COLDBOX_QR_ENCODER__
     // A released secret is a cold-only session object. Warm-origin address
     // verification may still compare the candidate with public registry data,
     // but it must not derive or persist a public value from the focused
-    // released secret. Keep the unreleased Seed Forge fields' transitional
-    // re-derivation path until UI.4 removes those fields.
-    var current = releasedSecretModeActive() ? null : currentSeedForgeWallet();
+    // released secret. Before release, preserve the existing Seed Forge
+    // re-derivation path; the cold-only verification panel uses the focused
+    // secret through currentSeedForgeWallet().
+    var current = releasedSecretModeActive() ? null : currentUnreleasedSeedForgeWallet();
     if (address && account && current && verification && addressVerification) {
       try {
         var wallet = findPublicRecord(publicData.wallets, account.walletId);

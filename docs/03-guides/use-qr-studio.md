@@ -19,7 +19,11 @@ The payload is encoded locally with the pinned `qrcode-generator` release. Bitco
 ## SeedQR and Compact SeedQR
 
 ::: plain
-Open SeedQR Studio inside the sealed workspace, not the warm QR page. After generating or validating a phrase, choose a format and explicitly acknowledge that the result is a plaintext seed. Keep the display, downloads, printer, camera, and paper offline.
+Open SeedQR Studio inside the sealed workspace, not the warm QR page. After
+generating or validating a phrase in Seed Forge, release it and confirm the
+focused fingerprint in SeedQR Studio. Choose a format and explicitly
+acknowledge that the result is a plaintext seed. Keep the display, downloads,
+printer, camera, and paper offline.
 :::
 ::: working
 Standard SeedQR writes each English BIP-39 word as its zero-padded four-digit word-list index. Compact SeedQR stores the raw BIP-39 entropy bytes in a smaller byte-mode code; it is not human-readable and is the SeedQR option for non-English BIP-39 phrases. Both formats are produced inside the cold iframe, and locking the cold session clears the phrase and the generated code from the working document.

@@ -655,6 +655,25 @@ async function getColdFrame(page, engine) {
   return frame;
 }
 
+const UI4_OFFICIAL_MNEMONIC = [
+  'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
+  'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
+].join(' ');
+
+async function releaseFocusedSeed(coldFrame, label, mnemonic = UI4_OFFICIAL_MNEMONIC, language = 'english') {
+  if (language !== 'english') {
+    await coldFrame.locator('#cold-seed-forge-language').selectOption(language);
+  }
+  await coldFrame.locator('#cold-seed-forge-validation-passphrase-input').fill('TREZOR');
+  await coldFrame.locator('#cold-seed-forge-validation-passphrase-confirm').fill('TREZOR');
+  await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(mnemonic);
+  await coldFrame.locator('#cold-seed-forge-validate').click();
+  await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
+  await coldFrame.locator('#cold-seed-forge-validation-release-label').fill(label);
+  await coldFrame.locator('#cold-seed-forge-validation-release').click();
+  await coldFrame.locator('#cold-secret-list [data-secret-id]').filter({ hasText: label }).waitFor({ state: 'visible', timeout: 5000 });
+}
+
 async function createCspProbeFrame(page, engine) {
   const frameId = 'csp-probe-frame';
   await page.evaluate((id) => {
@@ -3582,12 +3601,19 @@ async function verifyReleasedSecretSwitcher(browser, engine) {
     await coldFrame.locator('#cold-secret-focus-summary').filter({ hasText: 'Primary backup' }).waitFor({ state: 'visible' });
     assert.equal(await coldFrame.locator('#cold-secret-list button[aria-pressed="true"]').count(), 1);
     assert.equal(await coldFrame.locator('#cold-ready').textContent(), focusedReadyMarker, `${engine}: focus changed without a reload`);
-    assert.equal(await coldFrame.locator('#cold-seed-xor-source').isDisabled(), true);
-    assert.equal(await coldFrame.locator('#cold-codex32-secret-hex').isDisabled(), true);
-    assert.equal(await coldFrame.locator('#cold-shamir39-source').isDisabled(), true);
-    assert.equal(await coldFrame.locator('#cold-raw-sss-source').isDisabled(), true);
-    assert.equal(await coldFrame.locator('#cold-qr-seed-source').inputValue(), 'focused');
-    assert.equal(await coldFrame.locator('#cold-slip39-seed-source').inputValue(), 'focused');
+    for (const removedId of [
+      '#cold-seed-xor-source',
+      '#cold-codex32-secret-hex',
+      '#cold-shamir39-source',
+      '#cold-raw-sss-source',
+      '#cold-slip39-seed-source'
+    ]) {
+      assert.equal(await coldFrame.locator(removedId).count(), 0, `${engine}: duplicate loader ${removedId} must be removed`);
+    }
+    assert.equal(await coldFrame.locator('#cold-qr-seed-source').count(), 0);
+    assert.equal(await coldFrame.locator('[data-cold-group]').count(), 6, `${engine}: sealed realm must expose six tool groups`);
+    assert.equal(await coldFrame.locator('#cold-tool-hub-link').count(), 0);
+    assert.equal(await coldFrame.locator('.cold-tool-hub-link').count(), 6, `${engine}: hub must link to every sealed tool group`);
     const focusedIndicators = coldFrame.locator('[data-secret-focus-indicator][data-state="focused"]');
     assert.equal(await focusedIndicators.count(), 6, `${engine}: every destructive, splitting, or exporting panel must show focus`);
     const primaryFingerprint = (await coldFrame.locator('#cold-secret-focus-summary').textContent()).match(/[0-9a-f]{8}/i)[0];
@@ -3665,13 +3691,10 @@ async function verifySeedXor(browser, engine) {
     assert.equal(await coldFrame.locator('#cold-seed-xor-count option').count(), 3);
     assert.equal(await coldFrame.locator('#cold-seed-xor-generated').isHidden(), true);
 
-    const mnemonic = [
-      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
-      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
-    ].join(' ');
+    const mnemonic = UI4_OFFICIAL_MNEMONIC;
+    await releaseFocusedSeed(coldFrame, 'Seed XOR fixture', mnemonic);
     await coldFrame.locator('#cold-seed-xor-count').selectOption('3');
     await coldFrame.locator('#cold-seed-xor-mode').selectOption('deterministic');
-    await coldFrame.locator('#cold-seed-xor-source').fill(mnemonic);
     await coldFrame.locator('#cold-seed-xor-split').click();
     await coldFrame.locator('#cold-seed-xor-generated:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await coldFrame.locator('#cold-seed-xor-generated-parts li').count(), 3);
@@ -3679,7 +3702,6 @@ async function verifySeedXor(browser, engine) {
       await coldFrame.locator('#cold-seed-xor-generated-parts li').first().textContent(),
       /\u2022\u2022/
     );
-    assert.equal(await coldFrame.locator('#cold-seed-xor-source').inputValue(), '');
     assert.match(await coldFrame.locator('#cold-seed-xor-split-status').textContent(), /Every part is required/i);
 
     await coldFrame.locator('#cold-seed-xor-reveal').click();
@@ -3717,7 +3739,6 @@ async function verifySeedXor(browser, engine) {
     // valid phrases without placing the source in the warm shell.
     await coldFrame.locator('#cold-seed-xor-count').selectOption('2');
     await coldFrame.locator('#cold-seed-xor-mode').selectOption('random');
-    await coldFrame.locator('#cold-seed-xor-source').fill(mnemonic);
     await coldFrame.locator('#cold-seed-xor-split').click();
     await coldFrame.locator('#cold-seed-xor-generated:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await coldFrame.locator('#cold-seed-xor-generated-parts li').count(), 2);
@@ -3744,16 +3765,14 @@ async function verifyCodex32(browser, engine) {
     assert.equal(await coldFrame.evaluate(() => typeof window.__coldboxCodex32), 'object');
     assert.equal(await page.evaluate(() => typeof window.__coldboxCodex32), 'undefined');
 
-    const testSeed = '00112233445566778899aabbccddeeff';
-    const secretInput = coldFrame.locator('#cold-codex32-secret-hex');
-    await secretInput.fill(testSeed);
+    await releaseFocusedSeed(coldFrame, 'Codex32 fixture');
+    assert.equal(await coldFrame.locator('#cold-codex32-secret-hex').count(), 0);
     await coldFrame.locator('#cold-codex32-threshold').selectOption('3');
     await coldFrame.locator('#cold-codex32-count').fill('5');
     const identifierInput = coldFrame.locator('#cold-codex32-identifier');
     assert.equal(await identifierInput.inputValue(), '', `${engine}: codex32's ordinary identifier path must start blank`);
     await coldFrame.locator('#cold-codex32-generate').click();
     await coldFrame.locator('#cold-codex32-generate-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
-    assert.equal(await secretInput.inputValue(), '');
     const maskedShares = await coldFrame.locator('#cold-codex32-generated').inputValue();
     assert.equal(maskedShares.replace(/[\u2022\r\n]/g, ''), '');
     assert.doesNotMatch(maskedShares, /ms13cash/);
@@ -3825,18 +3844,14 @@ async function verifyShamirBackups(browser, engine) {
     assert.equal(await coldFrame.locator('#cold-shamir39-combine-fields input').count(), 8);
     assert.equal(await coldFrame.locator('#cold-raw-sss-bits option').count(), 18);
 
-    const mnemonic = [
-      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
-      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
-    ].join(' ');
+    const mnemonic = UI4_OFFICIAL_MNEMONIC;
+    await releaseFocusedSeed(coldFrame, 'Shamir fixture', mnemonic);
     await coldFrame.locator('#cold-shamir39-threshold').selectOption('3');
     await coldFrame.locator('#cold-shamir39-shares').selectOption('5');
-    await coldFrame.locator('#cold-shamir39-source').fill(mnemonic);
     await coldFrame.locator('#cold-shamir39-split').click();
     await coldFrame.locator('#cold-shamir39-generated:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await coldFrame.locator('#cold-shamir39-generated-parts li').count(), 5);
     assert.equal(await coldFrame.locator('#cold-shamir39-generated-parts [data-secret-visible="false"]').count(), 5);
-    assert.equal(await coldFrame.locator('#cold-shamir39-source').inputValue(), '');
     assert.match(await coldFrame.locator('#cold-shamir39-generated-parts').textContent(), /Masked share/);
     await coldFrame.locator('#cold-shamir39-reveal').click();
     const shamirParts = await coldFrame.locator('#cold-shamir39-generated-parts .cold-shamir-share-value').allTextContents();
@@ -3859,16 +3874,17 @@ async function verifyShamirBackups(browser, engine) {
     assert.equal(await coldFrame.locator('#cold-shamir39-result').getAttribute('data-secret-visible'), 'true');
     await coldFrame.locator('#cold-shamir39-result-reveal').click();
 
-    const rawSecret = '82585c749a3db7f73009d0d6107dd650';
+    const rawSecret = await coldFrame.evaluate((phrase) => {
+      return Array.from(window.__coldboxSeedForge.mnemonicToSeed(phrase, 'TREZOR', 'english'))
+        .map((byte) => byte.toString(16).padStart(2, '0')).join('');
+    }, mnemonic);
     await coldFrame.locator('#cold-raw-sss-bits').selectOption('8');
     await coldFrame.locator('#cold-raw-sss-threshold').selectOption('2');
     await coldFrame.locator('#cold-raw-sss-shares').selectOption('3');
-    await coldFrame.locator('#cold-raw-sss-source').fill(rawSecret);
     await coldFrame.locator('#cold-raw-sss-split').click();
     await coldFrame.locator('#cold-raw-sss-generated:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await coldFrame.locator('#cold-raw-sss-generated-parts li').count(), 3);
     assert.equal(await coldFrame.locator('#cold-raw-sss-generated-parts [data-secret-visible="false"]').count(), 3);
-    assert.equal(await coldFrame.locator('#cold-raw-sss-source').inputValue(), '');
     await coldFrame.locator('#cold-raw-sss-reveal').click();
     const rawParts = await coldFrame.locator('#cold-raw-sss-generated-parts .cold-shamir-share-value').allTextContents();
     assert.equal(rawParts.length, 3);
@@ -3896,8 +3912,8 @@ async function verifyShamirBackups(browser, engine) {
     assert.equal(await coldFrame.locator('#cold-raw-sss-generated').isHidden(), true);
     assert.equal((await coldFrame.locator('#cold-shamir39-result').textContent()).trim(), 'Not reconstructed');
     assert.equal((await coldFrame.locator('#cold-raw-sss-result').textContent()).trim(), 'Not reconstructed');
-    assert.equal(await coldFrame.locator('#cold-shamir39-source').inputValue(), '');
-    assert.equal(await coldFrame.locator('#cold-raw-sss-source').inputValue(), '');
+    assert.equal(await coldFrame.locator('#cold-shamir39-source').count(), 0);
+    assert.equal(await coldFrame.locator('#cold-raw-sss-source').count(), 0);
 
     console.log(`${engine}: Shamir39 and raw SSS official-format UI, masking, reconstruction, negative case, warm isolation, and teardown passed`);
   } finally {
@@ -3923,14 +3939,7 @@ async function verifySlip39(browser, engine) {
     assert.equal(await generate.isDisabled(), true, `${engine}: SLIP-39 generation must stay gated without a valid source phrase`);
     assert.equal(await reveal.isDisabled(), true, `${engine}: SLIP-39 reveal must stay disabled without generated shares`);
 
-    const mnemonic = [
-      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
-      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
-    ].join(' ');
-    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(mnemonic);
-    await coldFrame.locator('#cold-seed-forge-validate').click();
-    await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
-    await coldFrame.locator('#cold-slip39-seed-source').selectOption('validated');
+    await releaseFocusedSeed(coldFrame, 'SLIP-39 fixture');
     await acknowledge.check();
     assert.equal(await generate.isDisabled(), false, `${engine}: SLIP-39 generation should enable after source and compatibility acknowledgement`);
 
@@ -3997,14 +4006,7 @@ async function verifyBackupRecordVerification(browser, engine) {
     await page.locator('#page-backup:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#backup-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
 
-    const mnemonic = [
-      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
-      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
-    ].join(' ');
-    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(mnemonic);
-    await coldFrame.locator('#cold-seed-forge-validate').click();
-    await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
-    await coldFrame.locator('#cold-slip39-seed-source').selectOption('validated');
+    await releaseFocusedSeed(coldFrame, 'Backup record fixture');
     await coldFrame.locator('#cold-slip39-compatibility-ack').check();
     await coldFrame.locator('#cold-slip39-generate').click();
     await coldFrame.locator('#cold-slip39-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
@@ -4093,9 +4095,12 @@ async function verifyVerificationWorkflows(browser, engine) {
     await coldFrame.locator('#cold-seed-forge-validate').click();
     await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal((await coldFrame.locator('#cold-seed-forge-validation-fingerprint').textContent()).trim(), '73c5da0a');
+    await coldFrame.locator('#cold-seed-forge-validation-release-label').fill('Verification Bench fixture');
+    await coldFrame.locator('#cold-seed-forge-validation-release').click();
+    await coldFrame.locator('#cold-secret-list [data-secret-id]').filter({ hasText: 'Verification Bench fixture' }).waitFor({ state: 'visible', timeout: 5000 });
     await coldFrame.locator('#cold-verification-wallet-use').click();
     await coldFrame.locator('#cold-verification-wallet-status[data-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
-    assert.match((await coldFrame.locator('#cold-verification-wallet-source').textContent()).trim(), /Validated Seed Forge wallet/);
+    assert.match((await coldFrame.locator('#cold-verification-wallet-source').textContent()).trim(), /Verification Bench fixture Seed Forge wallet/);
     assert.equal((await coldFrame.locator('#cold-verification-wallet-fingerprint').textContent()).trim(), '73c5da0a');
     assert.equal((await coldFrame.locator('#cold-verification-wallet-path').textContent()).trim(), "m/84'/0'/0'");
     assert.equal((await coldFrame.locator('#cold-verification-wallet-xpub').textContent()).trim(), nativeXpub);
@@ -4212,14 +4217,8 @@ async function verifyQrStudio(browser, engine) {
 
     assert.equal(await page.locator('#cold-frame').getAttribute('sandbox'), 'allow-scripts allow-downloads allow-modals');
     await coldFrame.locator('#cold-seed-forge[data-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
-    const englishMnemonic = [
-      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'abandon',
-      'abandon', 'abandon', 'abandon', 'abandon', 'abandon', 'about'
-    ].join(' ');
-    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(englishMnemonic);
-    await coldFrame.locator('#cold-seed-forge-validate').click();
-    await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
-    await coldFrame.locator('#cold-qr-seed-source').selectOption('validated');
+    const englishMnemonic = UI4_OFFICIAL_MNEMONIC;
+    await releaseFocusedSeed(coldFrame, 'QR English fixture', englishMnemonic);
     assert.equal(await coldFrame.locator('#cold-qr-standard').isDisabled(), true);
     await coldFrame.locator('#cold-qr-secret-confirm').check();
     await coldFrame.locator('#cold-qr-standard').click();
@@ -4247,10 +4246,7 @@ async function verifyQrStudio(browser, engine) {
     const spanishMnemonic = await coldFrame.evaluate(() => {
       return window.__coldboxSeedForge.entropyToMnemonic(new Uint8Array(16), 'spanish');
     });
-    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(spanishMnemonic);
-    await coldFrame.locator('#cold-seed-forge-validate').click();
-    await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
-    await coldFrame.locator('#cold-qr-seed-source').selectOption('validated');
+    await releaseFocusedSeed(coldFrame, 'QR Spanish fixture', spanishMnemonic, 'spanish');
     await coldFrame.locator('#cold-qr-language').selectOption('spanish');
     await coldFrame.locator('#cold-qr-secret-confirm').check();
     await coldFrame.locator('#cold-qr-standard').click();
@@ -4264,9 +4260,7 @@ async function verifyQrStudio(browser, engine) {
     const englishTwentyFour = await coldFrame.evaluate(() => {
       return window.__coldboxSeedForge.entropyToMnemonic(new Uint8Array(32), 'english');
     });
-    await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(englishTwentyFour);
-    await coldFrame.locator('#cold-seed-forge-validate').click();
-    await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
+    await releaseFocusedSeed(coldFrame, 'QR 24-word fixture', englishTwentyFour);
     await coldFrame.locator('#cold-qr-language').selectOption('english');
     await coldFrame.locator('#cold-qr-layout').selectOption('wallet-24');
     await coldFrame.locator('#cold-qr-grid').check();

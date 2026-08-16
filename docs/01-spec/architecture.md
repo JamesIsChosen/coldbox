@@ -90,7 +90,7 @@ Every message: `{ id, type, payload }`. `id` correlates request and response. `t
 | `publicData.replace` | `{ publicCompartment }` | Replace only the schema-validated public projection after a warm registry mutation; the authenticated Vault ID must remain unchanged |
 | `concealment.reveal` | `{}` | Ask the cold realm to show its re-authentication control; no phrase crosses the channel |
 | `ui.navigate` | `{ section }` | |
-| `address.verifyRequest` | `{ addressId, accountRef, index, candidate }` | `candidate` is a **validated public address string**, which the existing projection already permits. Asks the cold realm to compare and, on the unreleased transitional Seed Forge path, re-derive; a released-secret session is comparison-only and cannot write a public verification replacement |
+| `address.verifyRequest` | `{ addressId, accountRef, index, candidate }` | `candidate` is a **validated public address string**, which the existing projection already permits. The warm-origin path compares after release and preserves its unreleased Seed Forge re-derivation path before release; focused-secret re-derivation belongs to the cold-only verification panel, and released-secret state cannot write a public verification replacement |
 | `backup.verifyRequest` | `{ backupId }` | References a public BackupRecord. Share words and reconstructed bytes are entered and processed only inside the cold realm |
 
 ### Cold → Warm
