@@ -5802,8 +5802,23 @@ __COLDBOX_CONCEALMENT__
     var hashSegments = rawHash.split('/');
     var topicSegment = hashSegments.length > 1 ? hashSegments.slice(1).join('/') : null;
     var route = routeFromLocation();
+    var isColdPrimary = route === 'cold-realm-status';
+    if (app) {
+      app.setAttribute('data-primary-realm', isColdPrimary ? 'cold' : 'warm');
+    }
     if (route === 'cold-realm-status') {
       closeMoreMenu();
+      pages.forEach(function (page) {
+        page.hidden = true;
+        page.setAttribute('aria-hidden', 'true');
+      });
+      routeLinks.forEach(function (link) {
+        link.removeAttribute('aria-current');
+      });
+      if (currentSection) {
+        currentSection.textContent = 'Sealed realm';
+      }
+      document.title = 'Sealed realm · Coldbox';
       if (announcement) {
         announcement.textContent = 'Sealed realm';
       }

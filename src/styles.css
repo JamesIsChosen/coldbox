@@ -1875,7 +1875,7 @@ samp {
   padding: 1rem;
   border: var(--outline-width-thin) solid var(--outline);
   border-radius: var(--radius);
-  background: var(--panel);
+  background: var(--surface);
   box-shadow: var(--shadow-hard);
 }
 
@@ -2984,7 +2984,7 @@ samp {
   border: var(--outline-width) solid var(--drop);
   border-radius: var(--radius-sm);
   background: var(--paper);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-hard);
 }
 
 .qr-public-panel h2,
@@ -3086,32 +3086,32 @@ samp {
 /* UI.6 — one calm, keyboard-first menu for every public record surface. */
 .record-menu[hidden] { display: none; }
 .record-menu { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 1rem; }
-.record-menu-backdrop { position: absolute; inset: 0; background: rgba(20, 28, 35, 0.68); }
-.record-menu-panel { position: relative; width: min(46rem, 100%); max-height: min(92vh, 52rem); overflow: auto; border: 2px solid var(--ink); border-radius: 1.1rem; background: var(--paper); box-shadow: 0 1.25rem 3rem rgba(20, 28, 35, 0.34); padding: clamp(1.15rem, 3vw, 2rem); }
+.record-menu-backdrop { position: absolute; inset: 0; background: rgba(18, 18, 18, 0.55); }
+.record-menu-panel { position: relative; width: min(26.875rem, calc(100vw - 3.75rem)); max-height: min(92vh, 52rem); max-height: calc(100vh - 12.5rem); overflow: auto; border: 0.22rem solid var(--paper-ink); border-radius: 1rem; background: var(--paper); box-shadow: 0.56rem 0.56rem 0 var(--drop); padding: 1.125rem 1.1875rem 1.1875rem; }
 .record-menu-header, .record-menu-footer, .record-menu-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .record-menu-header h2, .record-menu-section-heading h3 { margin: 0; }
 .record-menu-status { margin: 0.35rem 0 1rem; color: var(--muted); }
 .record-menu-provenance { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 0.65rem; margin: 0 0 1.2rem; }
-.record-menu-provenance-item { border-left: 3px solid var(--accent); padding: 0.5rem 0.7rem; background: color-mix(in srgb, var(--accent-soft) 55%, transparent); }
+.record-menu-provenance-item { border-left: 3px solid var(--accent); padding: 0.5rem 0.7rem; background: color-mix(in srgb, var(--paper-cool) 55%, transparent); }
 .record-menu-provenance-item strong, .record-menu-provenance-item span { display: block; }
 .record-menu-provenance-item strong { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; }
-.record-menu-fields { display: grid; grid-template-columns: minmax(9rem, 0.7fr) minmax(0, 1.3fr); margin: 0; border-top: 1px solid var(--line); }
-.record-menu-fields dt, .record-menu-fields dd { margin: 0; padding: 0.7rem 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.record-menu-fields { display: grid; grid-template-columns: minmax(9rem, 0.7fr) minmax(0, 1.3fr); margin: 0; border-top: 1px solid var(--paper-rule); }
+.record-menu-fields dt, .record-menu-fields dd { margin: 0; padding: 0.7rem 0; border-bottom: 1px solid var(--paper-rule); overflow-wrap: anywhere; }
 .record-menu-fields dt { color: var(--muted); font-weight: 700; }
 .record-menu-fields dd { white-space: pre-wrap; }
-.record-menu-qr { margin-top: 1.4rem; padding-top: 1.2rem; border-top: 2px solid var(--line); }
-.record-menu-send-to { margin-top: 1.4rem; padding-top: 1.2rem; border-top: 2px solid var(--line); }
+.record-menu-qr { margin-top: 1.4rem; padding-top: 1.2rem; border-top: 2px solid var(--paper-rule); }
+.record-menu-send-to { margin-top: 1.4rem; padding-top: 1.2rem; border-top: 2px solid var(--paper-rule); }
 .record-menu-send-to-list { display: flex; flex-wrap: wrap; gap: 0.65rem; }
 .record-menu-send-to-list .vault-button { min-height: 2.75rem; }
 .record-menu-section-heading { margin-bottom: 0.8rem; }
 .record-menu-section-heading p { max-width: 24rem; margin: 0; color: var(--muted); font-size: 0.9rem; }
 .record-menu-qr-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem; }
-.record-menu-qr-item { min-width: 0; padding: 0.75rem; border: 1px solid var(--line); border-radius: 0.7rem; background: var(--paper-raised); }
+.record-menu-qr-item { min-width: 0; padding: 0.75rem; border: 1px solid var(--paper-rule); border-radius: 0.55rem; background: var(--paper-cool); }
 .record-menu-qr-item h4 { margin: 0 0 0.5rem; }
 .record-menu-qr-output { display: grid; min-height: 8rem; place-items: center; overflow: auto; padding: 0.4rem; background: #fff; }
 .record-menu-qr-output svg { display: block; width: min(100%, 13rem); height: auto; }
 .record-menu-qr-payload { display: block; margin-top: 0.5rem; color: var(--muted); font-size: 0.72rem; overflow-wrap: anywhere; }
-.record-menu-footer { margin-top: 1.3rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.record-menu-footer { margin-top: 1.3rem; padding-top: 1rem; border-top: 1px solid var(--paper-rule); }
 .record-menu-trigger { min-height: 2.75rem; }
 @media (max-width: 42rem) {
   .record-menu { align-items: end; padding: 0; }
@@ -3119,4 +3119,99 @@ samp {
   .record-menu-fields { grid-template-columns: 1fr; }
   .record-menu-fields dt { padding-bottom: 0.2rem; border-bottom: 0; }
   .record-menu-fields dd { padding-top: 0.2rem; }
+}
+
+/* --------------------------------------------------------------------------
+ * UI.11 composition: the status objects remain live, but the approved shell
+ * does not make bootstrap diagnostics the first visual surface on every warm
+ * route. The sealed iframe becomes the primary document when selected; its
+ * own reviewed shell remains opaque to this document.
+ * -------------------------------------------------------------------------- */
+
+.app-shell[data-primary-realm="cold"] .airgap-banner,
+.app-shell[data-primary-realm="cold"] .capability-panel,
+.app-shell[data-primary-realm="cold"] .realm-status-copy,
+.app-shell[data-primary-realm="cold"] .realm-status-state {
+  display: none;
+}
+
+.app-shell[data-primary-realm="cold"] .app-layout {
+  display: grid;
+  grid-template-columns: 16.375rem minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.app-shell[data-primary-realm="cold"] .content {
+  min-height: 100vh;
+  padding: 0 1.625rem 2.5rem;
+}
+
+.app-shell[data-primary-realm="cold"] .realm-status {
+  display: block;
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-shell[data-primary-realm="cold"] .cold-frame-host {
+  width: 100%;
+  min-height: 100vh;
+  border: 0;
+  border-radius: 0;
+}
+
+.app-shell[data-primary-realm="cold"] .cold-frame {
+  width: 100%;
+  height: 100vh;
+  min-height: 100vh;
+}
+
+.app-shell[data-primary-realm="cold"] .realm-status-failure,
+.app-shell[data-primary-realm="cold"] .protocol-warning {
+  position: fixed;
+  z-index: 50;
+  inset: 1rem;
+  width: auto;
+  height: auto;
+  margin: 0;
+  clip: auto;
+  clip-path: none;
+  white-space: normal;
+  pointer-events: none;
+}
+
+@media (min-width: 721px) {
+  .app-bar {
+    gap: 0.875rem;
+    padding: 0.6875rem 1.375rem;
+    border-bottom-width: 0.1875rem;
+    box-shadow: 0 0.3125rem 0 var(--drop);
+  }
+
+  .realm-switcher {
+    margin-left: 1.625rem;
+  }
+
+  .app-layout {
+    grid-template-columns: 16.375rem minmax(0, 1fr);
+  }
+
+  .nav-rail {
+    padding: 1rem 0.75rem 0.875rem;
+  }
+
+  .content {
+    padding: 1.375rem 1.625rem 2.5rem;
+  }
+
+  .record-menu {
+    place-items: start end;
+    padding: 6.875rem 2.25rem 0 0;
+  }
 }

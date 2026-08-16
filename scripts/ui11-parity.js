@@ -76,6 +76,12 @@ const SCREEN_REALM = Object.freeze({
   recovery: 'cold', verifybench: 'cold', hub: 'cold', validate: 'cold'
 });
 
+// The shipped Backup Health calculation is warm-owned, while the approved
+// prototype places its visual lens in the cold rail. Keep both facts explicit
+// so the product is not moved across the realm boundary just to copy the
+// quarantined prototype.
+const REFERENCE_REALM = Object.freeze({ backuphealth: 'cold' });
+
 const PRODUCT_WARM_ROUTES = Object.freeze({
   dashboard: 'dashboard', qrpublic: 'qr', addrbench: 'verify', registry: 'registry',
   devices: 'devices', vault: 'vault', learn: 'learn', map: 'tool-map',
@@ -96,6 +102,18 @@ const REFERENCE_LABELS = Object.freeze({
   passphrase: 'Passphrase Studio', conceal: 'Reveal hidden', notes: 'Secret notes',
   descriptors: 'Descriptors', recovery: 'Recovery Assistant', verifybench: 'Verify Bench',
   hub: 'Tool hub', validate: 'Seed Forge'
+});
+
+const REFERENCE_MOBILE_LABELS = Object.freeze({
+  dashboard: 'Home', settings: 'Set', secret: 'Secret', forge: 'Forge',
+  paths: 'Derivation paths', addresses: 'Addresses', children: 'Child seeds',
+  shares: 'Split', entropy: 'Forge', hub: 'Hub', registry: 'Records',
+  empty: 'No secret yet',
+  devices: 'Devices', vault: 'Vault', learn: 'Learn', verifyfile: 'Verify this file',
+  provenance: 'Provenance & legal', qrpublic: 'QR Studio', addrbench: 'Address bench',
+  backuphealth: 'Backup Health', qr: 'SeedQR studio', conceal: 'Reveal hidden',
+  notes: 'Secret notes', lock: 'Lock / wipe', unlock: 'Vault session',
+  verifybench: 'Verify Bench', validate: 'Validate'
 });
 
 function readManifest() {
@@ -125,11 +143,14 @@ function parseRoadmapStatuses() {
   const roadmap = fs.readFileSync(path.join(projectRoot, 'docs', '05-development', 'ROADMAP.md'), 'utf8');
   const statuses = new Map();
   for (const line of roadmap.split(/\r?\n/)) {
-    const match = /^\s*- \[([ x~])\] \*\*([^*\s]+)/.exec(line);
+    const match = /^\s*- \[([ x~])\]/.exec(line);
     if (!match) {
       continue;
     }
-    statuses.set(match[2], match[1]);
+    const ids = line.match(/\b(?:P\d+(?:\.\d+)?[a-z]?|UI\.\d+[a-z]?)\b/g) || [];
+    for (const id of ids) {
+      statuses.set(id, match[1]);
+    }
   }
   return statuses;
 }
@@ -137,6 +158,9 @@ function parseRoadmapStatuses() {
 function classifyScreen(screen, statuses) {
   const owners = SCREEN_OWNERS[screen];
   assert.ok(owners, `No UI.11 owner mapping for manifest screen ${screen}`);
+  for (const owner of owners) {
+    assert.ok(statuses.has(owner), `UI.11 owner ${owner} for ${screen} is absent from ROADMAP.md`);
+  }
   if (owners.length === 0) {
     return 'PARITY';
   }
@@ -152,6 +176,9 @@ function createStateMatrix(manifest) {
       const realm = SCREEN_REALM[screen];
       assert.ok(realm, `No realm mapping for manifest screen ${screen}`);
       const deviations = realm === 'cold' ? ['PAR-003', 'PAR-005', 'PAR-007'] : ['PAR-001', 'PAR-002', 'PAR-005', 'PAR-007'];
+      if (REFERENCE_REALM[screen] && REFERENCE_REALM[screen] !== realm) {
+        deviations.push('PAR-003');
+      }
       if (classification === 'UNAVAILABLE') {
         deviations.push('PAR-009');
       }
@@ -243,7 +270,9 @@ async function selectProductRealm(page, row) {
     });
     return;
   }
-  const route = PRODUCT_WARM_ROUTES[row.screen] || 'dashboard';
+  const route = row.classification === 'UNAVAILABLE'
+    ? 'dashboard'
+    : (PRODUCT_WARM_ROUTES[row.screen] || 'dashboard');
   await page.evaluate((value) => {
     window.location.hash = `#${value}`;
   }, route);
@@ -257,11 +286,58 @@ async function selectReferenceScreen(page, row) {
   if (row.baseline) {
     return;
   }
-  const label = REFERENCE_LABELS[row.screen];
+  // Each manifest row is an independent deterministic state. Resetting the
+  // disposable prototype also clears any prior lens selection that may have
+  // removed the rail control needed by the next row.
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  await selectReferenceRealm(page, REFERENCE_REALM[row.screen] || row.realm);
+  if (row.classification === 'UNAVAILABLE') {
+    const referenceRealm = REFERENCE_REALM[row.screen] || row.realm;
+    if (referenceRealm === 'warm') {
+      const dashboardLabel = row.viewport === 'mobile' ? 'Home' : 'Dashboard';
+      const dashboard = page.locator('button').filter({ hasText: dashboardLabel });
+      const visible = await dashboard.evaluateAll((elements) => elements
+        .map((element, index) => ({ index, box: element.getBoundingClientRect() }))
+        .filter(({ box }) => box.width > 0 && box.height > 0 && box.left < 280));
+      assert.equal(visible.length, 1, `Reference unavailable warm reset for ${row.screen} was not unique`);
+      await dashboard.nth(visible[0].index).evaluate((element) => element.click());
+      await page.waitForTimeout(150);
+    }
+    return;
+  }
+  const label = row.viewport === 'mobile'
+    ? (REFERENCE_MOBILE_LABELS[row.screen] || REFERENCE_LABELS[row.screen])
+    : REFERENCE_LABELS[row.screen];
   assert.ok(label, `No reference selector mapping for ${row.screen}`);
-  const controls = page.locator('button').filter({ hasText: label });
-  assert.equal(await controls.count(), 1, `Reference selector for ${row.screen} did not have exact cardinality`);
-  await controls.evaluate((element) => element.click());
+  const findCandidates = async (target) => page.locator('button').evaluateAll((elements, wanted) => elements
+    .map((element, index) => {
+      const box = element.getBoundingClientRect();
+      const text = (element.innerText || '').replace(/\s+/g, ' ').trim();
+      const visible = box.width > 0 && box.height > 0 && getComputedStyle(element).visibility !== 'hidden';
+      const matches = text.toLowerCase().includes(wanted.toLowerCase());
+      const desktopRail = box.left < 280;
+      const mobileBar = box.top > 780;
+      return { index, text, box, visible, matches, score: (desktopRail ? 10 : 0) + (mobileBar ? 5 : 0) };
+    })
+    .filter((candidate) => candidate.visible && candidate.matches)
+    .sort((left, right) => right.score - left.score), target);
+  let candidates = await findCandidates(label);
+  if (candidates.length === 0 && row.viewport === 'mobile') {
+    const more = page.locator('button').filter({ hasText: /^(?:•••|SET|MORE)$/i });
+    const moreCandidates = await more.evaluateAll((elements) => elements
+      .map((element, index) => ({ index, box: element.getBoundingClientRect() }))
+      .filter(({ box }) => box.width > 0 && box.height > 0));
+    assert.equal(moreCandidates.length, 1, `Reference More control for ${row.screen} was not unique`);
+    await more.nth(moreCandidates[0].index).evaluate((element) => element.click());
+    await page.waitForTimeout(150);
+    candidates = await findCandidates(label);
+  }
+  assert.ok(candidates.length > 0, `Reference selector for ${row.screen} did not match a visible control`);
+  const bestScore = candidates[0].score;
+  const preferred = candidates.filter((candidate) => candidate.score === bestScore);
+  assert.equal(preferred.length, 1, `Reference selector for ${row.screen} did not have exact cardinality`);
+  await page.locator('button').nth(preferred[0].index).evaluate((element) => element.click());
   await page.waitForTimeout(150);
 }
 
@@ -373,6 +449,47 @@ function compareImages(reference, product) {
   return { changedPixels, totalPixels: reference.width * reference.height, diff };
 }
 
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function pngChunk(type, data) {
+  const typeBytes = Buffer.from(type, 'ascii');
+  const payload = Buffer.concat([typeBytes, data]);
+  const chunk = Buffer.alloc(12 + data.length);
+  chunk.writeUInt32BE(data.length, 0);
+  payload.copy(chunk, 4);
+  chunk.writeUInt32BE(crc32(payload), 8 + data.length);
+  return chunk;
+}
+
+function encodePng(image) {
+  const rows = Buffer.alloc((image.width * 4 + 1) * image.height);
+  for (let row = 0; row < image.height; row += 1) {
+    const target = row * (image.width * 4 + 1);
+    rows[target] = 0;
+    image.pixels.copy(rows, target + 1, row * image.width * 4, (row + 1) * image.width * 4);
+  }
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(image.width, 0);
+  header.writeUInt32BE(image.height, 4);
+  header[8] = 8;
+  header[9] = 6;
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    pngChunk('IHDR', header),
+    pngChunk('IDAT', zlib.deflateSync(rows)),
+    pngChunk('IEND', Buffer.alloc(0))
+  ]);
+}
+
 async function runParity({ baseline = false } = {}) {
   const manifest = readManifest();
   verifyReferenceBytes(manifest);
@@ -392,7 +509,7 @@ async function runParity({ baseline = false } = {}) {
           const productPage = await createProductPage(browser, referenceId, manifest);
           try {
             for (const row of rows.filter((candidate) => candidate.viewport === referenceId)) {
-              await selectReferenceRealm(referencePage.page, row.realm);
+              await selectReferenceRealm(referencePage.page, REFERENCE_REALM[row.screen] || row.realm);
               await selectReferenceScreen(referencePage.page, row);
               await selectProductRealm(productPage.page, row);
               const referenceShot = await referencePage.page.screenshot();
@@ -401,8 +518,13 @@ async function runParity({ baseline = false } = {}) {
               const productImage = cropPng(decodePng(productShot), reference.comparisonRegion, referenceId);
               const result = compareImages(referenceImage, productImage);
               const prefix = `${engineId}-${referenceId}-${safeName(row.screen)}`;
-              fs.writeFileSync(path.join(artifactRoot, `${prefix}-reference.png`), referenceShot);
-              fs.writeFileSync(path.join(artifactRoot, `${prefix}-product.png`), productShot);
+              fs.writeFileSync(path.join(artifactRoot, `${prefix}-reference.png`), encodePng(referenceImage));
+              fs.writeFileSync(path.join(artifactRoot, `${prefix}-product.png`), encodePng(productImage));
+              fs.writeFileSync(path.join(artifactRoot, `${prefix}-diff.png`), encodePng({
+                width: referenceImage.width,
+                height: referenceImage.height,
+                pixels: result.diff
+              }));
               totals.push({
                 engine: engineId,
                 ...row,
@@ -413,7 +535,7 @@ async function runParity({ baseline = false } = {}) {
                 unexpectedChangedPixels: result.changedPixels,
                 referenceArtifact: `${prefix}-reference.png`,
                 productArtifact: `${prefix}-product.png`,
-                diffArtifact: null
+                diffArtifact: `${prefix}-diff.png`
               });
             }
           } finally {
@@ -447,4 +569,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = Object.freeze({ runParity, createStateMatrix, decodePng, compareImages });
+module.exports = Object.freeze({ runParity, createStateMatrix, decodePng, compareImages, encodePng });
