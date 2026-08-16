@@ -6748,6 +6748,18 @@ __COLDBOX_QR_ENCODER__
       moreSheet.open = false;
     }
   });
+  document.addEventListener('click', function (event) {
+    var mobileMoreLink = event.target && typeof event.target.closest === 'function'
+      ? event.target.closest('.cold-mobile-more-links a')
+      : null;
+    if (!mobileMoreLink) {
+      return;
+    }
+    var mobileMoreSheet = mobileMoreLink.closest('.cold-mobile-more');
+    if (mobileMoreSheet) {
+      mobileMoreSheet.open = false;
+    }
+  });
   window.addEventListener('message', handleGlobalMessage);
   document.documentElement.setAttribute('data-cold-state', 'checking');
   document.documentElement.setAttribute('data-airgap-state', 'checking');

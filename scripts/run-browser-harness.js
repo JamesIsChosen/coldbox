@@ -1206,6 +1206,11 @@ async function verifyBuiltFile(browser, engine) {
       const unavailable = coldFrame.locator(`.cold-mobile-more-links [data-roadmap-id="${id}"]`);
       assert.equal(await unavailable.getAttribute('aria-disabled'), 'true', `${engine}: cold More future ${id} must be unavailable`);
     }
+    for (const href of ['#cold-group-session', '#cold-group-entropy', '#cold-seed-forge-validator', '#cold-group-qr', '#cold-group-backups', '#cold-verification', '#cold-secret-switcher']) {
+      await coldFrame.locator('.cold-mobile-more').evaluate((details) => { details.open = true; });
+      await coldFrame.locator(`.cold-mobile-more-links a[href="${href}"]`).click();
+      assert.equal(await coldFrame.locator('.cold-mobile-more').getAttribute('open'), null, `${engine}: ${href} did not close More`);
+    }
     await coldFrame.evaluate(() => {
       document.querySelector('.cold-mobile-more-links a[data-cold-more-target="cold-concealment-controls"]').click();
     });
