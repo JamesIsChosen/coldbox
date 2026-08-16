@@ -1124,6 +1124,28 @@ async function verifyBuiltFile(browser, engine) {
       `${engine}: route navigation did not update the current section`
     );
 
+    const warmWorkspaceRoutes = [
+      ['Records', ['registry', 'devices', 'verify', 'qr']],
+      ['Money', ['dashboard']],
+      ['Vault files', ['vault', 'backup']],
+      ['Reference', ['reference', 'learn']]
+    ];
+    assert.equal(await page.locator('#nav-rail > .nav-scroll > .nav-group').count(), 4, `${engine}: warm shell must expose exactly four workspace groups`);
+    for (const [group, routes] of warmWorkspaceRoutes) {
+      const groupNode = page.locator(`#nav-rail .nav-group[aria-label="${group}"]`);
+      assert.equal(await groupNode.count(), 1, `${engine}: ${group} workspace group is missing`);
+      for (const route of routes) {
+        const link = groupNode.locator(`a[data-route="${route}"]`).first();
+        assert.equal(await link.count(), 1, `${engine}: ${group} is missing its ${route} route`);
+        await link.click();
+        await page.waitForFunction((expected) => window.location.hash === '#' + expected, route);
+        await harness.expectElementVisible(`#page-${route}:not([hidden])`);
+      }
+    }
+    assert.equal(await page.locator('#nav-rail .nav-sealed-entry a[href="#cold-realm-status"]').count(), 1, `${engine}: sealed entry must remain outside warm workspace groups`);
+    await page.locator('#nav-rail a[data-route="dashboard"]').click();
+    await page.waitForFunction(() => window.location.hash === '#dashboard');
+
     await page.locator('#theme-toggle').click();
     assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
     await page.locator('#theme-toggle').click();
@@ -1157,7 +1179,7 @@ async function verifyBuiltFile(browser, engine) {
         `${engine}: ${label} did not focus the sealed-realm boundary target`
       );
     };
-    await page.locator('#nav-rail .nav-group-sealed a[href="#cold-realm-status"]').click();
+    await page.locator('#nav-rail .nav-sealed-entry a[href="#cold-realm-status"]').click();
     await assertColdRealmTarget('sealed rail link');
     await page.locator('.realm-switcher a[href="#dashboard"]').click();
     await page.waitForFunction(() => window.location.hash === '#dashboard');
@@ -2974,7 +2996,7 @@ async function verifyProvenancePanel(browser, engine) {
   // marker on this item calls for.
   const { page } = await openPage(browser, buildPath);
   try {
-    await page.locator('#nav-rail a[data-route="reference"]').click();
+    await page.locator('#nav-rail a[data-route="reference"]').first().click();
     await page.locator('#page-reference:not([hidden])').waitFor({ state: 'visible' });
 
     const libraryRows = page.locator('#provenance-library-list .provenance-library-row');
@@ -3096,7 +3118,7 @@ async function verifyLegalNotices(browser, engine) {
     // verifyBuiltFile's airgap-banner checks above).
     await page.context().setOffline(true);
 
-    await page.locator('#nav-rail a[data-route="reference"]').click();
+    await page.locator('#nav-rail a[data-route="reference"]').first().click();
     await page.locator('#page-reference:not([hidden])').waitFor({ state: 'visible' });
 
     const noticesSection = page.locator('#provenance-legal-notices');
@@ -3184,7 +3206,7 @@ async function verifyHelpFramework(browser, engine) {
       { topic: 'glossary:appropriate-legal-notices', anchorPrefix: 'help-glossary-appropriate-legal-notices', route: 'reference' }
     ];
     for (const mapping of contextualHelpMappings) {
-      await page.locator(`#nav-rail a[data-route="${mapping.route}"]`).click();
+      await page.locator(`#nav-rail a[data-route="${mapping.route}"]`).first().click();
       const button = page.locator(`button.help-context-button[data-help-topic="${mapping.topic}"]`);
       await button.waitFor({ state: 'visible', timeout: 3000 });
       await button.click();

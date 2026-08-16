@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- UI.8 regrouped the warm shell into Records, Money, Vault files, and Reference workspaces while preserving the sealed-realm handoff outside those groups.
 - UI.5 adds the approved shared shell chrome to both realms: the ten-group
   roadmap-labelled navigation rails, calm warm/cold boundary strips, and
   responsive five-slot phone navigation with More access. Unbuilt roadmap
