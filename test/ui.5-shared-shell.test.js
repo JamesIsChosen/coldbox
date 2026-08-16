@@ -60,6 +60,7 @@ test('navigation touch targets are at least 44px and unavailable items cannot re
   assert.match(warmCss, /\.icon-button-small\s*\{[\s\S]*?width:\s*44px[\s\S]*?min-height:\s*44px/);
   assert.match(coldCss, /\.cold-nav-link\s*\{[\s\S]*?min-height:\s*2\.75rem/);
   assert.match(coldCss, /\.cold-mobile-tabs a\s*\{[\s\S]*?min-height:\s*2\.75rem/);
+  assert.match(coldCss, /\.cold-mobile-more-links a,\s*\.cold-mobile-more-links \.cold-mobile-more-link\s*\{[\s\S]*?min-height:\s*2\.75rem/);
   assert.match(warmHtml, /<button class="nav-link nav-link-unavailable" type="button" disabled/);
   assert.match(coldHtml, /<button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled/);
   assert.match(warmHtml, /<button class="mobile-tab mobile-tab-unavailable" type="button" disabled[\s\S]*data-roadmap-id="P3\.4"/);

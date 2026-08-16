@@ -3089,7 +3089,8 @@ body {
     padding: 0 0.65rem 0.65rem;
   }
 
-  .cold-mobile-more-links a {
+  .cold-mobile-more-links a,
+  .cold-mobile-more-links .cold-mobile-more-link {
     display: block;
     min-height: 2.75rem;
     padding: 0.6rem 0.5rem;
@@ -3098,6 +3099,7 @@ body {
     color: var(--cold-muted);
     font-size: 0.64rem;
     text-decoration: none;
+    box-sizing: border-box;
   }
 
   .cold-mobile-more-links a:hover,

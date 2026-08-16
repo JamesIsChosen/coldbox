@@ -6743,6 +6743,10 @@ __COLDBOX_QR_ENCODER__
         }
       }
     }
+    var moreSheet = link.closest('.cold-mobile-more');
+    if (moreSheet) {
+      moreSheet.open = false;
+    }
   });
   window.addEventListener('message', handleGlobalMessage);
   document.documentElement.setAttribute('data-cold-state', 'checking');

@@ -1210,17 +1210,20 @@ async function verifyBuiltFile(browser, engine) {
       document.querySelector('.cold-mobile-more-links a[data-cold-more-target="cold-concealment-controls"]').click();
     });
     await coldFrame.locator('#cold-concealment-controls:not([hidden])').waitFor({ state: 'visible' });
+    assert.equal(await coldFrame.locator('.cold-mobile-more').getAttribute('open'), null, `${engine}: Reveal hidden did not close More`);
     assert.equal(await coldFrame.locator('#cold-vault-status').isVisible(), true);
     assert.equal(await coldFrame.locator('#cold-vault-status').getAttribute('tabindex'), '-1');
     await coldFrame.evaluate(() => {
       document.querySelector('.cold-mobile-more-links a[data-cold-more-target="cold-secret-notes"]').click();
     });
     await coldFrame.locator('#cold-secret-notes:not([hidden])').waitFor({ state: 'visible' });
+    assert.equal(await coldFrame.locator('.cold-mobile-more').getAttribute('open'), null, `${engine}: Secret notes did not close More`);
     assert.equal(await coldFrame.locator('#cold-secret-notes').getAttribute('tabindex'), '-1');
     await coldFrame.evaluate(() => {
       document.querySelector('.cold-mobile-more-links a[data-cold-more-target="cold-vault-controls"]').click();
     });
     await coldFrame.locator('#cold-vault-controls').waitFor({ state: 'visible' });
+    assert.equal(await coldFrame.locator('.cold-mobile-more').getAttribute('open'), null, `${engine}: Lock & wipe did not close More`);
     assert.equal(await coldFrame.locator('#cold-vault-status').isVisible(), true);
     assert.equal(await coldFrame.locator('#cold-vault-status').getAttribute('tabindex'), '-1');
     await coldFrame.evaluate(() => { document.getElementById('cold-concealment-controls').hidden = true; document.getElementById('cold-secret-notes').hidden = true; });
