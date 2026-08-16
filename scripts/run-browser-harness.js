@@ -1535,7 +1535,7 @@ async function verifyVaultLibrary(browser, engine) {
     await page.locator('#vault-active-nickname-status').filter({ hasText: /saved on this device only/i }).waitFor({ state: 'visible' });
     assert.equal(
       await page.evaluate((id8) => window.localStorage.getItem('coldbox-vault-nickname:' + id8), alphaId8),
-      'Alpha unlocked nickname',
+      'Alpha-unlocked-nickname',
       `${engine}: unlocked nickname edit must stay in warm local storage`
     );
     assert.equal(await page.locator('#vault-active-id').textContent(), `Vault ID ${alpha.id}`);
@@ -1546,7 +1546,7 @@ async function verifyVaultLibrary(browser, engine) {
     await page.locator('#vault-active-nickname-status').filter({ hasText: /saved on this device only/i }).waitFor({ state: 'visible' });
     assert.equal(
       await page.evaluate((id8) => window.localStorage.getItem('coldbox-vault-nickname:' + id8), alphaId8),
-      'Alpha locked nickname',
+      'Alpha-locked-nickname',
       `${engine}: locked nickname edit must stay in warm local storage`
     );
     assert.equal(
