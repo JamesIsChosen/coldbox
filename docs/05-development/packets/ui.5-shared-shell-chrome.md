@@ -217,7 +217,7 @@ passed the complete matrix.
 ```text
 Focused UI.5 tests: 7 passed, 0 failed, 0 skipped
 Full CI unit/vector tests: 424 passed, 0 skipped
-Ubuntu/Windows reproducible build hash: 0043600d32837dc7e4d90db0d6f215ffa9de18ba98e2a6d47ad87f149fcda31f
+Ubuntu/Windows reproducible build hash: 24f85e3d34ae1aab2398acde9fe854e63645a9c199987fa184088feb0793f7de
 Cross-OS build comparison: passed
 Browser harness: passed in Chromium and Firefox over file://
 Approved reference scan: Clean=True, findings=0, skipped=0
@@ -227,12 +227,13 @@ Mobile reference SHA-256: af0c1fe08e689f755869a6eb4cc06dcaf0f4d44b7dfe6426d6a322
 
 ## Packet-head CI refresh
 
-The packet refresh is included in head `aac2100` and was checked out by exact-head
-CI run `31944201578`. That run passed the complete verification matrix:
+The packet refresh is included in reviewed head
+`436defd5ceb36b498ed99c4c1ce2840d640afec9` and was checked out by exact-head
+CI run `31945345999`. That run passed the complete verification matrix:
 
 ```text
 Full CI unit/vector tests: 424 passed, 0 skipped
-Ubuntu/Windows reproducible build hash: 0043600d32837dc7e4d90db0d6f215ffa9de18ba98e2a6d47ad87f149fcda31f
+Ubuntu/Windows reproducible build hash: 24f85e3d34ae1aab2398acde9fe854e63645a9c199987fa184088feb0793f7de
 Cross-OS build comparison: passed
 Browser harness: passed in Chromium and Firefox over file://
 Approved reference scan: Clean=True, findings=0, skipped=0
