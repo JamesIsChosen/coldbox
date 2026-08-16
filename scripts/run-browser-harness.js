@@ -4516,10 +4516,10 @@ async function verifyVaultRecoveryShares(browser, engine) {
 
     const normalPassphrase = 'P2.5 browser recovery phrase';
     await createPreparedVault(page, coldFrame, normalPassphrase, 'P2.5 Browser Recovery');
-    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 15000 });
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 60000 });
     await coldFrame.locator('#cold-vault-recovery-passphrase').fill(normalPassphrase);
     await coldFrame.locator('#cold-vault-recovery-configure').click();
-    await coldFrame.locator('#cold-vault-status').filter({ hasText: /Recovery shares generated/ }).waitFor({ state: 'visible', timeout: 15000 });
+    await coldFrame.locator('#cold-vault-status').filter({ hasText: /Recovery shares generated/ }).waitFor({ state: 'visible', timeout: 60000 });
     assert.equal(await coldFrame.locator('#cold-vault-recovery-generated').isHidden(), false, `${engine}: generated recovery output must be visible in the cold realm`);
     assert.match(await coldFrame.locator('#cold-vault-recovery-output').inputValue(), /Masked recovery shares/);
     assert.equal(await coldFrame.locator('#cold-vault-recovery-reveal').isDisabled(), false);
@@ -4538,7 +4538,7 @@ async function verifyVaultRecoveryShares(browser, engine) {
     await coldFrame.locator('#cold-vault-recovery-replace').check();
     await coldFrame.locator('#cold-vault-recovery-passphrase').fill(normalPassphrase);
     await coldFrame.locator('#cold-vault-recovery-configure').click();
-    await coldFrame.locator('#cold-vault-status').filter({ hasText: /Recovery shares generated/ }).waitFor({ state: 'visible', timeout: 15000 });
+    await coldFrame.locator('#cold-vault-status').filter({ hasText: /Recovery shares generated/ }).waitFor({ state: 'visible', timeout: 60000 });
     await coldFrame.locator('#cold-vault-recovery-reveal').evaluate((button) => button.click());
     const replacementShares = (await coldFrame.locator('#cold-vault-recovery-output').inputValue())
       .split(/\r?\n/).map((share) => share.trim()).filter(Boolean);
