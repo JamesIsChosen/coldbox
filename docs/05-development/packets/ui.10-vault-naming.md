@@ -41,6 +41,10 @@ Browser harness passed in Chromium and Firefox.
 
 The focused UI.10 and affected save/transfer tests are included in the 442-test run. The browser harness also verified that the approved reference files remain outside the product build inputs.
 
+### Exact-head CI closeout witness
+
+The current pushed head is `c8cfe6e8992912e7945ad6fa13e6f52cc53d2b3e`. GitHub Actions run `31965331928` is green at that exact SHA: Ubuntu build, Windows build, cross-OS hash comparison, approved-reference secret scan, and Chromium + Firefox browser harness all passed (the release attestation is intentionally skipped because this is not a release tag). The final harness-only follow-up stabilized Firefox's existing recovery reveal interaction with a DOM click dispatch and allowed the slow normal-unlock path a longer wait; it does not alter product behavior or the generated artifact.
+
 ## Acceptance criteria
 
 | Criterion | How satisfied | Test/evidence |
