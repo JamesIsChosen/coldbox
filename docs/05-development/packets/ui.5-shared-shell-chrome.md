@@ -41,13 +41,17 @@ node --check src/cold/main.js
 npm run lint
 Lint passed: forbidden constructs, JavaScript syntax, and LF source line endings are valid.
 npm run build
-Built build/coldbox.html (4f6fee9bea879545f579c2454a201cfd64c852afbcb60e49a67b7b87b3664809)
+Built build/coldbox.html (e5099a73e4167bfe222b7f9e37404a7042b41c612c67e39eb581fce3d295a2fd)
 ```
 
 The first hosted browser run on the initial UI.5 head found that the legacy
 harness still exercised the built warm Backup page, which the new rail had
 omitted. The link is now restored under Vault files and the focused parity
-tests/build were rerun. The full local test command was also attempted. Three existing provenance
+tests/build were rerun. The independent UI.5 review then found that the
+unchecked P4.3 Recovery Assistant was still exposed as an active cold link;
+that item is now a disabled phase-labelled control, while the built
+SLIP-39/verification destination has a separate truthful label. The full
+local test command was also attempted. Three existing provenance
 tests that create a scratch Git repository cannot run in this Windows
 sandbox: `spawnSync git` is denied by the sandbox policy. The remaining test
 output, including the UI.5 suite, passed. Hosted CI is required for the

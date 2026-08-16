@@ -34,6 +34,9 @@ test('unbuilt navigation entries are disabled controls with roadmap and phase la
     assert.match(item, /data-phase="(?:Phase|UI) [0-9.]+"/);
     assert.match(item, /· Phase [0-9.]+/);
   }
+  assert.match(coldHtml, /data-roadmap-id="P4\.3" data-phase="Phase 4"/);
+  assert.doesNotMatch(coldHtml, /<a class="cold-nav-link" href="#cold-group-recovery">[\s\S]*Recovery Assistant/);
+  assert.match(coldHtml, /cold-mobile-more-link-unavailable[\s\S]*Recovery Assistant · P4\.3 · Phase 4/);
 });
 
 test('each realm has a calm striped boundary strip and five-slot phone navigation', () => {
@@ -64,4 +67,3 @@ test('warm and cold shells carry the same chrome vocabulary', () => {
   assert.match(coldHtml, /class="cold-app-layout"/);
   assert.match(warmHtml, /class="app-layout"/);
 });
-

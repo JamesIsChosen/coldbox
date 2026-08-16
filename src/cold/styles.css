@@ -3106,6 +3106,13 @@ body {
     color: var(--cold-text);
   }
 
+  .cold-mobile-more-link-unavailable {
+    border-style: dashed;
+    color: var(--cold-muted);
+    cursor: not-allowed;
+    opacity: 0.58;
+  }
+
   .cold-verification-grid {
     grid-template-columns: 1fr;
   }
