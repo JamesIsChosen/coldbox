@@ -179,3 +179,28 @@ The cold frame now has a real shell rather than only a vertical hub. The main
 risk is visual geometry at the narrowest phone widths because the production
 frame is an opaque `srcdoc`; the hosted Chromium/Firefox harness and the
 independent reviewer must verify overflow, focus order, and the More sheet.
+
+## Final exact-head closeout evidence
+
+This closeout evidence is for the reviewed implementation head
+`378a3fda7f05da9c8b69954788674574bcdc33ac`. Exact-head CI run
+`31943631539` checked out that SHA and passed all required jobs.
+
+```text
+Focused UI.5 tests: 7 passed, 0 failed, 0 skipped
+Full CI unit/vector tests: 424 passed, 0 skipped
+Documentation hygiene: 241 markdown files, 0 warnings
+Vendor verification: passed against local files and upstream releases
+Ubuntu/Windows reproducible build hash: 0043600d32837dc7e4d90db0d6f215ffa9de18ba98e2a6d47ad87f149fcda31f
+Cross-OS build comparison: passed
+Browser harness: passed in Chromium and Firefox over file://
+Approved reference scan: Clean=True, findings=0, skipped=0
+Desktop reference SHA-256: fb7ff0643bda8f12a0a7e64daea91f51d74276cfc9bfb66c80baaf874bb2ded9
+Mobile reference SHA-256: af0c1fe08e689f755869a6eb4cc06dcaf0f4d44b7dfe6426d6a322b464c7d7f8
+Release attestation: skipped for pull request
+```
+
+The final exact-head witness covers the complete current route inventory,
+activated cold More targets, disabled future controls, reproducible build,
+browser parity, and the independent temporary-copy scan of both frozen
+references.
