@@ -8,6 +8,7 @@ const test = require('node:test');
 const root = path.resolve(__dirname, '..');
 const warmHtml = fs.readFileSync(path.join(root, 'src', 'index.html'), 'utf8');
 const warmCss = fs.readFileSync(path.join(root, 'src', 'styles.css'), 'utf8');
+const mainJs = fs.readFileSync(path.join(root, 'src', 'main.js'), 'utf8');
 const coldHtml = fs.readFileSync(path.join(root, 'src', 'cold', 'index.html'), 'utf8');
 const coldCss = fs.readFileSync(path.join(root, 'src', 'cold', 'styles.css'), 'utf8');
 
@@ -66,4 +67,11 @@ test('warm and cold shells carry the same chrome vocabulary', () => {
   }
   assert.match(coldHtml, /class="cold-app-layout"/);
   assert.match(warmHtml, /class="app-layout"/);
+});
+
+test('sealed-realm shell links resolve to and focus the shared boundary target', () => {
+  assert.match(warmHtml, /id="cold-realm-status" tabindex="-1"/);
+  assert.match(mainJs, /route === 'cold-realm-status'/);
+  assert.match(mainJs, /coldRealmStatus\.scrollIntoView/);
+  assert.match(mainJs, /coldRealmStatus\.focus/);
 });

@@ -1118,6 +1118,27 @@ async function verifyBuiltFile(browser, engine) {
       `${engine}: route navigation did not update the current section`
     );
 
+    const assertColdRealmTarget = async (label) => {
+      await page.waitForFunction(() => window.location.hash === '#cold-realm-status');
+      assert.equal(
+        await page.evaluate(() => document.activeElement && document.activeElement.id),
+        'cold-realm-status',
+        `${engine}: ${label} did not focus the sealed-realm boundary target`
+      );
+    };
+    await page.locator('#nav-rail .nav-group-sealed a[href="#cold-realm-status"]').click();
+    await assertColdRealmTarget('sealed rail link');
+    await page.locator('.realm-switcher a[href="#dashboard"]').click();
+    await page.waitForFunction(() => window.location.hash === '#dashboard');
+    await page.locator('.realm-switcher a[href="#cold-realm-status"]').click();
+    await assertColdRealmTarget('realm switcher');
+    await page.locator('.realm-switcher a[href="#dashboard"]').click();
+    await page.waitForFunction(() => window.location.hash === '#dashboard');
+    await page.locator('.app-bar-actions a[href="#cold-realm-status"]').click();
+    await assertColdRealmTarget('app-bar quick link');
+    await page.locator('#nav-rail a[data-route="dashboard"]').click();
+    await page.waitForFunction(() => window.location.hash === '#dashboard');
+
     await page.locator('#theme-toggle').click();
     assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
     await page.locator('#theme-toggle').click();
@@ -1153,6 +1174,11 @@ async function verifyBuiltFile(browser, engine) {
       'mobile-more-tab',
       `${engine}: Escape did not return focus to the mobile overflow tab`
     );
+    await page.locator('#mobile-more-tab').click();
+    await page.locator('#mobile-more-menu a[href="#cold-realm-status"]').click();
+    await assertColdRealmTarget('mobile More link');
+    await page.locator('#mobile-tabs a[data-route="dashboard"]').click();
+    await page.waitForFunction(() => window.location.hash === '#dashboard');
     await page.locator('#mobile-more-tab').click();
     await page.locator('#mobile-more-menu a[data-route="reference"]').click();
     await page.waitForFunction(() => window.location.hash === '#reference');

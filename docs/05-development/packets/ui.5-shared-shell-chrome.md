@@ -29,8 +29,9 @@ node --test test/ui.5-shared-shell.test.js
 ✔ each realm has a calm striped boundary strip and five-slot phone navigation
 ✔ navigation touch targets are at least 44px and unavailable items cannot receive focus
 ✔ warm and cold shells carry the same chrome vocabulary
-ℹ tests 5
-ℹ pass 5
+✔ sealed-realm shell links resolve to and focus the shared boundary target
+ℹ tests 6
+ℹ pass 6
 ```
 
 Source syntax, lint, and build:
@@ -41,7 +42,7 @@ node --check src/cold/main.js
 npm run lint
 Lint passed: forbidden constructs, JavaScript syntax, and LF source line endings are valid.
 npm run build
-Built build/coldbox.html (e5099a73e4167bfe222b7f9e37404a7042b41c612c67e39eb581fce3d295a2fd)
+Built build/coldbox.html (f944c6f4bc1d5b44c41c6a3c2eb1d47fd8529e9feeb8d10707bfeb9767af0400)
 ```
 
 The first hosted browser run on the initial UI.5 head found that the legacy
@@ -56,6 +57,14 @@ tests that create a scratch Git repository cannot run in this Windows
 sandbox: `spawnSync git` is denied by the sandbox policy. The remaining test
 output, including the UI.5 suite, passed. Hosted CI is required for the
 complete Windows/Ubuntu and browser verification before merge.
+
+The fresh independent review of the exact `64c4d522f17b3ba26a000ab38d9b769795f0511d`
+head then found that the four approved warm links to `#cold-realm-status`
+were cosmetic: the router collapsed that hash back to `#dashboard`. The
+remediation adds an explicit sealed-realm route, preserves the current page,
+scrolls to the boundary, and focuses its keyboard target. The browser harness
+now exercises the desktop rail, realm switcher, app-bar quick link, and mobile
+More link; the focused UI.5 suite also guards the route implementation.
 
 ## Review focus
 
