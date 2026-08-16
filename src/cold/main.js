@@ -51,6 +51,9 @@ __COLDBOX_QR_ENCODER__
   var passphraseHealthPanel = document.getElementById('cold-vault-passphrase-health');
   var passphraseHealthState = document.getElementById('cold-vault-passphrase-health-state');
   var passphraseHealthCopy = document.getElementById('cold-vault-passphrase-health-copy');
+  var vaultNameInput = document.getElementById('cold-vault-name');
+  var vaultNameSaveButton = document.getElementById('cold-vault-name-save');
+  var vaultKdfProfile = document.getElementById('cold-vault-kdf-profile');
   var createVaultButton = document.getElementById('cold-vault-create');
   var unlockVaultButton = document.getElementById('cold-vault-unlock');
   var lockVaultButton = document.getElementById('cold-vault-lock');
@@ -410,6 +413,7 @@ __COLDBOX_QR_ENCODER__
   var vaultBusy = false;
   var vaultUnlocked = false;
   var createPrepared = false;
+  var pendingVaultName = '';
   var currentVaultBytes = null;
   var currentVaultSession = null;
   var vaultSessionGeneration = 0;
@@ -5143,6 +5147,21 @@ __COLDBOX_QR_ENCODER__
     if (createVaultButton) {
       createVaultButton.disabled = !ready || vaultBusy || vaultUnlocked || !createPrepared;
     }
+    if (vaultNameInput) {
+      vaultNameInput.disabled = !ready || vaultBusy || (!createPrepared && !vaultUnlocked);
+      if (vaultUnlocked && currentVaultSession && typeof currentVaultSession.getPublicData === 'function') {
+        var currentNameData = currentVaultSession.getPublicData() || {};
+        vaultNameInput.value = typeof currentNameData.name === 'string' ? currentNameData.name : '';
+      } else if (createPrepared) {
+        vaultNameInput.value = pendingVaultName;
+      }
+    }
+    if (vaultNameSaveButton) {
+      vaultNameSaveButton.disabled = !ready || vaultBusy || !vaultUnlocked || !currentVaultSession || !vaultNameInput;
+    }
+    if (vaultKdfProfile) {
+      vaultKdfProfile.disabled = !ready || vaultBusy || vaultUnlocked || !createPrepared;
+    }
     if (unlockVaultButton) {
       unlockVaultButton.disabled = !ready || vaultBusy || vaultUnlocked || !pendingVaultBytes;
     }
@@ -5292,7 +5311,7 @@ __COLDBOX_QR_ENCODER__
           );
           var updated = currentVaultSession.replacePublicData(nextPublicData);
           postVaultMessage(nextVaultMessageId('verify-state'), 'publicData.updated', {
-            publicCompartment: updated
+            publicCompartment: publicCompartmentProjection(updated)
           });
         }
       } catch (error) {
@@ -5310,13 +5329,21 @@ __COLDBOX_QR_ENCODER__
   }
 
   function sendVaultOpened(id, publicData) {
+    var projection = publicCompartmentProjection(publicData);
     postVaultMessage(id || nextVaultMessageId('opened'), 'vault.opened', {
-      publicCompartment: publicData && typeof publicData === 'object' ? publicData : {}
+      publicCompartment: projection
     });
+  }
+
+  function publicCompartmentProjection(publicData) {
+    var projection = publicData && typeof publicData === 'object' ? JSON.parse(JSON.stringify(publicData)) : {};
+    delete projection.name;
+    return projection;
   }
 
   function clearCreatePreparation() {
     createPrepared = false;
+    pendingVaultName = '';
     if (passphraseConfirmInput) {
       passphraseConfirmInput.value = '';
     }
@@ -5811,7 +5838,13 @@ __COLDBOX_QR_ENCODER__
       return;
     }
     if (!createPrepared) {
-      setVaultStatus('locked', 'Choose a public vault name in the warm Vault page before creating a new vault.');
+      setVaultStatus('locked', 'Prepare vault creation from the warm Vault page before creating a new vault.');
+      return;
+    }
+    var vaultName = vaultNameInput ? vaultNameInput.value.trim() : '';
+    if (!vaultName || vaultName.length > 80 || /[\u0000-\u001f\u007f]/.test(vaultName)) {
+      setVaultStatus('locked', 'Enter a bounded vault name before creating it.');
+      if (vaultNameInput) { vaultNameInput.focus(); }
       return;
     }
     var passphrase = passphraseInput.value;
@@ -5851,8 +5884,8 @@ __COLDBOX_QR_ENCODER__
     try {
       createOptions = {
         passphrase: passphrase,
-        profile: 'fast',
-        publicData: { id: generateVaultUuid() }
+        profile: vaultKdfProfile && vaultKdfProfile.value ? vaultKdfProfile.value : 'standard',
+        publicData: { id: generateVaultUuid(), name: vaultName }
       };
     } catch (error) {
       passphrase = '';
@@ -5876,6 +5909,7 @@ __COLDBOX_QR_ENCODER__
         pendingVaultBytes = null;
         pendingOpenId = null;
         vaultUnlocked = true;
+        if (vaultNameInput) { vaultNameInput.value = vaultName; }
         passphrase = '';
         if (passphraseInput) {
           passphraseInput.value = '';
@@ -5910,6 +5944,21 @@ __COLDBOX_QR_ENCODER__
       vaultBusy = false;
       updateVaultControls();
     });
+  }
+
+  function saveVaultName() {
+    if (!currentVaultSession || !vaultNameInput || typeof currentVaultSession.renameVault !== 'function') {
+      return;
+    }
+    try {
+      var name = vaultNameInput.value.trim();
+      currentVaultSession.renameVault(name);
+      setVaultStatus('unlocked', 'Vault name updated inside the sealed realm.', 'The encrypted public compartment changed. Save the vault to persist the rename.', 'Renamed');
+      recordVaultActivity();
+    } catch (error) {
+      setVaultStatus('unlocked', 'Vault name was not changed.', 'Use 1–80 characters without control characters.', 'Name rejected');
+    }
+    updateVaultControls();
   }
 
   function unlockLoadedVault() {
@@ -6046,7 +6095,7 @@ __COLDBOX_QR_ENCODER__
           message.payload.publicCompartment
         );
         if (!postVaultMessage(message.id, 'publicData.updated', {
-          publicCompartment: updatedPublicData
+          publicCompartment: publicCompartmentProjection(updatedPublicData)
         })) {
           lockVaultSession(null, 'Vault locked because the public registry acknowledgement failed.', true);
           return;
@@ -6486,6 +6535,9 @@ __COLDBOX_QR_ENCODER__
   }
   if (unlockVaultButton) {
     unlockVaultButton.addEventListener('click', unlockLoadedVault);
+  }
+  if (vaultNameSaveButton) {
+    vaultNameSaveButton.addEventListener('click', saveVaultName);
   }
   if (vaultRecoveryConfigureButton) {
     vaultRecoveryConfigureButton.addEventListener('click', configureVaultRecoveryShares);

@@ -113,7 +113,7 @@ AAD.
 
 Vault metadata (`id` UUID), wallets, accounts, addresses, labels, tags, public notes, devices, transactions, cost-basis lots, price snapshots, backup record *locations and metadata*, settings, audit log.
 
-`id` is a random non-secret UUID created once with every new vault. It is the stable vault identity across devices and filenames and is **immutable for the life of that vault**: saving or re-saving creates a new generation of the same Vault ID, never a new Vault ID. A different UUID means a different vault created through the explicit new-vault flow. It is **not** a device fingerprint and is not derived from hardware/browser characteristics. The human-readable vault name intentionally lives in warm-shell filename/library metadata rather than this compartment because Cold → Warm free-form prose is excluded by the message-schema security invariant; see [ADR-0025](../05-development/adr/0025-vault-identity-library-and-save-ux.md).
+`id` is a random non-secret UUID created once with every new vault. It is the stable vault identity across devices and filenames and is **immutable for the life of that vault**: saving or re-saving never changes it. A different UUID means a different vault created through the explicit new-vault flow. It is **not** a device fingerprint and is not derived from hardware/browser characteristics. UI.10 adds a bounded authenticated `name` field to the public compartment; the cold realm owns and edits it, while the warm projection omits it. The warm shell uses only `id8` and an optional device-local nickname.
 
 ### Secret — never decrypted while online
 
@@ -176,7 +176,7 @@ Chosen at creation, stored in the header, changeable later (rewraps the DEK; com
 
 | Path | Where | Mechanism |
 |---|---|---|
-| Canonical File System Access save | Chrome/Edge desktop where available | First save chooses `<vault-name>--<id8>.cbx`; later dirty saves reuse the same retained file handle and verify read-back |
+| Canonical File System Access save | Chrome/Edge desktop where available | First save chooses `coldbox--<id8>.cbx`; later dirty saves reuse the same retained file handle and verify read-back |
 | Canonical blob-download replacement | Desktop, most Android, other running contexts with downloads | Starts the same canonical filename, but browser-controlled storage cannot be read back/overwritten reliably, so status is **Saved · unverified** |
 | Encrypted text handoff (advanced) | Supported running Coldbox contexts | Base64 / optional `navigator.share`; transport convenience only, not a canonical save |
 
@@ -184,11 +184,11 @@ Animated QR is **not** a save path. It is an ephemeral live device-to-device tra
 
 ### Vault names, IDs, and canonical filenames
 
-New Coldbox filenames are `<vault-name>--<id8>.cbx`, for example `Bitcoin-Savings--7f3a91c2.cbx`.
+New Coldbox filenames are `coldbox--<id8>.cbx`, for example `coldbox--7f3a91c2.cbx`.
 
 - `vault-name` is a user-chosen **public** display name sanitized by the warm shell. Never put secrets in it.
 - `id8` is the first eight hexadecimal characters of the canonical Vault UUID and is only a compact hint; the full authenticated UUID is authoritative after unlock.
-- No current filename contains a user-visible generation. One Vault ID has one canonical name/file destination within the app-known scope.
+- The canonical filename contains no user-chosen text or visible generation. One Vault ID has one canonical name-free file destination.
 - A different Vault ID cannot claim a name already known in the current session, best-effort browser-profile registry, or currently granted Vault Library. Coldbox cannot guarantee disk-wide uniqueness because it cannot silently enumerate the filesystem.
 
 ### Rollback detection
@@ -197,7 +197,7 @@ Rollback detection remains advisory warm-shell bookkeeping. Historical generatio
 
 ### Legacy v1 vaults and filenames
 
-Every existing format-v1 `.cbx` remains openable without byte-format migration. A pre-P0.19 vault may have no public-compartment `id` and may be named `coldbox-vault-0047.cbx`; P0.19-era files may also have `<name>--<id8>--0047.cbx`. Historical counters remain readable only for compatibility/advisory rollback checks. A future save uses the current canonical `<name>--<id8>.cbx` naming. For warm-shell bookkeeping only, a vault without authenticated `id` uses the already-public random 32-byte KDF salt in header bytes 21–52 as a stable legacy namespace.
+Every existing format-v1 `.cbx` remains openable without byte-format migration. A pre-P0.19 vault may have no public-compartment `id` and may be named `coldbox-vault-0047.cbx`; P0.19-era files may also have name-bearing historical forms. Historical counters remain readable only for compatibility/advisory rollback checks. A future save uses `coldbox--<id8>.cbx`; adding the bounded public name is a JSON compartment extension and does not require a format-version bump because the v1 reader already authenticates and preserves arbitrary public JSON fields. For warm-shell bookkeeping only, a vault without authenticated `id` uses the already-public random 32-byte KDF salt in header bytes 21–52 as a stable legacy namespace.
 
 ### Verify-after-save — mandatory
 

@@ -189,10 +189,10 @@ test('P0.19 verified File System Access saves reuse the canonical file handle in
   assert.match(body, /unchanged vaults cannot be saved again as another copy/i);
 });
 
-test('P0.19 duplicate public names are refused before new-vault creation', () => {
+test('UI.10 creation uses only an optional warm nickname and a payload-free prepare gate', () => {
   const body = extractFunction(mainSource, 'prepareNewVaultCreation');
-  assert.match(body, /vaultNameConflict\(name, null\)/);
-  assert.match(body, /different vault already uses that public name/i);
+  assert.match(body, /device-local nickname/i);
+  assert.doesNotMatch(body, /vaultNameConflict\(name, null\)/);
 });
 
 test('P0.19 normal lock warns on dirty state while emergency lock remains immediate', () => {
@@ -206,7 +206,7 @@ test('P0.19 normal lock warns on dirty state while emergency lock remains immedi
   assert.match(panicBody, /sendVaultLockImmediately\(\)/, 'panic must never wait for save confirmation');
 });
 
-test('P0.19 creation keeps public name warm and sends only a payload-free prepare gate', () => {
+test('UI.10 creation keeps the nickname warm and sends only a payload-free prepare gate', () => {
   const body = extractFunction(mainSource, 'prepareNewVaultCreation');
   assert.match(body, /pendingCreateVaultName = name\.slice\(0, 80\)/);
   assert.match(body, /sendVaultMessage\('vault\.create\.prepare', \{\}\)/);
@@ -214,15 +214,10 @@ test('P0.19 creation keeps public name warm and sends only a payload-free prepar
 });
 
 
-test('unsaved creation/transfer does not permanently claim a public name before durable save', () => {
-  assert.match(
-    mainSource,
-    /if \(durableFileLoad && vaultId && chosenName\) \{\s*claimVaultName\(chosenName, vaultId\);\s*\}/,
-    'only an authenticated durable file load should claim a name during vault.open handling'
-  );
-  assert.match(mainSource, /completeVerifiedSave\(\);[\s\S]{0,500}claimVaultName|claimVaultName\(activeVaultName, activeVaultId\);[\s\S]{0,300}completeVerifiedSave\(\);/, 'verified canonical save must persist name ownership');
+test('UI.10 nickname state never becomes a vault-name registry claim', () => {
+  assert.match(mainSource, /writeVaultNickname\(/);
+  assert.doesNotMatch(mainSource, /claimVaultName\(activeVaultName, activeVaultId\)/);
   assert.match(mainSource, /setVaultPersistenceState\('saved-unverified'\)/, 'download replacement must have an explicit unverified persistence state');
-  assert.match(mainSource, /claimVaultName\(activeVaultName, activeVaultId\);[\s\S]{0,250}setVaultPersistenceState\('saved-unverified'\)/, 'download replacement must persist name ownership once started');
 });
 
 

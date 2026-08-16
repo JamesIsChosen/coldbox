@@ -376,7 +376,7 @@ __COLDBOX_WORDMARK__
             <article class="info-card vault-card vault-library-card">
               <span class="card-icon" aria-hidden="true">01</span>
               <h2>Vault Library</h2>
-              <p>Coldbox can list only vault files or folders you explicitly grant. Select a named vault first; its unlock phrase is entered separately inside the sealed realm. Public names must be unique among vault identities this browser profile or granted library already knows.</p>
+              <p>Coldbox can list only vault files or folders you explicitly grant. Select a vault by its short ID; its unlock phrase and durable name are entered separately inside the sealed realm.</p>
               <input class="sr-only" id="vault-file-input" type="file" accept=".cbx,application/octet-stream" multiple data-input-surface="public">
               <div class="vault-actions">
                 <button class="vault-button" id="vault-load-file" type="button">Choose vault files</button>
@@ -386,9 +386,9 @@ __COLDBOX_WORDMARK__
               <div id="vault-library-list" class="vault-library-list" role="list" aria-live="polite"></div>
               <hr>
               <h3>Create a new vault</h3>
-              <label class="vault-label" for="vault-create-name">Public vault name</label>
-              <input id="vault-create-name" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="e.g. Bitcoin Savings" data-input-surface="public">
-              <p class="vault-help">This name is public and appears in filenames/library. Do not put a passphrase, seed phrase, private key, or other secret here.</p>
+              <label class="vault-label" for="vault-create-name">Device-local nickname (optional)</label>
+              <input id="vault-create-name" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="e.g. savings vault" data-input-surface="public">
+              <p class="vault-help">This label stays on this device only. The durable vault name is entered inside the sealed realm, and the canonical filename contains only the short Vault ID.</p>
               <div class="vault-actions">
                 <button class="vault-button" id="vault-create-prepare" type="button">Continue creation in sealed realm</button>
               </div>
@@ -443,9 +443,9 @@ __COLDBOX_WORDMARK__
               <p class="vault-help" id="vault-transfer-receive-status" role="status" aria-live="polite">Camera is off.</p>
               <div id="vault-transfer-receipt" class="vault-transfer-receipt" hidden>
                 <p id="vault-transfer-receipt-summary"></p>
-                <label class="vault-label" for="vault-transfer-receive-name">Local public vault name</label>
+                <label class="vault-label" for="vault-transfer-receive-name">Device-local nickname (optional)</label>
                 <input id="vault-transfer-receive-name" type="text" maxlength="80" autocomplete="off" spellcheck="false" data-input-surface="public">
-                <p class="vault-help">The sender's public name is suggested. Change it if that name already belongs to a different Vault ID on this device.</p>
+                <p class="vault-help">This nickname stays on this device only. The durable name remains inside the sealed vault and is not transferred.</p>
                 <div class="vault-actions">
                   <button class="vault-button vault-button-primary" id="vault-transfer-load" type="button">Load received vault</button>
                   <button class="vault-button" id="vault-transfer-discard" type="button">Discard received transfer</button>

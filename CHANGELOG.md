@@ -3,6 +3,7 @@
 ## Unreleased
 
 - UI.9: compile the in-app Tool map directly from `docs/05-development/ROADMAP.md`, with fail-closed parsing and deterministic build injection.
+- UI.10: move the durable vault name into the sealed encrypted public compartment, add cold-side rename and KDF selection, use `coldbox--<id8>.cbx`, and keep warm nicknames device-local.
 - UI.8 regrouped the warm shell into Records, Money, Vault files, and Reference workspaces while preserving the sealed-realm handoff outside those groups.
 - UI.5 adds the approved shared shell chrome to both realms: the ten-group
   roadmap-labelled navigation rails, calm warm/cold boundary strips, and
@@ -16,7 +17,7 @@
   Address bench or QR Studio without clipboard round-trips, and backup records
   send directly to sealed share verification. The route inventory is finite and
   no send-to path calls a clipboard API.
-- P0.19 canonical-save/live-transfer redesign: current vaults use one canonical `<name>--<id8>.cbx` with no user-visible save generations; unchanged saved vaults cannot create look-alike copies, public names cannot be reused by another known Vault ID, and historical generation files remain loadable only for compatibility/advisory rollback checks.
+- P0.19 canonical-save/live-transfer redesign: current vaults use one canonical name-free `coldbox--<id8>.cbx` with no user-visible save generations; historical name-bearing and generation files remain loadable only for compatibility/advisory rollback checks.
 - Vault QR is now live Coldbox-to-Coldbox transfer only: no QR download/frame backup exists. The unlocked sender animates encrypted `.cbx` bytes under a random Transfer ID; the receiver verifies SHA-256, still requires the normal passphrase, and starts Not saved until it writes its own canonical `.cbx`. See ADR-0026.
 
 All notable changes to this project are documented here.

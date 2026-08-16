@@ -16,27 +16,6 @@
   var HASH_PATTERN = /^[0-9a-f]{64}$/i;
   var BASE64_PATTERN = /^[A-Za-z0-9+/]*={0,2}$/;
 
-  function cleanName(value) {
-    if (typeof value !== 'string') {
-      return null;
-    }
-    var trimmed = value.trim();
-    return trimmed && trimmed.length <= 80 ? trimmed : null;
-  }
-
-  function encodeName(value) {
-    var name = cleanName(value);
-    return name ? encodeURIComponent(name) : null;
-  }
-
-  function decodeName(value) {
-    try {
-      return cleanName(decodeURIComponent(value));
-    } catch (error) {
-      return null;
-    }
-  }
-
   function cleanTotal(value) {
     return Number.isSafeInteger(value) && value >= 1 && value <= MAX_FRAMES ? value : null;
   }
@@ -63,11 +42,10 @@
     var hash = typeof meta.hash === 'string' && HASH_PATTERN.test(meta.hash)
       ? meta.hash.toLowerCase()
       : null;
-    var encodedName = encodeName(meta.name);
     var payloadLength = Number.isSafeInteger(meta.payloadLength) && meta.payloadLength >= 128 && meta.payloadLength <= 900
       ? meta.payloadLength
       : DEFAULT_PAYLOAD_LENGTH;
-    if (!payload || !transferId || !vaultId || !hash || !encodedName) {
+    if (!payload || !transferId || !vaultId || !hash) {
       throw new Error('Invalid live vault transfer metadata.');
     }
     var total = Math.ceil(payload.length / payloadLength);
@@ -75,7 +53,7 @@
       throw new Error('Vault is too large for live QR transfer. Use the canonical .cbx file instead.');
     }
     var frames = [
-      PREFIX + 'M/' + transferId + '/' + vaultId + '/' + String(total) + '/' + hash + '/' + encodedName
+      PREFIX + 'M/' + transferId + '/' + vaultId + '/' + String(total) + '/' + hash
     ];
     for (var index = 0; index < total; index += 1) {
       frames.push(
@@ -90,15 +68,13 @@
     if (typeof value !== 'string' || value.length > 2048) {
       return null;
     }
-    var manifest = /^CBX-VT\/1\/M\/([0-9a-f]{32})\/([0-9a-f-]{36})\/(\d{1,4})\/([0-9a-f]{64})\/([^/]+)$/i.exec(value);
+    var manifest = /^CBX-VT\/1\/M\/([0-9a-f]{32})\/([0-9a-f-]{36})\/(\d{1,4})\/([0-9a-f]{64})$/i.exec(value);
     if (manifest) {
       var manifestTotal = cleanTotal(Number(manifest[3]));
-      var manifestName = decodeName(manifest[5]);
       if (!TRANSFER_ID_PATTERN.test(manifest[1])
         || !VAULT_UUID_PATTERN.test(manifest[2])
         || !manifestTotal
-        || !HASH_PATTERN.test(manifest[4])
-        || !manifestName) {
+        || !HASH_PATTERN.test(manifest[4])) {
         return null;
       }
       return Object.freeze({
@@ -106,8 +82,7 @@
         transferId: manifest[1].toLowerCase(),
         vaultId: manifest[2].toLowerCase(),
         total: manifestTotal,
-        hash: manifest[4].toLowerCase(),
-        name: manifestName
+        hash: manifest[4].toLowerCase()
       });
     }
     var data = /^CBX-VT\/1\/D\/([0-9a-f]{32})\/(\d{1,4})\/(\d{1,4})\/([A-Za-z0-9+/=]+)$/i.exec(value);
@@ -138,7 +113,6 @@
     return {
       transferId: null,
       vaultId: null,
-      name: null,
       total: null,
       hash: null,
       chunks: [],
@@ -153,8 +127,8 @@
       transferId: state && state.transferId ? state.transferId : null,
       received: received,
       total: total,
-      hasManifest: Boolean(state && state.vaultId && state.hash && state.name),
-      complete: Boolean(total && state && state.vaultId && state.hash && state.name && received === total)
+      hasManifest: Boolean(state && state.vaultId && state.hash),
+      complete: Boolean(total && state && state.vaultId && state.hash && received === total)
     });
   }
 
@@ -175,14 +149,12 @@
     if (frame.kind === 'manifest') {
       if ((state.total !== null && state.total !== frame.total)
         || (state.vaultId && state.vaultId !== frame.vaultId)
-        || (state.hash && state.hash !== frame.hash)
-        || (state.name && state.name !== frame.name)) {
+        || (state.hash && state.hash !== frame.hash)) {
         return Object.freeze({ accepted: false, reason: 'conflict', progress: collectorProgress(state) });
       }
       state.total = frame.total;
       state.vaultId = frame.vaultId;
       state.hash = frame.hash;
-      state.name = frame.name;
       return Object.freeze({ accepted: true, reason: 'manifest', progress: collectorProgress(state) });
     }
     if (state.total !== null && state.total !== frame.total) {
@@ -217,7 +189,6 @@
       base64: base64,
       transferId: state.transferId,
       vaultId: state.vaultId,
-      name: state.name,
       hash: state.hash
     });
   }

@@ -340,7 +340,6 @@ __COLDBOX_CONCEALMENT__
   var activeVaultCanonicalFilename = null;
   var pendingCreateVaultName = '';
   var vaultLibraryEntries = [];
-  var vaultSessionNameOwners = {};
   var reachabilityState = 'checking';
   var reachabilityFailureRounds = 0;
   var reachabilityInFlight = false;
@@ -2034,7 +2033,34 @@ __COLDBOX_CONCEALMENT__
     if (parsed && parsed.name) {
       return parsed.name.replace(/-/g, ' ');
     }
+    if (parsed && parsed.id8) {
+      return 'Vault ' + parsed.id8;
+    }
     return typeof name === 'string' ? name.replace(/\.cbx$/i, '') : 'Vault';
+  }
+
+  function nicknameStorageKey(vaultId) {
+    if (!saveIntegrity || typeof saveIntegrity.id8 !== 'function') { return null; }
+    var shortId = saveIntegrity.id8(vaultId);
+    return shortId ? 'coldbox-vault-nickname:' + shortId : null;
+  }
+
+  function readVaultNickname(vaultId) {
+    var key = nicknameStorageKey(vaultId);
+    if (!key) { return ''; }
+    try {
+      var value = safeLocalStorage().getItem(key);
+      return typeof value === 'string' ? saveIntegrity.sanitizeVaultName(value) : '';
+    } catch (error) { return ''; }
+  }
+
+  function writeVaultNickname(vaultId, nickname) {
+    var key = nicknameStorageKey(vaultId);
+    if (!key) { return; }
+    try {
+      if (nickname) { safeLocalStorage().setItem(key, nickname); }
+      else { safeLocalStorage().removeItem(key); }
+    } catch (error) { /* device-local labels are best effort */ }
   }
 
   function libraryEntryForFile(file, handle) {
@@ -2048,59 +2074,6 @@ __COLDBOX_CONCEALMENT__
       parsed: parsed,
       key: String(file && file.name || '') + ':' + String(file && file.size || 0) + ':' + String(file && file.lastModified || 0)
     };
-  }
-
-  function vaultNameConflict(name, vaultId) {
-    if (!saveIntegrity || typeof saveIntegrity.normalizedVaultNameKey !== 'function') {
-      return false;
-    }
-    var key = saveIntegrity.normalizedVaultNameKey(name);
-    if (!key) {
-      return true;
-    }
-    var normalizedId = typeof vaultId === 'string' ? vaultId.toLowerCase() : null;
-    if (vaultSessionNameOwners[key] && (!normalizedId || vaultSessionNameOwners[key] !== normalizedId)) {
-      return true;
-    }
-    if (typeof saveIntegrity.vaultNameOwner === 'function') {
-      var owner = saveIntegrity.vaultNameOwner(safeLocalStorage(), name);
-      if (owner && (!normalizedId || owner !== normalizedId)) {
-        return true;
-      }
-    }
-    for (var index = 0; index < vaultLibraryEntries.length; index += 1) {
-      var entry = vaultLibraryEntries[index];
-      if (saveIntegrity.normalizedVaultNameKey(entry.displayName) !== key) {
-        continue;
-      }
-      if (!normalizedId) {
-        return true;
-      }
-      var shortId = typeof saveIntegrity.id8 === 'function' ? saveIntegrity.id8(normalizedId) : null;
-      if (!entry.parsed || !entry.parsed.id8 || !shortId || entry.parsed.id8 !== shortId) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  function claimVaultName(name, vaultId) {
-    if (!saveIntegrity || typeof saveIntegrity.normalizedVaultNameKey !== 'function') {
-      return false;
-    }
-    var key = saveIntegrity.normalizedVaultNameKey(name);
-    var normalizedId = typeof vaultId === 'string' ? vaultId.toLowerCase() : null;
-    if (!key || !normalizedId) {
-      return false;
-    }
-    if (vaultSessionNameOwners[key] && vaultSessionNameOwners[key] !== normalizedId) {
-      return false;
-    }
-    vaultSessionNameOwners[key] = normalizedId;
-    if (typeof saveIntegrity.claimVaultName === 'function') {
-      saveIntegrity.claimVaultName(safeLocalStorage(), name, normalizedId);
-    }
-    return true;
   }
 
   function renderVaultLibrary() {
@@ -2125,19 +2098,7 @@ __COLDBOX_CONCEALMENT__
       var historyHint = entry.parsed && entry.parsed.counter !== null
         ? 'legacy generation ' + String(entry.parsed.counter) + ' · '
         : '';
-      var nameConflict = false;
-      if (saveIntegrity && typeof saveIntegrity.normalizedVaultNameKey === 'function') {
-        var entryKey = saveIntegrity.normalizedVaultNameKey(entry.displayName);
-        var entryId8 = entry.parsed && entry.parsed.id8 ? entry.parsed.id8 : null;
-        nameConflict = vaultLibraryEntries.some(function (other) {
-          return other !== entry
-            && saveIntegrity.normalizedVaultNameKey(other.displayName) === entryKey
-            && (!entryId8 || !other.parsed || !other.parsed.id8 || other.parsed.id8 !== entryId8);
-        });
-      }
-      detail.textContent = (nameConflict ? 'NAME CONFLICT · rename one vault file · ' : '')
-        + historyHint + String(entry.file.name || 'vault.cbx');
-      button.disabled = nameConflict;
+      detail.textContent = historyHint + String(entry.file.name || 'vault.cbx');
       button.appendChild(title);
       button.appendChild(detail);
       vaultLibraryList.appendChild(button);
@@ -2181,15 +2142,9 @@ __COLDBOX_CONCEALMENT__
       setVaultNotice('Vault creation metadata is unavailable in this build.');
       return;
     }
-    var name = vaultCreateName.value.trim();
-    var safeFilenameName = saveIntegrity.sanitizeVaultName(name);
-    if (!name || !safeFilenameName) {
-      setVaultNotice('Enter a public vault name before creation.');
-      vaultCreateName.focus();
-      return;
-    }
-    if (vaultNameConflict(name, null)) {
-      setVaultNotice('A different vault already uses that public name on this device or in the granted Vault Library. Choose another name before creating a new vault.');
+    var name = saveIntegrity.sanitizeVaultName(vaultCreateName.value.trim());
+    if (vaultCreateName.value.trim() && !name) {
+      setVaultNotice('The device-local nickname could not be used.');
       vaultCreateName.focus();
       return;
     }
@@ -2204,7 +2159,7 @@ __COLDBOX_CONCEALMENT__
     setVaultStatus(
       'pending',
       'New vault is ready for its unlock phrase',
-      'Public name “' + pendingCreateVaultName + '” is prepared in the warm shell. Enter the new unlock phrase twice in the sealed realm, then choose Create prepared vault.',
+      'Optional device-local nickname “' + (pendingCreateVaultName || 'none') + '” is saved only on this device. Enter the real vault name and unlock phrase inside the sealed realm.',
       'Creation prepared'
     );
   }
@@ -2334,8 +2289,8 @@ __COLDBOX_CONCEALMENT__
       setVaultNotice('This vault has no unsaved state to persist. Coldbox will not create another look-alike copy of an unchanged vault.');
       return false;
     }
-    if (!activeVaultName || !activeVaultId || vaultNameConflict(activeVaultName, activeVaultId)) {
-      setVaultNotice('This public vault name is already owned by a different Vault ID. Choose a unique name before saving.');
+    if (!activeVaultId) {
+      setVaultNotice('This vault has no authenticated Vault ID and cannot use the canonical name-free filename.');
       return false;
     }
     return true;
@@ -2595,22 +2550,20 @@ __COLDBOX_CONCEALMENT__
   }
 
   function startLiveVaultTransfer() {
-    if (vaultState !== 'unlocked' || !activeVaultId || !activeVaultName || !vaultTransfer || !vaultHasDurableTransferSource()) {
+    if (vaultState !== 'unlocked' || !activeVaultId || !vaultTransfer || !vaultHasDurableTransferSource()) {
       setVaultNotice('Live transfer is only for an unlocked vault that already has a durable local .cbx copy. Save/verify or load the canonical vault first.');
       return;
     }
     clearLiveTransferSender('Preparing an encrypted live transfer…');
     var expectedVaultId = activeVaultId;
-    var expectedName = activeVaultName;
     requestVaultBytes().then(function (bytes) {
       return sha256Hex(bytes).then(function (hash) {
-        if (vaultState !== 'unlocked' || activeVaultId !== expectedVaultId || activeVaultName !== expectedName) {
+        if (vaultState !== 'unlocked' || activeVaultId !== expectedVaultId) {
           throw new Error('Vault identity changed while transfer was being prepared.');
         }
         var frames = vaultTransfer.createFrames(bytesToBase64(bytes), {
           transferId: transferId(),
           vaultId: expectedVaultId,
-          name: expectedName,
           hash: hash
         });
         liveTransferFrames = Array.prototype.slice.call(frames);
@@ -2700,7 +2653,7 @@ __COLDBOX_CONCEALMENT__
       }
       pendingReceivedTransfer = bytes;
       pendingReceivedTransferMeta = assembled;
-      stopLiveTransferReceiver('Encrypted transfer complete and SHA-256 verified. Choose the local public name, then load it.', true);
+      stopLiveTransferReceiver('Encrypted transfer complete and SHA-256 verified. Choose an optional device-local nickname, then load it.', true);
       if (vaultTransferReceipt) {
         vaultTransferReceipt.hidden = false;
       }
@@ -2709,10 +2662,7 @@ __COLDBOX_CONCEALMENT__
           + assembled.vaultId + ' · transfer ' + assembled.transferId.slice(0, 8) + '…';
       }
       if (vaultTransferReceiveName) {
-        vaultTransferReceiveName.value = assembled.name;
-      }
-      if (vaultNameConflict(assembled.name, assembled.vaultId) && vaultTransferReceiveStatus) {
-        vaultTransferReceiveStatus.textContent = 'Transfer verified, but that public name already belongs to a different Vault ID on this device. Choose a different local public name before loading.';
+        vaultTransferReceiveName.value = readVaultNickname(assembled.vaultId);
       }
       updateVaultControls();
     }, function () {
@@ -2826,13 +2776,8 @@ __COLDBOX_CONCEALMENT__
       return;
     }
     var name = vaultTransferReceiveName.value.trim();
-    if (!name || !saveIntegrity.sanitizeVaultName(name)) {
-      setVaultNotice('Choose a valid public vault name before loading the received transfer.');
-      vaultTransferReceiveName.focus();
-      return;
-    }
-    if (vaultNameConflict(name, pendingReceivedTransferMeta.vaultId)) {
-      setVaultNotice('A different Vault ID already uses that public name on this device. Choose another local name.');
+    if (name && !saveIntegrity.sanitizeVaultName(name)) {
+      setVaultNotice('Choose a valid device-local nickname before loading the received transfer.');
       vaultTransferReceiveName.focus();
       return;
     }
@@ -2849,6 +2794,7 @@ __COLDBOX_CONCEALMENT__
     };
     clearManualVaultExport();
     setActiveVaultMeta(name, null);
+    writeVaultNickname(pendingReceivedTransferMeta.vaultId, name);
     pendingReceivedTransfer = null;
     pendingReceivedTransferMeta = null;
     if (vaultTransferReceipt) {
@@ -3071,7 +3017,6 @@ __COLDBOX_CONCEALMENT__
       assertStableSaveIdentity(saveVaultId, chosenHandle && chosenHandle.name);
       activeVaultFileHandle = chosenHandle;
       activeVaultCanonicalFilename = suggestedName;
-      claimVaultName(activeVaultName, activeVaultId);
       completeVerifiedSave();
       setVaultStatus(
         'unlocked',
@@ -3110,7 +3055,6 @@ __COLDBOX_CONCEALMENT__
       window.setTimeout(function () { window.URL.revokeObjectURL(url); }, 0);
     }).then(function () {
       activeVaultCanonicalFilename = suggestedName;
-      claimVaultName(activeVaultName, activeVaultId);
       setVaultPersistenceState('saved-unverified');
       setVaultStatus(
         'unlocked',
@@ -4992,8 +4936,8 @@ __COLDBOX_CONCEALMENT__
     var transferredLoad = source === 'qr-transfer';
     var manualLoad = source === 'manual-text';
     var chosenName = wasLoaded
-      ? (loadMeta.displayName || activeVaultName || displayNameFromFilename(loadMeta.name))
-      : (pendingCreateVaultName || activeVaultName || 'New vault');
+      ? (readVaultNickname(vaultId) || loadMeta.displayName || displayNameFromFilename(loadMeta.name))
+      : (pendingCreateVaultName || 'New vault');
     pendingVaultLoad = false;
     pendingLoadFileMeta = null;
     pendingCreateVaultName = '';
@@ -5011,18 +4955,7 @@ __COLDBOX_CONCEALMENT__
       return;
     }
 
-    if (vaultId && chosenName && vaultNameConflict(chosenName, vaultId)) {
-      sendVaultMessage('vault.lock', {});
-      setActiveVaultMeta('', null);
-      setVaultPersistenceState('none');
-      setVaultStatus(
-        'locked',
-        'Vault name conflict',
-        'A different Vault ID already owns the public name “' + chosenName + '” on this device or in the granted Vault Library. Rename the local file/name before loading it.',
-        'Name conflict'
-      );
-      return;
-    }
+    if (!wasLoaded && vaultId) { writeVaultNickname(vaultId, chosenName); }
 
     activeVaultNamespace = null;
     activeVaultFileHandle = durableFileLoad && loadMeta.parsedName && loadMeta.parsedName.canonical
@@ -5065,9 +4998,6 @@ __COLDBOX_CONCEALMENT__
     // Persist public-name ownership only when a durable .cbx already exists.
     // A freshly-created or live-transferred vault that is later discarded
     // without saving must not leave a ghost name reservation behind.
-    if (durableFileLoad && vaultId && chosenName) {
-      claimVaultName(chosenName, vaultId);
-    }
     setVaultPersistenceState(durableFileLoad ? 'loaded' : 'unsaved');
 
     var rollbackNotice = '';
