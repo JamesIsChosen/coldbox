@@ -41,10 +41,13 @@ node --check src/cold/main.js
 npm run lint
 Lint passed: forbidden constructs, JavaScript syntax, and LF source line endings are valid.
 npm run build
-Built build/coldbox.html (e12ebc734d94be428d2511d3045d3894836904d480eff698a096ab9ac3586641)
+Built build/coldbox.html (4f6fee9bea879545f579c2454a201cfd64c852afbcb60e49a67b7b87b3664809)
 ```
 
-The full local test command was also attempted. Three existing provenance
+The first hosted browser run on the initial UI.5 head found that the legacy
+harness still exercised the built warm Backup page, which the new rail had
+omitted. The link is now restored under Vault files and the focused parity
+tests/build were rerun. The full local test command was also attempted. Three existing provenance
 tests that create a scratch Git repository cannot run in this Windows
 sandbox: `spawnSync git` is denied by the sandbox policy. The remaining test
 output, including the UI.5 suite, passed. Hosted CI is required for the
@@ -75,4 +78,3 @@ The cold frame now has a real shell rather than only a vertical hub. The main
 risk is visual geometry at the narrowest phone widths because the production
 frame is an opaque `srcdoc`; the hosted Chromium/Firefox harness and the
 independent reviewer must verify overflow, focus order, and the More sheet.
-
