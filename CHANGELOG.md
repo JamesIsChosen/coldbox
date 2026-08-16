@@ -12,6 +12,21 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 
 ## [Unreleased]
 
+### Added - UI.4a approved desktop/mobile parity contract (2026-08-15)
+
+- The maintainer-approved desktop and mobile handoffs are now immutable,
+  hash-checked repository evidence with a machine-readable screen and navigation
+  inventory. They are quarantined as non-executable `*.html.reference` files and
+  are excluded from every product build input.
+- [The parity contract](docs/01-spec/ui-parity.md) makes the approved visual the
+  default acceptance result, registers the finite security/product deviations,
+  requires deterministic zero-unexpected-pixel evidence, and carries the visual
+  obligation forward when later-roadmap screens become available. The structural
+  decision is recorded in [ADR-0049](docs/05-development/adr/0049-approved-mock-parity-contract.md).
+- UI.5 and UI.10 now depend on the approved contract. New UI.11 is the final
+  desktop/mobile parity certification gate, and Phase 2 cannot resume at P2.8
+  until that gate receives independent verification and real mobile evidence.
+
 ### Added - UI.3 released-secret switcher (2026-08-15)
 
 - Seed Forge results can be released into a cold-realm, session-only registry with a user label and public master fingerprint. Several results may be held, exactly one is focused, and every split, backup-share, SeedQR, and verification panel shows the focused fingerprint before use.

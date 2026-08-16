@@ -147,6 +147,13 @@ Covers: CSP enforcement and violation detection, post-build tamper rejection, co
 
 **What it does not cover: iOS Safari.** WebKit-on-Linux is not Safari-on-iOS, and the differences land precisely where this project is fragile — `file://` secure-context status, opaque-origin `crypto.subtle`, and blob download restrictions. A packet claiming iOS verification on the strength of harness results should be failed. See [ADR-0007](adr/0007-headless-browser-harness.md).
 
+### Approved visual parity
+
+The browser harness also becomes the execution layer for the approved desktop
+and mobile comparison at UI.11. The screen inventory, exact-comparison method,
+normalization rules and physical-mobile evidence are single-sourced in
+[ui-parity.md](../01-spec/ui-parity.md); this document does not restate them.
+
 ## Manual device matrix
 
 `file://` behaviour varies enough between browsers that automated testing alone is insufficient. Required before every release.
