@@ -116,6 +116,7 @@
     if (documentObject && typeof documentObject.createElement === 'function') {
       anchor = documentObject.createElement('a');
       textarea = documentObject.createElement('textarea');
+      textarea.setAttribute('data-input-surface', 'public');
     }
     return {
       fileSystemAccess: typeof global.showSaveFilePicker === 'function',

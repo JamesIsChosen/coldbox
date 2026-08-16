@@ -57,7 +57,7 @@ __COLDBOX_COLD_STYLES__
       <p class="eyebrow">Vault session / P0.13</p>
       <p id="cold-vault-status" data-state="locked" role="status" aria-live="polite">Vault is locked. Unlocking stays in this sealed realm.</p>
       <label id="cold-vault-passphrase-label" for="cold-vault-passphrase">Unlock phrase (never leaves this realm)</label>
-      <input id="cold-vault-passphrase" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+      <input id="cold-vault-passphrase" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled data-input-surface="secret" data-secret-input-category="vault-auth">
       <section id="cold-vault-passphrase-health" data-mode="unlock" data-state="not-estimated" hidden aria-labelledby="cold-vault-passphrase-health-title">
         <p class="eyebrow" id="cold-vault-passphrase-health-title">Entropy Health / vault creation</p>
         <div class="cold-entropy-strength-row"><span>Human-chosen phrase strength</span><strong id="cold-vault-passphrase-health-state">Not estimated</strong></div>
@@ -65,13 +65,13 @@ __COLDBOX_COLD_STYLES__
       </section>
       <div id="cold-vault-create-confirmation" hidden>
         <label id="cold-vault-passphrase-confirm-label" for="cold-vault-passphrase-confirm">Confirm new unlock phrase (creation only)</label>
-        <input id="cold-vault-passphrase-confirm" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" aria-describedby="cold-vault-create-confirm-help cold-vault-create-error" disabled>
+        <input id="cold-vault-passphrase-confirm" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" aria-describedby="cold-vault-create-confirm-help cold-vault-create-error" disabled data-input-surface="secret" data-secret-input-category="vault-auth">
         <p id="cold-vault-create-error" class="cold-vault-inline-error" role="alert" aria-live="assertive" hidden></p>
         <p id="cold-vault-create-confirm-help">Confirmation is required only while creating a new vault. Existing-vault unlock uses the first field once.</p>
       </div>
       <section id="cold-vault-keyfile" aria-label="Keyfile unlock (advanced, off by default)">
         <label id="cold-vault-keyfile-toggle-label" for="cold-vault-keyfile-toggle">
-          <input id="cold-vault-keyfile-toggle" type="checkbox" disabled>
+          <input id="cold-vault-keyfile-toggle" type="checkbox" disabled data-input-surface="public">
           Also need a keyfile to unlock (advanced, off by default)
         </label>
         <p id="cold-vault-keyfile-warning" role="alert" hidden>
@@ -81,7 +81,7 @@ __COLDBOX_COLD_STYLES__
           byte-identical backup of the keyfile if you turn this on.
         </p>
         <label id="cold-vault-keyfile-input-label" for="cold-vault-keyfile-input">Keyfile</label>
-        <input id="cold-vault-keyfile-input" type="file" disabled>
+        <input id="cold-vault-keyfile-input" type="file" disabled data-input-surface="secret" data-secret-input-category="keyfile">
         <p id="cold-vault-keyfile-status" role="status" aria-live="polite">No keyfile selected. This input and the file's bytes stay inside this sealed realm.</p>
       </section>
       <section id="cold-vault-recovery" aria-label="Vault recovery shares">
@@ -90,26 +90,26 @@ __COLDBOX_COLD_STYLES__
         <p id="cold-vault-recovery-status" role="status" aria-live="polite">No recovery-share set configured.</p>
         <div id="cold-vault-recovery-configure-fields">
           <label for="cold-vault-recovery-passphrase">Normal vault unlock phrase (required to generate or replace shares)</label>
-          <input id="cold-vault-recovery-passphrase" type="password" autocomplete="current-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <input id="cold-vault-recovery-passphrase" type="password" autocomplete="current-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled data-input-surface="secret" data-secret-input-category="recovery-auth">
           <p id="cold-vault-recovery-reauth-help">Enter the normal vault unlock phrase again. If this vault uses a keyfile, keep the selected keyfile above. This re-authentication is used only inside the sealed realm and is cleared after the operation.</p>
           <label for="cold-vault-recovery-group-threshold">Shares needed from this group</label>
-          <input id="cold-vault-recovery-group-threshold" type="number" min="1" max="16" step="1" value="2" inputmode="numeric" disabled>
+          <input id="cold-vault-recovery-group-threshold" type="number" min="1" max="16" step="1" value="2" inputmode="numeric" disabled data-input-surface="public">
           <label for="cold-vault-recovery-group-count">Shares to create in this group</label>
-          <input id="cold-vault-recovery-group-count" type="number" min="1" max="16" step="1" value="3" inputmode="numeric" disabled>
+          <input id="cold-vault-recovery-group-count" type="number" min="1" max="16" step="1" value="3" inputmode="numeric" disabled data-input-surface="public">
           <label id="cold-vault-recovery-replace-label" for="cold-vault-recovery-replace" hidden>
-            <input id="cold-vault-recovery-replace" type="checkbox" disabled>
+            <input id="cold-vault-recovery-replace" type="checkbox" disabled data-input-surface="public">
             Replace the existing recovery-share set (old shares stop working after save)
           </label>
           <button id="cold-vault-recovery-configure" type="button" disabled>Generate recovery shares</button>
         </div>
         <div id="cold-vault-recovery-generated" hidden>
           <label for="cold-vault-recovery-output">New shares (keep these outside the vault file)</label>
-          <textarea id="cold-vault-recovery-output" rows="5" readonly spellcheck="false" autocomplete="off"></textarea>
+          <textarea id="cold-vault-recovery-output" rows="5" readonly spellcheck="false" autocomplete="off" data-input-surface="public"></textarea>
           <button id="cold-vault-recovery-reveal" type="button" disabled>Reveal shares for 30 seconds</button>
         </div>
         <div id="cold-vault-recovery-unlock-controls">
           <label for="cold-vault-recovery-input">Recovery shares to unlock (one per line)</label>
-          <textarea id="cold-vault-recovery-input" rows="5" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" disabled></textarea>
+          <textarea id="cold-vault-recovery-input" rows="5" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" disabled data-input-surface="secret" data-secret-input-category="recovery-share"></textarea>
           <button id="cold-vault-recovery-unlock" type="button" disabled>Unlock with recovery shares</button>
           <p id="cold-vault-recovery-unlock-help">Use enough shares for the threshold shown on the printed set. Recovery-share unlocking is available only while the warm shell has classified the device as offline.</p>
         </div>
@@ -125,7 +125,7 @@ __COLDBOX_COLD_STYLES__
       <p class="eyebrow">Concealment / P1.7</p>
       <p id="cold-concealment-help">The warm shell asked to reveal hidden public records. Re-enter the vault phrase here; it never crosses the realm boundary.</p>
       <label for="cold-concealment-passphrase">Re-enter vault phrase (never leaves this realm)</label>
-      <input id="cold-concealment-passphrase" type="password" autocomplete="current-password" spellcheck="false" autocorrect="off" autocapitalize="off">
+      <input id="cold-concealment-passphrase" type="password" autocomplete="current-password" spellcheck="false" autocorrect="off" autocapitalize="off" data-input-surface="secret" data-secret-input-category="concealment-auth">
       <button id="cold-concealment-reveal" type="button">Reveal hidden records for this session</button>
       <p id="cold-concealment-status" role="status" aria-live="polite"></p>
     </section>
@@ -133,14 +133,14 @@ __COLDBOX_COLD_STYLES__
       <p class="eyebrow">Secret notes / P1.7</p>
       <p id="cold-secret-notes-help">Secret notes are encrypted with the secret compartment and never enter the warm shell. They are available only in offline mode while this vault is unlocked.</p>
       <label for="cold-secret-note-search">Search secret notes (cold-only)</label>
-      <input id="cold-secret-note-search" type="search" autocomplete="off" placeholder="title, body, or tag">
+      <input id="cold-secret-note-search" type="search" autocomplete="off" placeholder="title, body, or tag" data-input-surface="secret" data-secret-input-category="secret-note">
       <form id="cold-secret-note-form">
         <label for="cold-secret-note-title">Title</label>
-        <input id="cold-secret-note-title" type="text" maxlength="256" autocomplete="off">
+        <input id="cold-secret-note-title" type="text" maxlength="256" autocomplete="off" data-input-surface="secret" data-secret-input-category="secret-note">
         <label for="cold-secret-note-body">Body (Markdown)</label>
-        <textarea id="cold-secret-note-body" rows="4" maxlength="20000" autocomplete="off" spellcheck="false"></textarea>
+        <textarea id="cold-secret-note-body" rows="4" maxlength="20000" autocomplete="off" spellcheck="false" data-input-surface="secret" data-secret-input-category="secret-note"></textarea>
         <label for="cold-secret-note-tags">Tags</label>
-        <input id="cold-secret-note-tags" type="text" maxlength="512" placeholder="private, recovery" autocomplete="off">
+        <input id="cold-secret-note-tags" type="text" maxlength="512" placeholder="private, recovery" autocomplete="off" data-input-surface="secret" data-secret-input-category="secret-note">
         <button id="cold-secret-note-save" type="button">Save encrypted note</button>
       </form>
       <div id="cold-secret-note-list" aria-live="polite"></div>
@@ -167,7 +167,7 @@ __COLDBOX_COLD_STYLES__
         <h2 id="cold-entropy-health-title">Entropy Health / Bias Analyzer</h2>
         <p id="cold-entropy-health-help">This advisory diagnostic uses physical/manual observations only. It reports frequency, chi-square, runs, serial correlation, and suspicious patterns; device-RNG simulations are excluded from the evidence. A passing test cannot prove that a platform RNG is sound, and P1.2 does not block Entropy Lab mixing.</p>
         <label id="cold-entropy-health-source-label" for="cold-entropy-health-source">Source to analyze</label>
-        <select id="cold-entropy-health-source" disabled>
+        <select id="cold-entropy-health-source" disabled data-input-surface="public">
           <option value="dice-base6">Dice — base-6</option>
           <option value="dice-discard">Dice — 1-4 discard</option>
           <option value="coin">Coin flips</option>
@@ -195,12 +195,12 @@ __COLDBOX_COLD_STYLES__
         <fieldset id="cold-entropy-dice">
           <legend>Dice</legend>
           <label id="cold-entropy-dice-face-label" for="cold-entropy-dice-face">Die face(s) (1-6, type or paste as many as you like)</label>
-          <input id="cold-entropy-dice-face" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" placeholder="e.g. 3241566251" disabled>
+          <input id="cold-entropy-dice-face" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" placeholder="e.g. 3241566251" disabled data-input-surface="secret" data-secret-input-category="entropy-input">
           <button id="cold-entropy-dice-base6-add" type="button" disabled>Add roll(s) (base-6)</button>
           <button id="cold-entropy-dice-discard-add" type="button" disabled>Add roll(s) (4-outcome discard)</button>
           <div id="cold-entropy-dice-random-row">
             <label id="cold-entropy-dice-random-count-label" for="cold-entropy-dice-random-count">Generate with device RNG</label>
-            <input id="cold-entropy-dice-random-count" type="number" min="1" max="1000" step="1" value="10" disabled>
+            <input id="cold-entropy-dice-random-count" type="number" min="1" max="1000" step="1" value="10" disabled data-input-surface="public">
             <button id="cold-entropy-dice-random" type="button" disabled>Generate with device RNG</button>
           </div>
           <button id="cold-entropy-dice-reset" type="button" disabled>Reset dice</button>
@@ -215,7 +215,7 @@ __COLDBOX_COLD_STYLES__
           <button id="cold-entropy-coin-tails" type="button" disabled>Tails</button>
           <div id="cold-entropy-coin-random-row">
             <label id="cold-entropy-coin-random-count-label" for="cold-entropy-coin-random-count">Generate with device RNG</label>
-            <input id="cold-entropy-coin-random-count" type="number" min="1" max="1000" step="1" value="10" disabled>
+            <input id="cold-entropy-coin-random-count" type="number" min="1" max="1000" step="1" value="10" disabled data-input-surface="public">
             <button id="cold-entropy-coin-random" type="button" disabled>Generate with device RNG</button>
           </div>
           <button id="cold-entropy-coin-reset" type="button" disabled>Reset coin</button>
@@ -232,7 +232,7 @@ __COLDBOX_COLD_STYLES__
           <p id="cold-entropy-card-shuffle-status" role="status" aria-live="polite">52 cards remaining in this shuffle.</p>
           <div id="cold-entropy-card-random-row">
             <label id="cold-entropy-card-random-count-label" for="cold-entropy-card-random-count">Generate with device RNG</label>
-            <input id="cold-entropy-card-random-count" type="number" min="1" max="52" step="1" value="5" disabled>
+            <input id="cold-entropy-card-random-count" type="number" min="1" max="52" step="1" value="5" disabled data-input-surface="public">
             <button id="cold-entropy-card-random" type="button" disabled>Generate with device RNG</button>
           </div>
           <button id="cold-entropy-card-reset" type="button" disabled>Reset cards</button>
@@ -242,11 +242,11 @@ __COLDBOX_COLD_STYLES__
         <fieldset id="cold-entropy-hex">
           <legend>Hex</legend>
           <label id="cold-entropy-hex-label" for="cold-entropy-hex-input">Hex digits (0-f, type or paste as many as you like)</label>
-          <input id="cold-entropy-hex-input" type="text" inputmode="text" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" placeholder="e.g. a5f30c1e" disabled>
+          <input id="cold-entropy-hex-input" type="text" inputmode="text" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" placeholder="e.g. a5f30c1e" disabled data-input-surface="secret" data-secret-input-category="entropy-input">
           <button id="cold-entropy-hex-add" type="button" disabled>Add hex digit(s)</button>
           <div id="cold-entropy-hex-random-row">
             <label id="cold-entropy-hex-random-count-label" for="cold-entropy-hex-random-count">Generate with device RNG</label>
-            <input id="cold-entropy-hex-random-count" type="number" min="1" max="1000" step="1" value="10" disabled>
+            <input id="cold-entropy-hex-random-count" type="number" min="1" max="1000" step="1" value="10" disabled data-input-surface="public">
             <button id="cold-entropy-hex-random" type="button" disabled>Generate with device RNG</button>
           </div>
           <button id="cold-entropy-hex-reset" type="button" disabled>Reset hex</button>
@@ -259,7 +259,7 @@ __COLDBOX_COLD_STYLES__
           <legend>CSPRNG</legend>
           <div id="cold-entropy-csprng-draw-row">
             <label id="cold-entropy-csprng-count-label" for="cold-entropy-csprng-count">Batches of 32 bytes</label>
-            <input id="cold-entropy-csprng-count" type="number" min="1" max="16" step="1" value="1" disabled>
+            <input id="cold-entropy-csprng-count" type="number" min="1" max="16" step="1" value="1" disabled data-input-surface="public">
             <button id="cold-entropy-csprng-draw" type="button" disabled>Draw CSPRNG bytes</button>
           </div>
           <button id="cold-entropy-csprng-reset" type="button" disabled>Reset CSPRNG</button>
@@ -269,7 +269,7 @@ __COLDBOX_COLD_STYLES__
       <button id="cold-entropy-undo" type="button" disabled>Undo last</button>
       <div id="cold-entropy-mix">
         <label id="cold-entropy-target-label" for="cold-entropy-target">Output size</label>
-        <select id="cold-entropy-target" disabled>
+        <select id="cold-entropy-target" disabled data-input-surface="public">
           <option value="128">128 bits (12-word seed)</option>
           <option value="160">160 bits</option>
           <option value="192">192 bits (18-word seed)</option>
@@ -297,9 +297,9 @@ __COLDBOX_COLD_STYLES__
       <p id="cold-seed-forge-help">Generate or validate a BIP-39 phrase inside this sealed realm. For a recorded Entropy Lab result, choose the language and word count, select “Use this mix in Seed Forge,” and the exact mixed bytes are consumed once without a second mix. Normal CSPRNG-only generation is also available. Each workflow has its own optional passphrase pair; phrases, passphrases, raw BIP-39 seeds, and fingerprints never cross the realm boundary.</p>
       <div id="cold-seed-forge-controls">
         <label for="cold-seed-forge-language">BIP-39 language</label>
-        <select id="cold-seed-forge-language" disabled></select>
+        <select id="cold-seed-forge-language" disabled data-input-surface="public"></select>
         <label for="cold-seed-forge-target">Seed length</label>
-        <select id="cold-seed-forge-target" disabled>
+        <select id="cold-seed-forge-target" disabled data-input-surface="public">
           <option value="128">12 words (128 bits)</option>
           <option value="160">15 words (160 bits)</option>
           <option value="192">18 words (192 bits)</option>
@@ -311,7 +311,7 @@ __COLDBOX_COLD_STYLES__
       <p id="cold-seed-forge-status" role="status" aria-live="polite">Seed Forge is waiting for the cold-realm crypto self-test.</p>
       <div id="cold-seed-forge-marginal-wrap" hidden>
         <label id="cold-seed-forge-marginal-label" for="cold-seed-forge-marginal-ack">
-          <input id="cold-seed-forge-marginal-ack" type="checkbox" disabled>
+          <input id="cold-seed-forge-marginal-ack" type="checkbox" disabled data-input-surface="public">
           I reviewed the advisory bias warning for the selected physical/manual source and want to continue.
         </label>
       </div>
@@ -319,9 +319,9 @@ __COLDBOX_COLD_STYLES__
         <h2 id="cold-seed-forge-generated-passphrase-title">Generate passphrase (optional)</h2>
         <p id="cold-seed-forge-generated-passphrase-help">A passphrase creates a different wallet for the generated phrase. An exact duplicate is required before its fingerprint and raw seed are read. An empty pair means no passphrase. This pair affects only Generate.</p>
         <label for="cold-seed-forge-generated-passphrase-input">Generate passphrase (never leaves this realm)</label>
-        <input id="cold-seed-forge-generated-passphrase-input" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+        <input id="cold-seed-forge-generated-passphrase-input" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled data-input-surface="secret" data-secret-input-category="bip39-passphrase">
         <label for="cold-seed-forge-generated-passphrase-confirm">Confirm Generate passphrase</label>
-        <input id="cold-seed-forge-generated-passphrase-confirm" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+        <input id="cold-seed-forge-generated-passphrase-confirm" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled data-input-surface="secret" data-secret-input-category="bip39-passphrase">
         <p id="cold-seed-forge-generated-passphrase-error" class="cold-vault-inline-error" role="alert" aria-live="assertive" hidden></p>
       </section>
       <section id="cold-seed-forge-generated" hidden aria-labelledby="cold-seed-forge-generated-title">
@@ -341,7 +341,7 @@ __COLDBOX_COLD_STYLES__
         </section>
         <div class="cold-seed-forge-release">
           <label for="cold-seed-forge-generated-release-label">Label for released secret (optional)</label>
-          <input id="cold-seed-forge-generated-release-label" type="text" maxlength="64" autocomplete="off" placeholder="Generated phrase" disabled>
+          <input id="cold-seed-forge-generated-release-label" type="text" maxlength="64" autocomplete="off" placeholder="Generated phrase" disabled data-input-surface="public">
           <button id="cold-seed-forge-generated-release" type="button" disabled>Release generated secret to switcher</button>
           <p id="cold-seed-forge-generated-release-status" role="status" aria-live="polite">Not released.</p>
         </div>
@@ -350,14 +350,14 @@ __COLDBOX_COLD_STYLES__
         <h2 id="cold-seed-forge-validator-title">Validate an existing phrase</h2>
         <p id="cold-seed-forge-validator-help">Paste or type a phrase into the masked field. The numbered fields show per-word status inside this realm; checksum validation is separate from word spelling. The validation passphrase pair affects only this existing phrase.</p>
         <label for="cold-seed-forge-mnemonic-input">Phrase to validate (masked)</label>
-        <input id="cold-seed-forge-mnemonic-input" type="password" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+        <input id="cold-seed-forge-mnemonic-input" type="password" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled data-input-surface="secret" data-secret-input-category="seed-entry">
         <section id="cold-seed-forge-validation-passphrase" class="cold-seed-forge-passphrase" aria-labelledby="cold-seed-forge-validation-passphrase-title">
           <h2 id="cold-seed-forge-validation-passphrase-title">Validation passphrase (optional)</h2>
           <p id="cold-seed-forge-validation-passphrase-help">A passphrase creates a different wallet for the validated phrase. An exact duplicate is required before its fingerprint and raw seed are read. An empty pair means no passphrase. This pair affects only Validate Existing Phrase.</p>
           <label for="cold-seed-forge-validation-passphrase-input">Validation passphrase (never leaves this realm)</label>
-          <input id="cold-seed-forge-validation-passphrase-input" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <input id="cold-seed-forge-validation-passphrase-input" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled data-input-surface="secret" data-secret-input-category="bip39-passphrase">
           <label for="cold-seed-forge-validation-passphrase-confirm">Confirm validation passphrase</label>
-          <input id="cold-seed-forge-validation-passphrase-confirm" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <input id="cold-seed-forge-validation-passphrase-confirm" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled data-input-surface="secret" data-secret-input-category="bip39-passphrase">
           <p id="cold-seed-forge-validation-passphrase-error" class="cold-vault-inline-error" role="alert" aria-live="assertive" hidden></p>
         </section>
         <div id="cold-seed-forge-word-fields" aria-label="BIP-39 word validation fields"></div>
@@ -375,7 +375,7 @@ __COLDBOX_COLD_STYLES__
         </section>
         <div class="cold-seed-forge-release">
           <label for="cold-seed-forge-validation-release-label">Label for released secret (optional)</label>
-          <input id="cold-seed-forge-validation-release-label" type="text" maxlength="64" autocomplete="off" placeholder="Validated phrase" disabled>
+          <input id="cold-seed-forge-validation-release-label" type="text" maxlength="64" autocomplete="off" placeholder="Validated phrase" disabled data-input-surface="public">
           <button id="cold-seed-forge-validation-release" type="button" disabled>Release validated secret to switcher</button>
           <p id="cold-seed-forge-validation-release-status" role="status" aria-live="polite">Not released.</p>
         </div>
@@ -397,11 +397,11 @@ __COLDBOX_COLD_STYLES__
       <div class="cold-seed-xor-grid">
         <div>
           <label for="cold-seed-xor-language">BIP-39 wordlist</label>
-          <select id="cold-seed-xor-language" disabled></select>
+          <select id="cold-seed-xor-language" disabled data-input-surface="public"></select>
         </div>
         <div>
           <label for="cold-seed-xor-count">Number of parts</label>
-          <select id="cold-seed-xor-count" disabled>
+          <select id="cold-seed-xor-count" disabled data-input-surface="public">
             <option value="2">2 parts</option>
             <option value="3">3 parts</option>
             <option value="4">4 parts</option>
@@ -409,7 +409,7 @@ __COLDBOX_COLD_STYLES__
         </div>
         <div>
           <label for="cold-seed-xor-mode">Split mode</label>
-          <select id="cold-seed-xor-mode" disabled>
+          <select id="cold-seed-xor-mode" disabled data-input-surface="public">
             <option value="deterministic">Deterministic (Coldcard-compatible)</option>
             <option value="random">Random masks (CSPRNG)</option>
           </select>
@@ -449,7 +449,7 @@ __COLDBOX_COLD_STYLES__
         </div>
         <div>
           <label for="cold-codex32-threshold">Threshold</label>
-          <select id="cold-codex32-threshold" disabled>
+          <select id="cold-codex32-threshold" disabled data-input-surface="public">
             <option value="2">2 shares</option>
             <option value="3" selected>3 shares</option>
             <option value="4">4 shares</option>
@@ -462,11 +462,11 @@ __COLDBOX_COLD_STYLES__
         </div>
         <div>
           <label for="cold-codex32-count">Total shares</label>
-          <input id="cold-codex32-count" type="number" min="2" max="31" value="5" inputmode="numeric" disabled>
+          <input id="cold-codex32-count" type="number" min="2" max="31" value="5" inputmode="numeric" disabled data-input-surface="public">
         </div>
         <div>
           <label for="cold-codex32-identifier">Four-character identifier (optional; blank uses a fresh random identifier)</label>
-          <input id="cold-codex32-identifier" type="text" maxlength="4" value="" placeholder="Random when blank" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="characters" disabled>
+          <input id="cold-codex32-identifier" type="text" maxlength="4" value="" placeholder="Random when blank" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="characters" disabled data-input-surface="public">
         </div>
       </div>
       <div class="cold-codex32-actions">
@@ -475,13 +475,13 @@ __COLDBOX_COLD_STYLES__
       </div>
       <p id="cold-codex32-generate-status" class="cold-codex32-status" data-state="idle" role="status" aria-live="polite">Codex32 is waiting for the cold-realm crypto self-test.</p>
       <label for="cold-codex32-generated">Generated shares (masked by default)</label>
-      <textarea id="cold-codex32-generated" rows="5" readonly spellcheck="false" aria-label="Generated codex32 shares, masked by default"></textarea>
+      <textarea id="cold-codex32-generated" rows="5" readonly spellcheck="false" aria-label="Generated codex32 shares, masked by default" data-input-surface="public"></textarea>
 
       <section class="cold-codex32-subsection" aria-labelledby="cold-codex32-recovery-title">
         <h3 id="cold-codex32-recovery-title">Recover from shares</h3>
         <p>Enter exactly the threshold number of shares, one per line. The reconstructed seed stays masked and remains in this sealed realm; a valid checksum is required for every share.</p>
         <label for="cold-codex32-recovery-input">Shares to recover (one per line)</label>
-        <textarea id="cold-codex32-recovery-input" rows="5" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" disabled></textarea>
+        <textarea id="cold-codex32-recovery-input" rows="5" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" disabled data-input-surface="secret" data-secret-input-category="recovery-share"></textarea>
         <div class="cold-codex32-actions">
           <button id="cold-codex32-recover" type="button" disabled>Recover and verify shares</button>
           <button id="cold-codex32-recovered-reveal" type="button" disabled>Reveal recovered seed for 30 seconds</button>
@@ -494,7 +494,7 @@ __COLDBOX_COLD_STYLES__
         <h3 id="cold-codex32-correction-title">Check one transcription</h3>
         <p>The checksum can suggest a single-character correction. The suggestion is never applied automatically; compare it with the paper copy before using it.</p>
         <label for="cold-codex32-correction-input">Share or secret to check</label>
-        <input id="cold-codex32-correction-input" type="password" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+        <input id="cold-codex32-correction-input" type="password" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled data-input-surface="secret" data-secret-input-category="share-combine">
         <button id="cold-codex32-correct" type="button" disabled>Suggest correction</button>
         <output id="cold-codex32-correction-output" aria-label="Suggested codex32 correction">No correction suggested.</output>
         <button id="cold-codex32-use-correction" type="button" disabled>Use suggested correction after comparing paper</button>
@@ -514,15 +514,15 @@ __COLDBOX_COLD_STYLES__
           <div id="cold-shamir39-controls" class="cold-shamir-controls">
             <div>
               <label for="cold-shamir39-language">BIP-39 language</label>
-              <select id="cold-shamir39-language" disabled></select>
+              <select id="cold-shamir39-language" disabled data-input-surface="public"></select>
             </div>
             <div>
               <label for="cold-shamir39-threshold">Shares required</label>
-              <select id="cold-shamir39-threshold" disabled></select>
+              <select id="cold-shamir39-threshold" disabled data-input-surface="public"></select>
             </div>
             <div>
               <label for="cold-shamir39-shares">Total shares</label>
-              <select id="cold-shamir39-shares" disabled></select>
+              <select id="cold-shamir39-shares" disabled data-input-surface="public"></select>
             </div>
           </div>
           <p class="cold-focused-source">Source: focused released Seed Forge phrase</p>
@@ -550,15 +550,15 @@ __COLDBOX_COLD_STYLES__
           <div id="cold-raw-sss-controls" class="cold-shamir-controls">
             <div>
               <label for="cold-raw-sss-bits">Field size</label>
-              <select id="cold-raw-sss-bits" disabled></select>
+              <select id="cold-raw-sss-bits" disabled data-input-surface="public"></select>
             </div>
             <div>
               <label for="cold-raw-sss-threshold">Shares required</label>
-              <select id="cold-raw-sss-threshold" disabled></select>
+              <select id="cold-raw-sss-threshold" disabled data-input-surface="public"></select>
             </div>
             <div>
               <label for="cold-raw-sss-shares">Total shares</label>
-              <select id="cold-raw-sss-shares" disabled></select>
+              <select id="cold-raw-sss-shares" disabled data-input-surface="public"></select>
             </div>
           </div>
           <p class="cold-focused-source">Source: focused released Seed Forge secret bytes</p>
@@ -599,23 +599,23 @@ __COLDBOX_COLD_STYLES__
         <p class="cold-focused-source">Source: focused released Seed Forge secret</p>
         <div>
           <label for="cold-qr-language">BIP-39 wordlist</label>
-          <select id="cold-qr-language" disabled></select>
+          <select id="cold-qr-language" disabled data-input-surface="public"></select>
         </div>
         <div>
           <label for="cold-qr-layout">Printable layout</label>
-          <select id="cold-qr-layout" disabled>
+          <select id="cold-qr-layout" disabled data-input-surface="public">
             <option value="a4-letter">A4 / Letter full-page card</option>
             <option value="wallet-12">Wallet-sized 12-word card</option>
             <option value="wallet-24">Wallet-sized 24-word card</option>
           </select>
         </div>
       </div>
-      <label class="cold-qr-confirm"><input id="cold-qr-secret-confirm" type="checkbox" disabled> I understand this is a plaintext seed QR; printers, spoolers, cameras, and anyone who sees it can recover the wallet.</label>
+      <label class="cold-qr-confirm"><input id="cold-qr-secret-confirm" type="checkbox" disabled data-input-surface="public"> I understand this is a plaintext seed QR; printers, spoolers, cameras, and anyone who sees it can recover the wallet.</label>
       <div class="cold-qr-actions">
         <button id="cold-qr-standard" type="button" disabled>Generate standard SeedQR</button>
         <button id="cold-qr-compact" type="button" disabled>Generate Compact SeedQR</button>
       </div>
-      <label class="cold-qr-confirm"><input id="cold-qr-grid" type="checkbox" disabled> Add a numbered hand-transcription grid to the printable card</label>
+      <label class="cold-qr-confirm"><input id="cold-qr-grid" type="checkbox" disabled data-input-surface="public"> Add a numbered hand-transcription grid to the printable card</label>
       <p id="cold-qr-output-status" class="cold-qr-status" data-state="idle" role="status" aria-live="polite">No secret QR generated in this session.</p>
       <div id="cold-qr-output" class="cold-qr-output" aria-label="Generated cold-only QR"></div>
       <div id="cold-qr-card" class="cold-qr-card" data-layout="a4-letter" data-grid="off" hidden>
@@ -647,28 +647,28 @@ __COLDBOX_COLD_STYLES__
         <p class="cold-focused-source">Source: focused released Seed Forge phrase entropy</p>
         <div>
           <label for="cold-slip39-group-threshold">Groups required</label>
-          <input id="cold-slip39-group-threshold" type="number" min="1" max="16" step="1" value="1" disabled>
+          <input id="cold-slip39-group-threshold" type="number" min="1" max="16" step="1" value="1" disabled data-input-surface="public">
         </div>
       </div>
       <label for="cold-slip39-groups">Member groups (JSON)</label>
-      <textarea id="cold-slip39-groups" rows="2" spellcheck="false" autocapitalize="off" autocomplete="off" disabled>[{"threshold":2,"count":3}]</textarea>
+      <textarea id="cold-slip39-groups" rows="2" spellcheck="false" autocapitalize="off" autocomplete="off" disabled data-input-surface="public">[{"threshold":2,"count":3}]</textarea>
       <p class="cold-qr-help">Each object is one group: <code>threshold</code> of <code>count</code>. Example: <code>[{"threshold":2,"count":3},{"threshold":1,"count":1}]</code> with groups required set to 2.</p>
       <label for="cold-slip39-passphrase">Share passphrase extension (optional, never leaves this realm)</label>
-      <input id="cold-slip39-passphrase" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
-      <label class="cold-qr-confirm"><input id="cold-slip39-compatibility-ack" type="checkbox" disabled> I checked device compatibility, will distribute the shares separately, and understand that the passphrase extension needs its own backup.</label>
+      <input id="cold-slip39-passphrase" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled data-input-surface="secret" data-secret-input-category="share-passphrase">
+      <label class="cold-qr-confirm"><input id="cold-slip39-compatibility-ack" type="checkbox" disabled data-input-surface="public"> I checked device compatibility, will distribute the shares separately, and understand that the passphrase extension needs its own backup.</label>
       <div class="cold-qr-actions">
         <button id="cold-slip39-generate" type="button" disabled>Generate SLIP-39 shares</button>
         <button id="cold-slip39-clear" type="button" disabled>Clear share output</button>
       </div>
       <p id="cold-slip39-status" class="cold-qr-status" data-state="idle" role="status" aria-live="polite">No SLIP-39 share set generated in this session.</p>
       <label for="cold-slip39-output">Generated shares (one per line; secret)</label>
-      <textarea id="cold-slip39-output" class="cold-slip39-output" rows="7" spellcheck="false" autocapitalize="off" autocomplete="off" readonly></textarea>
+      <textarea id="cold-slip39-output" class="cold-slip39-output" rows="7" spellcheck="false" autocapitalize="off" autocomplete="off" readonly data-input-surface="public"></textarea>
       <button id="cold-slip39-reveal" type="button" disabled>Reveal shares for 30 seconds</button>
       <details class="cold-verification-workflow">
         <summary>Recover and verify from written shares</summary>
         <p class="cold-qr-help">Type shares from the physical copies, not the generated text above. The result is held only long enough to report its byte length and is then cleared.</p>
         <label for="cold-slip39-recovery-input">Shares to recover (one per line)</label>
-        <textarea id="cold-slip39-recovery-input" rows="7" spellcheck="false" autocapitalize="off" autocomplete="off" disabled></textarea>
+        <textarea id="cold-slip39-recovery-input" rows="7" spellcheck="false" autocapitalize="off" autocomplete="off" disabled data-input-surface="secret" data-secret-input-category="recovery-share"></textarea>
         <button id="cold-slip39-recover" type="button" disabled>Recover from typed shares</button>
         <p id="cold-slip39-recovery-status" class="cold-qr-status" data-state="idle" role="status" aria-live="polite">No recovery attempt.</p>
       </details>
@@ -684,11 +684,11 @@ __COLDBOX_COLD_STYLES__
         <div><dt>Threshold</dt><dd id="cold-backup-verification-threshold">Not selected</dd></div>
       </dl>
       <label for="cold-backup-verification-language">Mnemonic language (for Seed XOR / Shamir39)</label>
-      <select id="cold-backup-verification-language" disabled></select>
+      <select id="cold-backup-verification-language" disabled data-input-surface="public"></select>
       <label for="cold-backup-verification-passphrase">SLIP-39 share passphrase, if the record uses one</label>
-      <input id="cold-backup-verification-passphrase" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+      <input id="cold-backup-verification-passphrase" type="password" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" disabled data-input-surface="secret" data-secret-input-category="share-passphrase">
       <label for="cold-backup-verification-input">Shares from written copies (one per line)</label>
-      <textarea id="cold-backup-verification-input" rows="8" spellcheck="false" autocapitalize="off" autocomplete="off" disabled></textarea>
+      <textarea id="cold-backup-verification-input" rows="8" spellcheck="false" autocapitalize="off" autocomplete="off" disabled data-input-surface="secret" data-secret-input-category="recovery-share"></textarea>
       <div class="cold-qr-actions">
         <button id="cold-backup-verification-run" type="button" disabled>Reconstruct and verify</button>
         <button id="cold-backup-verification-clear" type="button" disabled>Clear verification input</button>
@@ -708,14 +708,14 @@ __COLDBOX_COLD_STYLES__
         <div class="cold-verification-grid">
           <div>
             <label for="cold-verification-wallet-network">Network for public identity</label>
-            <select id="cold-verification-wallet-network" disabled>
+            <select id="cold-verification-wallet-network" disabled data-input-surface="public">
               <option value="mainnet">Bitcoin mainnet</option>
               <option value="testnet">Bitcoin testnet</option>
             </select>
           </div>
           <div>
             <label for="cold-verification-wallet-script">Selected script family</label>
-            <select id="cold-verification-wallet-script" disabled>
+            <select id="cold-verification-wallet-script" disabled data-input-surface="public">
               <option value="p2wpkh">Native SegWit (p2wpkh)</option>
               <option value="p2pkh">Legacy (p2pkh)</option>
               <option value="p2sh-p2wpkh">Nested SegWit (p2sh-p2wpkh)</option>
@@ -741,7 +741,7 @@ __COLDBOX_COLD_STYLES__
         <div id="cold-verification-fingerprint-form">
           <p class="cold-verification-public-help">Read the fingerprint from the device and enter it independently.</p>
           <label for="cold-verification-fingerprint-expected">External device fingerprint / XFP (8 hex characters)</label>
-          <input id="cold-verification-fingerprint-expected" type="text" inputmode="text" maxlength="8" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <input id="cold-verification-fingerprint-expected" type="text" inputmode="text" maxlength="8" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled data-input-surface="public">
           <button id="cold-verification-fingerprint-run" type="button" disabled>Compare fingerprint</button>
           <p id="cold-verification-fingerprint-status" class="cold-verification-status" data-state="idle" role="status" aria-live="polite">No fingerprint check run.</p>
         </div>
@@ -754,18 +754,18 @@ __COLDBOX_COLD_STYLES__
           <div class="cold-verification-grid">
             <div>
               <label for="cold-verification-receive-change">Change chain</label>
-              <select id="cold-verification-receive-change" disabled>
+              <select id="cold-verification-receive-change" disabled data-input-surface="public">
                 <option value="0">Receive (0)</option>
                 <option value="1">Change (1)</option>
               </select>
             </div>
             <div>
               <label for="cold-verification-receive-index">Address index</label>
-              <input id="cold-verification-receive-index" type="number" min="0" max="2147483647" step="1" value="0" disabled>
+              <input id="cold-verification-receive-index" type="number" min="0" max="2147483647" step="1" value="0" disabled data-input-surface="public">
             </div>
           </div>
           <label for="cold-verification-receive-expected">Address shown by the device (full string)</label>
-          <input id="cold-verification-receive-expected" type="text" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <input id="cold-verification-receive-expected" type="text" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled data-input-surface="public">
           <button id="cold-verification-receive-run" type="button" disabled>Derive and compare address</button>
           <p id="cold-verification-receive-status" class="cold-verification-status" data-state="idle" role="status" aria-live="polite">No receive-address check run.</p>
         </div>
@@ -776,7 +776,7 @@ __COLDBOX_COLD_STYLES__
         <div id="cold-verification-xpub-form">
           <p class="cold-verification-public-help">The account xpub shown above comes from the linked Seed Forge wallet. Enter the independent xpub read from the device for comparison.</p>
           <label for="cold-verification-xpub-expected">Account xpub to compare (full string)</label>
-          <input id="cold-verification-xpub-expected" type="text" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <input id="cold-verification-xpub-expected" type="text" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled data-input-surface="public">
           <button id="cold-verification-xpub-run" type="button" disabled>Derive and compare xpub</button>
           <p id="cold-verification-xpub-status" class="cold-verification-status" data-state="idle" role="status" aria-live="polite">No xpub check run.</p>
         </div>
@@ -787,7 +787,7 @@ __COLDBOX_COLD_STYLES__
         <div id="cold-verification-backup-form">
           <p class="cold-verification-public-help">Read the public fingerprint from the independent backup record. The backup phrase and passphrase stay in Seed Forge and are never entered a second time here.</p>
           <label for="cold-verification-backup-expected">Known device fingerprint / XFP (8 hex characters)</label>
-          <input id="cold-verification-backup-expected" type="text" inputmode="text" maxlength="8" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled>
+          <input id="cold-verification-backup-expected" type="text" inputmode="text" maxlength="8" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" disabled data-input-surface="public">
           <button id="cold-verification-backup-run" type="button" disabled>Check backup fingerprint</button>
           <p id="cold-verification-backup-status" class="cold-verification-status" data-state="idle" role="status" aria-live="polite">No backup check run.</p>
         </div>

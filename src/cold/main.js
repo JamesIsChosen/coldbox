@@ -351,6 +351,38 @@ __COLDBOX_QR_ENCODER__
     { category: 'share-passphrase', ids: ['cold-slip39-passphrase', 'cold-backup-verification-passphrase'] },
     { category: 'share-combine', ids: ['cold-codex32-correction-input'] }
   ]);
+
+  function declaredSecretInputCategory(id) {
+    for (var entryIndex = 0; entryIndex < COLD_SECRET_INPUT_REGISTRY.length; entryIndex += 1) {
+      var entry = COLD_SECRET_INPUT_REGISTRY[entryIndex];
+      if (entry.ids && entry.ids.indexOf(id) !== -1) {
+        return entry.category;
+      }
+      if (entry.prefixes) {
+        for (var prefixIndex = 0; prefixIndex < entry.prefixes.length; prefixIndex += 1) {
+          var prefix = entry.prefixes[prefixIndex];
+          var suffix = id.indexOf(prefix) === 0 ? id.slice(prefix.length) : '';
+          if (suffix && /^\d+$/.test(suffix)) {
+            return entry.category;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  function createDeclaredSecretInput(id, category) {
+    if (declaredSecretInputCategory(id) !== category) {
+      throw new Error('Secret input is not declared: ' + id);
+    }
+    var input = document.createElement('input');
+    input.type = 'password';
+    input.id = id;
+    input.setAttribute('data-input-surface', 'secret');
+    input.setAttribute('data-secret-input-category', category);
+    return input;
+  }
+
   var seedForgeWalletRevision = 0;
   var linkedVerificationWallet = null;
   var qrArtifact = null;
@@ -3657,11 +3689,10 @@ __COLDBOX_QR_ENCODER__
     for (var index = 0; index < 8; index += 1) {
       var label = document.createElement('label');
       label.textContent = labelPrefix + ' ' + String(index + 1);
-      var input = document.createElement('input');
-      input.type = 'password';
-      input.id = labelPrefix === 'Shamir39 share'
+      var inputId = labelPrefix === 'Shamir39 share'
         ? 'cold-shamir39-combine-' + String(index + 1)
         : 'cold-raw-sss-combine-' + String(index + 1);
+      var input = createDeclaredSecretInput(inputId, 'recovery-share');
       input.autocomplete = 'off';
       input.spellcheck = false;
       input.setAttribute('autocorrect', 'off');
@@ -3999,9 +4030,7 @@ __COLDBOX_QR_ENCODER__
         var field = document.createElement('div');
         field.className = 'cold-seed-xor-part-field';
         var label = document.createElement('label');
-        var input = document.createElement('input');
-        input.type = 'password';
-        input.id = 'cold-seed-xor-part-' + String(index + 1);
+        var input = createDeclaredSecretInput('cold-seed-xor-part-' + String(index + 1), 'recovery-share');
         input.autocomplete = 'off';
         input.spellcheck = false;
         input.autocorrect = 'off';
@@ -4808,9 +4837,7 @@ __COLDBOX_QR_ENCODER__
         field.setAttribute('data-state', 'empty');
         var label = document.createElement('label');
         label.textContent = 'Word ' + String(index + 1);
-        var input = document.createElement('input');
-        input.type = 'password';
-        input.id = 'cold-seed-forge-word-' + String(index + 1);
+        var input = createDeclaredSecretInput('cold-seed-forge-word-' + String(index + 1), 'seed-validation');
         input.autocomplete = 'off';
         input.spellcheck = false;
         input.setAttribute('autocorrect', 'off');
