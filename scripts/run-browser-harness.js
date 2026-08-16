@@ -1589,6 +1589,53 @@ async function verifyRegistryCrud(browser, engine) {
   }
 }
 
+async function verifyUi6RecordMenu(browser, engine) {
+  const { page } = await openPage(browser, buildPath);
+  try {
+    const coldFrame = await getColdFrame(page, engine);
+    const phrase = 'ui6 record menu harness phrase';
+    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
+    await createPreparedVault(page, coldFrame, phrase, 'UI6 Menu');
+    await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#registry-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+
+    const written = page.locator('#registry-status').filter({ hasText: /Public registry change written/ });
+    await page.locator('#registry-wallet-label').fill('UI6 wallet');
+    await page.locator('#registry-wallet-form button[type="submit"]').click();
+    await written.waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#registry-account-label').fill('UI6 account');
+    await page.locator('#registry-account-form button[type="submit"]').click();
+    await written.waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#registry-address-value').fill('1BoatSLRHtKNngkdXEeobR76b53LETtpyT');
+    await page.locator('#registry-address-label').fill('UI6 address');
+    await page.locator('#registry-address-form button[type="submit"]').click();
+    await written.waitFor({ state: 'visible', timeout: 5000 });
+
+    const addressTrigger = page.locator('#registry-address-list [data-record-menu-trigger="true"]');
+    assert.equal(await page.locator('[data-record-menu-trigger="true"]').count(), 3, `${engine}: every created record needs the shared menu trigger`);
+    await addressTrigger.click();
+    await page.locator('#record-menu:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.match(await page.locator('#record-menu-fields').textContent(), /Address/);
+    assert.match(await page.locator('#record-menu-provenance').textContent(), /Public registry/);
+    assert.equal(await page.locator('#record-menu-qr:not([hidden])').count(), 1, `${engine}: public address needs a QR section`);
+    assert.equal(await page.locator('#record-menu-qr-list svg').count(), 1, `${engine}: public address needs one rendered QR`);
+    assert.equal(await page.locator('#record-menu-close').evaluate((node) => document.activeElement === node), true, `${engine}: menu must focus its close control`);
+
+    await page.keyboard.press('Tab');
+    assert.equal(await page.locator('#record-menu-edit').evaluate((node) => document.activeElement === node), true, `${engine}: menu tab order must reach Edit`);
+    await page.keyboard.press('Tab');
+    assert.equal(await page.locator('#record-menu-close-footer').evaluate((node) => document.activeElement === node), true, `${engine}: menu tab order must reach Done`);
+    await page.keyboard.press('Escape');
+    await page.locator('#record-menu[hidden]').waitFor({ state: 'attached' });
+    assert.equal(await addressTrigger.evaluate((node) => document.activeElement === node), true, `${engine}: closing the menu must return focus to its trigger`);
+    console.log(`${engine}: UI.6 shared record menu, complete fields, public QR, and focus return passed`);
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyStaleAddressDisplay(browser, engine) {
   const { page } = await openPage(browser, buildPath);
   try {
@@ -4587,6 +4634,7 @@ async function run() {
       await verifyNotesAndConcealment(browser, engine);
       await verifyColdSecretNotes(browser, engine);
       await verifyRegistryCrud(browser, engine);
+      await verifyUi6RecordMenu(browser, engine);
       await verifyStaleAddressDisplay(browser, engine);
       await verifyAddressVerification(browser, engine);
       await verifyClipboardCanary(browser, engine);

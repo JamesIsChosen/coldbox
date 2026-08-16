@@ -6,6 +6,10 @@
   roadmap-labelled navigation rails, calm warm/cold boundary strips, and
   responsive five-slot phone navigation with More access. Unbuilt roadmap
   entries are visibly unavailable and cannot receive focus.
+- UI.6 adds one keyboard-first floating record menu to every warm public-record
+  surface. It shows the complete stored fields, concealment state, record ID,
+  and public-compartment provenance, and renders QR codes only for public
+  address/xpub/descriptor/npub values; secret-shaped values are withheld.
 - P0.19 canonical-save/live-transfer redesign: current vaults use one canonical `<name>--<id8>.cbx` with no user-visible save generations; unchanged saved vaults cannot create look-alike copies, public names cannot be reused by another known Vault ID, and historical generation files remain loadable only for compatibility/advisory rollback checks.
 - Vault QR is now live Coldbox-to-Coldbox transfer only: no QR download/frame backup exists. The unlocked sender animates encrypted `.cbx` bytes under a random Transfer ID; the receiver verifies SHA-256, still requires the normal passphrase, and starts Not saved until it writes its own canonical `.cbx`. See ADR-0026.
 
