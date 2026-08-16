@@ -4,8 +4,15 @@ const assert = require('node:assert/strict');
 const { spawnSync } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
+const {
+  assertNoApprovedReferenceBuildInputs,
+  collectProductBuildInputFiles,
+  collectTransitiveModules,
+  findApprovedReferenceBuildInputs
+} = require('../scripts/build-input-graph.js');
 
 const projectRoot = path.resolve(__dirname, '..');
 const referenceRoot = path.join(
@@ -123,19 +130,6 @@ function constantBlock(template, constantName) {
   return template.slice(start, end + 3);
 }
 
-function collectFiles(directory) {
-  const files = [];
-  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    const absolute = path.join(directory, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...collectFiles(absolute));
-    } else if (entry.isFile()) {
-      files.push(absolute);
-    }
-  }
-  return files;
-}
-
 test('approved desktop and mobile references are immutable byte-exact evidence', () => {
   assert.equal(manifest.schema, 'coldbox.approved-ui-reference.v1');
   assert.deepEqual(manifest.approval, {
@@ -240,28 +234,20 @@ test('the deviation register is finite, synchronized and cannot hide pixels', ()
 });
 
 test('approved prototype payloads stay outside every product build input', () => {
-  const forbiddenReference = /(?:ui-reference|\.html\.reference|coldbox-(?:desktop|mobile)-mockup)/i;
-  const sourceFiles = collectFiles(path.join(projectRoot, 'src'));
-  for (const file of sourceFiles) {
-    assert.doesNotMatch(
-      fs.readFileSync(file, 'utf8'),
-      forbiddenReference,
-      `${path.relative(projectRoot, file)} imports or names approved prototype evidence`
-    );
-  }
-
-  for (const relative of [
-    ['scripts', 'build.js'],
-    ['scripts', 'help-content.js'],
-    ['package.json']
-  ]) {
-    const file = path.join(projectRoot, ...relative);
-    assert.doesNotMatch(
-      fs.readFileSync(file, 'utf8'),
-      forbiddenReference,
-      `${relative.join('/')} makes approved prototype evidence a build input`
-    );
-  }
+  const graph = collectProductBuildInputFiles(projectRoot);
+  assert.ok(
+    graph.some((file) => path.relative(projectRoot, file).replace(/\\/g, '/') === 'scripts/brand-assets.js'),
+    'The transitive product build-input graph must include the imported brand-assets helper'
+  );
+  assert.deepEqual(
+    findApprovedReferenceBuildInputs(projectRoot),
+    [],
+    'Approved prototype evidence entered the transitive product build-input graph'
+  );
+  assert.doesNotThrow(
+    () => assertNoApprovedReferenceBuildInputs(projectRoot),
+    'The centralized build-input isolation guard rejected the clean product graph'
+  );
 
   const build = spawnSync(process.execPath, [path.join('scripts', 'build.js')], {
     cwd: projectRoot,
@@ -274,6 +260,83 @@ test('approved prototype payloads stay outside every product build input', () =>
     'Approved bundler payload leaked into build/coldbox.html');
   assert.doesNotMatch(product, /Coldbox mobile — 390 × 844, fully clickable/,
     'Approved mobile presentation board leaked into build/coldbox.html');
+});
+
+test('an imported helper consuming an approved reference fails the guard non-zero', () => {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-ui4a-build-graph-'));
+  try {
+    const fixtureScripts = path.join(fixtureRoot, 'scripts');
+    const fixtureReference = path.join(
+      fixtureRoot,
+      'docs',
+      '05-development',
+      'ui-reference',
+      'approved',
+      'coldbox-desktop-mockup.html.reference'
+    );
+    fs.mkdirSync(fixtureScripts, { recursive: true });
+    fs.mkdirSync(path.dirname(fixtureReference), { recursive: true });
+    fs.copyFileSync(
+      path.join(referenceRoot, EXPECTED_REFERENCES.desktop.file),
+      fixtureReference
+    );
+    fs.writeFileSync(
+      path.join(fixtureScripts, 'build.js'),
+      "require('./brand-assets.js');\n",
+      'utf8'
+    );
+    fs.writeFileSync(
+      path.join(fixtureScripts, 'brand-assets.js'),
+      "const fs = require('node:fs');\nconst path = require('node:path');\nmodule.exports = fs.readFileSync(path.join(__dirname, '..', 'docs', '05-development', 'ui-reference', 'approved', 'coldbox-desktop-mockup.html.reference'));\n",
+      'utf8'
+    );
+
+    const graphModule = path.join(projectRoot, 'scripts', 'build-input-graph.js');
+    const probe = spawnSync(
+      process.execPath,
+      [
+        '-e',
+        `const { assertNoApprovedReferenceBuildInputs } = require(${JSON.stringify(graphModule)}); assertNoApprovedReferenceBuildInputs(${JSON.stringify(fixtureRoot)}, { dataInputs: [] });`
+      ],
+      { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
+    );
+
+    assert.notEqual(probe.status, 0, 'A transitive approved-reference violation must exit non-zero');
+    assert.match(
+      `${probe.stdout}\n${probe.stderr}`,
+      /brand-assets\.js/,
+      'The non-zero fixture failure must identify the imported consuming helper'
+    );
+  } finally {
+    fs.rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('the transitive graph rejects a symlinked local helper', () => {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'coldbox-ui4a-symlink-'));
+  const fixtureEntry = path.join(fixtureRoot, 'scripts', 'build.js');
+  const fixtureHelper = path.join(fixtureRoot, 'scripts', 'helper.js');
+  fs.mkdirSync(path.dirname(fixtureEntry), { recursive: true });
+  fs.writeFileSync(fixtureEntry, "require('./helper.js');\n", 'utf8');
+  fs.writeFileSync(fixtureHelper, 'module.exports = true;\n', 'utf8');
+
+  const originalLstatSync = fs.lstatSync;
+  fs.lstatSync = function patchedLstatSync(target, ...args) {
+    if (path.resolve(target) === fixtureHelper) {
+      return { isSymbolicLink: () => true };
+    }
+    return originalLstatSync.call(fs, target, ...args);
+  };
+
+  try {
+    assert.throws(
+      () => collectTransitiveModules(fixtureRoot, 'scripts/build.js'),
+      /contains a symlink: scripts[\\/]helper\.js/
+    );
+  } finally {
+    fs.lstatSync = originalLstatSync;
+    fs.rmSync(fixtureRoot, { recursive: true, force: true });
+  }
 });
 
 test('roadmap dependencies cannot bypass the parity contract or final gate', () => {

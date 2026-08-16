@@ -27,6 +27,18 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
   desktop/mobile parity certification gate, and Phase 2 cannot resume at P2.8
   until that gate receives independent verification and real mobile evidence.
 
+### Fixed - UI.4a review remediation (2026-08-15)
+
+- The approved-reference isolation regression now walks the complete
+  transitive CommonJS graph rooted at `scripts/build.js` plus the centralized
+  non-code product inputs. A negative subprocess fixture proves that an
+  imported helper such as `brand-assets.js` consuming an approved snapshot
+  exits non-zero; future local helpers cannot be silently omitted by a
+  hand-picked test list.
+- CI now exposes an exact-head **Approved UI reference secret scan** job. It
+  hashes temporary copies of both frozen references, runs the repository
+  `Invoke-ColdboxSecretScan`, and fails on any finding or skipped candidate.
+
 ### Added - UI.3 released-secret switcher (2026-08-15)
 
 - Seed Forge results can be released into a cold-realm, session-only registry with a user label and public master fingerprint. Several results may be held, exactly one is focused, and every split, backup-share, SeedQR, and verification panel shows the focused fingerprint before use.

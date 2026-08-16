@@ -197,6 +197,78 @@ jobs:
           retention-days: 14
 
   # ---------------------------------------------------------------------
+  # Exact-reference secret scan. This is deliberately a separate job so a
+  # read-only reviewer can witness the approved UI snapshots being scanned at
+  # the exact PR head without trusting an author-side packet. Only temporary
+  # copies are scanned; the immutable reference directory is never modified.
+  # ---------------------------------------------------------------------
+  approved-ui-reference-secret-scan:
+    name: Approved UI reference secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Scan temporary copies of both approved references
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          . ./scripts/runner/secret-scan.ps1
+
+          $referenceRoot = Join-Path (Get-Location) 'docs/05-development/ui-reference/approved'
+          $auditRoot = Join-Path $env:RUNNER_TEMP ('coldbox-ui4a-reference-scan-' + [guid]::NewGuid().ToString('N'))
+          $expected = @(
+            'coldbox-desktop-mockup.html.reference',
+            'coldbox-mobile-mockup.html.reference'
+          )
+
+          New-Item -ItemType Directory -Path $auditRoot -Force | Out-Null
+          try {
+            foreach ($name in $expected) {
+              $source = Join-Path $referenceRoot $name
+              $destination = Join-Path $auditRoot $name
+              if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+                throw "Missing approved reference: $name"
+              }
+              Copy-Item -LiteralPath $source -Destination $destination
+              $sourceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $source).Hash
+              $copyHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $destination).Hash
+              if ($sourceHash -cne $copyHash) {
+                throw "Temporary scan copy changed bytes: $name"
+              }
+              Write-Host "$name SHA256 $copyHash"
+            }
+
+            $actual = @(Get-ChildItem -LiteralPath $auditRoot -File | Select-Object -ExpandProperty Name | Sort-Object)
+            $expectedSorted = @($expected | Sort-Object)
+            if ((Compare-Object -ReferenceObject $expectedSorted -DifferenceObject $actual)) {
+              throw 'Temporary scan root does not contain exactly the two approved references'
+            }
+
+            $scan = Invoke-ColdboxSecretScan -Root $auditRoot -RepoPath (Get-Location).Path
+            $scan | Format-List | Out-Host
+            if (-not $scan.Clean -or $scan.FindingCount -ne 0 -or $scan.SkippedCount -ne 0) {
+              throw "Approved UI reference secret scan failed: findings=$($scan.FindingCount), skipped=$($scan.SkippedCount)"
+            }
+
+            $report = Get-Content -Raw -LiteralPath (Join-Path $auditRoot 'scan-report.txt')
+            if ($report -notmatch '(?m)^CLEAN - no vault, private-key, or BIP-39 mnemonic-shaped content found in candidate text\.$') {
+              throw 'Secret scan report did not contain the clean result'
+            }
+            if ($report -notmatch '(?m)^SKIPPED-BINARY - 0 files\.$') {
+              throw 'Secret scan report did not prove that zero candidate files were skipped'
+            }
+            Write-Host 'Approved UI reference secret scan passed: findings=0, skipped=0.'
+          } finally {
+            if (Test-Path -LiteralPath $auditRoot) {
+              Remove-Item -LiteralPath $auditRoot -Recurse -Force
+            }
+          }
+
+  # ---------------------------------------------------------------------
   # Cross-OS reproducibility. Downloads both matrix legs' hash sidecars and
   # confirms they're identical - the "second-OS build comparison" acceptance
   # item. A mismatch here means something OS-specific (path separators,

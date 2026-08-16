@@ -154,6 +154,12 @@ and mobile comparison at UI.11. The screen inventory, exact-comparison method,
 normalization rules and physical-mobile evidence are single-sourced in
 [ui-parity.md](../01-spec/ui-parity.md); this document does not restate them.
 
+The CI workflow separately runs **Approved UI reference secret scan** at the
+exact checked-out commit. It copies both frozen `*.html.reference` files to a
+temporary directory, runs the repository's `Invoke-ColdboxSecretScan`, and
+fails unless findings and skipped candidate files are both zero. The immutable
+reference directory is never scanned in place or modified by that job.
+
 ## Manual device matrix
 
 `file://` behaviour varies enough between browsers that automated testing alone is insufficient. Required before every release.

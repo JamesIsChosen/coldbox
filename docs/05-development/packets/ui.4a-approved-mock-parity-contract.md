@@ -89,6 +89,13 @@ $ Remove-Item -LiteralPath $auditRoot -Recurse -Force
 The manifest repeats those machine values deliberately so the test can reject a
 changed artifact or changed declaration independently.
 
+The remediation adds a separately witnessable CI job named
+`Approved UI reference secret scan`. At the final exact head it checks SHA-256
+identity for temporary copies of both references, runs the same
+`Invoke-ColdboxSecretScan` implementation, and fails unless `FindingCount` and
+`SkippedCount` are both zero. Its run ID is recorded in the final evidence
+section below.
+
 ### Focused tests
 
 ```text
@@ -98,9 +105,11 @@ $ node --test test/ui.4a-approved-mock-parity.test.js
 ✔ manifest screen inventories and navigation match the inert approved payloads
 ✔ the deviation register is finite, synchronized and cannot hide pixels
 ✔ approved prototype payloads stay outside every product build input
+✔ an imported helper consuming an approved reference fails the guard non-zero
+✔ the transitive graph rejects a symlinked local helper
 ✔ roadmap dependencies cannot bypass the parity contract or final gate
-ℹ tests 6
-ℹ pass 6
+ℹ tests 8
+ℹ pass 8
 ℹ fail 0
 ℹ skipped 0
 ```
@@ -127,12 +136,27 @@ with network permission verified all ten upstream releases and exited zero.
 ### Product-input isolation
 
 ```text
+$ node -e "const path = require('node:path'); const { collectProductBuildInputFiles, findApprovedReferenceBuildInputs } = require('./scripts/build-input-graph.js'); const files = collectProductBuildInputFiles(process.cwd()); console.log('graph-files=' + files.length); console.log('brand-assets-in-graph=' + files.some((file) => file.endsWith(path.join('scripts', 'brand-assets.js')))); console.log('violations=' + JSON.stringify(findApprovedReferenceBuildInputs(process.cwd())));"
+graph-files=70
+brand-assets-in-graph=true
+violations=[]
+
 $ git diff --name-only main -- src scripts vendor assets package.json package-lock.json
-(no output)
+scripts/build-input-graph.js
 ```
 
-The focused test also runs the real build and rejects the prototype bundler
-markers and mobile presentation-board marker in `build/coldbox.html`.
+The centralized graph starts at `scripts/build.js`, resolves every transitive
+local CommonJS module, and adds the product's non-code inputs from
+`scripts/build-input-graph.js`. The guard fails closed on a missing module,
+symlink, unsupported dynamic `require`, or an approved-reference marker in any
+text input. `scripts/build-input-graph.js` is a guard-only module: it is not
+required by `scripts/build.js` and is not consumed by the product build. The
+focused test also runs the real build and rejects the prototype
+bundler markers and mobile presentation-board marker in `build/coldbox.html`.
+
+The negative fixture copies an imported `brand-assets.js` helper, makes it read
+the frozen desktop reference, runs the guard in a child Node process, and
+requires a non-zero exit with `brand-assets.js` in the diagnostic.
 
 ### Reproducible build
 
@@ -159,9 +183,9 @@ compared the sidecar's first field and produced the passing evidence above.
 
 ```text
 $ npm test
-ℹ tests 415
+ℹ tests 417
 ℹ suites 0
-ℹ pass 415
+ℹ pass 417
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
@@ -172,7 +196,7 @@ During development, an earlier 414-test revision first passed 409 and failed
 five; every failure was `spawnSync git EPERM` in tests that create disposable Git
 repositories. That unchanged revision passed 414/414 with the required
 permission. The final suite above adds the reference-mutation regression and
-passes 415/415 with the same permission.
+passes 417/417 with the same permission.
 
 `npm run test:browser` was not run. UI.4a has no browser-verifiable criterion and
 changes no rendered product input; rendering the untrusted prototypes is
@@ -191,7 +215,7 @@ The roadmap criterion is copied verbatim below:
 | Secret-shaped-content scan | Both candidate text files passed the repository's vendored-BIP39/xprv/vault scan with zero findings and zero skipped binaries before import. | Scanner output above |
 | Canonical exact-parity semantics | `ui-parity.md` defines precedence, binding visual properties, state classification, zero-unexpected-pixel comparison, no masks, device evidence, rolling closure and nine finite deviations. | Deviation synchronization test; docs check |
 | Structural rationale | ADR-0049 records immutable evidence, quarantine, the final gate, alternatives and risks. | ADR index and docs check |
-| Drift and bypass failures | The test hard-codes approved evidence, parses both template payloads without execution, rejects a one-byte and metadata mutation, synchronizes deviation IDs, scans product inputs, runs the build, and pins roadmap dependencies. | Six focused tests above |
+| Drift and bypass failures | The test hard-codes approved evidence, parses both template payloads without execution, rejects a one-byte and metadata mutation, synchronizes deviation IDs, scans the complete transitive product-input graph, runs the build, proves an imported-helper violation exits non-zero, and pins roadmap dependencies. | Seven focused tests above |
 | Prototype remains non-build data | References have a non-HTML final extension; no product input names them; the real artifact contains neither bundler markers nor the mobile board marker. | Build-isolation test; empty product-input diff |
 | No product-source change | `git diff main -- src` and the broader product-input diff are empty. | Command above |
 
@@ -352,3 +376,42 @@ budget in [dependencies.md](../dependencies.md#bundle-budget).
 
 No guide/glossary/help-depth update is required because this item changes no
 user-facing product behaviour or shipped Help content.
+
+## 13. Remediation of review FAIL
+
+The prior independent review of PR #60 returned FAIL with two findings. The
+prior review record is preserved unchanged outside this remediation section;
+this section records the author-side fixes and does not amend or rewrite that
+verdict.
+
+### F1 — Build-input isolation covered only a hand-picked subset
+
+**Finding:** The original regression inspected `build.js`, `help-content.js`,
+`package.json`, and `src/`, so an already-imported helper such as
+`brand-assets.js` could begin consuming an approved reference without the UI.4a
+guard failing.
+
+**Remediation:** Added `scripts/build-input-graph.js`. It starts at
+`scripts/build.js`, resolves every transitive local CommonJS `require`, adds the
+centralized non-code product inputs, rejects unsupported dynamic requires and
+symlinks, and scans every text file in the resulting graph. The focused test
+now asserts that `scripts/brand-assets.js` is in the graph and that the clean
+graph has zero violations. A temporary fixture copies an imported
+`brand-assets.js`, makes it consume the frozen desktop reference, invokes the
+guard in a child Node process, and requires a non-zero status naming the helper.
+
+### F2 — The exact-reference secret scan was not independently witnessable
+
+**Finding:** The packet contained author-side scanner output, but no exact-head
+CI job that a Mode B reviewer could audit independently.
+
+**Remediation:** Added the CI job `Approved UI reference secret scan`. It checks
+out `${github.event.pull_request.head.sha || github.sha}`, copies exactly the
+desktop and mobile `.html.reference` files to a runner-temporary directory,
+verifies copy hashes, runs the repository's `Invoke-ColdboxSecretScan`, and
+fails on any finding or skipped candidate file. It also requires the clean and
+zero-skipped report lines. The job never writes to the immutable reference
+directory.
+
+The final exact-head SHA and CI run ID, including this job's result, are recorded
+in the handoff and in the verification evidence added before push.
