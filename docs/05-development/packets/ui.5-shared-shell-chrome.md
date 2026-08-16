@@ -108,6 +108,37 @@ Desktop reference SHA-256: fb7ff0643bda8f12a0a7e64daea91f51d74276cfc9bfb66c80baa
 Mobile reference SHA-256: af0c1fe08e689f755869a6eb4cc06dcaf0f4d44b7dfe6426d6a322b464c7d7f8
 ```
 
+## Latest exact-head cold More witness
+
+The latest product head is `9ce9909`; exact-head CI run `31946412386` passed
+the cold More geometry and close-sheet browser assertions.
+
+```text
+Full CI unit/vector tests: 424 passed, 0 skipped
+Ubuntu/Windows reproducible build hash: f54995a664fed6760fe11e31f47e85669fda380a4dfbdd97d2d46e10277416b8
+Cross-OS build comparison: passed
+Browser harness: passed in Chromium and Firefox over file://
+Approved reference scan: Clean=True, findings=0, skipped=0
+Desktop reference SHA-256: fb7ff0643bda8f12a0a7e64daea91f51d74276cfc9bfb66c80baaf874bb2ded9
+Mobile reference SHA-256: af0c1fe08e689f755869a6eb4cc06dcaf0f4d44b7dfe6426d6a322b464c7d7f8
+```
+
+## Final cold More remediation witness
+
+Source head `9ce9909` adds 44px boxed geometry to unavailable cold More
+entries and closes the More sheet after each operational target is activated.
+Exact-head CI run `31946412386` passed on that head.
+
+```text
+Full CI unit/vector tests: 424 passed, 0 skipped
+Ubuntu/Windows reproducible build hash: f54995a664fed6760fe11e31f47e85669fda380a4dfbdd97d2d46e10277416b8
+Cross-OS build comparison: passed
+Browser harness: passed in Chromium and Firefox over file://
+Approved reference scan: Clean=True, findings=0, skipped=0
+Desktop reference SHA-256: fb7ff0643bda8f12a0a7e64daea91f51d74276cfc9bfb66c80baaf874bb2ded9
+Mobile reference SHA-256: af0c1fe08e689f755869a6eb4cc06dcaf0f4d44b7dfe6426d6a322b464c7d7f8
+```
+
 The approved mobile More inventories are now represented in their frozen
 order. Warm entries are Devices, QR Studio, Address bench, future Prices & FX,
 future Tax & exports, future Reference, Verify this file, Provenance & legal,
