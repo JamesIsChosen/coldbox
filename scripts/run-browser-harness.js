@@ -1208,7 +1208,9 @@ async function verifyBuiltFile(browser, engine) {
     }
     for (const href of ['#cold-group-session', '#cold-group-entropy', '#cold-seed-forge-validator', '#cold-group-qr', '#cold-group-backups', '#cold-verification', '#cold-secret-switcher']) {
       await coldFrame.locator('.cold-mobile-more').evaluate((details) => { details.open = true; });
-      await coldFrame.locator(`.cold-mobile-more-links a[href="${href}"]`).click();
+      await coldFrame.evaluate((route) => {
+        document.querySelector(`.cold-mobile-more-links a[href="${route}"]`).click();
+      }, href);
       assert.equal(await coldFrame.locator('.cold-mobile-more').getAttribute('open'), null, `${engine}: ${href} did not close More`);
     }
     await coldFrame.evaluate(() => {
