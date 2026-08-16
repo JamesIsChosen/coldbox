@@ -100,6 +100,12 @@ Every exit path below terminates in a paste-ready next step.
 
 ## 1. Item complete
 
+A read-only reviewer cannot look anything up. Every review handoff must carry the
+**full 40-character head SHA** and the **CI run ID**, and CI must be green at that
+exact SHA before you hand off. See `review-protocol.md`, "What the author owes a
+Mode B reviewer".
+
+
 **You open the PR yourself before writing this block.** Run the push and `gh pr create`, then report the result.
 
 ```markdown

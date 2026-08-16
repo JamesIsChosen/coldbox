@@ -39,6 +39,98 @@ FAIL is not an insult and carries no implication about effort or competence. It 
 
 ---
 
+## Two review modes — declare which one you used
+
+Reviewers differ in what they can reach. Both modes are legitimate. They require
+different evidence and are not equally strong in the same places.
+
+**The verdict standard is identical in both.** Binary PASS/FAIL; any finding of
+any severity is a FAIL. The mode changes what counts as evidence, never how
+strict the verdict is.
+
+**Declare the mode in the verdict block** — `Review mode: CONNECTED` or
+`Review mode: READ-ONLY (CI-witnessed, run <id>)`. A reader must be able to tell
+what kind of assurance they are holding.
+
+### Mode A — CONNECTED
+
+The reviewer can check out the repository and run commands. Every requirement in
+"What you must do before deciding" applies as written.
+
+Note honestly what this mode is **not**: a single reviewer machine is usually one
+OS, one browser, and whatever Node happens to be installed. It cannot reproduce
+this project's cross-OS build comparison or its Chromium **and** Firefox matrix.
+
+### Mode B — READ-ONLY, CI-witnessed
+
+The reviewer can read the code, the diff, and the PR, but cannot check out or
+execute — typically a browser-hosted agent in a network-isolated sandbox with a
+read-only token.
+
+**This is a supported mode, not a degraded one.** Its strength is where automated
+checks are weakest: reading the code, reasoning through production paths, and
+checking acceptance criteria verbatim. A suite can be green while the real path
+is dead; only reading catches that.
+
+Execution is witnessed by CI at the reviewed commit, under **all** of:
+
+1. **Exact commit.** The run's `head_sha` equals the reviewed commit in full —
+   not the branch tip. Record the run ID.
+2. **Audit the workflow at that commit.** Read `.github/workflows/` as it exists
+   on the reviewed commit and confirm it runs the required checks. **Name the
+   ones you confirmed.** The workflow is author-controlled; an unaudited green
+   run proves only that the author's chosen commands succeeded.
+3. **No silent skips.** Confirm zero skipped tests in every required suite. **A
+   skipped test is not a passed test** — a suite that self-skips on a missing
+   browser or binary reports success while checking nothing. Name any skip and
+   treat it as unverified.
+4. **Who triggered the run is immaterial**, provided 1 and 2 hold. A run's
+   `head_sha` and conclusion are attested by GitHub and cannot be forged by the
+   author, and re-running the same commit executes the same workflow over the
+   same tree. Do not require reviewer-initiated CI; it protects nothing that
+   commit-pinning does not already cover. See ADR-0048.
+5. **CI never covers what CI cannot reach.** The manual device matrix,
+   clean-directory execution, offline operation, iOS status, and any
+   human-observed behaviour remain separate and are recorded as unverified until
+   a human performs them.
+
+CI substitutes for the reviewer's **hands**, never its **judgement**. A review
+citing a green checkmark without naming what it audited has not reviewed anything.
+
+### Security properties are established only by what executes them
+
+This project handles seed phrases. A higher bar here means **more evidence**, not
+an unsatisfiable procedural step.
+
+The cold-realm properties — opaque-origin isolation, CSP inheritance, the private
+`MessageChannel` handshake, vault save/load, the Argon2id/WASM path — are
+established only by whatever actually exercises them. Where CI's browser job
+exercises them, CI is the witness. Where it does not, they stay manual and
+unverified. **No mode change converts an unexecuted security property into a
+verified one.**
+
+### Delivering a Mode B report
+
+A read-only reviewer usually cannot write to the branch or post a PR review. The
+report is still required on the branch, so:
+
+1. The reviewer emits the full report as text.
+2. The human pastes it to the author-side agent **verbatim**.
+3. That agent commits it unedited, with an attribution block naming the reviewer,
+   the reviewed commit, the date, and the fact that it transcribed the report
+   because the reviewer lacked write access.
+4. It commits **alone**, separate from any fix.
+
+The transcribing agent must never summarise, soften, or reconstruct wording it
+does not have. A paraphrase presented as a reviewer's findings is a falsified
+audit record.
+
+### What the author owes a Mode B reviewer
+
+A reviewer that cannot clone sees only what it is given. The handoff must carry
+the **full 40-character head SHA**, the **CI run ID**, the packet, and the
+acceptance criteria verbatim. It cannot look any of them up.
+
 ## What you must do before deciding
 
 **Verify independently. Do not trust the packet.** Its purpose is to tell you what to check, not to be the evidence itself.
@@ -105,8 +197,9 @@ Write `docs/05-development/packets/<roadmap-id>-<slug>.review.md`, alongside the
 **VERDICT: FAIL**
 
 Findings: 3 (0 blocking, 3 advisory — all must be addressed)
-Reviewed commit: a1b2c3d
+Reviewed commit: <full 40-char sha>
 Reviewed by: <agent/human>
+Review mode: CONNECTED | READ-ONLY (CI-witnessed, run <id>)
 Date: YYYY-MM-DD
 ```
 

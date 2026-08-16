@@ -111,19 +111,62 @@ Only assign genuinely independent items — check the `Deps:` lines. Phase 0 aft
 
 ---
 
-## Review
+## Review — pick the prompt that matches your reviewer
 
-**Use a fresh session, not the one that wrote the code.** An agent reviewing its own work in the same context is re-reading, not reviewing.
+**Use a fresh session, not the one that wrote the code.** Both modes are
+supported; see `review-protocol.md`. Fill in every placeholder — a read-only
+reviewer cannot look any of it up.
 
-> Read `docs/05-development/review-protocol.md`, then review branch `<branch-name>` as an independent reviewer.
+### Mode B — read-only reviewer (browser agent, no checkout)
+
+The common case here.
+
+> Read `docs/05-development/review-protocol.md` and review PR #`<n>` at commit
+> `<full-40-char-sha>` as an independent reviewer, in **READ-ONLY (CI-witnessed)**
+> mode.
 >
-> Verify every claim yourself — do not take the packet's word for anything. Build under a different path, timezone, and locale. Deliberately break things and confirm they fail closed with non-zero exit codes. Check the acceptance criteria verbatim against the roadmap.
+> You cannot check out or execute this repository, and you are not expected to.
+> **Do not attempt it, and do not report your own environment's limitations as
+> defects in the code.** A missing Node version, absent Firefox, or a 403 on a
+> write path is a fact about your sandbox, not a finding against this PR.
 >
-> Write your report to `docs/05-development/packets/<roadmap-id>-<slug>.review.md`, end with a PASS or FAIL verdict — **any finding of any severity, including cosmetic or advisory, is a FAIL** — and **merge the PR yourself if it passes**.
+> Read the whole diff. Check every acceptance criterion **verbatim** against the
+> roadmap. Reason through the production paths rather than trusting the tests —
+> a suite can be green while the real path is dead, and that is the defect class
+> you are here to catch.
+>
+> For execution, use CI run `<run-id>`. Confirm its `head_sha` equals the reviewed
+> commit exactly, audit `.github/workflows/` **at that commit** to confirm what it
+> actually runs, and **verify the skip count is zero**. Name the checks you
+> confirmed. Who triggered the run is immaterial — do not require reviewer-
+> initiated CI (ADR-0048).
+>
+> CI does not cover the manual device matrix, clean-directory execution, offline
+> operation, or iOS. Check what the packet records and treat anything untested as
+> unverified.
+>
+> Emit your report as text for transcription; you are not expected to write to the
+> branch or post a PR review. Open with the verdict block including `Review mode`.
+> End with PASS or FAIL — **any finding of any severity is a FAIL**.
 
-For a batch, review each branch in dependency order, one session each. Each PASS merge retargets the next PR automatically.
+### Mode A — connected reviewer (can check out and run)
 
----
+> Read `docs/05-development/review-protocol.md`, then review branch `<branch>` at
+> commit `<full-40-char-sha>` as an independent reviewer, in **CONNECTED** mode.
+>
+> Verify every claim yourself — do not take the packet's word for anything. Build
+> under a different path, timezone, and locale. Deliberately break things and
+> confirm they fail closed with non-zero exit codes. Check the acceptance criteria
+> verbatim against the roadmap.
+>
+> Note what your environment cannot reach — this project's CI covers two operating
+> systems, a pinned Node, and both Chromium and Firefox. Anything you cannot
+> reproduce, verify against CI run `<run-id>` under the Mode B conditions rather
+> than claiming it.
+>
+> Write your report to `docs/05-development/packets/<id>-<slug>.review.md`, commit
+> it to the branch, end with PASS or FAIL — **any finding of any severity is a
+> FAIL** — and merge the PR yourself if it passes.
 
 ## Re-review after a FAIL
 

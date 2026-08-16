@@ -55,6 +55,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0045](0045-released-secret-model.md) | One released secret per session, and every cold tool is a lens on it | Accepted |
 | [0046](0046-vault-name-availability-at-unlock.md) | Vault naming moves into the sealed realm, and the name leaves the filesystem | Accepted |
 | [0047](0047-brand-assets-traced-once-and-embedded.md) | Brand artwork is traced once, committed as source, and embedded from `assets/` | Accepted |
+| [0048](0048-ci-as-independent-execution.md) | CI at the reviewed commit satisfies independent execution | Accepted |
 
 ## When to write one
 

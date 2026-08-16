@@ -22,6 +22,7 @@ Each released version records the SHA-256 of its HTML artifact, so this file dou
 - The cold realm now presents six navigable workspaces. Seed Forge is the single mnemonic entry surface; Seed XOR, codex32, Shamir39/raw SSS, SeedQR, and SLIP-39 generation read the focused released secret instead of accepting duplicate seed/source loaders.
 - Vault authentication, recovery shares, share-combine fields, BIP-39 passphrases, secret notes, and physical/manual entropy inputs remain declared sealed inputs under ADR-0045. The cold CSP and no-network guarantee are unchanged.
 - Every static form control across `src/` now declares its public or sealed surface, and dynamic form creation is audited through the ADR-0045 registry (including negative mutations for unmarked static and dynamic controls), so a future secret-accepting input cannot be added outside the registry test.
+- Review governance now supports read-only CI-witnessed Mode B reviews when the exact commit, workflow checks, and zero-skip execution evidence are independently audited under ADR-0048.
 
 ### Fixed - UI.3 released-secret review remediation (2026-08-15)
 

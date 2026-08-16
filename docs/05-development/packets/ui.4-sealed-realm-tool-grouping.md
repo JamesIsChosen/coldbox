@@ -223,6 +223,7 @@ The UI.3 packet recorded a local baseline of 2,654,759 bytes. This UI.4 branch b
 - `docs/01-spec/address-verification.md` and `docs/01-spec/architecture.md` — pre-release compatibility and released-session comparison-only behavior.
 - `docs/03-guides/backup-seed-xor.md`, `backup-codex32.md`, `backup-shamir.md`, `backup-slip39.md`, and `use-qr-studio.md` — focused-secret workflow guidance at the affected user-facing depth.
 - `CHANGELOG.md` — UI.4 entry and updated UI.1/ADR summary.
+- `docs/05-development/review-protocol.md`, `docs/05-development/handoff.md`, `docs/05-development/prompts.md`, `.github/workflows/ci.yml`, and [ADR-0048](../adr/0048-ci-as-independent-execution.md) — CI-witnessed Mode B review contract, exact-head handoff fields, and zero-skip enforcement.
 - This PR packet — commands, evidence, assumptions, limitations, and review focus.
 - `docs/05-development/packets/ui.4-sealed-realm-tool-grouping.review.md` — the historical FAIL report copied unchanged into the branch for re-review.
 
@@ -232,4 +233,4 @@ The attached review at [`ui.4-sealed-realm-tool-grouping.review.md`](ui.4-sealed
 
 - F1 is addressed by auditing every source HTML form control and every JavaScript `createElement` call, requiring explicit public/sealed markers, routing dynamic cold secret inputs through a registry-checked factory, and testing negative static, raw-dynamic, and non-literal-dynamic mutations.
 - F2 is addressed in `ROADMAP.md`: the UI.4 summary now says that the five duplicate seed/source-loading fields are deleted while Seed Forge's single seed-entry field remains.
-- F3 is not claimed closed by this author session. The pinned Node toolchain and both local browser engines are available here, but the protocol-mandated fresh independent reviewer must still perform the independent environment variation and deliberate fail-closed mutation before changing UI.4 from `[~]` to `[x]` or merging PR #59.
+- F3-R2's reviewer-initiation clause is superseded by [ADR-0048](../adr/0048-ci-as-independent-execution.md): a read-only reviewer may use a qualifying CI run as the execution witness. The reviewer must still pin this exact commit, audit the workflow at that commit, confirm zero skipped tests, name the checks, and record anything CI cannot cover before changing UI.4 from `[~]` to `[x]` or merging PR #59.
