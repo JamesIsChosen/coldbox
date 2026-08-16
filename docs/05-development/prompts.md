@@ -111,7 +111,9 @@ Only assign genuinely independent items — check the `Deps:` lines. Phase 0 aft
 
 ---
 
-## Review — pick the prompt that matches your reviewer
+## Review
+
+Pick the prompt that matches your reviewer.
 
 **Use a fresh session, not the one that wrote the code.** Both modes are
 supported; see `review-protocol.md`. Fill in every placeholder — a read-only
