@@ -143,7 +143,8 @@ The approved mobile More inventories are now represented in their frozen
 order. Warm entries are Devices, QR Studio, Address bench, future Prices & FX,
 future Tax & exports, future Reference, Verify this file, Provenance & legal,
 Learn, future Tool map, and Enter sealed realm. Cold entries are Vault session,
-Entropy Lab, Validate phrase, future Child seeds (canonical P4.6), future
+Entropy Lab, Validate phrase, future Child seeds (mobile P1.5 · Phase 1; desktop
+rail canonical P4.6 · Phase 4), future
 Passphrase Studio, future Descriptors, SeedQR studio, Backup Health, future
 Recovery Assistant, Verify Bench, Reveal hidden, Secret notes, No secret yet,
 and Lock & wipe. Future entries are non-focusable disabled elements with
