@@ -417,6 +417,12 @@ samp {
   margin: 0 0 1.1rem;
 }
 
+.nav-sealed-entry {
+  margin: 0.25rem 0 1.1rem;
+  padding-top: 0.65rem;
+  border-top: var(--outline-width-thin) solid var(--outline);
+}
+
 .nav-group-title {
   display: inline-block;
   margin: 0.2rem 0.4rem 0.5rem;
@@ -2165,6 +2171,14 @@ samp {
   text-transform: uppercase;
   transform: rotate(9deg);
   white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  /* Keep the decorative sticker inside the narrow dashboard card so the
+     responsive warm workspace never creates a horizontal page scroll. */
+  .sound-effect {
+    right: -0.25rem;
+  }
 }
 
 .stage-cue {
