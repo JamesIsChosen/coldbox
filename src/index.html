@@ -360,6 +360,14 @@ __COLDBOX_WORDMARK__
               </h2>
               <p id="vault-status-copy">Choose a vault from the library, then enter its unlock phrase in the sealed realm. The warm shell never receives it.</p>
               <p id="vault-active-meta" class="vault-help" hidden>Active vault: <strong id="vault-active-name"></strong> · <span id="vault-active-id"></span></p>
+              <div class="vault-active-nickname" id="vault-active-nickname-editor" hidden>
+                <label class="vault-label" for="vault-active-nickname">Device-local nickname</label>
+                <div class="vault-actions">
+                  <input id="vault-active-nickname" type="text" maxlength="80" autocomplete="off" spellcheck="false" data-input-surface="public">
+                  <button class="vault-button" id="vault-active-nickname-save" type="button">Save nickname</button>
+                </div>
+                <p class="vault-help" id="vault-active-nickname-status">This label stays on this device only; it is never sent to the sealed realm or written into the vault.</p>
+              </div>
               <p class="vault-dirty-notice" id="vault-dirty-notice" data-dirty="false" hidden></p>
               <div class="vault-actions vault-primary-actions">
                 <button class="vault-button vault-button-primary" id="vault-save-primary" type="button" disabled>Save vault</button>

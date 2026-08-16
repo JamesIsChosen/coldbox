@@ -1529,6 +1529,32 @@ async function verifyVaultLibrary(browser, engine) {
     await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
     await selectUnlock(alpha);
 
+    const alphaId8 = alpha.id.replace(/-/g, '').slice(0, 8).toLowerCase();
+    await page.locator('#vault-active-nickname').fill('Alpha unlocked nickname');
+    await page.locator('#vault-active-nickname-save').click();
+    await page.locator('#vault-active-nickname-status').filter({ hasText: /saved on this device only/i }).waitFor({ state: 'visible' });
+    assert.equal(
+      await page.evaluate((id8) => window.localStorage.getItem('coldbox-vault-nickname:' + id8), alphaId8),
+      'Alpha unlocked nickname',
+      `${engine}: unlocked nickname edit must stay in warm local storage`
+    );
+    assert.equal(await page.locator('#vault-active-id').textContent(), `Vault ID ${alpha.id}`);
+    await lockVaultDiscardingUnsaved(page);
+    await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('#vault-active-nickname').fill('Alpha locked nickname');
+    await page.locator('#vault-active-nickname-save').click();
+    await page.locator('#vault-active-nickname-status').filter({ hasText: /saved on this device only/i }).waitFor({ state: 'visible' });
+    assert.equal(
+      await page.evaluate((id8) => window.localStorage.getItem('coldbox-vault-nickname:' + id8), alphaId8),
+      'Alpha locked nickname',
+      `${engine}: locked nickname edit must stay in warm local storage`
+    );
+    assert.equal(
+      await page.locator('#vault-library-list').textContent().then((text) => text.includes(fileName(alpha))),
+      true,
+      `${engine}: nickname edits must not change the name-free canonical filename`
+    );
+
     console.log(`${engine}: two named portable Vault IDs were independently selectable and unlockable from the user-granted Vault Library`);
   } finally {
     await closePage(page);

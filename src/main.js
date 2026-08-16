@@ -133,6 +133,10 @@ __COLDBOX_CONCEALMENT__
   var vaultActiveMeta = document.getElementById('vault-active-meta');
   var vaultActiveNameNode = document.getElementById('vault-active-name');
   var vaultActiveIdNode = document.getElementById('vault-active-id');
+  var vaultActiveNicknameEditor = document.getElementById('vault-active-nickname-editor');
+  var vaultActiveNickname = document.getElementById('vault-active-nickname');
+  var vaultActiveNicknameSave = document.getElementById('vault-active-nickname-save');
+  var vaultActiveNicknameStatus = document.getElementById('vault-active-nickname-status');
   var vaultSaveFileSystem = document.getElementById('vault-save-file-system');
   var vaultSaveDownload = document.getElementById('vault-save-download');
   var vaultSaveManual = document.getElementById('vault-save-manual');
@@ -1978,6 +1982,15 @@ __COLDBOX_CONCEALMENT__
     if (vaultLock) {
       vaultLock.disabled = !channelReady || vaultState === 'locked';
     }
+    if (vaultActiveNicknameEditor) {
+      vaultActiveNicknameEditor.hidden = !activeVaultId;
+    }
+    if (vaultActiveNickname) {
+      vaultActiveNickname.disabled = !activeVaultId;
+    }
+    if (vaultActiveNicknameSave) {
+      vaultActiveNicknameSave.disabled = !activeVaultId;
+    }
   }
 
   function setVaultStatus(state, title, copy, label) {
@@ -2023,6 +2036,10 @@ __COLDBOX_CONCEALMENT__
     if (vaultActiveIdNode) {
       vaultActiveIdNode.textContent = activeVaultId ? 'Vault ID ' + activeVaultId : 'Legacy vault (no authenticated Vault ID)';
     }
+    if (vaultActiveNickname) {
+      vaultActiveNickname.value = activeVaultId ? readVaultNickname(activeVaultId) || activeVaultName : '';
+    }
+    updateVaultControls();
   }
 
   function displayNameFromFilename(name) {
@@ -2057,10 +2074,35 @@ __COLDBOX_CONCEALMENT__
   function writeVaultNickname(vaultId, nickname) {
     var key = nicknameStorageKey(vaultId);
     if (!key) { return; }
+    var storage = safeLocalStorage();
+    if (!storage) { return; }
     try {
-      if (nickname) { safeLocalStorage().setItem(key, nickname); }
-      else { safeLocalStorage().removeItem(key); }
+      if (nickname) { storage.setItem(key, nickname); }
+      else { storage.removeItem(key); }
     } catch (error) { /* device-local labels are best effort */ }
+  }
+
+  function saveActiveVaultNickname() {
+    if (!activeVaultId || !vaultActiveNickname || !saveIntegrity) {
+      return;
+    }
+    var nickname = saveIntegrity.sanitizeVaultName(vaultActiveNickname.value.trim());
+    if (vaultActiveNickname.value.trim() && !nickname) {
+      if (vaultActiveNicknameStatus) {
+        vaultActiveNicknameStatus.textContent = 'Use up to 80 characters without control characters.';
+      }
+      vaultActiveNickname.focus();
+      return;
+    }
+    writeVaultNickname(activeVaultId, nickname);
+    setActiveVaultMeta(nickname, activeVaultId);
+    if (vaultActiveNicknameStatus) {
+      vaultActiveNicknameStatus.textContent = nickname
+        ? 'Nickname saved on this device only. The sealed vault name and filename were not changed.'
+        : 'Nickname cleared on this device. The sealed vault name and filename were not changed.';
+    }
+    setVaultNotice('Device-local nickname updated. It never enters the sealed realm, vault bytes, filename, or transfer frames.');
+    renderVaultLibrary();
   }
 
   function libraryEntryForFile(file, handle) {
@@ -5883,6 +5925,9 @@ __COLDBOX_CONCEALMENT__
   }
   if (vaultSavePrimary) {
     vaultSavePrimary.addEventListener('click', savePrimaryVault);
+  }
+  if (vaultActiveNicknameSave) {
+    vaultActiveNicknameSave.addEventListener('click', saveActiveVaultNickname);
   }
   if (vaultSaveFileSystem) {
     vaultSaveFileSystem.addEventListener('click', saveWithFileSystemAccess);

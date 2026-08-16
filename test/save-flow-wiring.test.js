@@ -216,6 +216,10 @@ test('UI.10 creation keeps the nickname warm and sends only a payload-free prepa
 
 test('UI.10 nickname state never becomes a vault-name registry claim', () => {
   assert.match(mainSource, /writeVaultNickname\(/);
+  const renameBody = extractFunction(mainSource, 'saveActiveVaultNickname');
+  assert.match(renameBody, /writeVaultNickname\(activeVaultId, nickname\)/);
+  assert.doesNotMatch(renameBody, /sendVaultMessage/);
+  assert.match(mainSource, /vault-active-nickname-save/);
   assert.doesNotMatch(mainSource, /claimVaultName\(activeVaultName, activeVaultId\)/);
   assert.match(mainSource, /setVaultPersistenceState\('saved-unverified'\)/, 'download replacement must have an explicit unverified persistence state');
 });
