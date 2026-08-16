@@ -6720,7 +6720,15 @@ __COLDBOX_QR_ENCODER__
       if (concealmentStatus && !vaultUnlocked) {
         concealmentStatus.textContent = 'Unlock the vault before revealing hidden records.';
       }
-      (vaultUnlocked && concealmentPassphrase ? concealmentPassphrase : passphraseInput).focus();
+      if (vaultUnlocked && concealmentPassphrase) {
+        concealmentPassphrase.focus();
+      } else {
+        var lockedStatus = document.getElementById('cold-vault-status');
+        if (lockedStatus) {
+          lockedStatus.setAttribute('tabindex', '-1');
+          lockedStatus.focus();
+        }
+      }
     } else if (targetId === 'cold-secret-notes') {
       target.focus();
     } else if (targetId === 'cold-vault-controls') {

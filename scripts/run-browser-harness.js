@@ -1206,7 +1206,7 @@ async function verifyBuiltFile(browser, engine) {
       document.querySelector('.cold-mobile-more-links a[data-cold-more-target="cold-concealment-controls"]').click();
     });
     await coldFrame.locator('#cold-concealment-controls:not([hidden])').waitFor({ state: 'visible' });
-    assert.equal(await coldFrame.evaluate(() => document.activeElement && document.activeElement.id), 'cold-vault-passphrase');
+    assert.equal(await coldFrame.evaluate(() => document.activeElement && document.activeElement.id), 'cold-vault-status');
     await coldFrame.evaluate(() => {
       document.querySelector('.cold-mobile-more-links a[data-cold-more-target="cold-secret-notes"]').click();
     });
