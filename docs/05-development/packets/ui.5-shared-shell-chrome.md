@@ -204,3 +204,18 @@ The final exact-head witness covers the complete current route inventory,
 activated cold More targets, disabled future controls, reproducible build,
 browser parity, and the independent temporary-copy scan of both frozen
 references.
+
+## Packet-head CI refresh
+
+The packet refresh is included in head `aac2100` and was checked out by exact-head
+CI run `31944201578`. That run passed the complete verification matrix:
+
+```text
+Full CI unit/vector tests: 424 passed, 0 skipped
+Ubuntu/Windows reproducible build hash: 0043600d32837dc7e4d90db0d6f215ffa9de18ba98e2a6d47ad87f149fcda31f
+Cross-OS build comparison: passed
+Browser harness: passed in Chromium and Firefox over file://
+Approved reference scan: Clean=True, findings=0, skipped=0
+Desktop reference SHA-256: fb7ff0643bda8f12a0a7e64daea91f51d74276cfc9bfb66c80baaf874bb2ded9
+Mobile reference SHA-256: af0c1fe08e689f755869a6eb4cc06dcaf0f4d44b7dfe6426d6a322b464c7d7f8
+```
