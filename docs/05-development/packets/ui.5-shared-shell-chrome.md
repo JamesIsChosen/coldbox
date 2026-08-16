@@ -260,8 +260,8 @@ Mobile reference SHA-256: af0c1fe08e689f755869a6eb4cc06dcaf0f4d44b7dfe6426d6a322
 ## Packet-head CI refresh
 
 The packet refresh is included in reviewed head
-`01c0f5518605c5e717e4e776b3e69c6316ba6a31` and was checked out by exact-head
-CI run `31947264326`. That run passed the complete verification matrix:
+`bab4ceca2ff5f17e148645f05664ba43970eeb9b` and was checked out by exact-head CI run `31948498968`. That run
+passed the complete verification matrix:
 
 ```text
 Full CI unit/vector tests: 424 passed, 0 skipped
