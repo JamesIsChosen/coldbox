@@ -150,3 +150,59 @@ The reviewer must leave the roadmap at `[~]` when the closeout state makes the c
 **Required action:** Make the UI.9 tests status-agnostic or derive their expected status from the current roadmap/compiler, while retaining their source-of-truth and build-level negative assertions. Run the complete verification after that change, push a new exact head, and request another fresh independent review. The next reviewer must flip UI.9 to `[x]` only after the post-flip complete suite remains green.
 
 **VERDICT: FAIL**
+
+---
+
+## Fresh independent re-review of status-agnostic closeout
+
+**VERDICT: PASS**
+
+Findings: 0 (0 blocking, 0 advisory)
+Reviewed commit: 5fc151b0aec46c9432697f5cb72e57aa19b5eba6
+Reviewed PR: #65
+Reviewed by: ui9_final_reviewer
+Review mode: CONNECTED
+Date: 2026-08-16
+
+This is a fresh independent verdict on the remediation head, not an amendment to either preceding verdict. The preceding FAIL sections remain verbatim above. I re-checked both original findings, the reviewer-owned marker transition, every UI.9 acceptance criterion, the complete verification contract, and the exact-head CI witness. No findings remain.
+
+### 1. What I verified
+
+- `npm ci` — completed successfully; 2 packages added, 0 vulnerabilities.
+- `npm test` with UI.9 still `[~]` — **441 passed, 0 failed, 0 skipped**.
+- Focused isolation/tool-map tests with UI.9 `[~]` — **11 passed, 0 failed, 0 skipped**.
+- After changing the roadmap marker to reviewer-owned `[x]`, focused closeout tests — **7 passed, 0 failed, 0 skipped**.
+- After the marker transition, `npm test` — **441 passed, 0 failed, 0 skipped**.
+- `npm run lint` — passed.
+- `npm run verify-vendor` — passed for all local artifacts and upstream releases.
+- `npm run check-docs` — passed; 250 markdown files, 0 warnings.
+- Two post-closeout builds under `TZ=UTC`, `LANG=C` and `TZ=Pacific/Honolulu`, `LANG=de_DE.UTF-8` produced the identical SHA-256 `2101495d0f02f66af431eca60dc6655b94857d73af5d8bc0281ac9f21ab6c990`.
+- A final clean copied checkout under a different filesystem path and the Honolulu/German locale environment produced the same `2101495d0f02f66af431eca60dc6655b94857d73af5d8bc0281ac9f21ab6c990` hash.
+- `npm run test:browser` after closeout — **passed in Chromium and Firefox** over `file://`, including the shared shell, CSP/airgap, responsive, UI.6/UI.7, and existing security assertions.
+- The source-wide UI.9 regression scans all `.html`, `.js`, and `.css` files below `src/` and found no hand-transcribed UI.9 identifier, phase, or status metadata. The sealed shell retains only a noninteractive Tool map label and no sealed access.
+- The centralized product build-input graph was re-checked. It follows the complete local CommonJS graph from `scripts/build.js`, includes the imported `scripts/brand-assets.js` helper, rejects symlinked modules, and reports no approved-reference inputs in the real graph. The negative imported-helper fixture exits non-zero and identifies `brand-assets.js`.
+- The actual build-level malformed and duplicate `ROADMAP.md` fixtures both exit non-zero and emit no `build/coldbox.html`; parser-level negatives remain green.
+- Exact-head CI run `31961273138` has `head_sha` `5fc151b0aec46c9432697f5cb72e57aa19b5eba6`, status `completed`, conclusion `success`. I audited `.github/workflows/ci.yml` at the reviewed commit and confirmed successful Ubuntu and Windows build/test/lint/docs/vendor legs, cross-OS hash comparison, the Chromium + Firefox browser harness, and the separate approved-reference secret-scan job. The required local and CI test suites report zero skips. The conditionally skipped Release build attestation job is not a UI.9 acceptance or review requirement.
+- The exact-head secret-scan log independently witnesses temporary byte-checked copies of both frozen references: desktop SHA-256 `FB7FF0643BDA8F12A0A7E64DAEA91F51D74276CFC9BFB66C80BAAF874BB2DED9`, mobile SHA-256 `AF0C1FE08E689F755869A6EB4CC06DCAF0F4D44B7DFE6426D6A322B464C7D7F8`; `Clean: True`, `FindingCount: 0`, `SkippedCount: 0`.
+
+### 2. What I could not verify
+
+None for the UI.9 acceptance criteria. UI.9 does not claim a physical-device or iOS/Android acceptance gate; those remain separate human/device evidence and are not represented as completed by this review.
+
+### 3. Acceptance criteria
+
+| # | Criterion | Met? | Evidence |
+|---|---|---|---|
+| 1 | the tool map's content is generated at build time from this file and no item status is transcribed by hand anywhere in `src/` | ✅ | `scripts/build.js` injects `compileToolMap(projectRoot)` into `__COLDBOX_TOOL_MAP__`; the source-wide regression covers every HTML/JS/CSS source file; the browser harness and built-artifact test exercise the generated route. |
+| 2 | the build fails closed if this file cannot be parsed | ✅ | The isolated actual-build malformed and duplicate ROADMAP fixtures both exit non-zero and produce no product output; parser-level negatives also pass. |
+| 3 | the output is deterministic across two builds | ✅ | Post-closeout builds under differing timezone/locale and a different copied path matched at SHA-256 `2101495d0f02f66af431eca60dc6655b94857d73af5d8bc0281ac9f21ab6c990`; exact-head CI also passed both OS double-build and cross-OS comparison. |
+| 4 | `scripts/check-docs.js` covers the new relationship | ✅ | `checkToolMapRelationship()` is called by `scripts/check-docs.js`, requires the canonical ROADMAP/compiler relationship, and `npm run check-docs` passed with zero warnings. |
+| 5 | a status changed here and nowhere else changes the app on the next build | ✅ | The marker-only compiler regression observes the status change while preserving item identity; after the reviewer changed only UI.9 from `[~]` to `[x]`, the built artifact changed to the corresponding `complete` status and all tests remained green. |
+
+### 4. Findings
+
+None.
+
+### 5. Verdict rationale
+
+The remediation closes both prior blocking findings: source-wide inspection now prevents hand-transcribed UI.9 metadata, and the real build is proven to fail closed for malformed and duplicate roadmap inputs. The transitive build-input isolation guard and imported-helper negative are independently witnessed, the approved desktop/mobile reference scan is independently witnessed at the exact head with zero findings and skips, the final marker transition keeps the complete suite green, and every UI.9 criterion is met without weakening the parity contract. **PASS**.
