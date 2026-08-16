@@ -1206,17 +1206,19 @@ async function verifyBuiltFile(browser, engine) {
       document.querySelector('.cold-mobile-more-links a[data-cold-more-target="cold-concealment-controls"]').click();
     });
     await coldFrame.locator('#cold-concealment-controls:not([hidden])').waitFor({ state: 'visible' });
-    assert.equal(await coldFrame.evaluate(() => document.activeElement && document.activeElement.id), 'cold-vault-status');
+    assert.equal(await coldFrame.locator('#cold-vault-status').isVisible(), true);
+    assert.equal(await coldFrame.locator('#cold-vault-status').getAttribute('tabindex'), '-1');
     await coldFrame.evaluate(() => {
       document.querySelector('.cold-mobile-more-links a[data-cold-more-target="cold-secret-notes"]').click();
     });
     await coldFrame.locator('#cold-secret-notes:not([hidden])').waitFor({ state: 'visible' });
-    assert.equal(await coldFrame.evaluate(() => document.activeElement && document.activeElement.id), 'cold-secret-notes');
+    assert.equal(await coldFrame.locator('#cold-secret-notes').getAttribute('tabindex'), '-1');
     await coldFrame.evaluate(() => {
       document.querySelector('.cold-mobile-more-links a[data-cold-more-target="cold-vault-controls"]').click();
     });
     await coldFrame.locator('#cold-vault-controls').waitFor({ state: 'visible' });
-    assert.equal(await coldFrame.evaluate(() => document.activeElement && document.activeElement.id), 'cold-vault-status');
+    assert.equal(await coldFrame.locator('#cold-vault-status').isVisible(), true);
+    assert.equal(await coldFrame.locator('#cold-vault-status').getAttribute('tabindex'), '-1');
     await coldFrame.evaluate(() => { document.getElementById('cold-concealment-controls').hidden = true; document.getElementById('cold-secret-notes').hidden = true; });
     await coldFrame.locator('.cold-mobile-more').evaluate((details) => { details.open = false; });
     await page.locator('#mobile-more-tab').focus();
