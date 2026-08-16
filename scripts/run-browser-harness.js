@@ -578,6 +578,10 @@ async function prepareVaultCreation(page, coldFrame, name) {
 async function createPreparedVault(page, coldFrame, phrase, name) {
   await prepareVaultCreation(page, coldFrame, name);
   await coldFrame.locator('#cold-vault-name').fill(`${name} durable`);
+  // Keep the broad browser regression suite on its historical fast fixture;
+  // UI.10 still exposes and defaults the user-facing creation screen to the
+  // standard profile, while Firefox's repeated recovery rewrap remains bounded.
+  await coldFrame.locator('#cold-vault-kdf-profile').selectOption('fast');
   await coldFrame.locator('#cold-vault-passphrase').fill(phrase);
   await coldFrame.locator('#cold-vault-passphrase-confirm').fill(phrase);
   await coldFrame.locator('#cold-vault-create').click();
@@ -836,6 +840,7 @@ async function verifyBuiltFile(browser, engine) {
     // then the same prepared vault can succeed when confirmation matches.
     await prepareVaultCreation(page, coldFrame, 'Browser Round Trip');
     await coldFrame.locator('#cold-vault-name').fill('Browser Round Trip durable');
+    await coldFrame.locator('#cold-vault-kdf-profile').selectOption('fast');
     const passphraseHealth = coldFrame.locator('#cold-vault-passphrase-health');
     assert.equal(await passphraseHealth.isVisible(), true, `${engine}: vault creation must show live passphrase guidance`);
     assert.equal(await passphraseHealth.getAttribute('data-mode'), 'creation');
@@ -1499,6 +1504,7 @@ async function verifyVaultLibrary(browser, engine) {
     await page.locator('#vault-create-prepare').click();
     await coldFrame.locator('#cold-vault-create-confirmation:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
     await coldFrame.locator('#cold-vault-name').fill('Third durable name');
+    await coldFrame.locator('#cold-vault-kdf-profile').selectOption('fast');
     await coldFrame.locator('#cold-vault-passphrase').fill('third phrase');
     await coldFrame.locator('#cold-vault-passphrase-confirm').fill('third phrase');
     await coldFrame.locator('#cold-vault-create').click();
@@ -2909,6 +2915,7 @@ async function verifyKeyfileUiAndRegressions(browser, engine) {
     // B's bytes may actually unlock the vault this selection creates.
     await prepareVaultCreation(page, coldFrame, 'Keyfile Regression Vault');
     await coldFrame.locator('#cold-vault-name').fill('Keyfile Regression Vault durable');
+    await coldFrame.locator('#cold-vault-kdf-profile').selectOption('fast');
     await passphraseInput.fill('browser f1 regression phrase');
     await coldFrame.locator('#cold-vault-passphrase-confirm').fill('browser f1 regression phrase');
     await coldFrame.locator('#cold-vault-create').click();
