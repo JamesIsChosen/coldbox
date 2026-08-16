@@ -101,6 +101,7 @@ __COLDBOX_CONCEALMENT__
   var PROVENANCE_BUILD_DATE = __COLDBOX_BUILD_DATE__;
   var PROVENANCE_LICENSE_TEXT = __COLDBOX_LICENSE_TEXT__;
   var HELP_CONTENT = __COLDBOX_HELP_CONTENT__;
+  var TOOL_MAP = __COLDBOX_TOOL_MAP__;
   var HELP_DEPTHS = ['plain', 'working', 'technical'];
   var HELP_DEPTH_STORAGE_KEY = 'coldbox-help-depth';
   var helpDepthButtons = Array.prototype.slice.call(document.querySelectorAll('[data-help-depth]'));
@@ -404,7 +405,8 @@ __COLDBOX_CONCEALMENT__
     recovery: Object.freeze({ label: 'Recovery', title: 'Recovery', group: 'Tools' }),
     verify: Object.freeze({ label: 'Verify Bench', title: 'Verify Bench', group: 'Reference' }),
     reference: Object.freeze({ label: 'Reference', title: 'Reference', group: 'Reference' }),
-    learn: Object.freeze({ label: 'Learn', title: 'Learn', group: 'Reference' })
+    learn: Object.freeze({ label: 'Learn', title: 'Learn', group: 'Reference' }),
+    'tool-map': Object.freeze({ label: 'Tool map', title: 'Tool map', group: 'Reference' })
   });
 
   function readStoredTheme() {
@@ -838,6 +840,48 @@ __COLDBOX_CONCEALMENT__
       if (event.key === 'Escape') {
         closeGlossaryTooltips();
       }
+    });
+  }
+
+  function renderToolMap() {
+    var list = document.getElementById('tool-map-list');
+    if (!list || !TOOL_MAP || !Array.isArray(TOOL_MAP.items)) {
+      return;
+    }
+    while (list.firstChild) {
+      list.removeChild(list.firstChild);
+    }
+    TOOL_MAP.items.forEach(function (item) {
+      var entry = document.createElement('article');
+      entry.className = 'tool-map-entry tool-map-status-' + item.status;
+      entry.setAttribute('data-roadmap-id', item.id);
+
+      var heading = document.createElement('div');
+      heading.className = 'tool-map-entry-heading';
+      var title = document.createElement('h3');
+      title.textContent = item.id + ' — ' + item.title;
+      heading.appendChild(title);
+
+      var status = document.createElement('span');
+      status.className = 'tool-map-status';
+      status.textContent = item.status === 'complete'
+        ? 'Complete'
+        : item.status === 'in-progress' ? 'In progress' : 'Not started';
+      heading.appendChild(status);
+      entry.appendChild(heading);
+
+      var metadata = document.createElement('p');
+      metadata.className = 'tool-map-entry-meta';
+      var flags = [item.phase];
+      if (item.browserVerified) {
+        flags.push('Browser-verified');
+      }
+      if (item.humanRequired) {
+        flags.push('Human-required');
+      }
+      metadata.textContent = flags.join(' · ');
+      entry.appendChild(metadata);
+      list.appendChild(entry);
     });
   }
 
@@ -5852,6 +5896,7 @@ __COLDBOX_CONCEALMENT__
     'Locked'
   );
   initHelp();
+  renderToolMap();
   renderRoute(false);
   renderProvenancePanel();
   initProvenanceDropZone();

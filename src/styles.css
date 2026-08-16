@@ -1871,6 +1871,58 @@ samp {
   line-height: 1.45;
 }
 
+.tool-map-panel {
+  padding: 1rem;
+  border: var(--outline-width-thin) solid var(--outline);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow-hard);
+}
+
+.tool-map-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.tool-map-entry {
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--border);
+  border-left: 0.35rem solid var(--muted);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.tool-map-status-complete { border-left-color: var(--success); }
+.tool-map-status-in-progress { border-left-color: var(--accent); }
+.tool-map-status-not-started { border-left-color: var(--muted); }
+
+.tool-map-entry-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.tool-map-entry-heading h3 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.tool-map-status {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tool-map-entry-meta {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .panic-screen {
   display: grid;
   place-items: start center;

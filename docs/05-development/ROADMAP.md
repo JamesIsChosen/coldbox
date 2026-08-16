@@ -324,7 +324,7 @@ Every later roadmap item that activates a screen listed in the [approved referen
   Regroup the warm shell into the four warm groups. Additive; breaks nothing.
   **Accept:** Records, Money, Vault files and Reference each reach their built surfaces; existing warm behaviour and routes are preserved or explicitly redirected; no warm surface gains access to anything sealed.
 
-- [ ] **UI.9 Tool map compiled from ROADMAP.md**
+- [x] **UI.9 Tool map compiled from ROADMAP.md**
   *Deps: UI.5*
   A build step that compiles this file into the in-app tool map, the way [help-content.js](../../scripts/help-content.js) compiles `docs/`.
   **Accept:** the tool map's content is generated at build time from this file and no item status is transcribed by hand anywhere in `src/`; the build fails closed if this file cannot be parsed; the output is deterministic across two builds; `scripts/check-docs.js` covers the new relationship; a status changed here and nowhere else changes the app on the next build.

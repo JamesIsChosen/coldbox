@@ -480,7 +480,29 @@ function checkDependenciesMatchManifest(root) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 8: no TODO or TBD in user-facing docs
+// Check 8: the in-app tool map remains coupled to the canonical roadmap
+// ---------------------------------------------------------------------------
+
+function checkToolMapRelationship(root) {
+  const roadmapPath = path.join(root, 'docs', '05-development', 'ROADMAP.md');
+  const compilerPath = path.join(root, 'scripts', 'tool-map.js');
+  if (!fs.existsSync(roadmapPath) || !fs.existsSync(compilerPath)) {
+    return [];
+  }
+  const findings = [];
+  const roadmap = readFile(roadmapPath);
+  const compiler = readFile(compilerPath);
+  if (!compiler.includes('ROADMAP.md')) {
+    findings.push('scripts/tool-map.js does not identify docs/05-development/ROADMAP.md as its source');
+  }
+  if (!/^- \[[ x~]\] \*\*UI\.9(?:\s+—|\s+)/m.test(roadmap)) {
+    findings.push('ROADMAP.md has no parseable UI.9 tool-map item');
+  }
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
+// Check 9: no TODO or TBD in user-facing docs
 // ---------------------------------------------------------------------------
 
 function collectUserFacingDocs(root) {
@@ -590,6 +612,10 @@ function main() {
     failures.push(`[dependencies] ${finding}`);
   }
 
+  for (const finding of checkToolMapRelationship(root)) {
+    failures.push(`[tool-map] ${finding}`);
+  }
+
   for (const finding of checkNoTodoOrTbd(root)) {
     warnings.push(`[todo-tbd] ${finding}`);
   }
@@ -627,6 +653,7 @@ module.exports = {
   checkDocIndexConsistency,
   checkRoadmapIdReferences,
   checkDependenciesMatchManifest,
+  checkToolMapRelationship,
   checkNoTodoOrTbd,
   slugifyHeading,
   monthsBetween

@@ -13,7 +13,7 @@ const coldHtml = fs.readFileSync(path.join(root, 'src', 'cold', 'index.html'), '
 const coldCss = fs.readFileSync(path.join(root, 'src', 'cold', 'styles.css'), 'utf8');
 
 const groups = ['Forge', 'Derive', 'Split', 'Carry', 'Recover', 'Verify', 'Records', 'Money', 'Vault files', 'Reference'];
-const warmMoreInventory = ['Devices', 'QR Studio', 'Address bench', 'Prices &amp; FX · P3.1 · Phase 3', 'Tax &amp; exports · P3.9 · Phase 3', 'Reference · P4.10 · Phase 4', 'Verify this file', 'Provenance &amp; legal', 'Learn', 'Tool map · UI.9 · UI 9', 'Enter sealed realm'];
+const warmMoreInventory = ['Devices', 'QR Studio', 'Address bench', 'Prices &amp; FX · P3.1 · Phase 3', 'Tax &amp; exports · P3.9 · Phase 3', 'Reference · P4.10 · Phase 4', 'Verify this file', 'Provenance &amp; legal', 'Learn', 'Tool map', 'Enter sealed realm'];
 const coldMoreInventory = ['Vault session', 'Entropy Lab', 'Validate phrase', 'Child seeds · P1.5 · Phase 1', 'Passphrase Studio · P4.5 · Phase 4', 'Descriptors · P4.9 · Phase 4', 'SeedQR studio', 'Backup Health', 'Recovery Assistant · P4.3 · Phase 4', 'Verify Bench', 'Reveal hidden', 'Secret notes', 'No secret yet', 'Lock &amp; wipe'];
 
 test('UI.5 implements the ten approved realm navigation groups', () => {
@@ -71,7 +71,7 @@ test('mobile More sheets match the approved route inventories', () => {
   for (const item of coldMoreInventory) assert.ok(coldHtml.includes(item), `cold More inventory is missing ${item}`);
   assert.doesNotMatch(warmHtml, /<a class="mobile-tab" href="#(?:prices|portfolio)"/);
   assert.doesNotMatch(coldHtml, /SLIP-39 &amp; verification/);
-  for (const id of ['UI.9', 'P3.1', 'P3.9', 'P4.10']) {
+  for (const id of ['P3.1', 'P3.9', 'P4.10']) {
     assert.match(warmHtml, new RegExp(`mobile-more-link-unavailable[^>]*aria-disabled="true"[^>]*data-roadmap-id="${id.replace('.', '\\.') }"`));
   }
   for (const id of ['P1.5', 'P4.5', 'P4.9', 'P4.3']) {
@@ -88,12 +88,12 @@ test('mobile More sheets match the approved route inventories', () => {
 test('desktop rails expose the approved built and unavailable navigation entries', () => {
   for (const label of ['Verify this file', 'Tool map']) assert.ok(warmHtml.includes(`<span>${label}</span>`), `warm rail is missing ${label}`);
   assert.match(warmHtml, /<a class="nav-link" href="#reference" data-route="reference">[\s\S]*Verify this file/);
-  assert.match(warmHtml, /data-roadmap-id="UI\.9" data-phase="UI 9"[\s\S]*Tool map/);
+  assert.match(warmHtml, /<a class="nav-link" href="#tool-map" data-route="tool-map"[\s\S]*Tool map/);
   for (const label of ['Reveal hidden', 'Active secret', 'Lock / wipe', 'Tool map']) assert.ok(coldHtml.includes(`<span>${label}</span>`), `cold rail is missing ${label}`);
   assert.match(coldHtml, /href="#cold-concealment-controls" data-cold-more-target="cold-concealment-controls"[\s\S]*Reveal hidden/);
   assert.match(coldHtml, /href="#cold-secret-switcher"[\s\S]*Active secret/);
   assert.match(coldHtml, /href="#cold-vault-controls" data-cold-more-target="cold-vault-controls"[\s\S]*Lock \/ wipe/);
-  assert.match(coldHtml, /data-roadmap-id="UI\.9" data-phase="UI 9"[\s\S]*Tool map/);
+  assert.match(coldHtml, /class="cold-nav-link cold-nav-link-unavailable" aria-disabled="true"[\s\S]*Tool map/);
 });
 
 test('warm and cold shells carry the same chrome vocabulary', () => {

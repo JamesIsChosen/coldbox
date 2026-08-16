@@ -8,6 +8,7 @@ const { spawnSync } = require('node:child_process');
 const { createCryptoVendorSource } = require('./crypto-bundle.js');
 const { createFontFaceSource } = require('./font-bundle.js');
 const { compileHelpContent } = require('./help-content.js');
+const { compileToolMap } = require('./tool-map.js');
 const { createFaviconLinks, createWordmarkMarkup } = require('./brand-assets.js');
 const { BUILD_DATE_UNKNOWN, parseCommitDateOutput } = require('./build-date.js');
 
@@ -306,6 +307,11 @@ function assemble() {
   );
   mainScript = injectOnce(
     mainScript,
+    '__COLDBOX_TOOL_MAP__',
+    jsonScriptLiteral(compileToolMap(projectRoot))
+  );
+  mainScript = injectOnce(
+    mainScript,
     '__COLDBOX_LICENSE_TEXT__',
     jsonScriptLiteral(readLicenseText())
   );
@@ -345,6 +351,7 @@ function assemble() {
     '__COLDBOX_FRAME_SCRIPT_HASHES__',
     '__COLDBOX_FRAME_STYLE_HASHES__',
     '__COLDBOX_HELP_CONTENT__',
+    '__COLDBOX_TOOL_MAP__',
     '__COLDBOX_LICENSE_TEXT__',
     '__COLDBOX_ADDRESS_VERIFICATION__',
     '__COLDBOX_CLIPBOARD_CANARY__',
