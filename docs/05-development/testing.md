@@ -132,6 +132,79 @@ The KDF status must remain explicit: a missing `'wasm-unsafe-eval'` causes the A
 
 ---
 
+## v1 security-hardening and Bitcoin-wallet certification
+
+The future v1 requirements are single-sourced in
+[v1-security-wallet-contract.md](../01-spec/v1-security-wallet-contract.md)
+and the SEC/WAL roadmap items. This section defines how those claims are tested
+once implemented; it does not claim the current pre-WAL app can spend.
+
+### Level 3 idle-state invariant
+
+After every secret operation, tests inspect the cold session's owned state and
+assert that the public wallet may remain usable while seed/private-key/
+BIP-39-passphrase/secret-note plaintext plus DEK/KEK/secret-wrap key/REK are not
+retained as session capabilities. Failure, panic, timeout and teardown exercise
+the same invariant.
+
+JavaScript zeroization is still best-effort; tests prove application ownership
+of references/buffers is dropped, not that a garbage collector or OS never
+copied bytes.
+
+### Adversarial parsers
+
+Deterministic seeded fuzz/property tests grow with the roadmap. For v1 they
+cover at least vault v2/migration, protocol/public projection, descriptors,
+raw Bitcoin transactions, PSBT v0/v2/Taproot fields, node/API wallet responses,
+RBF/CPFP relationships and reorg/conflict state.
+
+Required outcomes:
+
+- bounded input size/count/resource use;
+- no uncaught parser exception/hang from arbitrary bytes;
+- no duplicate/unknown-field confusion;
+- no partial authentication/authorization/signing;
+- no silent format/sighash/script downgrade;
+- mutation of reviewed transaction semantics invalidates approval.
+
+### Differential Bitcoin tests
+
+For every supported spend family, compare Coldbox against independent Bitcoin
+implementations/vectors for:
+
+- descriptor-derived scripts/addresses;
+- transaction serialization and txid;
+- input/output values and fees;
+- transaction weight/vsize calculation;
+- sighash;
+- ECDSA/Schnorr signatures where deterministic comparison is appropriate;
+- PSBT parse/update/finalization behavior.
+
+A self-generated Coldbox fixture is regression evidence, not independent
+correctness evidence.
+
+### Wallet state-machine tests
+
+Cover:
+
+- address discovery/gap progression;
+- UTXO ownership and spendability transitions;
+- freeze/reserve/unreserve;
+- source staleness/disagreement;
+- mempool -> confirmed;
+- replacement/conflict/drop;
+- reorg rollback;
+- exact-byte broadcast identity;
+- RBF;
+- CPFP;
+- stale-vault/pending-spend reconciliation.
+
+### Physical wallet certification
+
+WAL.15 adds safe test-network/regtest end-to-end wallet checks on the supported
+execution matrix. The professional REL.2 audit and REL.4 device/release gate
+remain separate. Real-value mainnet spending is never required just to prove a
+test.
 ## Browser harness — automated
 
 The UI.5 shell checkpoint also asserts the ten approved warm/cold navigation
@@ -221,13 +294,20 @@ That first line is the most common bug in portfolio software and silently corrup
 
 ## Running
 
+Current committed commands:
+
 ```bash
-npm test                  # all automated
-npm run test:vectors
-npm run test:security
-npm run test:portfolio
-npm run test:matrix       # interactive manual prompts
+npm run verify-vendor
+npm run lint
+npm run check-docs
+npm test
+npm run build
+npm run test:browser
 ```
+
+Roadmap items may add dedicated fuzz/security/wallet commands later; when they
+do, this section and `package.json` change in the same PR. Documentation must
+not advertise a script that does not exist.
 
 ## CI
 

@@ -58,6 +58,23 @@ Adoption status changes as wallets ship support and proposals activate. Re-check
 
 ---
 
+## Accepted v1 wallet targets — not yet implemented
+
+These rows describe the accepted WAL roadmap target, not current shipped
+support. They move into the implemented sections only in the PR that proves
+their behavior.
+
+| Standard | v1 target |
+|---|---|
+| [BIP-174](https://github.com/bitcoin/bips/blob/master/bip-0174.mediawiki) PSBT | Bounded import/inspection/sign/export for supported singlesig wallet spends |
+| [BIP-370](https://github.com/bitcoin/bips/blob/master/bip-0370.mediawiki) PSBTv2 | Same security envelope as internally constructed transactions |
+| [BIP-371](https://github.com/bitcoin/bips/blob/master/bip-0371.mediawiki) Taproot PSBT fields | Fields required by the accepted Taproot singlesig path |
+| [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) Schnorr | Signing/vector coverage for supported Taproot key-path spends |
+| [BIP-341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki) Taproot | Transaction/sighash semantics needed by supported v1 spends |
+
+Existing descriptor and BIP-329 rows remain the source for their already
+tracked/implemented portions; WAL.1/WAL.13 extend their wallet use without
+pretending those future spend paths are already shipped.
 ## Tracked, not implemented
 
 | Standard | Status | Position |

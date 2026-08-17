@@ -1,6 +1,6 @@
 # ADR-0006: A companion to hardware wallets, not a replacement
 
-**Status:** Accepted
+**Status:** Superseded for the v1 roadmap by [ADR-0051](0051-full-bitcoin-wallet-v1.md); current pre-WAL implementation still behaves as recorded here
 **Date:** 2026-08-02
 
 ---

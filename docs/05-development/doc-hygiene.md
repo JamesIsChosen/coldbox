@@ -22,6 +22,7 @@ If a fact appears in two places, it will eventually disagree with itself. Other 
 | Why a decision was made | [ADRs](adr/) | Links only |
 | Term definitions | [glossary.md](../00-overview/glossary.md) | Links only |
 | Threats defended and not | [threat-model.md](../02-security/threat-model.md) | Links only |
+| Accepted future v1 security/wallet requirements | [v1-security-wallet-contract.md](../01-spec/v1-security-wallet-contract.md) | Links only; current-behavior docs change only when implementation lands |
 
 **Applying this in practice:** before writing a fact into a document, ask whether it already lives somewhere. If it does, link. If the link would be awkward to read around, that's a signal the text should be restructured, not duplicated.
 

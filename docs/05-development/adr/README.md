@@ -13,7 +13,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0003](0003-argon2id-parameters.md) | Argon2id at 64 MiB as the default KDF | Accepted |
 | [0004](0004-median-not-mean-prices.md) | Aggregate prices by median, not mean | Accepted |
 | [0005](0005-no-duress-compartment.md) | No duress or decoy compartment | Accepted (rejected feature) |
-| [0006](0006-companion-not-replacement.md) | A companion to hardware wallets, not a replacement | Accepted |
+| [0006](0006-companion-not-replacement.md) | A companion to hardware wallets, not a replacement | Superseded for v1 roadmap by 0051; current pre-WAL behavior retained |
 | [0007](0007-headless-browser-harness.md) | Headless browser harness as a dev dependency | Accepted |
 | [0008](0008-csp-blocked-network-signals.md) | CSP-blocked network signals are not a throw contract | Accepted |
 | [0009](0009-comic-visual-language.md) | Comic visual language, with security surfaces exempted | Accepted · amended by 0044 |
@@ -26,7 +26,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0016](0016-help-content-compiler-and-search.md) | Help content is compiled from block-scoped markdown, and search text is derived at runtime, not precomputed | Accepted |
 | [0017](0017-ci-workflow-structure.md) | CI workflow structure — two-OS matrix, a separate always-run browser job, and gated release attestation | Accepted |
 | [0018](0018-agplv3-license.md) | AGPLv3 rather than MIT, and what §5(d) obliges the app to display | Accepted |
-| [0019](0019-no-transaction-workbench.md) | Transaction construction, broadcast relay, and clear signing | Accepted (rejected feature) |
+| [0019](0019-no-transaction-workbench.md) | Transaction construction, broadcast relay, and clear signing | Superseded in part for v1 Bitcoin wallet by 0051; historical/current pre-WAL record retained |
 | [0020](0020-injected-providers-rejected-and-neutered.md) | Injected wallet providers — rejected as a feature, neutered as a threat | Accepted |
 | [0021](0021-clipboard-address-verification.md) | Clipboard address verification — warm clipboard, cold authority, two separate claims | Accepted |
 | [0022](0022-entropy-lab-mixing.md) | Entropy Lab accumulation and mixing — integer accounting, XOR-then-hash | Accepted |
@@ -52,11 +52,17 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0042](0042-conservative-backup-health.md) | Conservative Backup Health from public metadata | Accepted |
 | [0043](0043-scoped-mobile-validation-deferral.md) | Scoped mobile-validation deferral for item review | Accepted |
 | [0044](0044-panel-scoped-calm-rule.md) | The calm rule is scoped to the panel, not the realm | Accepted |
-| [0045](0045-released-secret-model.md) | One released secret per session, and every cold tool is a lens on it | Accepted |
+| [0045](0045-released-secret-model.md) | One released secret per session, and every cold tool is a lens on it | Current UI model; plaintext lifetime superseded by 0050 at SEC.1 |
 | [0046](0046-vault-name-availability-at-unlock.md) | Vault naming moves into the sealed realm, and the name leaves the filesystem | Accepted |
 | [0047](0047-brand-assets-traced-once-and-embedded.md) | Brand artwork is traced once, committed as source, and embedded from `assets/` | Accepted |
 | [0048](0048-ci-as-independent-execution.md) | CI at the reviewed commit satisfies independent execution | Accepted |
 | [0049](0049-approved-mock-parity-contract.md) | Approved mockups are immutable visual acceptance evidence | Accepted |
+| [0050](0050-level-3-secret-record-vault.md) | Level 3 secret-record vault and bounded secret operations | Accepted · future v1 |
+| [0051](0051-full-bitcoin-wallet-v1.md) | Coldbox v1 becomes a full single-signature Bitcoin wallet | Accepted · future v1 |
+| [0052](0052-warm-network-cold-wallet-authority.md) | Warm network worker, cold wallet authority | Accepted · future v1 |
+| [0053](0053-strict-spending-envelope.md) | Cold-owned transaction construction and strict spending envelope | Accepted · future v1 |
+| [0054](0054-signing-lifecycle-and-exfiltration-boundary.md) | Level 3 signing lifecycle and signature-exfiltration boundary | Accepted · future v1 |
+| [0055](0055-chain-state-trust-and-privacy.md) | Bitcoin chain-state trust, privacy and local spend conflicts | Accepted · future v1 |
 
 ## When to write one
 

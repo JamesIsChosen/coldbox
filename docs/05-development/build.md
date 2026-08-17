@@ -134,7 +134,7 @@ Full checklist in [release-checklist.md](release-checklist.md). Summary:
 npm version 1.0.0
 npm run build
 npm test
-npm run test-matrix          # manual device testing prompts
+# Complete the manual device matrix in docs/05-development/testing.md
 
 shasum -a 256 build/coldbox.html > coldbox-v1.0.0.html.sha256
 gpg --detach-sign --armor build/coldbox.html

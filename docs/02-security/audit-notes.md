@@ -98,20 +98,41 @@ Documented in [threat-model.md](threat-model.md). Not bugs:
 
 ---
 
-## Scope for a paid audit
+## Scope and timing for the paid v1 audit
+
+The professional audit is a **v1 release-candidate gate**, not an early design
+review and not a post-release courtesy. It occurs only after the complete
+single-signature Bitcoin wallet and SEC hardening are implemented, and before
+the public `v1.0.0` tag. See
+[v1-security-wallet-contract.md](../01-spec/v1-security-wallet-contract.md)
+and REL.1–REL.4 in the roadmap.
 
 Priority order if the budget is limited:
 
 | Priority | Scope | Rationale |
 |---|---|---|
-| 1 | Realm boundary and message schema | The central claim |
-| 2 | Vault format and KDF | Protects everything at rest |
-| 3 | Derivation correctness | Silent wrongness loses funds |
-| 4 | Shamir implementations | Backup failure loses funds |
-| 5 | DOM secret handling | Common source of real bugs |
-| 6 | Build reproducibility | Underpins all verification |
+| 1 | Realm boundary and message schema, including the finalized-transaction output | The central secret/network boundary |
+| 2 | Level 3 vault v2, migration, KDF and recovery | Protects secrets at rest and bounds key residency |
+| 3 | Bitcoin wallet identity, descriptors, UTXO ownership and chain-state trust | Defines what the wallet believes it can spend |
+| 4 | Transaction parser/builder, fee/coin selection and exact review binding | A valid signature on the wrong transaction still loses funds |
+| 5 | ECDSA/Schnorr signing, sighash and signature-exfiltration boundary | Direct money-movement authority |
+| 6 | PSBT, RBF, CPFP, pending/conflict/reorg state | Complex transaction lifecycle |
+| 7 | Derivation and backup/recovery schemes | Silent wrongness or recovery failure loses funds |
+| 8 | DOM/TCB secret handling | Common implementation escape/injection surface |
+| 9 | Fuzz/property/differential tests and resource bounds | Exercises malformed/adversarial inputs |
+| 10 | Build/release reproducibility and supply chain | Establishes that users receive the reviewed code |
 
-An auditor should be given: this document, [architecture.md](../01-spec/architecture.md), [vault-format.md](../01-spec/vault-format.md), [crypto-choices.md](crypto-choices.md), and the ADRs.
+The auditor receives: this document,
+[v1-security-wallet-contract.md](../01-spec/v1-security-wallet-contract.md),
+[architecture.md](../01-spec/architecture.md),
+[vault-format.md](../01-spec/vault-format.md),
+[crypto-choices.md](crypto-choices.md), the transaction/signing ADRs, the
+exact release-candidate commit/artifact/hash, fuzz/differential evidence, and
+the preserved review history.
+
+**No unresolved audit finding of any severity ships in v1.** If evidence causes
+the auditor to withdraw/reclassify something as not a finding, preserve that
+disposition; otherwise remediate and regression-test it.
 
 ---
 
@@ -134,3 +155,7 @@ Findings via [SECURITY.md](../../SECURITY.md). Anything demonstrating a secret c
 | Date | Auditor | Scope | Report |
 |---|---|---|---|
 | — | None yet | — | — |
+
+The planned first professional entry is REL.2 and must name the exact audited
+release-candidate commit. Until that row contains a real audit, Coldbox remains
+truthfully unaudited.

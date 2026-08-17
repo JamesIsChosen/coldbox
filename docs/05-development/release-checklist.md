@@ -8,11 +8,28 @@ Copy this into the release issue and tick as you go.
 
 ## Pre-release
 
+### v1 security and wallet gates
+
+For the first `v1.0.0`, these are hard gates before ordinary release mechanics:
+
+- [ ] SEC.9 is `[x]` — the security-hardening campaign is independently certified
+- [ ] WAL.15 is `[x]` — the full single-signature Bitcoin wallet is independently certified
+- [ ] Every remaining pre-v1 roadmap item through Phase 5 is `[x]`
+- [ ] REL.1 feature freeze identifies the exact release-candidate commit/artifact/hash
+- [ ] REL.2 professional external audit covers the complete release candidate, including transaction construction/signing/broadcast state
+- [ ] REL.3 has zero unresolved audit findings of any severity
+- [ ] REL.4 fresh independent review, physical device matrix, release-signing rehearsal and downloaded-artifact verification pass
+- [ ] No code has changed outside the audited/re-reviewed line after closure
+
+Post-v1 hardware-signer and multisig work (W2.*) is explicitly **not** a v1 gate.
+
 ### Code
 
-- [ ] All tests pass: `npm test`
-- [ ] Security tests pass: `npm run test:security`
-- [ ] Vector tests pass for every chain
+- [ ] All automated tests pass: `npm test`
+- [ ] `npm run lint` passes
+- [ ] `npm run check-docs` passes
+- [ ] `npm run test:browser` passes in the required engines
+- [ ] Every cryptographic/transaction function touched by the release has independent vector/differential coverage in the committed test suite
 - [ ] `npm run verify-vendor` passes
 - [ ] Forbidden-construct lint passes (no `eval`, `new Function`, `import`, external URLs)
 - [ ] No TODO or FIXME in security-relevant paths
@@ -60,15 +77,23 @@ Per platform: cold realm/handshake healthy · capability panel accurate · **two
 
 ### Security review
 
-- [ ] CSP unchanged, or change has an ADR and review
-- [ ] Message schema unchanged, or change reviewed for secret-carrying capability
-- [ ] No new `connect-src` host, or it's justified and documented
-- [ ] Threat model still accurate
+- [ ] CSP matches the reviewed architecture; cold remains `connect-src 'none'`
+- [ ] Message schema matches the reviewed finite protocol, including any finalized-Bitcoin-transaction broadcast type
+- [ ] Every `connect-src` host is justified in `api-sources.md`, source-provenance behavior and in-app provenance
+- [ ] Level 3 idle-state invariant holds: no seed/private-key plaintext or universal secret-decryption capability remains merely because the public wallet is open
+- [ ] Exact review-to-sign binding and signature self-verification tests pass
+- [ ] Fee/coin-selection/change/spending-policy negative tests pass
+- [ ] PSBT/raw-transaction/node-response fuzz smoke passes
+- [ ] RBF/CPFP/reorg/conflict/pending-reservation tests pass
+- [ ] Threat model still accurate, including the malicious-build signature-exfiltration residual
+- [ ] Professional audit report names this release-candidate line and has no unresolved finding
 - [ ] Open security advisories addressed
 
 ---
 
 ## Build and sign
+
+Do not run this section for v1 until REL.4 is `[x]`.
 
 ```bash
 npm version 1.0.0
