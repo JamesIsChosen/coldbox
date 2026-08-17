@@ -63,6 +63,9 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0053](0053-strict-spending-envelope.md) | Cold-owned transaction construction and strict spending envelope | Accepted · future v1 |
 | [0054](0054-signing-lifecycle-and-exfiltration-boundary.md) | Level 3 signing lifecycle and signature-exfiltration boundary | Accepted · future v1 |
 | [0055](0055-chain-state-trust-and-privacy.md) | Bitcoin chain-state trust, privacy and local spend conflicts | Accepted · future v1 |
+| [0056](0056-seed-lineage-signing-and-secret-qr.md) | Seed lineage, signing authority and sealed SeedQR handoff | Accepted · future v1 |
+| [0057](0057-structured-public-identity-graph.md) | Structured public wallet/account/address identity graph | Accepted · future v1 |
+| [0058](0058-vault-credential-policy-and-generator.md) | Vault credential minimum, offline strength checks and sealed generator | Accepted · future v1 |
 
 ## When to write one
 

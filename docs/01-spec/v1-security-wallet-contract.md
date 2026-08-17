@@ -15,7 +15,7 @@ describes what shipped, not what was imagined.
 
 The v1 sequence is:
 
-`UI.11 -> SEC.1..SEC.9 -> WAL.1..WAL.15 -> existing pre-v1 roadmap (P2.8, P3, P4, P5) -> REL.1..REL.5 -> v1.0.0`
+`UI.11 -> SEC.1..SEC.9 -> SEED.1..SEED.5 -> WAL.1..WAL.15 -> existing pre-v1 roadmap (P2.8, P3, P4, P5) -> REL.1..REL.5 -> v1.0.0`
 
 The professional security audit occurs on the complete v1 release candidate,
 after wallet signing exists and before the v1.0.0 tag.
@@ -226,6 +226,219 @@ The profile includes, as applicable:
 - independent backups and recovery rehearsal.
 
 It never claims to make a compromised operating system safe.
+
+### 2.9 Vault credential policy and sealed generator
+
+Before v1, new vault creation and vault-credential changes use an enforceable
+minimum rather than accepting arbitrarily short secrets.
+
+A **user-chosen** vault password/passphrase must contain at least **15 Unicode
+code points** after the credential's defined normalization step. Coldbox does not
+require an uppercase letter, lowercase letter, number, symbol, or any other
+composition recipe. It accepts spaces and broad printable input, supports at
+least 64 characters without truncation, and compares the complete value.
+
+The 15-character floor applies to **new creation and credential replacement**.
+It does not make an older vault with a shorter credential unreadable. Legacy
+unlock keeps the historical exact semantics needed to open the file, then warns
+that the credential is below the current policy and offers an explicit
+credential-upgrade/DEK-rewrap flow. The old unlock record is not destroyed until
+the upgraded copy passes verification.
+
+User-chosen credentials are checked locally against a bounded embedded denylist
+of very common/compromised whole-password values plus Coldbox-specific obvious
+guesses. No candidate password, hash prefix or other derivative is sent to an
+online breach service. The denylist is a minimum safety filter, not a claim that
+an unlisted human choice is strong.
+
+Coldbox does not display a fake exact entropy number for human-chosen passwords.
+Its health feedback emphasizes minimum length, common-value rejection and
+actionable warnings. KDF cost and password quality are displayed as separate
+properties: a strong Argon2id profile does not turn a weak password into a strong
+one.
+
+The sealed vault-creation/change UI also offers a built-in generator using only
+the cold realm's required CSPRNG. Production generation uses unbiased sampling
+with no modulo bias and never `Math.random`.
+
+The generator has three user-facing formats:
+
+1. **Portable random password** — a high-entropy letters/digits alphabet chosen
+   for reliable manual entry and reduced ambiguous glyphs.
+2. **Full random password** — a larger reviewed printable-ASCII alphabet,
+   including symbols, for more compact high entropy.
+3. **Word passphrase** — independently sampled words from a pinned, reviewed
+   large Diceware/EFF-style word list with an unambiguous separator.
+
+A single **strength slider** controls all three formats. Every slider position
+produces a strong generated credential; it is not allowed to slide below the
+new-vault policy. The implementation documents the exact target search-space,
+alphabet/list size and resulting character/word count for every stop. The
+recommended/default stop targets at least 128 bits of generator search space;
+lower convenience stops remain at least 80 bits and are labeled with their
+reduced margin; higher stops extend the search space without arbitrary
+composition rules. Exact bit/search-space statements are shown only for
+machine-generated values whose sampling process is known.
+
+Changing format or slider position generates a fresh value; it does not
+deterministically transform the previous password. A generated value is shown
+only inside the sealed realm. Copy is opt-in, visibly warned and uses the
+existing best-effort clipboard-clear behavior; direct warm-shell messages,
+telemetry and network checks are forbidden.
+
+Generated vault credentials require the user to acknowledge that they have
+stored the credential safely before final vault creation/change. Coldbox never
+stores a recoverable copy of the vault password for the user and never implies
+that Seed/SLIP-39 backups can recover a lost vault password unless the separately
+specified vault-recovery method actually applies.
+
+The generator core is shared with the later general Passphrase Studio rather
+than implemented twice. SEC.7a delivers the security-critical vault
+creation/change surface first; P4.5 later exposes the same reviewed generator for
+general-purpose non-vault use.
+
+### 2.10 Seed identity, lineage, signing authority and secret QR handoff
+
+Before Bitcoin-wallet implementation, Coldbox turns seed identity and
+deterministic child lineage into first-class authenticated public metadata around
+Level 3 sealed records. A user must be able to answer "what is this seed, what is
+it for, what depends on it, and where is it used?" without decrypting the seed
+phrase.
+
+A sealed Seed record may expose only non-secret identification metadata. The
+future identity includes, where applicable:
+
+- stable random record id and human label;
+- BIP-32 master fingerprint, word count, language, origin and passphrase-presence
+  boolean;
+- role: independent seed, BIP-85 entropy root, or BIP-85 child;
+- for a child, parent Seed id plus the complete BIP-85 application recipe needed
+  to reproduce it, including application parameters and child index;
+- human purpose/use, asset/network context and tags;
+- signing-authority mode;
+- links to Wallet, Account, Device and BackupRecord entities rather than copied
+  duplicate facts;
+- applicable public wallet identity such as key origin, account xpub, output
+  descriptor and canonical public addresses;
+- verification state/timestamps; and
+- a bounded non-secret identification note.
+
+The existing note concepts are reconciled rather than removed. `Seed.notes`
+means **public identification context** such as "Bitcoin savings / SeedSigner /
+child 1." It is deliberately available while the seed remains sealed and must
+reject mnemonic/xprv/passphrase/share-shaped content. The general Note entity
+remains available with public or secret visibility. Sensitive passphrase hints
+and recovery instructions belong in linked secret Notes. A `hasPassphrase`
+boolean may remain public; the passphrase itself never does.
+
+A BIP-85 root is high-authority derivation/recovery material, not a routine
+signing authority by default. A child is its own Seed identity and chooses one
+of three signing modes:
+
+- **external-only:** Coldbox retains lineage plus verified public identity while
+  the child secret lives only on an external signer;
+- **stored-child:** the child mnemonic/passphrase is a separate Level 3 secret
+  record with its own REK, and Coldbox signs by opening only that child; or
+- **derive-from-root:** no child secret is persisted, but the user explicitly
+  authorizes Coldbox to open the root for one exact approved spend, derive only
+  the selected BIP-85 child, verify the child's registered public identity, sign
+  through WAL.8, and wipe root, child and spend-key material immediately.
+
+The derive-from-root mode is intentionally higher-friction because opening the
+root temporarily exposes authority capable of regenerating every child. It is
+never silently selected, cached as a session capability or used for background
+signing. Changing signing mode is an authenticated security-sensitive action.
+
+BIP-85 requires private-root authority because its application path is fully
+hardened and the derived private key is transformed into application entropy.
+A parent xpub therefore is **not** a child-seed recovery mechanism. Coldbox never
+implies that root xpub plus child index can recreate a BIP-85 child.
+
+For an existing child already loaded into an external device, Coldbox can attach
+it without importing the child mnemonic. During an explicit bounded root
+verification it derives the specified child, derives expected public identity,
+compares more than the 32-bit fingerprint alone, records the relationship, then
+drops all transient secret material.
+
+#### Secret QR handoff
+
+Every eligible stored root or child Seed record can invoke Standard SeedQR or
+Compact SeedQR directly from its sealed identity view. A derive-from-root child
+can also invoke SeedQR after the same fresh high-authority root authorization and
+child-identity verification used by recovery/signing. An external-only child
+cannot display a secret QR unless Coldbox has an authorized root path capable of
+rederiving that exact child.
+
+The interaction deliberately mirrors the established floating-record-menu visual
+language, but **not its warm implementation**. Secret QR rendering, QR payload,
+acknowledgement, timers and teardown live entirely inside the cold realm. No
+secret QR data, pixels, encoded payload or derived mnemonic crosses to the warm
+shell.
+
+The quick action defaults to display-only and requires fresh secret
+authorization plus an explicit plaintext-secret acknowledgement. Closing it,
+timeout, lock, panic, realm teardown or switching subjects clears the QR and
+drops transient secret material. Existing cold-local export/print functionality
+may remain available as a secondary action with the existing printer/download
+retention warnings.
+
+A SeedQR encodes the BIP-39 mnemonic/entropy, **not a BIP-39 passphrase**.
+For a passphrase-protected root or child the UI must say plainly "mnemonic only;
+passphrase not included." Coldbox does not invent a combined mnemonic+passphrase
+QR format or imply that scanning the SeedQR alone recreates a passphrase wallet.
+
+Root QR display carries the high-authority warning because disclosure of the root
+can regenerate every deterministic child. Child QR display names the selected
+child, its fingerprint, lineage recipe and purpose before reveal so a user does
+not load the wrong secret into a stateless signer.
+
+### 2.11 Structured public wallet, account and address identity
+
+The same identification principle applies to public addresses. Notes remain
+useful context, but the user must not have to infer machine-relevant identity
+from prose.
+
+Wallet, Account and Address records form a public relationship graph. For an
+address, the UI resolves and displays, where applicable:
+
+- human label and a dedicated bounded **purpose** field;
+- finite role such as receive, change, deposit, withdrawal/payout, donation,
+  service/custodial, or other;
+- asset/network;
+- owning Wallet and Account;
+- derivation path/index or explicit imported/manual origin;
+- linked Seed identity, including BIP-85 root/child lineage when one exists;
+- linked Device records resolved through the wallet/seed relationship;
+- verification state and the exact xpub/descriptor/public identity it was
+  verified against;
+- used/reuse status;
+- balance snapshot amount, source and age;
+- tags; and
+- optional notes as supplemental human context.
+
+Machine-owned facts are linked, not copied into notes. Device firmware/location,
+backup health, wallet descriptor and seed lineage remain owned by their
+respective records and are rendered into the address detail view by reference.
+
+The public floating record menu remains the public-address QR surface. An address
+QR contains only the selected public address/payment-URI data and must visibly
+name the same structured address identity so "show QR" cannot silently detach
+from the record the user selected.
+
+Applicable child/account xpub, key-origin information and output descriptor are
+also explicit pre-v1 exports while all seed records remain sealed. Export warns
+that an xpub/descriptor can reveal an address graph and transaction history even
+though it cannot spend. Bitcoin descriptor export includes origin
+fingerprint/path and round-trips against an independent parser.
+
+This public identity graph applies to watch-only/custodial/manual records too.
+Absence of a seed lineage is an explicit valid state rather than a reason to put
+ownership facts into notes.
+
+Index or identity conflicts never silently overwrite verified relationships. A
+changed xpub/descriptor, stale derivation basis, duplicate BIP-85 recipe or
+conflicting address ownership moves the record to a visible stale/conflict state
+until reconciled.
 
 ---
 
