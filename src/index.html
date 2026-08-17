@@ -26,13 +26,21 @@ __COLDBOX_WORDMARK__
         <a class="realm-switcher-button" href="#cold-realm-status">✻ Sealed realm</a>
       </div>
       <button class="mobile-more-top" id="mobile-more-top" type="button" aria-controls="mobile-more-menu" aria-expanded="false" aria-label="More sections">•••</button>
-      <nav class="app-bar-actions" aria-label="Quick links">
-        <a class="comic-btn" href="#vault" data-route="vault">Vault</a>
-        <a class="comic-btn" href="#cold-realm-status">Seed Forge</a>
-        <button class="comic-btn comic-btn-toggle" id="theme-toggle" type="button" aria-pressed="false">
-          <span class="theme-toggle-icon" aria-hidden="true">☼</span>
-          <span id="theme-toggle-label">Light mode</span>
-        </button>
+      <nav class="app-bar-actions cold-app-bar-actions" aria-label="Application controls">
+        <a class="comic-btn cold-top-action" href="#vault" data-route="vault">◌ Libraries</a>
+        <div class="cold-settings-wrap">
+          <button class="comic-btn cold-top-action" id="cold-settings-button" type="button" aria-controls="cold-settings-panel" aria-expanded="false">⚙ Settings</button>
+          <div class="cold-settings-panel" id="cold-settings-panel" hidden>
+            <button type="button" class="cold-settings-panel-button" id="theme-toggle" aria-pressed="false">
+              <span class="theme-toggle-icon" aria-hidden="true">☼</span>
+              <span id="theme-toggle-label">Light mode</span>
+            </button>
+            <button type="button" id="cold-settings-privacy">Privacy blur</button>
+          </div>
+        </div>
+        <span class="cold-connect-status"><span class="cold-connect-dot" aria-hidden="true"></span> <span id="cold-connect-copy">Network: prices only</span></span>
+        <button class="comic-btn cold-top-action cold-lock-all" id="cold-lock-all" type="button">Lock all</button>
+        <button class="comic-btn cold-top-action cold-panic" id="cold-panic" type="button">Panic</button>
       </nav>
     </header>
 

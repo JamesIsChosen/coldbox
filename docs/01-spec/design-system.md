@@ -184,7 +184,7 @@ Chrome, not a security surface: the tilts and the button press are fine here bec
 
 **The badge says what is true.** The mockup's read `AIR-GAPPED VAULT v2.0` — the wrong noun and a version that does not exist. It now reads `Pre-release · Not audited`, which is what the README leads with and what §2 requires.
 
-**Nothing in the bar may be a control that does not work.** The mockup had a red `LOCK ALL`; there is no lock to engage until P0.13, so it is not there. A prominent red button that does nothing is worse than an absent one, and worst of all on a tool whose entire pitch is that its claims are verifiable. Quick links point at real routes and are hidden below `720px`, where the tab bar and More menu already reach everything.
+**Nothing in the bar may be a control that does not work.** The warm shell keeps its real quick links. The sealed masthead uses the realm-specific `Libraries`, `Settings`, truthful `connect-src: none`, `Lock all`, and `Panic` controls: `Lock all` routes through the existing normal lock warning, `Settings` exposes the existing theme and privacy controls, and `Panic` uses the existing emergency hide path. These controls are hidden below `720px`, where the mobile controls already reach the same functions.
 
 ### Button — `.comic-btn`
 

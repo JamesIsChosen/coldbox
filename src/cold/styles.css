@@ -3905,9 +3905,25 @@ html[data-coldbox-behavior-harness] #cold-secret-registry-empty:not([hidden]) {
 
 #cold-secret-switcher > .eyebrow {
   order: 1;
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border: 0.13rem solid var(--cold-drop);
+  background: var(--cold-yellow);
+  box-shadow: 0.13rem 0.13rem 0 var(--cold-drop);
+  color: var(--cold-ink);
+  font-family: 'Coldbox Display', Impact, 'Arial Narrow Bold', sans-serif;
+  font-size: 0.78125rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  text-transform: uppercase;
 }
 
 #cold-secret-switcher-help {
+  display: none;
+}
+
+#cold-secret-switcher[data-state="ready"] #cold-secret-focus-summary {
   display: none;
 }
 
@@ -4041,6 +4057,249 @@ html[data-coldbox-behavior-harness] #cold-secret-registry-empty:not([hidden]) {
   display: none;
 }
 
+
 .cold-nav-note {
   display: none;
+}
+
+.cold-active-secret {
+  padding: 0.85rem 0 2rem;
+}
+
+.cold-active-secret-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.45rem;
+}
+
+.cold-active-secret-header h1 {
+  margin: 0;
+  color: var(--cold-text);
+  font-family: 'Coldbox Display', Impact, 'Arial Narrow Bold', sans-serif;
+  font-size: 3.25rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 0.95;
+  text-transform: uppercase;
+  text-shadow: 0.11rem 0.11rem 0 var(--cold-drop);
+}
+
+.cold-active-secret-header p:not(.eyebrow) {
+  max-width: 54rem;
+  margin: 0.65rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.cold-active-secret-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(17rem, 0.82fr);
+  gap: 1.35rem;
+  align-items: start;
+}
+
+.cold-active-secret-phrase,
+.cold-active-secret-identity,
+.cold-active-secret-lenses {
+  border: 0.19rem solid var(--cold-outline);
+  border-radius: 0.45rem;
+  box-shadow: 0.25rem 0.25rem 0 var(--cold-drop);
+}
+
+.cold-active-secret-phrase {
+  padding: 1rem;
+  background: #fffdf5;
+  color: #121212;
+}
+
+.cold-active-secret-phrase-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.cold-active-secret-phrase-header .eyebrow {
+  flex: 0 0 auto;
+  margin: 0;
+  border-color: #121212;
+  background: var(--cold-yellow);
+  color: #121212;
+  font-family: 'Coldbox Display', Impact, 'Arial Narrow Bold', sans-serif;
+}
+
+.cold-active-secret-phrase-header > span:last-child {
+  margin-left: auto;
+}
+
+.cold-active-secret-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.cold-active-secret-grid span {
+  min-height: 2.25rem;
+  padding: 0.55rem 0.65rem;
+  border: 0.13rem solid #121212;
+  border-radius: 0.3rem;
+  background: #fffdf5;
+  color: #121212;
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.cold-active-secret-grid span[data-secret-visible="true"] {
+  background: var(--cold-yellow);
+}
+
+.cold-active-secret-phrase-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 0.85rem;
+}
+
+.cold-active-secret-phrase-footer button {
+  min-height: 2.75rem;
+  padding: 0.45rem 0.75rem;
+  border: 0.13rem solid #121212;
+  border-radius: 0.3rem;
+  background: var(--cold-yellow);
+  box-shadow: 0.15rem 0.15rem 0 #121212;
+  color: #121212;
+  font-family: 'Coldbox Display', Impact, 'Arial Narrow Bold', sans-serif;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.cold-active-secret-phrase-footer p {
+  margin: 0;
+  color: #33333b;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.cold-active-secret-sidebar {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.cold-active-secret-identity {
+  padding: 0.85rem;
+  background: #dff8ff;
+  color: #121212;
+}
+
+.cold-active-secret-identity .eyebrow,
+.cold-active-secret-lenses .eyebrow {
+  display: inline-block;
+  margin: 0 0 0.5rem;
+  border-color: #121212;
+  background: var(--cold-cyan);
+  color: #121212;
+  font-family: 'Coldbox Display', Impact, 'Arial Narrow Bold', sans-serif;
+}
+
+.cold-active-secret-identity dl {
+  margin: 0;
+}
+
+.cold-active-secret-identity dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.38rem 0;
+  border-bottom: 0.1rem dashed #9c9c9c;
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+}
+
+.cold-active-secret-identity dt,
+.cold-active-secret-identity dd {
+  margin: 0;
+}
+
+.cold-active-secret-identity dd {
+  text-align: right;
+}
+
+.cold-active-secret-lenses {
+  padding: 0.85rem;
+  background: #fff0f5;
+  color: #121212;
+}
+
+.cold-active-secret-lenses > p:not(.eyebrow) {
+  margin: 0 0 0.75rem;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.cold-active-secret-lenses a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  margin-top: 0.45rem;
+  padding: 0.45rem 0.6rem;
+  border: 0.13rem solid #121212;
+  border-radius: 0.3rem;
+  background: #fffdf5;
+  box-shadow: 0.15rem 0.15rem 0 #121212;
+  color: #121212;
+  font-family: 'Coldbox Display', Impact, 'Arial Narrow Bold', sans-serif;
+  font-size: 0.72rem;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.cold-active-secret-lenses a span {
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
+  font-size: 0.62rem;
+  text-transform: none;
+}
+
+@media (max-width: 38rem) {
+  .cold-active-secret {
+    padding-top: 0.6rem;
+  }
+
+  .cold-active-secret-header {
+    display: block;
+    margin-bottom: 0.9rem;
+  }
+
+  .cold-active-secret-header h1 {
+    font-size: 2.6rem;
+  }
+
+  .cold-active-secret-header .cold-focus-chip {
+    margin-top: 0.75rem;
+  }
+
+  .cold-active-secret-layout {
+    grid-template-columns: 1fr;
+    gap: 0.9rem;
+  }
+
+  .cold-active-secret-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cold-active-secret-phrase-header {
+    flex-wrap: wrap;
+  }
+
+  .cold-active-secret-phrase-header > span:last-child {
+    margin-left: 0;
+  }
 }

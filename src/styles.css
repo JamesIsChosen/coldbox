@@ -1934,6 +1934,10 @@ samp {
   text-align: center;
 }
 
+.panic-screen[hidden] {
+  display: none;
+}
+
 .panic-screen h1 {
   margin: 0;
   font-size: clamp(2rem, 6vw, 4rem);
@@ -2825,6 +2829,19 @@ samp {
   border: 0;
 }
 
+.app-shell[data-primary-realm="cold"] {
+  overflow: hidden;
+}
+
+@media (min-width: 721px) {
+  .app-shell[data-primary-realm="cold"] {
+    /* Match the rendered masthead and boundary strip, rather than the warm
+     * shell's nominal tokens, so the sealed workspace ends at the viewport. */
+    --app-bar-height: 4.6875rem;
+    --realm-strip-height: 2.2715rem;
+  }
+}
+
 .app-shell[data-primary-realm="cold"] .realm-status-failure,
 .app-shell[data-primary-realm="cold"] .protocol-warning {
   position: fixed;
@@ -2927,6 +2944,115 @@ html[data-coldbox-behavior-harness] .app-shell[data-primary-realm="cold"] .cold-
 html[data-coldbox-behavior-harness] .app-shell[data-primary-realm="cold"] .cold-frame {
   min-height: 100vh;
   height: 100vh;
+}
+
+/* The masthead action row follows the approved reference in both realms. The
+ * guard copy changes with the selected realm, while the controls remain the
+ * same physical buttons and keep their existing product handlers. */
+.cold-app-bar-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5625rem;
+  margin-left: auto;
+}
+
+.cold-top-action {
+  min-height: 2.75rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.375rem;
+  background: var(--paper);
+  box-shadow: 0.25rem 0.25rem 0 var(--drop);
+  color: var(--paper-ink);
+  font-size: 1rem;
+}
+
+.cold-top-action:hover {
+  background: var(--paper);
+}
+
+.cold-settings-wrap {
+  position: relative;
+}
+
+.cold-settings-panel {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  z-index: 50;
+  display: grid;
+  gap: 0.4rem;
+  min-width: 10rem;
+  padding: 0.5rem;
+  border: var(--outline-width) solid var(--drop);
+  background: var(--paper);
+  box-shadow: var(--shadow-hard);
+}
+
+.cold-settings-panel[hidden] {
+  display: none;
+}
+
+.cold-settings-panel button {
+  min-height: 2.4rem;
+  padding: 0.35rem 0.55rem;
+  border: var(--outline-width-thin) solid var(--drop);
+  background: var(--fill-yellow);
+  color: var(--paper-ink);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.cold-settings-panel button:hover,
+.cold-settings-panel button:focus-visible {
+  background: var(--fill-cyan);
+}
+
+.cold-connect-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  min-height: 2.25rem;
+  padding: 0.3125rem 0.625rem;
+  border: var(--outline-width-thin) solid var(--drop);
+  background: var(--paper);
+  color: var(--paper-ink);
+  font-family: var(--font-text);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.cold-connect-dot {
+  display: inline-block;
+  width: 0.52rem;
+  height: 0.52rem;
+  border: 1px solid var(--drop);
+  border-radius: 50%;
+  background: var(--fill-green);
+}
+
+.cold-app-bar-actions .cold-lock-all {
+  background: #e02020;
+  color: #fff;
+  font-size: 1.0625rem;
+}
+
+.cold-app-bar-actions .cold-panic {
+  background: var(--fill-ink);
+  color: var(--fill-yellow);
+  font-size: 1.0625rem;
+}
+
+@media (max-width: 720px) {
+  .app-bar-actions.cold-app-bar-actions {
+    display: none !important;
+  }
 }
 
 /* UI.11 mobile frame alignment. The approved device composition has a

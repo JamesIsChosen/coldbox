@@ -29,6 +29,15 @@ __COLDBOX_QR_ENCODER__
   var releasedSecretEmpty = document.getElementById('cold-secret-registry-empty');
   var releasedSecretSummary = document.getElementById('cold-secret-focus-summary');
   var releasedSecretClearButton = document.getElementById('cold-secret-registry-clear');
+  var activeSecretPanel = document.getElementById('cold-active-secret');
+  var activeSecretLabel = document.getElementById('cold-active-secret-label');
+  var activeSecretIdentityLabel = document.getElementById('cold-active-secret-identity-label');
+  var activeSecretFingerprint = document.getElementById('cold-active-secret-fingerprint');
+  var activeSecretWordCount = document.getElementById('cold-active-secret-word-count');
+  var activeSecretSummary = document.getElementById('cold-active-secret-summary');
+  var activeSecretGrid = document.getElementById('cold-active-secret-grid');
+  var activeSecretRevealButton = document.getElementById('cold-active-secret-reveal');
+  var activeSecretRevealTimer = null;
   var messagePort = null;
   var handshakeState = 'starting';
   var globalAnomalyCount = 0;
@@ -682,6 +691,82 @@ __COLDBOX_QR_ENCODER__
       releasedSecretClearButton.disabled = records.length === 0;
     }
     renderReleasedSecretIndicators();
+    renderActiveSecretPanel();
+  }
+
+  function resetActiveSecretReveal() {
+    if (activeSecretRevealTimer !== null) {
+      window.clearTimeout(activeSecretRevealTimer);
+      activeSecretRevealTimer = null;
+    }
+    if (activeSecretGrid) {
+      var cells = activeSecretGrid.children;
+      for (var index = 0; index < cells.length; index += 1) {
+        cells[index].textContent = String(index + 1).padStart(2, '0') + ' ••••••';
+        cells[index].setAttribute('data-secret-visible', 'false');
+      }
+    }
+    if (activeSecretRevealButton) {
+      activeSecretRevealButton.textContent = 'Reveal for 30 seconds';
+    }
+  }
+
+  function renderActiveSecretPanel() {
+    var focused = focusedReleasedSecret();
+    resetActiveSecretReveal();
+    if (!focused) {
+      if (activeSecretLabel) {
+        activeSecretLabel.textContent = 'focused secret';
+      }
+      if (activeSecretIdentityLabel) {
+        activeSecretIdentityLabel.textContent = 'No released secret';
+      }
+      if (activeSecretFingerprint) {
+        activeSecretFingerprint.textContent = '—';
+      }
+      if (activeSecretWordCount) {
+        activeSecretWordCount.textContent = '—';
+      }
+      if (activeSecretSummary) {
+        activeSecretSummary.textContent = 'No released phrase · masked by default';
+      }
+      return;
+    }
+    var words = focused.mnemonic.trim().split(/\s+/);
+    var language = focused.language || 'English';
+    if (activeSecretLabel) {
+      activeSecretLabel.textContent = focused.label;
+    }
+    if (activeSecretIdentityLabel) {
+      activeSecretIdentityLabel.textContent = focused.label;
+    }
+    if (activeSecretFingerprint) {
+      activeSecretFingerprint.textContent = focused.fingerprint.toUpperCase();
+    }
+    if (activeSecretWordCount) {
+      activeSecretWordCount.textContent = String(words.length) + ' · ' + language;
+    }
+    if (activeSecretSummary) {
+      activeSecretSummary.textContent = String(words.length) + ' words · ' + language + ' · checksum valid';
+    }
+  }
+
+  function revealActiveSecret() {
+    var focused = focusedReleasedSecret();
+    if (!focused || !activeSecretGrid) {
+      return;
+    }
+    resetActiveSecretReveal();
+    var words = focused.mnemonic.trim().split(/\s+/);
+    var cells = activeSecretGrid.children;
+    for (var index = 0; index < cells.length; index += 1) {
+      cells[index].textContent = String(index + 1).padStart(2, '0') + ' ' + (words[index] || '');
+      cells[index].setAttribute('data-secret-visible', 'true');
+    }
+    if (activeSecretRevealButton) {
+      activeSecretRevealButton.textContent = 'Secret visible';
+    }
+    activeSecretRevealTimer = window.setTimeout(resetActiveSecretReveal, 30000);
   }
 
   function clearReleasedSecretLensState(preserveVerificationInputs) {
@@ -6565,6 +6650,9 @@ __COLDBOX_QR_ENCODER__
   if (concealmentRevealButton) {
     concealmentRevealButton.addEventListener('click', completeHiddenRecordReveal);
   }
+  if (activeSecretRevealButton) {
+    activeSecretRevealButton.addEventListener('click', revealActiveSecret);
+  }
   if (secretNoteSaveButton) {
     secretNoteSaveButton.addEventListener('click', saveSecretNote);
   }
@@ -6784,6 +6872,7 @@ __COLDBOX_QR_ENCODER__
       verifybench: 'recovery'
     };
     var selectedGroup = groupByView[view] || null;
+    var showActiveSecret = view === 'secret';
     var groups = Array.prototype.slice.call(document.querySelectorAll('.cold-tool-group'));
     groups.forEach(function (group) {
       var selected = selectedGroup && group.getAttribute('data-cold-group') === selectedGroup;
@@ -6792,9 +6881,13 @@ __COLDBOX_QR_ENCODER__
     });
     var hub = document.getElementById('cold-tool-hub');
     if (hub) {
-      var showHub = !selectedGroup;
+      var showHub = !selectedGroup && !showActiveSecret;
       hub.hidden = !showHub;
       hub.setAttribute('aria-hidden', String(!showHub));
+    }
+    if (activeSecretPanel) {
+      activeSecretPanel.hidden = !showActiveSecret;
+      activeSecretPanel.setAttribute('aria-hidden', String(!showActiveSecret));
     }
     document.documentElement.setAttribute('data-cold-view', view || 'hub');
   }

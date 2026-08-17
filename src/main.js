@@ -32,6 +32,12 @@ __COLDBOX_CONCEALMENT__
   var announcement = document.getElementById('route-announcement');
   var themeToggle = document.getElementById('theme-toggle');
   var themeLabel = document.getElementById('theme-toggle-label');
+  var coldSettingsButton = document.getElementById('cold-settings-button');
+  var coldSettingsPanel = document.getElementById('cold-settings-panel');
+  var coldSettingsPrivacy = document.getElementById('cold-settings-privacy');
+  var coldConnectCopy = document.getElementById('cold-connect-copy');
+  var coldLockAll = document.getElementById('cold-lock-all');
+  var coldPanic = document.getElementById('cold-panic');
   var themeMeta = document.querySelector('meta[name="theme-color"]');
   var privacyBlurToggle = document.getElementById('privacy-blur-toggle');
   var privacyBlurLabel = document.getElementById('privacy-blur-toggle-label');
@@ -5818,6 +5824,9 @@ __COLDBOX_CONCEALMENT__
     if (app) {
       app.setAttribute('data-primary-realm', isColdPrimary ? 'cold' : 'warm');
     }
+    if (coldConnectCopy) {
+      coldConnectCopy.textContent = isColdPrimary ? 'connect-src: none' : 'Network: prices only';
+    }
     document.querySelectorAll('.realm-switcher-button').forEach(function (button) {
       var coldButton = button.getAttribute('href') === '#cold-realm-status';
       var active = coldButton === isColdPrimary;
@@ -5915,6 +5924,24 @@ __COLDBOX_CONCEALMENT__
       var nextTheme = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
       setTheme(nextTheme, true);
     });
+  }
+  if (coldSettingsButton && coldSettingsPanel) {
+    coldSettingsButton.addEventListener('click', function () {
+      var open = coldSettingsPanel.hidden;
+      coldSettingsPanel.hidden = !open;
+      coldSettingsButton.setAttribute('aria-expanded', String(open));
+    });
+  }
+  if (coldSettingsPrivacy && privacyBlurToggle) {
+    coldSettingsPrivacy.addEventListener('click', function () {
+      privacyBlurToggle.click();
+    });
+  }
+  if (coldLockAll) {
+    coldLockAll.addEventListener('click', requestVaultLock);
+  }
+  if (coldPanic) {
+    coldPanic.addEventListener('click', panicHide);
   }
 
   if (moreTab) {
