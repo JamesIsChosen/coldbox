@@ -6913,6 +6913,24 @@ __COLDBOX_QR_ENCODER__
   window.addEventListener('pagehide', function () {
     clearReleasedSecrets('realm teardown');
   });
+  // The sandboxed srcdoc document has the warm file as its fallback base URL,
+  // so a plain fragment anchor can resolve outside this realm. Route local
+  // cold links explicitly through this document's hash; the two special
+  // data-cold-more-target links below keep their focused-panel behavior.
+  document.addEventListener('click', function (event) {
+    var link = event.target && typeof event.target.closest === 'function'
+      ? event.target.closest('a[href]')
+      : null;
+    if (!link || link.hasAttribute('data-cold-more-target')) {
+      return;
+    }
+    var href = link.getAttribute('href') || '';
+    if (href.charAt(0) !== '#') {
+      return;
+    }
+    event.preventDefault();
+    window.location.hash = href;
+  });
   document.addEventListener('click', function (event) {
     var link = event.target && typeof event.target.closest === 'function'
       ? event.target.closest('a[data-cold-more-target]')

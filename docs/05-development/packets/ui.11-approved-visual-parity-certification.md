@@ -6,7 +6,7 @@ UI.11 is in progress. This branch adds the manifest-driven parity harness and it
 
 ## Scope
 
-Included: `scripts/ui11-parity.js`, the harness unit tests, warm route state selection, shell composition CSS, mobile product-frame capture, canonical record-menu tokens/geometry, shared sealed font embedding, sealed navigation composition, mock-aligned masthead controls, sealed viewport sizing, active-secret presentation, roadmap status, and this packet. No protocol, crypto, vault, storage, CSP, iframe sandbox, or message-schema source was changed.
+Included: `scripts/ui11-parity.js`, the harness unit tests, warm route state selection, shell composition CSS, mobile product-frame capture, canonical record-menu tokens/geometry, shared sealed font embedding, sealed navigation composition, a cold-local fragment router for real sealed navigation clicks, mock-aligned masthead controls, sealed viewport sizing, active-secret presentation, roadmap status, and this packet. No protocol, crypto, vault, storage, CSP, iframe sandbox, or message-schema source was changed.
 
 Not complete: per-screen visual closure, zero-pixel parity, and the maintainer physical-mobile comparison. The current Chromium behavioral run stopped at the concealment assertion before reaching Firefox; that is separate from the failed exact pixel gate.
 
@@ -69,7 +69,7 @@ The new unit test proves manifest row uniqueness/classification and exact PNG en
 
 ## What to scrutinise
 
-The shell is materially closer in the warm and sealed desktop/mobile hub captures, including the single sealed viewport, mock-aligned masthead action buttons, compact released-secret switcher, mobile card order, and cold navigation rail. Most feature screens and several fixture/reference details still differ substantially. The aggregate exact diff remains non-zero, and physical-device comparison still needs maintainer verification.
+The shell is materially closer in the warm and sealed desktop/mobile hub captures, including the single sealed viewport, mock-aligned masthead action buttons, compact released-secret switcher, mobile card order, cold navigation rail, and functional cold-local route clicks. Most feature screens and several fixture/reference details still differ substantially. The aggregate exact diff remains non-zero, and physical-device comparison still needs maintainer verification.
 
 ## Self-assessment
 
