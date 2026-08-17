@@ -62,6 +62,7 @@ const coldRealmManifest = Object.freeze([
   Object.freeze({ file: 'index.html', token: '__COLDBOX_ADDRESS_VERIFICATION_LAYER__', content: 'address-verification.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_QR_LAYER__', content: 'qr.js' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_SLIP39_LAYER__', content: 'slip39.js' }),
+  Object.freeze({ file: 'index.html', token: '__COLDBOX_COLD_FONT_FACES__', content: 'font-faces.css' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_COLD_STYLES__', content: 'styles.css' }),
   Object.freeze({ file: 'index.html', token: '__COLDBOX_COLD_SCRIPT__', content: 'main.js' })
 ]);
@@ -394,6 +395,7 @@ function assembleColdRealm(protocolSource, airgapSource, capabilitiesSource) {
     ['address-verification.js', readSource('address-verification.js')],
     ['qr.js', readSource('cold/qr.js')],
     ['slip39.js', readSource('cold/slip39.js')],
+    ['font-faces.css', createFontFaceSource(projectRoot)],
     ['styles.css', readSource('cold/styles.css')],
     ['main.js', coldMainScript]
   ]);
@@ -423,6 +425,7 @@ function assembleColdRealm(protocolSource, airgapSource, capabilitiesSource) {
     '__COLDBOX_ADDRESS_VERIFICATION_LAYER__',
     '__COLDBOX_QR_LAYER__',
     '__COLDBOX_SLIP39_LAYER__',
+    '__COLDBOX_COLD_FONT_FACES__',
     '__COLDBOX_QR_ENCODER__',
     '__COLDBOX_PROTOCOL__',
     '__COLDBOX_AIRGAP__',

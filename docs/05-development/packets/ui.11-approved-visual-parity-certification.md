@@ -2,13 +2,13 @@
 
 ## Summary
 
-UI.11 is in progress. This branch adds the manifest-driven parity harness and its exact PNG artifacts, preserves the cold/warm security boundary, and materially improves the sealed desktop/mobile shell composition. It is not complete: the latest exact full matrix captured all 138 rows but reported 64,297,690 unexpected changed pixels, and physical mobile evidence is unavailable in this environment.
+UI.11 is in progress. This branch adds the manifest-driven parity harness and its exact PNG artifacts, preserves the cold/warm security boundary, and materially improves the sealed desktop/mobile shell composition. The sealed document now embeds the same pinned display/text font faces as the warm shell for chrome and headings. It is not complete: the latest exact full matrix captured all 138 rows but reported 64,719,580 unexpected changed pixels, and physical mobile evidence is unavailable in this environment.
 
 ## Scope
 
-Included: `scripts/ui11-parity.js`, the harness unit tests, warm route state selection, shell composition CSS, mobile product-frame capture, canonical record-menu tokens/geometry, roadmap status, and this packet. No protocol, crypto, vault, storage, CSP, iframe sandbox, or message-schema source was changed.
+Included: `scripts/ui11-parity.js`, the harness unit tests, warm route state selection, shell composition CSS, mobile product-frame capture, canonical record-menu tokens/geometry, shared sealed font embedding, sealed navigation composition, roadmap status, and this packet. No protocol, crypto, vault, storage, CSP, iframe sandbox, or message-schema source was changed.
 
-Not complete: per-screen visual closure, zero-pixel parity, and the maintainer physical-mobile comparison. The Chromium/Firefox behavioral harness is green; that is separate from the failed exact pixel gate.
+Not complete: per-screen visual closure, zero-pixel parity, and the maintainer physical-mobile comparison. The current Chromium behavioral run stopped at the concealment assertion before reaching Firefox; that is separate from the failed exact pixel gate.
 
 ## How to verify
 
@@ -26,16 +26,16 @@ $ npm run verify-vendor
 Vendor verification passed against local files and upstream releases.
 
 $ npm run build
-Built build/coldbox.html (01281cb60a1d77e1d3472bf8e73a20eb7001153d351440ac9262ec1565c4431d)
+Built build/coldbox.html (d4c02e2138d901d4f6101f20fad5179fbaec238360f2a2c3a0f303735748728a)
 
 $ npm run test:browser
-Browser harness passed in Chromium and Firefox.
+Chromium: failed at verifyNotesAndConcealment; Firefox was not reached.
 
 $ node scripts/ui11-parity.js --baseline
 UI.11 baseline captured 138 rows; unexpected changed pixels: 60582440
 
 $ node scripts/ui11-parity.js
-UI.11 parity captured 138 rows; unexpected changed pixels: 64297690
+UI.11 parity captured 138 rows; unexpected changed pixels: 64719580
 UI.11 parity failed: UI.11 parity has unexpected changed pixels
 ```
 
@@ -51,7 +51,7 @@ No security or product boundary was intentionally changed. `src/main.js` now sel
 
 ## Test evidence and gaps
 
-The new unit test proves manifest row uniqueness/classification and exact PNG encode/decode plus one-pixel negative comparison. The existing independent crypto and browser vectors remain unchanged. Full `npm test` was not green in the sandbox because six build-date/provenance cases could not spawn temporary Git repositories (`spawnSync git EPERM`); the focused new/UI.6 tests, lint, docs, vendor verification, build, and full browser harness passed.
+The new unit test proves manifest row uniqueness/classification and exact PNG encode/decode plus one-pixel negative comparison. The existing independent crypto and browser vectors remain unchanged. Full `npm test` was not green in the sandbox because six build-date/provenance cases could not spawn temporary Git repositories (`spawnSync git EPERM`); lint, docs, vendor verification, and build passed. The current browser run has the concealment failure recorded above.
 
 ## Device matrix
 
@@ -77,4 +77,4 @@ This is a reviewable partial implementation, not a release-ready UI.11 result. D
 
 ## Docs updated
 
-`ROADMAP.md`, `CHANGELOG.md`, and this packet.
+`ROADMAP.md`, `CHANGELOG.md`, this packet, `design-system.md`, and ADR-0044.

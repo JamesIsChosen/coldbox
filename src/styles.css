@@ -2929,6 +2929,34 @@ html[data-coldbox-behavior-harness] .app-shell[data-primary-realm="cold"] .cold-
   height: 100vh;
 }
 
+/* UI.11 mobile frame alignment. The approved device composition has a
+ * centered wordmark, a slightly taller yellow masthead, and a full-height
+ * striped boundary before the sealed document begins. */
+@media (max-width: 720px) {
+  .app-bar {
+    align-items: center;
+    min-height: 5rem;
+  }
+
+  .brand-wordmark {
+    height: 1.65rem;
+  }
+
+  .realm-strip {
+    min-height: 1.9rem;
+    height: 1.9rem;
+  }
+
+  .app-shell[data-primary-realm="cold"] {
+    --app-bar-height: 5rem;
+    --realm-strip-height: 1.9rem;
+  }
+
+  .app-shell[data-primary-realm="cold"] .app-bar {
+    min-height: 5rem;
+  }
+}
+
 @media (max-width: 720px) {
   html[data-coldbox-behavior-harness] .app-shell[data-primary-realm="cold"] .mobile-tabs {
     display: grid;

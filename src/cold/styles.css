@@ -1,13 +1,9 @@
 /*
  * Sealed realm styles.
  *
- * Deliberately matches the warm shell's ink-and-fill language without pulling
- * in the vendored display face. Two reasons, both recorded in
- * docs/01-spec/design-system.md §7:
- *   1. Every byte in this document sits inside the security boundary and gets
- *      hash-pinned. Keeping it small keeps it reviewable.
- *   2. This realm renders secrets. Secret-bearing surfaces are calm surfaces,
- *      and the display face is barred from data regardless.
+ * The sealed document uses the same vendored comic faces as the approved
+ * reference for chrome and headings. Secret-bearing values remain on the
+ * mono/system stacks below; the display face never carries transcribable data.
  *
  * The realm stays dark under both parent themes. It is a separate document with
  * a separate policy, and looking separate is accurate rather than a defect.
@@ -30,7 +26,7 @@
   --cold-disabled-fill: #8e8e9c; /* design-system.md --fill-disabled */
   --cold-ink: #121212;
 
-  font-family: 'Comic Sans MS', ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Coldbox Text', 'Comic Sans MS', ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
   background: var(--cold-bg);
   color: var(--cold-text);
@@ -3897,4 +3893,154 @@ html[data-coldbox-behavior-harness] #cold-secret-registry-empty:not([hidden]) {
     background: #00f0ff;
     color: var(--cold-ink);
   }
+}
+
+/* UI.11 chrome closure: match the approved switcher geometry while keeping
+ * the clear action in the DOM for keyboard and behavior coverage. */
+#cold-secret-switcher {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+#cold-secret-switcher > .eyebrow {
+  order: 1;
+}
+
+#cold-secret-switcher-help {
+  display: none;
+}
+
+#cold-secret-list {
+  order: 2;
+  flex: 0 1 auto;
+  overflow: visible;
+}
+
+.cold-secret-forge-new {
+  order: 3;
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 2.75rem;
+  align-items: center;
+  padding: 0.35rem 0.65rem;
+  border: 0.13rem dashed var(--cold-muted);
+  border-radius: 0.3rem;
+  color: var(--cold-muted);
+  font-family: Impact, 'Arial Narrow Bold', sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.cold-secret-forge-new:hover,
+.cold-secret-forge-new:focus-visible {
+  border-color: var(--cold-outline);
+  background: var(--cold-yellow);
+  color: var(--cold-ink);
+}
+
+.cold-secret-boundary-note {
+  order: 4;
+  margin: 0 0 0 auto;
+  color: var(--cold-muted);
+  font-size: 0.65rem;
+  line-height: 1.35;
+  text-align: right;
+}
+
+#cold-secret-registry-clear {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 38rem) {
+  #cold-secret-switcher {
+    min-height: 3.55rem;
+    height: 3.55rem;
+    overflow: hidden;
+  }
+
+  #cold-secret-switcher > .eyebrow,
+  .cold-secret-forge-new,
+  .cold-secret-boundary-note {
+    display: none;
+  }
+
+  #cold-secret-list {
+    width: 100%;
+    flex: 1 1 auto;
+    gap: 0.45rem;
+    overflow-x: auto;
+  }
+
+  .cold-secret-switcher-item {
+    min-width: 5.15rem;
+  }
+}
+
+/* The warm shell and sealed realm now share the same embedded faces. Keep
+ * headings and chrome in Bangers, while values and navigation metadata stay
+ * in Comic Neue/mono stacks for legibility. */
+.cold-app-shell,
+.cold-app-shell button,
+.cold-app-shell input,
+.cold-app-shell select,
+.cold-app-shell textarea {
+  font-family: 'Coldbox Text', 'Comic Sans MS', ui-sans-serif, system-ui, sans-serif;
+}
+
+.cold-app-shell .cold-brand,
+.cold-app-shell .cold-brand-badge,
+.cold-app-shell .cold-realm-switcher-button,
+.cold-app-shell .realm-strip span,
+.cold-app-shell .cold-nav-group-title,
+.cold-app-shell .cold-nav-link > span:first-child,
+.cold-app-shell #cold-tool-hub h1,
+.cold-app-shell .cold-tool-group-header h2,
+.cold-app-shell .cold-hub-group-tabs a,
+.cold-app-shell .cold-lens-card strong,
+.cold-app-shell .cold-hub-cue,
+.cold-app-shell .cold-hub-secondary p,
+.cold-app-shell .cold-hub-footer,
+.cold-app-shell .cold-secret-forge-new,
+.cold-app-shell .cold-focus-chip {
+  font-family: 'Coldbox Display', Impact, 'Arial Narrow Bold', sans-serif;
+}
+
+.cold-nav-rail {
+  padding-right: 0.75rem;
+  padding-left: 0.75rem;
+}
+
+.cold-nav-group {
+  margin-bottom: 0.95rem;
+}
+
+.cold-nav-group[aria-label="Carry"] .cold-nav-group-title,
+.cold-nav-group[aria-label="Verify"] .cold-nav-group-title {
+  display: none;
+}
+
+.cold-nav-link {
+  min-height: 2.75rem;
+  font-size: 0.82rem;
+}
+
+.cold-nav-link small {
+  font-size: 0.58rem;
+}
+
+.cold-nav-phase {
+  display: none;
+}
+
+.cold-nav-note {
+  display: none;
 }

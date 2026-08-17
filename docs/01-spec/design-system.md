@@ -312,14 +312,14 @@ On calm panels there is no animation and no transition that moves anything: stat
 
 ## 7. The sealed realm
 
-`src/cold/styles.css` matches the ink-and-fill language but **does not carry the vendored display face**, and uses the system stack instead.
+`src/cold/styles.css` uses the same pinned `Coldbox Display` and `Coldbox Text` faces as the warm shell for chrome, headings and navigation. The build embeds that face bundle directly into the sealed document; it is never fetched at runtime.
 
 Two reasons:
 
-1. Every byte of that document sits inside the security boundary and is hash-pinned into the parent's `script-src`/`style-src`. Smaller is more reviewable, and 83 KB of base64 font is not worth reviewing twice.
+1. Every byte of that document sits inside the security boundary and is hash-pinned into the parent's `script-src`/`style-src`. The shared font bytes are generated from the same pinned vendor manifest entry and injected deterministically, so the visual parity requirement does not introduce a network dependency or an unreviewed runtime asset.
 2. The display face is barred from data regardless (§4), so on the panels that render values it would buy nothing.
 
-Under [ADR-0044](../05-development/adr/0044-panel-scoped-calm-rule.md) the sealed realm is **no longer calm throughout** — its hub, navigation and empty states are chrome and may carry the full language. The face still stays out, on reason 1 alone. The consequence is deliberate and worth stating: the sealed hub uses the system stack and reads plainer than the warm shell. Revisit only if a cold screen turns out to need heading hierarchy that the system stack cannot carry.
+Under [ADR-0044](../05-development/adr/0044-panel-scoped-calm-rule.md) the sealed realm is **no longer calm throughout** — its hub, navigation and empty states are chrome and may carry the full language. The shared face is used only for that chrome and for headings; secret-bearing values remain in the mono stack, so the display face still never carries transcribable data.
 
 The realm stays dark under both parent themes. It is a separate document with a separate policy, and looking separate is accurate rather than a defect. Revisit if a Phase 1+ cold-realm screen turns out to need substantial heading hierarchy.
 
@@ -332,7 +332,7 @@ Fonts are treated exactly like cryptographic dependencies, because the constrain
 1. `@fontsource/bangers@5.3.0` and `@fontsource/comic-neue@5.3.0` are committed under `vendor/npm/@fontsource/` as npm tarballs.
 2. Both are listed in [`vendor/vendor-manifest.json`](../../vendor/vendor-manifest.json) with upstream URL, byte size, SHA-256, and npm integrity, and both are in `requiredPackages` in `scripts/verify-vendor.js`. A corrupted or unmanifested font tarball fails the build, same as a corrupted `@noble` tarball.
 3. `scripts/font-bundle.js` reads the latin-subset WOFF2 from the pinned tarball, asserts the `wOF2` signature and a size ceiling, and emits `@font-face` rules with base64 `data:` URIs.
-4. `scripts/build.js` injects that block at `__COLDBOX_FONT_FACES__` in `src/styles.css`.
+4. `scripts/build.js` injects that block at `__COLDBOX_FONT_FACES__` in the warm shell and at `__COLDBOX_COLD_FONT_FACES__` in the sealed document.
 
 **Google Fonts, or any CDN, is not an option and never will be.** It fails three separate rules simultaneously: `scripts/lint.js` rejects external URLs, the CSP is `font-src data:` only, and [AGENTS.md](../../AGENTS.md) forbids fetching anything at build or run time.
 

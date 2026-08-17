@@ -6774,10 +6774,14 @@ __COLDBOX_QR_ENCODER__
       shares: 'backups',
       qr: 'qr',
       recovery: 'recovery',
-      verification: 'verification',
-      paths: 'verification',
-      addresses: 'verification',
-      verifybench: 'verification'
+      // Verify Bench is nested inside the recovery workspace so that the
+      // shared rail and the direct verification links select the same visible
+      // document region. Leaving this as a non-existent group used to hide
+      // every cold section and leave only the halftone background.
+      verification: 'recovery',
+      paths: 'recovery',
+      addresses: 'recovery',
+      verifybench: 'recovery'
     };
     var selectedGroup = groupByView[view] || null;
     var groups = Array.prototype.slice.call(document.querySelectorAll('.cold-tool-group'));

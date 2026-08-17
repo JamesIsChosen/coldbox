@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- UI.11: add the manifest-driven Chromium/Firefox parity harness, exact PNG comparison artifacts, state-matrix ownership checks, and continued desktop/mobile sealed-shell visual corrections. Certification remains open at 138 captured rows; the latest exact run reports 64,297,690 unexpected pixels and no physical mobile evidence.
+- UI.11: add the manifest-driven Chromium/Firefox parity harness, exact PNG comparison artifacts, state-matrix ownership checks, shared warm/sealed font faces for chrome, and continued desktop/mobile sealed-shell visual corrections. Certification remains open at 138 captured rows; the latest exact run reports 64,719,580 unexpected pixels and no physical mobile evidence.
 - UI.9: compile the in-app Tool map directly from `docs/05-development/ROADMAP.md`, with fail-closed parsing and deterministic build injection.
 - UI.10: move the durable vault name into the sealed encrypted public compartment, add cold-side rename and KDF selection, use `coldbox--<id8>.cbx`, and keep warm nicknames device-local.
 - UI.8 regrouped the warm shell into Records, Money, Vault files, and Reference workspaces while preserving the sealed-realm handoff outside those groups.
