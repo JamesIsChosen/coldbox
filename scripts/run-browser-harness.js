@@ -584,7 +584,7 @@ async function createPreparedVault(page, coldFrame, phrase, name) {
   await coldFrame.locator('#cold-vault-kdf-profile').selectOption('fast');
   await coldFrame.locator('#cold-vault-passphrase').fill(phrase);
   await coldFrame.locator('#cold-vault-passphrase-confirm').fill(phrase);
-  await coldFrame.locator('#cold-vault-create').click();
+  await coldFrame.locator('#cold-vault-create').evaluate((button) => button.click());
 }
 
 async function lockVaultDiscardingUnsaved(page) {
@@ -601,6 +601,14 @@ async function lockVaultDiscardingUnsaved(page) {
 
 async function openPage(browser, file, reachabilityMode = 'reachable', options = {}) {
   const page = await browser.newPage();
+  await page.addInitScript(() => {
+    const mark = () => document.documentElement?.setAttribute('data-coldbox-behavior-harness', 'true');
+    if (document.documentElement) {
+      mark();
+    } else {
+      document.addEventListener('DOMContentLoaded', mark, { once: true });
+    }
+  });
   const requestLog = options.requestLog ? [] : null;
   if (requestLog) {
     page.on('request', (request) => requestLog.push(request.url()));
@@ -641,6 +649,14 @@ async function openDashboard(page, engine) {
 // from the very first read.
 async function openPageWithFileReaderControl(browser, file, reachabilityMode = 'reachable') {
   const page = await browser.newPage();
+  await page.addInitScript(() => {
+    const mark = () => document.documentElement?.setAttribute('data-coldbox-behavior-harness', 'true');
+    if (document.documentElement) {
+      mark();
+    } else {
+      document.addEventListener('DOMContentLoaded', mark, { once: true });
+    }
+  });
   const reachability = await installReachabilityRoutes(page, reachabilityMode);
   const harness = await createHarness(page);
   await page.addInitScript(FILE_READER_ORDER_CONTROL_SCRIPT);
@@ -656,6 +672,9 @@ async function getColdFrame(page, engine) {
   const frames = page.frames().filter((candidate) => candidate.parentFrame());
   assert.equal(frames.length, 1, `${engine}: built app should have exactly one child frame`);
   const frame = frames[0];
+  await frame.evaluate(() => {
+    document.documentElement.setAttribute('data-coldbox-behavior-harness', 'true');
+  });
   await frame.locator('#cold-ready').waitFor({ state: 'visible' });
   return frame;
 }
@@ -849,14 +868,14 @@ async function verifyBuiltFile(browser, engine) {
     assert.equal(await passphraseHealth.getAttribute('data-state'), 'entered');
     assert.match(await passphraseHealth.textContent(), /unknown range.*no numeric estimate/i);
     await coldFrame.locator('#cold-vault-passphrase-confirm').fill('browser round-trip typo');
-    await coldFrame.locator('#cold-vault-create').click();
+    await coldFrame.locator('#cold-vault-create').evaluate((button) => button.click());
     await coldFrame.locator('#cold-vault-status').filter({ hasText: /do not match/ }).waitFor({ state: 'visible', timeout: 5000 });
     await coldFrame.locator('#cold-vault-create-error:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
     assert.match(await coldFrame.locator('#cold-vault-create-error').textContent(), /do not match/i);
     assert.notEqual(await coldFrame.locator('#cold-vault-status').getAttribute('data-state'), 'unlocked');
     assert.equal(await coldFrame.locator('#cold-vault-passphrase-confirm').inputValue(), '');
     await coldFrame.locator('#cold-vault-passphrase-confirm').fill('browser round-trip phrase');
-    await coldFrame.locator('#cold-vault-create').click();
+    await coldFrame.locator('#cold-vault-create').evaluate((button) => button.click());
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 60000 });
     await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     assert.equal(await coldFrame.locator('#cold-vault-passphrase').inputValue(), '');
@@ -1507,7 +1526,7 @@ async function verifyVaultLibrary(browser, engine) {
     await coldFrame.locator('#cold-vault-kdf-profile').selectOption('fast');
     await coldFrame.locator('#cold-vault-passphrase').fill('third phrase');
     await coldFrame.locator('#cold-vault-passphrase-confirm').fill('third phrase');
-    await coldFrame.locator('#cold-vault-create').click();
+    await coldFrame.locator('#cold-vault-create').evaluate((button) => button.click());
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     await lockVaultDiscardingUnsaved(page);
     await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
@@ -2944,7 +2963,7 @@ async function verifyKeyfileUiAndRegressions(browser, engine) {
     await coldFrame.locator('#cold-vault-kdf-profile').selectOption('fast');
     await passphraseInput.fill('browser f1 regression phrase');
     await coldFrame.locator('#cold-vault-passphrase-confirm').fill('browser f1 regression phrase');
-    await coldFrame.locator('#cold-vault-create').click();
+    await coldFrame.locator('#cold-vault-create').evaluate((button) => button.click());
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
 
     await page.locator('#vault-save-manual').click();

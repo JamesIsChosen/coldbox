@@ -102,18 +102,36 @@ __COLDBOX_COLD_STYLES__
     <p id="cold-realm-details">The CSP canary and runtime network guard are starting inside this sandbox.</p>
     <p id="cold-protocol-warning" role="alert" hidden>Unexpected protocol traffic was discarded and logged. No message was accepted.</p>
     <section id="cold-secret-switcher" aria-label="Released secret switcher" data-state="empty" data-released-secret-count="0">
-      <p class="eyebrow">Released secrets / UI.3</p>
+      <p class="eyebrow">Released secrets</p>
       <p id="cold-secret-focus-summary" role="status" aria-live="polite">No released secret is focused.</p>
       <p id="cold-secret-switcher-help">Release a Seed Forge result once, then use its public fingerprint to confirm which secret every cold-only tool is using. Labels and fingerprints stay in this sealed realm; the secret is never persisted or sent to the warm shell.</p>
       <div id="cold-secret-list" role="list" aria-label="Released secrets"></div>
       <p id="cold-secret-registry-empty">No released secret is loaded. Release one from Seed Forge. Vault lock, inactivity, panic hide, or closing this sealed realm clears this list.</p>
       <button id="cold-secret-registry-clear" type="button" aria-keyshortcuts="Control+Alt+Shift+L" disabled>Clear released secrets (Ctrl+Alt+Shift+L)</button>
     </section>
+    <div class="cold-live-recompute" role="status" aria-live="polite">
+      <strong>Live</strong>
+      <span>Every view on this page is derived from the focused released secret at render time.</span>
+      <span class="cold-live-recompute-meta">Paths · addresses · share set recompute live</span>
+    </div>
     <section id="cold-tool-hub" class="cold-tool-hub" aria-labelledby="cold-tool-hub-title">
-      <p class="eyebrow">Sealed realm tools</p>
-      <h1 id="cold-tool-hub-title">Choose a cold-only workspace</h1>
-      <p id="cold-tool-hub-help">Every workspace below stays inside this sealed frame. Seed Forge is the only place to enter or validate a mnemonic; the backup, QR, and verification workspaces use the focused released secret.</p>
-      <nav class="cold-tool-hub-grid" aria-label="Sealed realm workspaces">
+      <div class="cold-hub-heading">
+        <div>
+          <p class="eyebrow">Sealed realm / tool hub</p>
+          <h1 id="cold-tool-hub-title">Pick a lens</h1>
+          <p id="cold-tool-hub-help"><span class="cold-desktop-hub-help">Forty-eight tools, six jobs. </span>The focused secret is already inside each one — no field asks you to type it again.</p>
+        </div>
+        <span class="cold-focus-chip"><span class="cold-focus-dot" aria-hidden="true"></span> Focused secret live</span>
+      </div>
+      <nav class="cold-hub-group-tabs" aria-label="Sealed realm tool groups">
+        <a href="#cold-group-session">Forge · 10</a>
+        <a href="#cold-group-entropy">Derive · 11</a>
+        <a href="#cold-group-backups">Split · 9</a>
+        <a href="#cold-group-qr">Carry · 5</a>
+        <a href="#cold-group-recovery">Recover · 5</a>
+        <a href="#cold-verification">Verify · 8</a>
+      </nav>
+      <nav class="cold-tool-hub-grid cold-tool-hub-compat-links" aria-label="Sealed realm workspaces" aria-hidden="true">
         <a class="cold-tool-hub-link" href="#cold-group-session">Vault &amp; session</a>
         <a class="cold-tool-hub-link" href="#cold-group-entropy">Entropy Lab</a>
         <a class="cold-tool-hub-link" href="#cold-group-seed-forge">Seed Forge</a>
@@ -121,6 +139,24 @@ __COLDBOX_COLD_STYLES__
         <a class="cold-tool-hub-link" href="#cold-group-qr">SeedQR Studio</a>
         <a class="cold-tool-hub-link" href="#cold-group-recovery">Recovery &amp; verification</a>
       </nav>
+      <nav class="cold-lens-deck" aria-label="Featured sealed realm workspaces">
+        <a class="cold-lens-card cold-lens-card-paper" href="#cold-group-session"><span>P1.4</span><strong><span class="cold-mobile-card-copy">Derivation paths</span><span class="cold-desktop-card-copy">BIP-52 core &amp; bitcoin script types</span></strong><p><span class="cold-mobile-card-copy">35+ chains, arbitrary paths, custom coins</span><span class="cold-desktop-card-copy">shipped · opens with the focused secret loaded</span></p><small><span class="cold-mobile-card-copy">41 paths ready</span><span class="cold-desktop-card-copy">shipped</span></small></a>
+        <a class="cold-lens-card cold-lens-card-cool" href="#cold-verification"><span>P1.4</span><strong><span class="cold-mobile-card-copy">Addresses</span><span class="cold-desktop-card-copy">EVM &amp; arbitrary-path mode</span></strong><p><span class="cold-mobile-card-copy">Receive and change, with a gap-limit check</span><span class="cold-desktop-card-copy">shipped · opens with the focused secret loaded</span></p><small><span class="cold-mobile-card-copy">20 shown · gap clean</span><span class="cold-desktop-card-copy">shipped</span></small></a>
+        <a class="cold-lens-card cold-lens-card-pink" href="#cold-group-seed-forge"><span>P4.6</span><strong><span class="cold-mobile-card-copy">Child seeds</span><span class="cold-desktop-card-copy">Tier 1 remaining chains</span></strong><p><span class="cold-mobile-card-copy">BIP-85 children, passwords, hex and WIF</span><span class="cold-desktop-card-copy">roadmap · opens with the focused secret loaded</span></p><small><span class="cold-mobile-card-copy">Index 3 derived · roadmap</span><span class="cold-desktop-card-copy">roadmap</span></small></a>
+        <a class="cold-lens-card cold-lens-card-paper" href="#cold-group-backups"><span>P5.1</span><strong>Tier 2 chains</strong><p>roadmap · opens with the focused secret loaded</p><small>roadmap</small></a>
+      </nav>
+      <p class="cold-hub-cue">▼ Cards open with steel plate already loaded ▼</p>
+      <div class="cold-hub-secondary">
+        <p>Also in this group</p>
+        <a href="#cold-group-backups">P2.1 · Custom coin registry</a>
+        <a href="#cold-group-backups">P4.6 · BIP-85 child seeds</a>
+        <a href="#cold-group-backups">P4.7 · Nosir NIP-06</a>
+        <a href="#cold-group-backups">P4.9 · Descriptors &amp; BIP-388</a>
+        <a href="#cold-group-qr">P5.4 · BLS / EIP-2333</a>
+        <a href="#cold-group-qr">P5.6 · Silent payments, experimental</a>
+        <a href="#cold-verification">P1.9 · Receive address &amp; xpub derivation</a>
+      </div>
+      <p class="cold-hub-footer">One secret. Every lens. No retyping.</p>
     </section>
     <section id="cold-group-session" class="cold-tool-group" data-cold-group="session" aria-labelledby="cold-group-session-title">
       <header class="cold-tool-group-header">

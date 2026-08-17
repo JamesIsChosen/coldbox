@@ -37,6 +37,7 @@ __COLDBOX_CONCEALMENT__
   var privacyBlurLabel = document.getElementById('privacy-blur-toggle-label');
   var moreMenu = document.getElementById('mobile-more-menu');
   var moreTab = document.getElementById('mobile-more-tab');
+  var moreTop = document.getElementById('mobile-more-top');
   var moreClose = document.getElementById('mobile-more-close');
   var coldRealmStatus = document.getElementById('cold-realm-status');
   // R2-F2 remediation: this used to point at the <h2> itself, whose
@@ -902,15 +903,20 @@ __COLDBOX_CONCEALMENT__
       return;
     }
     try {
-      coldRealmStatus.scrollIntoView({ behavior: 'auto', block: 'start' });
+      coldRealmStatus.scrollIntoView({ block: 'start' });
+      window.scrollTo(0, 0);
     } catch (error) {
-      coldRealmStatus.scrollIntoView();
+      // file:// browsers may expose scrollTo without accepting options; the
+      // focus call below still establishes the accessible route target.
     }
     try {
       coldRealmStatus.focus({ preventScroll: true });
     } catch (error) {
       coldRealmStatus.focus();
     }
+    window.setTimeout(function () {
+      window.scrollTo(0, 0);
+    }, 100);
   }
 
   function normalizeLocation(route) {
@@ -938,6 +944,9 @@ __COLDBOX_CONCEALMENT__
     if (moreTab) {
       moreTab.setAttribute('aria-expanded', 'false');
     }
+    if (moreTop) {
+      moreTop.setAttribute('aria-expanded', 'false');
+    }
     if (focusInsideMenu && moreTab) {
       moreTab.focus();
     }
@@ -951,6 +960,9 @@ __COLDBOX_CONCEALMENT__
     moreMenu.hidden = !willOpen;
     if (moreTab) {
       moreTab.setAttribute('aria-expanded', String(willOpen));
+    }
+    if (moreTop) {
+      moreTop.setAttribute('aria-expanded', String(willOpen));
     }
     if (willOpen) {
       var firstLink = moreMenu.querySelector('a');
@@ -5806,6 +5818,16 @@ __COLDBOX_CONCEALMENT__
     if (app) {
       app.setAttribute('data-primary-realm', isColdPrimary ? 'cold' : 'warm');
     }
+    document.querySelectorAll('.realm-switcher-button').forEach(function (button) {
+      var coldButton = button.getAttribute('href') === '#cold-realm-status';
+      var active = coldButton === isColdPrimary;
+      button.classList.toggle('realm-switcher-button-active', active);
+      if (active) {
+        button.setAttribute('aria-current', 'page');
+      } else {
+        button.removeAttribute('aria-current');
+      }
+    });
     if (route === 'cold-realm-status') {
       closeMoreMenu();
       pages.forEach(function (page) {
@@ -5897,6 +5919,9 @@ __COLDBOX_CONCEALMENT__
 
   if (moreTab) {
     moreTab.addEventListener('click', toggleMoreMenu);
+  }
+  if (moreTop) {
+    moreTop.addEventListener('click', toggleMoreMenu);
   }
   if (moreClose) {
     moreClose.addEventListener('click', closeMoreMenu);

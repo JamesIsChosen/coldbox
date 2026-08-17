@@ -652,7 +652,7 @@ __COLDBOX_QR_ENCODER__
         var label = document.createElement('strong');
         label.textContent = record.label;
         var fingerprint = document.createElement('span');
-        fingerprint.textContent = 'Master fingerprint: ' + record.fingerprint;
+        fingerprint.textContent = record.fingerprint;
         copy.appendChild(label);
         copy.appendChild(fingerprint);
 
@@ -6738,6 +6738,70 @@ __COLDBOX_QR_ENCODER__
     });
   }
 
+  function coldViewFromTarget(target) {
+    var normalized = String(target || '').replace(/^#/, '').toLowerCase();
+    var byTarget = {
+      'cold-group-session': 'session',
+      'cold-group-entropy': 'entropy',
+      'cold-group-seed-forge': 'seed-forge',
+      'cold-group-backups': 'backups',
+      'cold-group-qr': 'qr',
+      'cold-group-recovery': 'recovery',
+      'cold-verification': 'verification',
+      'cold-secret-switcher': 'secret',
+      'cold-tool-hub': 'hub'
+    };
+    return byTarget[normalized] || normalized || 'hub';
+  }
+
+  function coldInitialView() {
+    var namedView = window.name && /^[a-z-]+$/.test(window.name) ? window.name : '';
+    var hashTarget = window.location.hash.replace(/^#/, '').split('/')[0];
+    return namedView || coldViewFromTarget(hashTarget);
+  }
+
+  function renderColdView(view) {
+    var groupByView = {
+      session: 'session',
+      unlock: 'session',
+      conceal: 'session',
+      notes: 'session',
+      entropy: 'entropy',
+      'seed-forge': 'seed-forge',
+      forge: 'seed-forge',
+      validate: 'seed-forge',
+      backups: 'backups',
+      shares: 'backups',
+      qr: 'qr',
+      recovery: 'recovery',
+      verification: 'verification',
+      paths: 'verification',
+      addresses: 'verification',
+      verifybench: 'verification'
+    };
+    var selectedGroup = groupByView[view] || null;
+    var groups = Array.prototype.slice.call(document.querySelectorAll('.cold-tool-group'));
+    groups.forEach(function (group) {
+      var selected = selectedGroup && group.getAttribute('data-cold-group') === selectedGroup;
+      group.hidden = !selected;
+      group.setAttribute('aria-hidden', String(!selected));
+    });
+    var hub = document.getElementById('cold-tool-hub');
+    if (hub) {
+      var showHub = !selectedGroup;
+      hub.hidden = !showHub;
+      hub.setAttribute('aria-hidden', String(!showHub));
+    }
+    document.documentElement.setAttribute('data-cold-view', view || 'hub');
+  }
+
+  function selectColdViewFromHash() {
+    var hash = window.location.hash.replace(/^#/, '');
+    renderColdView(coldViewFromTarget(hash.split('/')[0]));
+  }
+
+  renderColdView(coldInitialView());
+  window.addEventListener('hashchange', selectColdViewFromHash);
   installThrowContract();
   wireSeedForge();
   wireSeedXor();
@@ -6764,6 +6828,7 @@ __COLDBOX_QR_ENCODER__
     if (!target) {
       return;
     }
+    renderColdView('session');
     event.preventDefault();
     target.hidden = false;
     target.setAttribute('tabindex', '-1');

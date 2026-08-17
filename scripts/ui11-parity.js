@@ -98,7 +98,7 @@ const REFERENCE_LABELS = Object.freeze({
   taxes: 'Tax & exports', reference: 'Reference', settings: 'Settings',
   unlock: 'Vault session', empty: 'Tool hub', entropy: 'Entropy Lab', forge: 'Seed Forge',
   secret: 'Active secret', paths: 'Derivation paths', addresses: 'Addresses',
-  children: 'Child seeds', shares: 'Split lab', qr: 'SeedQR studio', lock: 'Lock / wipe',
+  children: 'Child seeds', shares: 'Split lab', qr: 'SeedQR studio', lock: 'Lock all',
   passphrase: 'Passphrase Studio', conceal: 'Reveal hidden', notes: 'Secret notes',
   descriptors: 'Descriptors', recovery: 'Recovery Assistant', verifybench: 'Verify Bench',
   hub: 'Tool hub', validate: 'Seed Forge'
@@ -112,7 +112,7 @@ const REFERENCE_MOBILE_LABELS = Object.freeze({
   devices: 'Devices', vault: 'Vault', learn: 'Learn', verifyfile: 'Verify this file',
   provenance: 'Provenance & legal', qrpublic: 'QR Studio', addrbench: 'Address bench',
   backuphealth: 'Backup Health', qr: 'SeedQR studio', conceal: 'Reveal hidden',
-  notes: 'Secret notes', lock: 'Lock / wipe', unlock: 'Vault session',
+  notes: 'Secret notes', lock: 'Lock & wipe', unlock: 'Vault session',
   verifybench: 'Verify Bench', validate: 'Validate'
 });
 
@@ -230,7 +230,9 @@ async function createReferencePage(browser, referenceId, manifest, temporaryRoot
 }
 
 async function createProductPage(browser, referenceId, manifest) {
-  const viewport = manifest.references[referenceId].renderViewport;
+  const viewport = referenceId === 'mobile'
+    ? { width: 390, height: 844 }
+    : manifest.references[referenceId].renderViewport;
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1 });
   const page = await context.newPage();
   await page.goto(fileUrl(buildPath), { waitUntil: 'load' });
@@ -268,6 +270,30 @@ async function selectProductRealm(page, row) {
     await page.evaluate(() => {
       window.location.hash = '#cold-realm-status';
     });
+    await page.waitForTimeout(120);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const coldFrame = page.frameLocator('#cold-frame');
+    await prepareColdFixture(coldFrame, row);
+    const coldTargets = Object.freeze({
+      unlock: '#cold-group-session', empty: '#cold-tool-hub', entropy: '#cold-group-entropy',
+      forge: '#cold-group-seed-forge', validate: '#cold-group-seed-forge', secret: '#cold-secret-switcher',
+      paths: '#cold-verification', addresses: '#cold-verification', shares: '#cold-group-backups',
+      qr: '#cold-group-qr', lock: '#cold-group-session', conceal: '#cold-group-session',
+      notes: '#cold-group-session', verifybench: '#cold-verification', hub: '#cold-tool-hub'
+    });
+    const target = row.classification === 'UNAVAILABLE'
+      ? '#cold-tool-hub'
+      : (coldTargets[row.screen] || '#cold-tool-hub');
+    await coldFrame.locator('body').evaluate((body, nextTarget) => {
+      window.location.hash = nextTarget;
+    }, target);
+    await page.waitForTimeout(80);
+    await coldFrame.locator('.cold-app-layout > main').evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    await coldFrame.locator('.cold-nav-scroll').evaluate((element) => {
+      element.scrollTop = 0;
+    });
     return;
   }
   const route = row.classification === 'UNAVAILABLE'
@@ -277,6 +303,12 @@ async function selectProductRealm(page, row) {
     window.location.hash = `#${value}`;
   }, route);
   await page.waitForFunction((value) => window.location.hash === `#${value}`, route);
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    document.querySelectorAll('[data-scroll-region]').forEach((region) => {
+      region.scrollTop = 0;
+    });
+  });
 }
 
 async function selectReferenceScreen(page, row) {
@@ -333,12 +365,51 @@ async function selectReferenceScreen(page, row) {
     await page.waitForTimeout(150);
     candidates = await findCandidates(label);
   }
-  assert.ok(candidates.length > 0, `Reference selector for ${row.screen} did not match a visible control`);
+  assert.ok(candidates.length > 0, `Reference selector for ${row.id} did not match a visible control`);
   const bestScore = candidates[0].score;
   const preferred = candidates.filter((candidate) => candidate.score === bestScore);
-  assert.equal(preferred.length, 1, `Reference selector for ${row.screen} did not have exact cardinality`);
+  assert.equal(preferred.length, 1, `Reference selector for ${row.id} did not have exact cardinality`);
   await page.locator('button').nth(preferred[0].index).evaluate((element) => element.click());
   await page.waitForTimeout(150);
+}
+
+const ACTIVE_COLD_FIXTURE_SCREENS = new Set([
+  'hub', 'secret', 'entropy', 'forge', 'paths', 'addresses', 'shares', 'qr',
+  'lock', 'conceal', 'notes', 'verifybench', 'validate'
+]);
+
+async function prepareColdFixture(coldFrame, row) {
+  const switcher = coldFrame.locator('#cold-secret-switcher');
+  const count = Number(await switcher.getAttribute('data-released-secret-count') || '0');
+  if (row.screen === 'empty') {
+    if (count > 0) {
+      await coldFrame.locator('#cold-secret-registry-clear').evaluate((button) => button.click());
+      await coldFrame.locator('#cold-secret-switcher[data-released-secret-count="0"]').waitFor({ state: 'attached' });
+    }
+    return;
+  }
+  if (!ACTIVE_COLD_FIXTURE_SCREENS.has(row.screen) || count > 0) {
+    return;
+  }
+  await coldFrame.locator('body').evaluate(() => {
+    window.location.hash = '#cold-group-seed-forge';
+  });
+  await coldFrame.locator('#cold-seed-forge[data-state="ready"]').waitFor({ state: 'attached', timeout: 10000 });
+  await coldFrame.locator('#cold-seed-forge-validation-passphrase-input').fill('TREZOR');
+  await coldFrame.locator('#cold-seed-forge-validation-passphrase-confirm').fill('TREZOR');
+  await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(
+    'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
+  );
+  await coldFrame.locator('#cold-seed-forge-validate').click();
+  await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
+  for (const label of ['Steel plate', 'Multisig 2', 'Child #3']) {
+    await coldFrame.locator('#cold-seed-forge-validation-release-label').fill(label);
+    await coldFrame.locator('#cold-seed-forge-validation-release').click();
+  }
+  await coldFrame.locator('#cold-secret-switcher[data-released-secret-count="3"]').waitFor({ state: 'attached', timeout: 5000 });
+  await coldFrame.locator('#cold-secret-list [data-secret-id]').first()
+    .locator('button[data-secret-action="focus"]')
+    .evaluate((button) => button.click());
 }
 
 function decodePng(bytes) {
@@ -509,13 +580,17 @@ async function runParity({ baseline = false } = {}) {
           const productPage = await createProductPage(browser, referenceId, manifest);
           try {
             for (const row of rows.filter((candidate) => candidate.viewport === referenceId)) {
-              await selectReferenceRealm(referencePage.page, REFERENCE_REALM[row.screen] || row.realm);
+              if (row.baseline) {
+                await selectReferenceRealm(referencePage.page, REFERENCE_REALM[row.screen] || row.realm);
+              }
               await selectReferenceScreen(referencePage.page, row);
               await selectProductRealm(productPage.page, row);
               const referenceShot = await referencePage.page.screenshot();
               const productShot = await productPage.page.screenshot();
               const referenceImage = cropPng(decodePng(referenceShot), reference.comparisonRegion, referenceId);
-              const productImage = cropPng(decodePng(productShot), reference.comparisonRegion, referenceId);
+              const productImage = referenceId === 'mobile'
+                ? decodePng(productShot)
+                : cropPng(decodePng(productShot), reference.comparisonRegion, referenceId);
               const result = compareImages(referenceImage, productImage);
               const prefix = `${engineId}-${referenceId}-${safeName(row.screen)}`;
               fs.writeFileSync(path.join(artifactRoot, `${prefix}-reference.png`), encodePng(referenceImage));

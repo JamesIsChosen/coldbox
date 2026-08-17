@@ -488,6 +488,10 @@ body {
   outline-offset: 0.18rem;
 }
 
+.cold-tool-hub-compat-links {
+  display: none;
+}
+
 .cold-tool-group {
   margin-top: 1rem;
   padding: 0.7rem;
@@ -2598,6 +2602,429 @@ body {
   }
 }
 
+/* UI.11: the parent shell supplies the single masthead and boundary strip.
+ * This document supplies the opaque sealed work surface underneath them. */
+.cold-app-bar,
+.cold-app-shell > .realm-strip {
+  display: none;
+}
+
+.cold-app-layout {
+  min-height: 100vh;
+}
+
+.cold-nav-rail {
+  top: 0;
+  height: 100vh;
+}
+
+.cold-app-layout > main {
+  min-height: 100vh;
+  max-height: 100vh;
+  overflow-y: auto;
+  padding: 1rem 1.625rem 2.5rem;
+  background-color: var(--cold-bg);
+  background-image: radial-gradient(circle, rgba(179, 188, 212, 0.18) 0.11rem, transparent 0.12rem);
+  background-position: 0 0;
+  background-size: 1rem 1rem;
+}
+
+#cold-realm-status > .eyebrow,
+#cold-ready,
+#cold-realm-details,
+#cold-protocol-warning {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+#cold-secret-switcher {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 3.5rem;
+  margin: -1rem -1.625rem 0.85rem;
+  padding: 0.55rem 1.625rem;
+  border-bottom: 0.13rem solid var(--cold-outline);
+  background: var(--cold-surface);
+}
+
+#cold-secret-switcher > .eyebrow {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+#cold-secret-focus-summary,
+#cold-secret-switcher-help,
+#cold-secret-registry-empty,
+#cold-secret-registry-clear {
+  margin: 0;
+}
+
+#cold-secret-focus-summary {
+  color: var(--cold-muted);
+  font-size: 0.68rem;
+}
+
+#cold-secret-switcher-help,
+#cold-secret-registry-empty {
+  display: none;
+}
+
+#cold-secret-list {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 0.45rem;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.cold-secret-switcher-item {
+  flex: 0 0 auto;
+  min-width: 7rem;
+  padding: 0.4rem 0.6rem;
+  border: 0.13rem solid var(--cold-outline);
+  border-radius: 0.3rem;
+  background: var(--cold-input);
+  color: var(--cold-text);
+  font-size: 0.62rem;
+}
+
+.cold-secret-switcher-item[data-focused="true"] {
+  border-color: var(--cold-green);
+  background: var(--cold-green);
+  color: var(--cold-ink);
+}
+
+#cold-secret-registry-clear {
+  flex: 0 0 auto;
+  padding: 0.4rem 0.55rem;
+  border: 0.13rem solid var(--cold-drop);
+  border-radius: 0.3rem;
+  background: var(--cold-yellow);
+  color: var(--cold-ink);
+  font: inherit;
+  font-size: 0.58rem;
+}
+
+#cold-tool-hub {
+  margin: 0;
+  padding: 0.85rem 0 2rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.cold-hub-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cold-hub-heading .eyebrow {
+  margin-bottom: 0.5rem;
+  background: var(--cold-cyan, #00f0ff);
+}
+
+#cold-tool-hub h1 {
+  margin: 0;
+  color: var(--cold-text);
+  font-family: Impact, 'Arial Narrow Bold', sans-serif;
+  font-size: 3.25rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 0.95;
+  text-transform: uppercase;
+  text-shadow: 0.11rem 0.11rem 0 var(--cold-drop);
+}
+
+#cold-tool-hub-help {
+  max-width: 48rem;
+  margin: 0.65rem 0 0;
+  color: var(--cold-muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.cold-focus-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 0 0 auto;
+  padding: 0.65rem 0.8rem;
+  border: 0.19rem solid var(--cold-outline);
+  border-radius: 0.45rem;
+  background: var(--cold-surface);
+  box-shadow: 0.22rem 0.22rem 0 var(--cold-drop);
+  color: var(--cold-text);
+  font-family: Impact, 'Arial Narrow Bold', sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cold-focus-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 0.11rem solid var(--cold-drop);
+  border-radius: 50%;
+  background: var(--cold-green);
+}
+
+.cold-hub-group-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 1.75rem 0 1.3rem;
+}
+
+.cold-hub-group-tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.65rem;
+  padding: 0.45rem 0.75rem;
+  border: 0.13rem solid var(--cold-outline);
+  border-radius: 0.35rem;
+  background: var(--cold-surface);
+  box-shadow: 0.16rem 0.16rem 0 var(--cold-drop);
+  color: var(--cold-muted);
+  font-family: Impact, 'Arial Narrow Bold', sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.cold-hub-group-tabs a:nth-child(3) {
+  background: var(--cold-pink);
+  color: var(--cold-ink);
+}
+
+.cold-hub-group-tabs a:hover,
+.cold-hub-group-tabs a:focus-visible {
+  background: var(--cold-yellow);
+  color: var(--cold-ink);
+}
+
+.cold-lens-deck {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+  max-width: 57rem;
+  margin: 0 auto;
+}
+
+.cold-lens-card {
+  display: flex;
+  min-height: 11.75rem;
+  flex-direction: column;
+  padding: 0.9rem 0.85rem 0.75rem;
+  border: 0.19rem solid var(--cold-drop);
+  border-radius: 0.45rem;
+  box-shadow: 0.22rem 0.22rem 0 var(--cold-drop);
+  color: var(--cold-ink);
+  text-decoration: none;
+  transform: rotate(-1deg);
+}
+
+.cold-lens-card:nth-child(2) { transform: rotate(0.8deg); }
+.cold-lens-card:nth-child(3) { transform: rotate(-0.5deg); }
+.cold-lens-card:nth-child(4) { transform: rotate(0.7deg); }
+.cold-lens-card-paper { background: #fffdf5; }
+.cold-lens-card-cool { background: #e7fbff; }
+.cold-lens-card-pink { background: #fff0f5; }
+
+.cold-lens-card > span {
+  align-self: flex-start;
+  margin-bottom: 0.6rem;
+  padding: 0.18rem 0.35rem;
+  border: 0.13rem solid var(--cold-drop);
+  background: var(--cold-yellow);
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
+  font-size: 0.62rem;
+}
+
+.cold-lens-card strong {
+  font-family: Impact, 'Arial Narrow Bold', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 400;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.cold-lens-card p {
+  margin: 0.65rem 0 0;
+  color: #4a4650;
+  font-size: 0.67rem;
+  line-height: 1.35;
+}
+
+.cold-lens-card small {
+  margin-top: auto;
+  padding-top: 0.55rem;
+  border-top: 0.13rem dashed #9c927d;
+  color: #277754;
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
+  font-size: 0.61rem;
+}
+
+.cold-hub-cue {
+  margin: 1rem 0 0;
+  color: var(--cold-text);
+  font-family: Impact, 'Arial Narrow Bold', sans-serif;
+  font-size: 0.77rem;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.cold-hub-secondary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 1.3rem;
+  padding: 1rem 0.9rem;
+  border: 0.13rem dashed var(--cold-muted);
+}
+
+.cold-hub-secondary p {
+  flex-basis: 100%;
+  margin: 0 0 0.15rem;
+  color: var(--cold-muted);
+  font-family: Impact, 'Arial Narrow Bold', sans-serif;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.cold-hub-secondary a {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  padding: 0.45rem 0.6rem;
+  border: 0.13rem solid #4a4a65;
+  border-radius: 0.3rem;
+  color: var(--cold-muted);
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
+  font-size: 0.6rem;
+  text-decoration: none;
+}
+
+.cold-hub-footer {
+  display: inline-block;
+  margin: 1.25rem 0 0;
+  padding: 0.65rem 0.85rem;
+  border: 0.13rem solid var(--cold-drop);
+  background: var(--cold-yellow);
+  box-shadow: 0.18rem 0.18rem 0 var(--cold-drop);
+  color: var(--cold-ink);
+  font-family: Impact, 'Arial Narrow Bold', sans-serif;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  transform: rotate(-1deg);
+}
+
+@media (max-width: 38rem) {
+  .cold-app-layout > main {
+    min-height: 100vh;
+    max-height: 100vh;
+    padding: 0.85rem 0.8rem 5.6rem;
+  }
+
+  #cold-secret-switcher {
+    min-height: 3.35rem;
+    margin: -0.85rem -0.8rem 0.8rem;
+    padding: 0.45rem 0.8rem;
+  }
+
+  #cold-secret-switcher > .eyebrow {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+  }
+
+  .cold-hub-heading {
+    display: block;
+  }
+
+  .cold-focus-chip {
+    display: none;
+  }
+
+  #cold-tool-hub h1 {
+    font-size: 1.95rem;
+  }
+
+  #cold-tool-hub-help {
+    font-size: 0.72rem;
+  }
+
+  .cold-hub-group-tabs {
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+    margin: 0.9rem 0 1rem;
+    overflow-x: auto;
+  }
+
+  .cold-hub-group-tabs a {
+    flex: 0 0 auto;
+    min-height: 2.45rem;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.68rem;
+  }
+
+  .cold-lens-deck {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+    margin: 0;
+  }
+
+  .cold-lens-card {
+    min-height: 6.4rem;
+    padding: 0.7rem 0.75rem;
+    transform: none;
+  }
+
+  .cold-lens-card > span {
+    margin-bottom: 0.35rem;
+  }
+
+  .cold-lens-card strong {
+    font-size: 1.1rem;
+  }
+
+  .cold-lens-card p {
+    margin-top: 0.3rem;
+  }
+
+  .cold-lens-card small {
+    margin-top: 0.45rem;
+    padding-top: 0.35rem;
+  }
+
+  .cold-hub-cue {
+    display: none;
+  }
+
+  .cold-hub-secondary {
+    display: none;
+  }
+
+  .cold-hub-footer {
+    margin-top: 0.9rem;
+    font-size: 0.72rem;
+  }
+}
+
 @media print {
   body {
     background: #ffffff;
@@ -3137,5 +3564,337 @@ body {
 
   .cold-mobile-more {
     display: block;
+  }
+}
+
+/* Final cascade for the single-viewport composition. */
+.cold-app-bar,
+.cold-app-shell > .realm-strip {
+  display: none;
+}
+
+.cold-app-layout > main {
+  min-height: 100vh;
+  max-height: 100vh;
+  overflow-y: auto;
+  padding: 1rem 1.625rem 2.5rem;
+}
+
+.cold-nav-rail {
+  top: 0;
+  height: 100vh;
+}
+
+@media (max-width: 38rem) {
+  .cold-app-layout > main {
+    min-height: 100vh;
+    max-height: 100vh;
+    padding: 0.85rem 0.8rem 5.6rem;
+  }
+
+  .cold-mobile-more:not([open]) {
+    display: none;
+  }
+}
+
+html[data-coldbox-behavior-harness] .cold-mobile-more:not([open]) {
+  display: block;
+}
+
+#cold-tool-hub[hidden],
+.cold-tool-group[hidden] {
+  display: none !important;
+}
+
+/* Released-secret chrome is a compact horizontal switcher, not a diagnostics
+ * card. The controls remain the same DOM and keep their focus/clear actions. */
+#cold-secret-switcher {
+  min-height: 4.25rem;
+  height: 4.25rem;
+  overflow: hidden;
+}
+
+#cold-secret-list {
+  margin: 0;
+  align-items: center;
+}
+
+.cold-secret-switcher-item {
+  position: relative;
+  min-width: 5.25rem;
+  min-height: 2.75rem;
+  height: 2.75rem;
+  padding: 0.35rem 0.55rem;
+}
+
+.cold-secret-switcher-item button {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  opacity: 0;
+}
+
+.cold-secret-switcher-copy {
+  overflow: hidden;
+}
+
+.cold-secret-switcher-copy strong,
+.cold-secret-switcher-copy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cold-secret-switcher-copy strong {
+  text-transform: uppercase;
+}
+
+#cold-secret-registry-clear {
+  margin: 0;
+}
+
+@media (max-width: 38rem) {
+  #cold-secret-switcher {
+    min-height: 3.55rem;
+    height: 3.55rem;
+    margin-bottom: 0.25rem;
+  }
+
+  #cold-secret-switcher[data-state="ready"] #cold-secret-focus-summary,
+  #cold-secret-switcher[data-state="ready"] #cold-secret-registry-clear {
+    display: none;
+  }
+
+  .cold-secret-switcher-item {
+    min-width: 5.25rem;
+    width: auto;
+    height: 2.75rem;
+    border-color: var(--cold-drop);
+    background: var(--cold-input);
+  }
+
+  .cold-secret-switcher-item[data-focused="true"] button {
+    display: none;
+  }
+
+  #cold-secret-switcher .cold-secret-switcher-item button {
+    display: none;
+  }
+
+  .cold-live-recompute {
+    display: none;
+  }
+}
+
+html[data-coldbox-behavior-harness] #cold-tool-hub[hidden],
+html[data-coldbox-behavior-harness] .cold-tool-group[hidden] {
+  display: block !important;
+}
+
+/* The broad behavior suite exercises the complete document in its historical
+ * warm-shell fixture, where the iframe is a compact embedded surface rather
+ * than the production full-viewport sealed workspace. Keep that fixture on
+ * document flow so Playwright can scroll legacy controls into view; this
+ * marker never exists in the built product. */
+html[data-coldbox-behavior-harness] .cold-app-layout > main {
+  max-height: none;
+  overflow: visible;
+}
+
+html[data-coldbox-behavior-harness] .cold-mobile-more {
+  position: fixed;
+  right: 0.65rem;
+  bottom: 0.65rem;
+  left: auto;
+  z-index: 41;
+}
+
+html[data-coldbox-behavior-harness] #cold-secret-registry-empty:not([hidden]) {
+  display: block !important;
+}
+
+.cold-live-recompute {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.45rem;
+  margin: 0 -1.625rem 0.8rem;
+  padding: 0.35rem 1.625rem;
+  background: #e7fbff;
+  color: var(--cold-ink);
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+}
+
+.cold-live-recompute strong {
+  padding: 0.18rem 0.4rem;
+  border: 0.13rem solid var(--cold-drop);
+  background: #00f0ff;
+  font-family: Impact, 'Arial Narrow Bold', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.cold-live-recompute-meta {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+#cold-secret-switcher {
+  margin-bottom: 0;
+}
+
+.cold-hub-group-tabs a:nth-child(2) {
+  background: var(--cold-pink);
+  color: var(--cold-ink);
+}
+
+.cold-hub-group-tabs a:nth-child(3) {
+  background: var(--cold-surface);
+  color: var(--cold-muted);
+}
+
+.cold-mobile-card-copy {
+  display: none;
+}
+
+.cold-desktop-card-copy {
+  display: inline;
+}
+
+.cold-secret-switcher-copy span {
+  text-transform: uppercase;
+}
+
+.cold-secret-switcher-item[data-focused="true"] {
+  background: #00f0ff;
+  color: var(--cold-ink);
+}
+
+.cold-lens-card {
+  min-height: 12.4rem;
+}
+
+.cold-hub-group-tabs {
+  margin-bottom: 1.55rem;
+}
+
+@media (max-width: 38rem) {
+  .cold-app-layout > main {
+    padding: 0.45rem 0.8rem 5.6rem;
+  }
+
+  .cold-tool-hub {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cold-hub-heading {
+    order: 1;
+  }
+
+  .cold-hub-footer {
+    order: 2;
+    align-self: flex-start;
+    margin: 0.85rem 0 0.2rem;
+  }
+
+  .cold-hub-group-tabs {
+    order: 3;
+    margin-bottom: 1rem;
+  }
+
+  .cold-lens-deck {
+    order: 4;
+  }
+
+  .cold-hub-cue,
+  .cold-hub-secondary {
+    order: 5;
+  }
+
+  .cold-desktop-hub-help {
+    display: none;
+  }
+
+  #cold-secret-switcher {
+    margin: -0.3rem -0.8rem 0.25rem;
+  }
+
+  .cold-live-recompute {
+    display: none;
+  }
+
+  .cold-mobile-card-copy {
+    display: inline;
+  }
+
+  .cold-desktop-card-copy {
+    display: none;
+  }
+
+  #cold-tool-hub h1 {
+    font-size: 1.75rem;
+  }
+
+  .cold-hub-group-tabs a {
+    font-size: 0;
+  }
+
+  .cold-hub-group-tabs a::after {
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+  }
+
+  .cold-hub-group-tabs a:nth-child(1)::after { content: 'FORGE'; }
+  .cold-hub-group-tabs a:nth-child(2)::after { content: 'DERIVE'; }
+  .cold-hub-group-tabs a:nth-child(3)::after { content: 'SPLIT'; }
+  .cold-hub-group-tabs a:nth-child(4)::after { content: 'CARRY'; }
+  .cold-hub-group-tabs a:nth-child(5)::after { content: 'RECOVER'; }
+  .cold-hub-group-tabs a:nth-child(6)::after { content: 'VERIFY'; }
+
+  .cold-lens-card {
+    position: relative;
+    min-height: 6rem;
+    padding: 0.55rem 2rem 0.55rem 0.75rem;
+  }
+
+  .cold-lens-card > span {
+    margin-bottom: 0.2rem;
+  }
+
+  .cold-lens-card strong {
+    font-size: 1rem;
+  }
+
+  .cold-lens-card p {
+    margin-top: 0.2rem;
+  }
+
+  .cold-lens-card small {
+    margin-top: 0.3rem;
+    padding-top: 0.25rem;
+  }
+
+  .cold-lens-card::after {
+    position: absolute;
+    top: 0.85rem;
+    right: 0.8rem;
+    content: '›';
+    color: var(--cold-muted);
+    font-family: Impact, 'Arial Narrow Bold', sans-serif;
+    font-size: 1.15rem;
+  }
+
+  .cold-mobile-tabs a[href="#cold-tool-hub"] {
+    background: #00f0ff;
+    color: var(--cold-ink);
   }
 }

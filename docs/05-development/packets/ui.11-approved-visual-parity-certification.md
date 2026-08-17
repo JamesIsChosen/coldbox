@@ -2,13 +2,13 @@
 
 ## Summary
 
-UI.11 is in progress. This branch adds the manifest-driven parity harness and its exact PNG artifacts, preserves the cold/warm security boundary, and makes a first presentation-only shell/record-menu correction. It is not complete: the current pixel matrix is substantially non-zero and physical mobile evidence is unavailable in this environment.
+UI.11 is in progress. This branch adds the manifest-driven parity harness and its exact PNG artifacts, preserves the cold/warm security boundary, and materially improves the sealed desktop/mobile shell composition. It is not complete: the latest exact full matrix captured all 138 rows but reported 64,297,690 unexpected changed pixels, and physical mobile evidence is unavailable in this environment.
 
 ## Scope
 
-Included: `scripts/ui11-parity.js`, the harness unit tests, warm route state selection, shell composition CSS, canonical record-menu tokens/geometry, roadmap status, and this packet. No protocol, crypto, vault, storage, CSP, iframe sandbox, or message-schema source was changed.
+Included: `scripts/ui11-parity.js`, the harness unit tests, warm route state selection, shell composition CSS, mobile product-frame capture, canonical record-menu tokens/geometry, roadmap status, and this packet. No protocol, crypto, vault, storage, CSP, iframe sandbox, or message-schema source was changed.
 
-Not complete: per-screen visual closure, zero-pixel parity, the final browser-integrated parity gate, and the maintainer physical-mobile comparison.
+Not complete: per-screen visual closure, zero-pixel parity, and the maintainer physical-mobile comparison. The Chromium/Firefox behavioral harness is green; that is separate from the failed exact pixel gate.
 
 ## How to verify
 
@@ -20,29 +20,30 @@ $ npm run lint
 Lint passed: forbidden constructs, JavaScript syntax, and LF source line endings are valid.
 
 $ npm run check-docs
-Documentation hygiene check passed: 252 markdown file(s) checked, 0 warning(s).
+Documentation hygiene check passed: 253 markdown file(s) checked, 0 warning(s).
 
 $ npm run verify-vendor
 Vendor verification passed against local files and upstream releases.
 
 $ npm run build
-Built build/coldbox.html (003d13fa2f9dbab09331a1035a33fbd9e295410ca3c4ab2ec33d2c232b1a6f2a)
+Built build/coldbox.html (01281cb60a1d77e1d3472bf8e73a20eb7001153d351440ac9262ec1565c4431d)
 
 $ npm run test:browser
 Browser harness passed in Chromium and Firefox.
 
 $ node scripts/ui11-parity.js --baseline
-UI.11 baseline captured 138 rows; unexpected changed pixels: 85345227
+UI.11 baseline captured 138 rows; unexpected changed pixels: 60582440
 
 $ node scripts/ui11-parity.js
-Currently stops at the first incomplete reference driver state: `empty` has no visible selector after the mobile More transition. The parity run is therefore not a completion result.
+UI.11 parity captured 138 rows; unexpected changed pixels: 64297690
+UI.11 parity failed: UI.11 parity has unexpected changed pixels
 ```
 
-The baseline and failed-run artifacts are retained under ignored `test/output/ui11/`. The harness verifies immutable reference bytes, generates its state matrix from the manifest and roadmap, uses exact RGBA comparison with no tolerance or masks, and writes cropped reference/product/diff PNGs plus machine-readable totals.
+The baseline and failed-run artifacts are retained under ignored `test/output/ui11/`. The harness verifies immutable reference bytes, generates its state matrix from the manifest and roadmap, uses exact RGBA comparison with no tolerance or masks, renders the product at the literal 390×844 mobile frame, and writes cropped reference/product/diff PNGs plus machine-readable totals.
 
 ## Acceptance criteria
 
-The roadmap acceptance is deliberately not claimed. The generated matrix and red baseline are present, but the following remain unmet: every PARITY row at zero unexpected pixels; all screen drivers; unavailable-only treatment; final browser-integrated parity gate; and the required physical mobile record.
+The roadmap acceptance is deliberately not claimed. Every manifest row now has a captured product/reference/diff record, but the following remain unmet: every PARITY row at zero unexpected pixels; visual closure of the feature screens; unavailable-only treatment; final browser-integrated parity gate; and the required physical mobile record.
 
 ## Security impact
 
@@ -68,7 +69,7 @@ The new unit test proves manifest row uniqueness/classification and exact PNG en
 
 ## What to scrutinise
 
-The shell still contains legacy warm/cold nested composition around the opaque iframe, and many feature screens have not been visually rebuilt against the reference. The state-driver selectors are not yet complete, and the mobile crop/physical-device procedure still needs maintainer verification.
+The shell is materially closer in the warm and sealed desktop/mobile hub captures, including the single sealed viewport, compact released-secret switcher, mobile card order, and cold navigation rail. The approved header actions, most feature screens, and several fixture/reference details still differ substantially. The aggregate exact diff remains non-zero, and physical-device comparison still needs maintainer verification.
 
 ## Self-assessment
 
