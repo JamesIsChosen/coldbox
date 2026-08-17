@@ -48,7 +48,7 @@ The hash file could be replaced alongside the HTML. A GPG signature can't be for
 gpg --recv-keys <KEY_FINGERPRINT>
 ```
 
-The fingerprint is published in the README. **Compare it against a source you trust independently** — ideally one you saw before today. A key fetched from the same place as the file it signs proves less than it appears to.
+The literal `<KEY_FINGERPRINT>` above is a **pre-release placeholder**, not a usable key. SEC.5 must replace it with the real long-lived release-signing fingerprint before v1 can pass REL.4. The fingerprint is then published in the README and through at least one independent channel. **Compare it against a source you trust independently** — ideally one you saw before today. A key fetched from the same place as the file it signs proves less than it appears to.
 
 The app's own Reference → Provenance panel does **not** show a signing-key fingerprint or verify GPG signatures — it covers the embedded library list, the live CSP policy for both realms, the build date, and the (circular) self-hash drop zone described in [ADR-0015](../05-development/adr/0015-provenance-build-date-and-self-hash.md). GPG verification is command-line only, by design: it is the check that does not trust anything the running copy says about itself.
 

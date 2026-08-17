@@ -68,6 +68,12 @@ See [docs/02-security/verification.md](docs/02-security/verification.md).
 
 Pre-release. Nothing is supported yet, and nothing here should hold real funds.
 
+The first public `v1.0.0` is blocked on the complete SEC/WAL release-candidate
+gates, a professional audit of the finished Bitcoin wallet, remediation of
+every audit finding, and a fresh independent review. The roadmap and
+[release checklist](docs/05-development/release-checklist.md) are authoritative
+for that gate.
+
 Once released, the latest version is supported. Security fixes are not backported; the file is small and updating means downloading and verifying one file.
 
 ---

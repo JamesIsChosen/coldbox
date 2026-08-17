@@ -1,6 +1,6 @@
 # ADR-0019: Rejected — transaction construction, broadcast relay, and clear signing
 
-**Status:** Accepted (rejected feature)
+**Status:** Superseded in part for the Bitcoin v1 transaction lifecycle by [ADR-0051](0051-full-bitcoin-wallet-v1.md); retained as the historical rejection and for scopes ADR-0051 does not approve
 **Date:** 2026-08-07
 
 ## Context

@@ -339,9 +339,143 @@ Every later roadmap item that activates a screen listed in the [approved referen
   Close the interface restructure only after the built application is proven against both approved references. This item may correct visual drift and add the dedicated comparison harness; it may not add unrelated product behaviour.
   **Accept:** the parity harness reads its viewports, comparison regions, navigation and screen lists directly from the approved manifest; every manifest state is classified exactly once under [ui-parity.md](../01-spec/ui-parity.md), with the shared shell and every already-built feature classified `PARITY`, later-roadmap screens classified `UNAVAILABLE`, and no missing or skipped row; an unavailable screen appears only as the approved disabled navigation treatment and cannot be focused or opened; reference normalizers are deterministic, each names one registered deviation ID, each fails on unexpected selector cardinality, and no pixel mask or percentage threshold exists; in each browser engine required by the committed harness, every `PARITY` row has equal capture dimensions and zero unexpected changed pixels at the manifest comparison region; the packet includes the generated state matrix, reference/product/diff artifacts and machine-readable totals, and identifies every applied deviation by ID; keyboard, focus return, pinch zoom, responsive overflow, minimum touch targets, reduced motion, calm-panel state and dark/light presentation pass their committed assertions; a maintainer compares the real build with both approved references and records the physical mobile device, OS, browser and orientation — an ADR-0043 deferral does **not** close this item; no new deviation is accepted inside this implementation item without prior maintainer approval and the change-control steps in the contract; cold/warm CSP hashes, realm isolation and all existing behaviour remain intact; the reference artifacts remain absent from the production HTML; and the final build is reproducible.
 
+## Phase SEC — v1 security hardening
+
+Inserted after UI.11 by the maintainer's 2026-08-17 security/wallet decision.
+This phase is deliberately ahead of every remaining product feature. The
+canonical future contract is
+[v1-security-wallet-contract.md](../01-spec/v1-security-wallet-contract.md).
+Current-behavior specs are updated item-by-item as implementation lands.
+
+The professional external audit is **not** performed here. It occurs at REL.2
+against the complete v1 release candidate after the full Bitcoin wallet exists.
+
+- [ ] **SEC.1 — Level 3 secret isolation and `.cbx` format v2**
+  *Deps: UI.11*
+  Implement [ADR-0050](adr/0050-level-3-secret-record-vault.md): independently encrypted secret records inside an encrypted/padded outer secret store; no idle DEK/KEK/secret-wrap key/REK/plaintext; bounded reauthentication per secret operation; method-2 keyfile reacquisition; bounded recovery use; explicit v1 -> v2 migration.
+  **Accept:** a public unlocked session can perform every public/watch-only operation while tests prove no seed/passphrase/private-key/secret-note plaintext and no universal secret-decryption key is retained; opening one secret record cannot expose another; the old ADR-0045 switcher references sealed records rather than session-long plaintext; every secret operation wipes/drops its transient key/plaintext state on success, failure, panic, timeout and teardown to the limits JavaScript permits; v1 files remain readable and the original v1 file is unchanged until a new v2 copy passes verify-after-save; v1 readers refuse v2 rather than guessing; the v2 byte format, AAD, padding, bounds and migration fixtures are fully specified in `vault-format.md`; previous-version opening is regression-tested.
+
+- [ ] **SEC.2 — Security TCB and DOM/injection barrier**
+  *Deps: SEC.1*
+  Define the finite trusted security core and prevent ordinary UI code from gaining broad secret/signing capability.
+  **Accept:** the TCB inventory is documented and test-enforced; broad `getSecretData()`/session-secret APIs are absent; secret operations use narrow cold-owned capabilities; security paths statically reject `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `document.write` and equivalent HTML-writing sinks except a finite reviewed allowlist with a non-user-controlled basis; user data renders as text/nodes; negative fixtures prove the lint fails; existing CSP/network/provider isolation stays intact; Trusted Types, if added, is Chromium defense-in-depth rather than the cross-browser security boundary.
+
+- [ ] **SEC.3 — Adversarial fuzz/property/differential framework**
+  *Deps: SEC.1, SEC.2*
+  Add deterministic seeded adversarial testing as a reusable security layer before transaction parsing exists.
+  **Accept:** committed corpora/property tests cover vault v1/v2 and migration, wrapped-DEK/recovery records, protocol/public projection, QR/live transfer and existing recovery formats; arbitrary/mutated inputs fail without partial authentication, uncaught exceptions, unbounded allocation or hangs; parser/serializer stability properties are asserted where applicable; corpus seeds and resource budgets are reproducible; the framework has documented extension hooks that WAL items must use for descriptors, raw transactions, PSBT and node responses; extended scheduled fuzzing may run separately, but a deterministic bounded smoke set blocks every PR.
+
+- [ ] **SEC.4 — CI and build-supply-chain hardening**
+  *Deps: SEC.3*
+  Harden the build environment that produces the wallet signer.
+  **Accept:** every workflow `uses:` reference is pinned to a reviewed full commit SHA with a human-readable version comment; a test rejects tag/branch action references; CodeQL or the applicable GitHub first-party code scan is enabled for the JavaScript/TypeScript surface; dependency review covers the Playwright development dependency and future dev dependencies; vendored runtime verification remains byte-based; least-privilege workflow permissions remain; hosted Ubuntu/Windows reproducibility, browser jobs and release attestation still pass.
+
+- [ ] **SEC.5 — Repository governance and release authenticity** ⚠️
+  *Deps: SEC.4*
+  Turn the human review policy into enforceable repository/release controls and make the release-signing identity operational.
+  **Accept:** `CODEOWNERS` or equivalent ownership rules cover cold/protocol/vault/crypto/transaction/signing/build/CI surfaces; repository rules require PR review, required CI, latest-push/independent approval, stale-review protection as configured, conversation resolution, and no force-push/delete on protected release branches; security-sensitive tag/release rules are documented and witnessed; `verification.md` contains the real signing fingerprint with no placeholder, the fingerprint is published independently, detached artifact and signed-tag verification are rehearsed, a pre-release attestation is witnessed, and long-lived signing-key material is not stored casually in ordinary CI. Repository settings requiring maintainer action are recorded as real evidence, not assumed.
+
+- [ ] **SEC.6 — Rollback, save-lineage and conflict anchoring**
+  *Deps: SEC.1*
+  Replace overreliance on browser-local timestamp history with authenticated lineage plus an optional externally anchored freshness mode.
+  **Accept:** the vault records authenticated save lineage without claiming a self-contained counter can defeat rollback; an optional latest-state anchor can be stored outside the vault and detects an older otherwise-valid copy; absence of an external anchor is labeled advisory rather than cryptographically protected; migration/save failure cannot destroy the prior verified file; the design is compatible with later WAL pending-spend reservations and multi-device conflict detection.
+
+- [ ] **SEC.7 — KDF aging and safe vault-strength upgrade**
+  *Deps: SEC.1*
+  Treat password-protection parameters as dated policy rather than permanent constants.
+  **Accept:** the app compares stored KDF profile/parameters with the current dated recommendation in `crypto-choices.md`; on-device benchmark precedes an upgrade; an accepted upgrade rewraps the DEK without changing seed material; no automatic downgrade exists; a failed upgrade leaves the old unlock record usable; old vaults continue opening; warnings distinguish "older than current recommendation" from "unsafe/unopenable."
+
+- [ ] **SEC.8 — High Assurance operating profile**
+  *Deps: SEC.5, SEC.6, SEC.7*
+  Add a named high-assurance workflow without pretending a browser can defeat a compromised OS.
+  **Accept:** the mode/settings/guidance cover verified artifact use, clean no-extension/amnesic environment guidance, strict Level 3 reauthentication, stronger source-disagreement and future wallet-spend policies, suspicious-input quarantine hooks, external rollback anchor support, independent backup/recovery rehearsal and user-owned browser-compatible Bitcoin source guidance; enforceable rules are enforced, procedural rules are labeled as procedural; no text claims secure-element-equivalent host compromise resistance.
+
+- [ ] **SEC.9 — Security-hardening certification**
+  *Deps: SEC.1, SEC.2, SEC.3, SEC.4, SEC.5, SEC.6, SEC.7, SEC.8*
+  Close the hardening campaign before wallet construction begins.
+  **Accept:** all security claims in the current `threat-model.md` trace to tests or an explicitly documented limitation; the Level 3/v2 migration matrix passes; TCB and DOM-sink negative tests pass; deterministic fuzz smoke passes; action/dependency/repository/release controls have evidence; KDF/rollback/High Assurance docs agree; full Node/vendor/lint/docs/unit/browser/reproducibility checks pass; every changed current-behavior doc is reconciled and no future requirement is falsely described as already shipped.
+
+## Phase WAL — full single-signature Bitcoin wallet for v1
+
+This phase implements [ADR-0051](adr/0051-full-bitcoin-wallet-v1.md) through
+[ADR-0055](adr/0055-chain-state-trust-and-privacy.md). Bitcoin spending is v1
+scope. Multisig and hardware signer integration are post-v1.
+
+- [ ] **WAL.1 — Wallet data model, descriptors and wallet UI contract** ⚠️
+  *Deps: SEC.9*
+  Establish the v1 wallet entities and visual/security flow before transaction code.
+  **Accept:** `data-model.md` gains versioned Bitcoin wallet-sync/UTXO/pending-spend/source-state entities with migration tests; singlesig receive/change identity uses checksummed standard descriptors for the exact supported P2WPKH/P2TR families; all values controlling money are integer satoshis; wallet IDs/descriptors cannot be silently replaced by warm data; watch-only and seed-backed wallets share the public model; new Send/Receive/UTXO/Transactions/Review/RBF/CPFP/PSBT/source-status desktop/mobile states are approved by the maintainer and become binding wallet visual evidence without altering the already-frozen UI.11 references.
+
+- [ ] **WAL.2 — Bitcoin data-source and source-assurance layer**
+  *Deps: WAL.1*
+  Implement [ADR-0055](adr/0055-chain-state-trust-and-privacy.md) in the warm realm.
+  **Accept:** a user-owned browser-compatible Esplora/electrs-style HTTP source is supported as the preferred private mode; any direct Bitcoin Core RPC path must separately prove safe browser/CORS/credential behavior before it is claimed; public-source and cross-check modes expose their privacy/trust tradeoff; source identity/tip/staleness accompany sync results; no xpub is handed to a public third party merely to scan; contradictions in material spend state are surfaced and block spending rather than majority-voted silently; every new host is documented in `api-sources.md`, CSP and provenance.
+
+- [ ] **WAL.3 — Address discovery, UTXO sync, transaction history and reorg engine**
+  *Deps: WAL.2*
+  Discover the wallet from public descriptors/address ranges and maintain canonical public wallet state.
+  **Accept:** receive/change discovery obeys bounded gap/range rules; UTXOs store exact outpoint/value/script/provenance; unconfirmed/confirmed/replaced/conflicted/dropped/reorg states have explicit transitions; reorg tests roll state backward without losing labels/reservations; stale/missing source data is visibly aged; a source cannot mark a non-wallet script as owned; sync is deterministic from the same evidence.
+
+- [ ] **WAL.4 — Receive workflow and address lifecycle**
+  *Deps: WAL.3*
+  Make receiving a first-class wallet function.
+  **Accept:** fresh receive addresses derive from the authenticated wallet definition, address reuse is visible/warned, labels persist and export through the existing BIP-329 path, QR/payment URI contains only the selected public address/amount metadata, receive ownership can be independently re-derived, and a warm display cannot silently substitute an address without the existing verification controls detecting the mismatch.
+
+- [ ] **WAL.5 — UTXO management, freeze and privacy-aware coin control**
+  *Deps: WAL.3*
+  Provide Sparrow-class coin visibility before automatic spending.
+  **Accept:** every UTXO shows amount/outpoint/confirmation/address/account/label/source and frozen/reserved state; freeze/unfreeze is authenticated public wallet state; manual coin selection works; automatic selection avoids unnecessary cross-account/label cluster merges; suspicious small unexpected UTXOs are quarantined from automatic selection by default; explicit approval is required to mix privacy groups; unconfirmed external coins follow a conservative policy; all selection decisions are reproducible/testable.
+
+- [ ] **WAL.6 — Fee engine and deterministic coin selection**
+  *Deps: WAL.5*
+  Calculate fees from the transaction, not from provider prose.
+  **Accept:** provider estimates are suggestions with provenance; final fee is computed in cold from integer satoshis and transaction weight; absolute, rate and relative fee policy limits exist; send-max is exact; change/dust behavior is explicit; a malicious extreme estimate cannot bypass policy; deterministic fixtures compare coin selection/fee results with an independent implementation or published vectors where available.
+
+- [ ] **WAL.7 — Cold transaction builder and strict spending envelope**
+  *Deps: WAL.6*
+  Implement [ADR-0052](adr/0052-warm-network-cold-wallet-authority.md) and [ADR-0053](adr/0053-strict-spending-envelope.md).
+  **Accept:** recipient/amount/coin-control authorization and final transaction construction happen in cold; warm supplies bounded evidence, not an opaque sign command; every input's ownership/value/script data required by the supported spend type is validated; change is cold-derived; only accepted version/locktime/sequence/RBF/sighash/script forms exist; unknown/duplicate/proprietary/ambiguous fields fail closed; no floating-point amount reaches construction; raw serialization/txid/sighash results match independent Bitcoin reference implementations across positive and adversarial vectors.
+
+- [ ] **WAL.8 — Level 3 Bitcoin signer and signature self-verification**
+  *Deps: WAL.7, SEC.1*
+  Implement [ADR-0054](adr/0054-signing-lifecycle-and-exfiltration-boundary.md).
+  **Accept:** signing requires an approved exact transaction plus fresh secret authorization; only the selected seed record and required child key(s) become plaintext; supported ECDSA/Schnorr nonce/signing rules match their standards; each produced signature is verified before release; teardown occurs on success/error/panic/timeout; no resident general signing key exists between spends; unsupported sighash/script paths refuse; independent vectors and differential tests cover signatures and sighashes; the UI/security docs state the malicious-build signature-exfiltration residual honestly.
+
+- [ ] **WAL.9 — Send ceremony and exact review-to-sign binding** 🌐
+  *Deps: WAL.8*
+  Make human authorization part of the security boundary.
+  **Accept:** the cold review shows wallet/fingerprint, recipients, exact amounts, selected inputs, verified change, fee, fee rate, RBF state and policy/privacy warnings derived from the exact transaction; approval binds to its digest; any relevant mutation returns to review; recipient/amount is never trusted from warm display text; destructive/spending state is visually calm and accessible; keyboard/focus/mobile/touch behavior passes the wallet visual contract.
+
+- [ ] **WAL.10 — Exact-byte broadcast, pending reservations and confirmation monitor**
+  *Deps: WAL.9*
+  Warm broadcasts only the finalized bytes cold authorized and tracks their lifecycle.
+  **Accept:** cold supplies finalized bytes plus expected transaction id; warm cannot rebuild them; returned/tracked txid must match; signed inputs become locally reserved before broadcast; broadcast, mempool, confirmed, replaced, conflicted, dropped and reorganized are distinct; "submitted" is never displayed as "confirmed"; source disagreement cannot silently release a reserved input; restart/reload preserves authenticated pending state.
+
+- [ ] **WAL.11 — RBF fee-bump workflow**
+  *Deps: WAL.10*
+  **Accept:** the original transaction and replacement relationship are proven; old/new fee and every changed field are displayed; recipients/amounts remain unchanged by default; increasing fee from change/additional inputs follows explicit rules; changing a recipient/amount leaves the RBF workflow and becomes a new spend review; policy ceilings still apply; conflicting/replaced state updates atomically.
+
+- [ ] **WAL.12 — CPFP workflow**
+  *Deps: WAL.10*
+  **Accept:** CPFP can spend only an output Coldbox proves belongs to the wallet; parent/child relationship and combined effective fee are shown; the child uses ordinary cold construction/review/signing; no generic "accelerate" path can spend an arbitrary external output; conflict/reorg tests cover parent and child together.
+
+- [ ] **WAL.13 — PSBT v0/v2 import, inspection, signing and export**
+  *Deps: WAL.8*
+  Implement BIP-174/BIP-370 with BIP-371 fields needed by the supported Taproot path.
+  **Accept:** parser limits/duplicate-key rules/version inclusion rules are enforced; unknown/proprietary fields are rejected or preserved only under a finite explicitly reviewed policy and never trusted for authorization; imported PSBT is treated as an untrusted proposal and must satisfy the same cold spending envelope/review as an internally created spend; signatures/finalization/export round-trip against independent fixtures; malformed/oversize/reordered/duplicate/adversarial corpora fail closed; WAL.13 absorbs the v1 baseline previously postponed as P5.5.
+
+- [ ] **WAL.14 — Watch-only, rescan/recovery and stale-wallet conflict handling**
+  *Deps: WAL.3, WAL.10, WAL.13*
+  **Accept:** watch-only wallets perform every non-signing wallet operation without secret records; descriptor/public-data recovery rebuilds wallet discovery deterministically; rescans are cancelable/resumable without corrupting state; a stale vault reconciles signed/pending/spent inputs conservatively before offering them again; multi-device conflicts are surfaced; rollback-anchor status is shown where configured; wallet recovery never invents ownership from provider labels.
+
+- [ ] **WAL.15 — v1 wallet adversarial and physical certification** 🌐
+  *Deps: WAL.1, WAL.2, WAL.3, WAL.4, WAL.5, WAL.6, WAL.7, WAL.8, WAL.9, WAL.10, WAL.11, WAL.12, WAL.13, WAL.14*
+  Close the wallet before audit.
+  **Accept:** deterministic fuzz/property/differential suites cover descriptors, raw transactions, PSBT, API/node responses, fee/selection, signing, RBF/CPFP and reorg/conflict state; supported transaction families match independent implementations; negative mutations never partially authorize/sign; full browser harness passes; wallet desktop/mobile approved states pass their parity/accessibility checks; mainnet-value signing is not required for automated tests, but a maintainer records safe physical-device end-to-end test-network/regtest evidence across the supported execution matrix; all current specs/threat/API/standards/guides are reconciled; the final reproducible artifact has no unexplained network host or signing capability.
+
 ## Phase 2 — Backup, continued
 
-Phase 2's last item resumes here, after the interface work, so that it is built once and in the new shell.
+Phase 2's last item resumes here after the interface, v1 security-hardening, and full single-signature Bitcoin-wallet work above; the rest of the existing roadmap then continues before the v1 release freeze. **Hard phase barrier:** SEC.1 through WAL.15 are intentionally ordered before this section and must all be `[x]` before P2.8 or any later phase begins, even though P2.8 retains its historical `P2.7, UI.11` dependency text because UI.4a's frozen parity regression contract asserts that exact dependency.
 
 - [ ] P2.8 Printable cards and hand-computation worksheets
   *Deps: P2.7, UI.11*
@@ -349,7 +483,7 @@ Phase 2's last item resumes here, after the interface work, so that it is built 
 ## Phase 3 — Portfolio and online
 
 - [ ] P3.1 Price aggregation ⚠️ *needs a free CoinGecko demo key from the human* · P3.2 Multi-currency and Frankfurter FX
-- [ ] P3.3 Balance lookups · P3.4 Transactions and **per-wallet** lot pools
+- [ ] P3.3 Remaining-chain / portfolio balance lookups beyond the Bitcoin wallet sync shipped in WAL.2–WAL.3 · P3.4 Cost-basis transaction classification and **per-wallet** lot pools beyond the operational Bitcoin transaction history shipped in WAL.3
 - [ ] P3.5 Cost basis engine — FIFO plus specific ID with lot-level audit trail
 - [ ] P3.6 Dashboard and charts · P3.7 CSV import/export · P3.8 BIP-329 labels
 - [ ] **P3.9 Tax reporting exporter** — Form 8949 CSV per box code (G/H/I, J/K/L), Schedule D summary, income report, lot audit trail, transfer ledger, 1099-DA reconciliation, safe harbor allocation record, plus TurboTax and TaxAct profiles. Spec: [us-tax-reporting.md](../04-reference/us-tax-reporting.md)
@@ -382,14 +516,59 @@ Phase 2's last item resumes here, after the interface work, so that it is built 
   **Accept:** codex32 damage is *corrected* arithmetically, not searched, and is presented as deterministic; SLIP-39 repair uses independent test vectors.
 
 - [ ] P4.4 Verify Bench and file hasher · P4.5 Passphrase Studio · P4.6 BIP-85
-- [ ] P4.7 Nostr NIP-06 · P4.8 BC-UR animated QR · P4.9 Descriptors and BIP-388 · P4.10 Reference
+- [ ] P4.7 Nostr NIP-06 · P4.8 BC-UR animated QR · P4.9 Advanced descriptor/BIP-388 policy tooling beyond the v1 singlesig descriptor baseline · P4.10 Reference
 
 ## Phase 5 — Advanced
 
 - [ ] P5.1 Tier 2 chains · P5.2 Multisig quorum analysis · P5.3 Miniscript read-only
-- [ ] P5.4 BLS/EIP-2333 · P5.5 PSBT viewer · P5.6 Silent payments (experimental)
+- [ ] P5.4 BLS/EIP-2333 · P5.5 Advanced PSBT diagnostics/extensions beyond the WAL.13 v1 baseline · P5.6 Silent payments (experimental)
 - [ ] P5.7 Quantum readiness panel · P5.8 ERC-4337 records · P5.9 Border Wallets
 - [ ] P5.10 Inheritance letter · P5.11 Camera scanner
+
+## Phase REL — v1 release candidate, professional audit and release
+
+The external audit intentionally happens only after the full v1 Bitcoin wallet
+exists, but **before** the public v1.0.0 tag.
+
+- [ ] **REL.1 — v1 feature freeze and audit package**
+  *Deps: SEC.9, WAL.15, P5.7*
+  **Accept:** no new v1 features enter after freeze without restarting the affected audit scope; the exact candidate commit/artifact/hash is recorded; auditor package includes architecture, v2 vault, TCB, threat model, transaction/signing specs, standards, fuzz/differential evidence, reproducible-build instructions and review history; open known security defects are zero.
+
+- [ ] **REL.2 — Professional external security audit** 👤 **human-required**
+  *Deps: REL.1*
+  Engage an independent professional security firm against the exact v1 release-candidate line.
+  **Required scope:** realm/protocol boundary; Level 3 vault v2 and migration; KDF/recovery; DOM/TCB; descriptor/wallet state; transaction parsing/construction; fee/coin selection; ECDSA/Schnorr signing and signature-output boundary; PSBT; broadcast/RBF/CPFP/reorg/conflict state; supply-chain/reproducible release. Audit report and tested commit are preserved. An agent cannot mark this complete from self-review evidence.
+
+- [ ] **REL.3 — Audit remediation and auditor-facing closure**
+  *Deps: REL.2*
+  **Accept:** every audit finding of every severity is either fixed and regression-tested or, if the auditor explicitly determines it is not a finding after evidence, that disposition is preserved; no unresolved audit finding is carried into v1; fixes that affect audited boundaries are re-presented for auditor/reviewer closure as required; threat model and audit history state the final truth.
+
+- [ ] **REL.4 — Independent v1 security re-review, device matrix and release rehearsal** 🌐
+  *Deps: REL.3, P0.19*
+  **Accept:** a fresh independent Coldbox review verifies the final post-audit exact head; full supported device matrix is recorded; all CI/reproducible/browser/security/fuzz tests pass; release signing fingerprint has no placeholder; detached signature, signed tag in a rehearsal namespace/pre-release, CI provenance attestation, downloaded-artifact hash/signature and third-party/local rebuild path are proven; the in-app audit language names real audit scope/date/report rather than merely removing "not audited."
+
+- [ ] **REL.5 — v1.0.0 release** 👤 **human-required**
+  *Deps: REL.4*
+  **Accept:** release checklist is complete against the exact audited/re-reviewed commit; v1.0.0 tag is signed; published `.html`, `.sha256`, detached signature and attestation agree; downloaded release is independently re-verified and opened from `file://`; release notes link the audit scope/report and disclose residual limitations; no post-audit code is smuggled into the tag.
+
+## Phase W2 — Post-v1 advanced Bitcoin wallet
+
+These capabilities are deliberately **not** v1 release gates. They begin only
+after REL.5 has shipped the audited standalone singlesig wallet.
+
+- [ ] **W2.1 — Hardware signer integration**
+  *Deps: REL.5*
+  Add optional external hardware signing without weakening standalone Coldbox.
+  **Accept:** Coldbox independently constructs/reviews the exact transaction before handing it to the device; initial interoperability works through standard PSBT file/QR flows without requiring WebUSB/WebHID; the returned signature/PSBT is verified against the expected transaction and signer key before broadcast; device/vendor companion software is not trusted to define recipient/change/fee; secure-element/private-key isolation is described as a hardware advantage rather than claimed by the browser vault; direct WebUSB/WebHID, if later added, requires its own accepted ADR and device-matrix evidence; hardware ownership is never required to use Coldbox.
+
+- [ ] **W2.2 — Full multisig wallet signing and coordination**
+  *Deps: W2.1*
+  Expand the post-v1 wallet from quorum analysis to descriptor-backed M-of-N spending.
+  **Accept:** cosigner origins/policies are authenticated, change is independently derived from the multisig policy, partial-signature state is explicit, PSBT coordination cannot silently substitute a cosigner or policy, signing progress/quorum is correct under missing/duplicate/wrong cosigners, Coldbox software keys and external hardware/airgapped signers can coexist, and independent vectors cover every supported multisig script/policy.
+
+- [ ] **W2.3 — Hardware-backed High Assurance and anti-exfiltration certification**
+  *Deps: W2.1, W2.2*
+  **Accept:** where a supported signer exposes a reviewed anti-exfiltration/nonce-commitment protocol, Coldbox verifies the protocol rather than merely labeling the device secure; the hardware display/physical confirmation is treated as an independent boundary only when it actually is; the same Coldbox artifact's warm/cold realms never count as independent devices; failure/degraded-device cases fall back only to explicitly labeled lower-assurance signing, never silently; the complete hardware/multisig path receives independent security review before release.
 
 ---
 
@@ -399,7 +578,7 @@ Recorded here so they are not silently re-proposed. Each has an ADR with the ful
 
 | Proposal | Outcome |
 |---|---|
-| Unsigned transaction construction, broadcast relay, ERC-7730 clear signing | **Rejected** — [ADR-0019](adr/0019-no-transaction-workbench.md). Worked up in full, then declined: the three were justifying each other rather than standing alone, and hardware wallets already perform clear signing with provenance Coldbox structurally cannot match. [SPEC §1.3](../01-spec/SPEC.md)'s non-goal stands unamended |
+| Bitcoin transaction construction, signing and broadcast | **Revisited and approved for the future v1 Bitcoin wallet** — [ADR-0051](adr/0051-full-bitcoin-wallet-v1.md) supersedes ADR-0019 for the bounded Bitcoin transaction lifecycle after SEC hardening. ADR-0019 remains the historical rejection and still governs current pre-WAL behavior plus scopes not approved by ADR-0051, including arbitrary smart-contract clear-signing/provider expansion. |
 | Injected wallet provider integration (EIP-6963 / EIP-1193) | **Rejected as a feature, kept as a threat** — [ADR-0020](adr/0020-injected-providers-rejected-and-neutered.md). Provider calls bypass page CSP, which would have required the first carve-out in [threat-model.md](../02-security/threat-model.md)'s design commitments. The investigation's finding ships as P0.21 |
 
 ---

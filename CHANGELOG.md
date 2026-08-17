@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Planning: after UI.11, make v1 security hardening the next campaign, then build a complete single-signature Bitcoin wallet (discovery, UTXOs, coin control, fees, cold construction/review, Level 3 signing, broadcast, confirmation, RBF/CPFP and PSBT), resume the existing pre-v1 roadmap, professionally audit the complete release candidate before v1.0.0, and keep multisig plus hardware-signer/secure-element integration explicitly post-v1. This planning change does not claim those capabilities are already shipped.
 - UI.9: compile the in-app Tool map directly from `docs/05-development/ROADMAP.md`, with fail-closed parsing and deterministic build injection.
 - UI.10: move the durable vault name into the sealed encrypted public compartment, add cold-side rename and KDF selection, use `coldbox--<id8>.cbx`, and keep warm nicknames device-local.
 - UI.8 regrouped the warm shell into Records, Money, Vault files, and Reference workspaces while preserving the sealed-realm handoff outside those groups.

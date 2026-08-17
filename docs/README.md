@@ -20,6 +20,7 @@ Everything about Coldbox lives here. Guides and the glossary compile into the ap
 | [SPEC.md](01-spec/SPEC.md) | The full design document |
 | [Design system](01-spec/design-system.md) | Visual language, tokens, UI copy contract, accessibility floors |
 | [Approved UI parity](01-spec/ui-parity.md) | Binding desktop/mobile mock relationship and deviation register |
+| [v1 security + Bitcoin wallet contract](01-spec/v1-security-wallet-contract.md) | **Future v1 requirements; not current shipped behavior** |
 | [Architecture](01-spec/architecture.md) | Two-realm split, message schema, failure modes |
 | [Vault format](01-spec/vault-format.md) | Byte-level `.cbx` specification |
 | [Data model](01-spec/data-model.md) | Entities and compartment assignment |

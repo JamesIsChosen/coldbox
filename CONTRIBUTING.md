@@ -42,9 +42,9 @@ Non-negotiable. A PR violating any of these can't be merged regardless of how go
 ```bash
 git clone https://github.com/<you>/coldbox
 cd coldbox
-npm ci            # dev tooling only — the app itself has no runtime deps
-npm run verify    # confirm vendored libs match their upstream hashes
-npm run build     # produces build/coldbox.html
+npm ci                   # dev tooling only — the app itself has no runtime deps
+npm run verify-vendor    # confirm vendored libs match their upstream hashes
+npm run build            # produces build/coldbox.html
 npm test
 ```
 

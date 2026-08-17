@@ -1,6 +1,6 @@
 # ADR-0045: One released secret per session, and every cold tool is a lens on it
 
-**Status:** Accepted · amends [ADR-0023](0023-entropy-lab-seed-forge-boundary.md) and [ADR-0028](0028-cold-only-bip39-seed-forge.md)
+**Status:** Accepted for the current UI model · session-long plaintext registry is superseded by [ADR-0050](0050-level-3-secret-record-vault.md) when SEC.1 lands; input classification and focused-record UX remain
 **Date:** 2026-08-14
 
 ## Context
