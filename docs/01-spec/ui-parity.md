@@ -161,3 +161,30 @@ negative test proving the exception cannot silently widen.
 Reference files are append-only audit evidence: never edit one in place and
 never overwrite its hash. The roadmap status remains authoritative for whether
 parity work has actually passed independent review.
+
+### 6.1 Product-identity redesign before UI.11 resumes
+
+On 2026-08-17 the maintainer approved a product-identity and information-
+architecture redesign before UI.11 certification closes.
+
+UI.11 remains in progress, but **new pixel-convergence work is paused** until the
+replacement design is approved and implemented through UI.10a/UI.10b.
+
+The existing approved desktop/mobile references remain immutable historical
+evidence. They are not edited, overwritten, or silently reinterpreted. The
+replacement design work may be produced outside the repository for maintainer
+review; it has **no repository authority** until the maintainer explicitly
+approves the artifacts and UI.10a imports new immutable references with new
+hashes/metadata.
+
+The replacement design must preserve the established comic visual language,
+security/calm rules, accessibility floors, truthful unavailable-feature
+treatment, and two-realm authority boundary. It may reorganize information
+hierarchy, navigation, product nouns, contextual placement of specialist tools,
+and home/dashboard composition because those are the approved subject of the
+redesign.
+
+The old UI.11 dependency line remains exactly `UI.8, UI.9, UI.10`, and P2.8
+continues to depend exactly on `P2.7, UI.11`. UI.10a/UI.10b are an explicit
+maintainer-approved sub-gate inside the still-open UI campaign rather than a
+rewrite of the historical dependency evidence.

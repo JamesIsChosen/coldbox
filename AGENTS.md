@@ -1,6 +1,6 @@
 # Instructions for AI agents
 
-You are contributing to Coldbox: a single-file, offline-first crypto toolkit that handles seed phrases and private keys. **A bug here can cost someone everything they own.** Work accordingly.
+You are contributing to Coldbox: a single-file, offline-first self-custody security workstation that handles seed phrases and private keys and is being built into a standalone Bitcoin wallet. **A bug here can cost someone everything they own.** Work accordingly.
 
 This file is your standing contract. Read it fully before doing anything else.
 

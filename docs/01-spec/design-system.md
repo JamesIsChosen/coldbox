@@ -23,29 +23,51 @@ It has a hard limit, and the limit is the point of §6.
 
 ## 2. What Coldbox is, in UI copy
 
-Copy is part of the design system because the wrong noun is a design defect. The canonical descriptions live in [what-is-this.md](../00-overview/what-is-this.md) and [README.md](../../README.md); this section is the short form the interface must hold to.
+Copy is part of the design system because the wrong noun is a design defect.
+The canonical product direction lives in
+[v1-security-wallet-contract.md](v1-security-wallet-contract.md) and
+[ADR-0059](../05-development/adr/0059-self-custody-workstation-product-identity.md).
+The roadmap remains authoritative for what is actually implemented.
 
-**Coldbox is a toolkit, a wallet registry, and a portfolio manager. It is a companion to hardware wallets.**
+**Coldbox is a self-custody security workstation. The finished v1 product also
+includes a complete standalone single-signature Bitcoin wallet.**
 
-| Say | Never say |
+The UI must distinguish durable identity from current availability:
+
+| Say | Never imply |
 |---|---|
-| toolkit, toolbox, companion | wallet, our wallet, your Coldbox wallet |
-| record, register, track, verify | hold, store your coins, custody |
-| the vault (an encrypted file of *records*) | the vault (a thing containing *money*) |
-| sealed realm, cold realm | cold storage, cold wallet |
-| balances, holdings *(read from chain or entered by hand)* | your funds in Coldbox |
+| self-custody security workstation | Coldbox is only a toolbox forever |
+| Bitcoin wallet, on implemented or explicitly future/unavailable wallet surfaces | an unfinished WAL feature already works |
+| wallet/account/address/seed/device/backup record | Coldbox is a custodian or holds blockchain assets on the user's behalf |
+| standalone by design; hardware-enhanced by choice | a hardware wallet is required to use Coldbox |
+| sealed realm, cold realm | the network-capable warm shell can access secrets |
+| current build does not sign yet | Coldbox will never sign |
+| pre-release · not audited | professionally audited before REL.2/REL.3 actually close |
 
-Three claims the interface may make freely, because they are the product:
+The interface may make these durable claims:
 
-- Coldbox **holds no keys and signs nothing.** No transaction building, signing, or broadcasting — ever. This is a permanent non-goal ([ADR-0006](../05-development/adr/0006-companion-not-replacement.md)).
-- Coldbox **cannot spend your money**, which means an attacker who compromises it cannot directly spend it either.
-- Coldbox **is not audited.** The interface says so permanently and does not bury it.
+- Coldbox's sealed realm has no network capability under the documented
+  architecture; secret-capable operations remain cold-owned.
+- The roadmap controls feature truth. An unbuilt capability is unavailable, not
+  a convincing fake screen.
+- Hardware signing is optional future defense-in-depth; Coldbox's accepted v1
+  direction includes standalone Bitcoin signing.
+- Coldbox is free/open-source. Payment, sponsorship, login, activation,
+  advertising, or subscription state never gates a security capability.
 
-"Wallet" is correct in exactly three compounds: **hardware wallet**, **wallet registry**, and **wallet record**. Anywhere else it is a bug.
+The interface must **not** claim that Coldbox "holds no keys and signs nothing —
+ever", that it is "not a wallet" as a permanent product rule, or that it is
+merely a hardware-wallet companion. Those statements describe earlier/current
+pre-WAL behavior and are superseded as future product constraints by ADR-0051
+and ADR-0059.
 
-Tone: plainly spoken, specific, never breathless. The visual language is loud; the words are not. A sentence that would embarrass you in a security review does not ship because the panel around it is yellow.
+Until the corresponding roadmap items land, current screens stay precise:
+"Bitcoin signing is not available in this build" is acceptable; "Coldbox cannot
+sign" as a permanent identity statement is not.
 
----
+Tone: plainly spoken, specific, never breathless. The visual language is loud;
+the words are not. A sentence that would embarrass you in a security review does
+not ship because the panel around it is yellow.
 
 ## 3. Tokens
 

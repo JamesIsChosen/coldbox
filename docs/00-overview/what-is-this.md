@@ -1,12 +1,12 @@
 # What is this?
 
-A plain-English tour. No prior knowledge assumed.
+A plain-English tour. No prior knowledge assumed. This page describes the durable product direction as well as current foundations; `ROADMAP.md` is authoritative for what the pre-release build supports today.
 
 ---
 
 ## The one-sentence version
 
-Coldbox is a single web page you keep on a USB stick that helps you create, verify, back up, and keep track of cryptocurrency wallets — without ever sending your secrets anywhere.
+Coldbox is a single-file self-custody security workstation you keep locally, designed to help you create, identify, protect, verify, back up, recover, track, and use cryptocurrency wallets while keeping secret operations inside a sealed no-network boundary.
 
 ## The problem it solves
 
@@ -20,19 +20,35 @@ If you hold crypto in self-custody, you end up juggling a pile of things:
 
 Most people manage this with a spreadsheet, a browser bookmark folder full of one-off tools, and hope. That's roughly what the folder this project grew out of looked like: fifteen separate HTML files and three platform-specific binaries, each doing one thing.
 
-Coldbox is those fifteen tools in one file, plus the record-keeping layer that ties them together.
+Coldbox grew out of those separate tools, but the accepted product direction is broader: one self-custody workstation that ties secrets, wallets, devices, backups, addresses, records, verification, recovery, and Bitcoin wallet operation together without making the user navigate a pile of unrelated utilities.
 
 ---
 
 ## What it is not
 
-**It is not a wallet.** It doesn't hold your coins, connect to any blockchain to move them, or sign transactions. It cannot spend your money, which also means an attacker who compromises it cannot directly spend your money either.
+**It is not a custodian, exchange, hosted web wallet, trading platform, swap
+aggregator, or dApp browser.** Coldbox is designed around self-custody and does
+not take possession of your assets.
 
-**It is not a replacement for a hardware wallet.** It's a companion. Your Ledger, Trezor, or Coldcard holds your keys and signs your transactions. Coldbox checks their work, manages your backups, and remembers everything you can't.
+**The current pre-release build is not yet the finished Bitcoin wallet.** Before
+the WAL phase lands, transaction construction, Coldbox-native signing,
+broadcasting, RBF/CPFP, and the full PSBT wallet workflow remain unavailable.
+The accepted v1 roadmap deliberately adds those capabilities.
 
-**It is not audited.** No professional security firm has reviewed it. Treat it accordingly.
+**A hardware wallet is optional, not the product definition.** Hardware wallets
+remain useful independent signers and post-v1 Coldbox can coordinate with them,
+but the v1 roadmap also supports standalone Coldbox signing.
 
----
+**It is not a guarantee that a compromised operating system is safe.** The
+two-realm architecture sharply limits network exfiltration paths, but the
+security documentation describes residual host/display/input risks honestly.
+
+**It is not audited yet.** The pre-release warning remains until the roadmap's
+professional audit and remediation gates actually close.
+
+Coldbox is free/open-source software. Donation or sponsorship support may fund
+development, but payment does not unlock security features and the application
+does not require activation, an account, advertising, or a subscription.
 
 ## The clever part, explained simply
 
@@ -143,10 +159,15 @@ The same principle powers the other verification workflows: confirming a device 
 
 ## Who it's not for
 
-- Anyone wanting to trade, swap, or spend. It doesn't do that.
-- Anyone wanting a single button that fixes everything. Self-custody involves real, irreversible decisions, and this tool's job is to make them clear rather than to hide them.
-
----
+- Anyone looking primarily for an exchange, swap aggregator, dApp connector, or
+  automated trading terminal. Those integrations would expand the trusted
+  surface in directions Coldbox deliberately avoids.
+- Anyone who needs unfinished roadmap features *today*. The interface must keep
+  planned functionality visibly unavailable until its owning roadmap item is
+  complete.
+- Anyone wanting a single button that hides every self-custody decision.
+  Coldbox's job is to make irreversible choices understandable and verifiable,
+  not to pretend they do not exist.
 
 ## Next steps
 

@@ -1,10 +1,27 @@
 # Coldbox
 
-**A single-file, offline-first crypto toolkit, wallet registry, and portfolio manager. A companion to your hardware wallets — not a replacement for them.**
+**A single-file, offline-first self-custody security workstation in development. The accepted v1 target includes a complete standalone single-signature Bitcoin wallet while preserving Coldbox's secret-management, backup, recovery, verification, portfolio, and reference capabilities.**
 
 One HTML file. No install, no server, no runtime. Copy it to a USB stick and open it in a supported local-file/browser context on Windows, macOS, Linux, or Android. Direct local execution from iOS Files is a portability target, not a current support claim; see [ADR-0010](docs/05-development/adr/0010-ios-local-html-execution.md).
 
 > ⚠️ **Pre-release · not audited.** Do not use Coldbox to secure real funds yet. See the [roadmap](docs/05-development/ROADMAP.md) for the only authoritative item-level status.
+
+### Product direction vs current build
+
+Coldbox's durable product category is **Self-Custody Security Workstation**. The
+roadmap, not marketing copy, determines what the current pre-release build can
+actually do. Features owned by unfinished `SEC`, `SEED`, `WAL`, `P3`, `P4`,
+`P5`, or later items are future capabilities until their roadmap work is
+implemented and independently closed.
+
+The current pre-wallet build still has no Bitcoin transaction construction,
+signing, or broadcasting path. That is a **current implementation fact**, not a
+permanent product non-goal. The accepted v1 contract adds a standalone Bitcoin
+wallet and Coldbox-native Level 3 signing before release.
+
+Coldbox remains free/open-source software. Optional donations or sponsorship may
+support continued development, but no security capability is gated by payment,
+activation, login, subscription state, advertising, or DRM.
 
 ---
 
@@ -26,7 +43,9 @@ Compare the result against the `.sha256` published with the release, and verify 
 
 ---
 
-## What it does
+## Capabilities and roadmap direction
+
+This inventory spans shipped and accepted planned capabilities. The roadmap is authoritative for current availability.
 
 | | |
 |---|---|
@@ -61,19 +80,23 @@ See [ADR-0001](docs/05-development/adr/0001-two-realm-architecture.md) for why i
 
 ---
 
-## A companion, not a replacement
+## Standalone by design; hardware-enhanced by choice
 
-Coldbox holds no keys and signs nothing. Your hardware wallets do that.
+Hardware wallets remain valuable independent signing/security boundaries, but
+they no longer define what Coldbox is allowed to become.
 
-What it does is the layer around them — the part a device can't do for you because a possibly-compromised computer sits in between:
+Today, before the WAL phase lands, Coldbox is primarily the verification,
+secret-management, backup, registry, and portfolio foundation described by the
+completed roadmap items. It does **not** yet build or sign Bitcoin transactions.
 
-- **Verify a receive address** independently from your xpub, catching address-swapping malware.
-- **Verify a device holds the seed you think it does**, by comparing fingerprints, without either side revealing the seed.
-- **Verify a metal backup works** without wiping a device to test it.
-- **Verify a passphrase** produces the wallet you expect *before* you fund it.
-- **Track which device holds which key** in a multisig, and whether you could still spend if one died.
+The accepted v1 direction makes Coldbox a complete standalone single-signature
+Bitcoin wallet. A user may choose Coldbox-native Level 3 signing without a
+hardware wallet. Post-v1 hardware-signer integration adds an optional
+higher-assurance path; it does not turn hardware into a prerequisite.
 
----
+The durable promise is therefore not "Coldbox signs nothing." It is that secret
+and signing authority remains deliberately bounded, reviewable, and isolated
+from the network-capable warm shell.
 
 ## Documentation
 

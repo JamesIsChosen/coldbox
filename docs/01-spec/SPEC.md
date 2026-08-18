@@ -1,10 +1,20 @@
 # Coldbox — Specification v0.5
 
-**A single-file, portable crypto toolkit, wallet registry, and portfolio manager.**
+**A single-file, portable self-custody security workstation. The accepted v1 direction adds a complete standalone single-signature Bitcoin wallet.**
 **Secrets are cryptographically incapable of reaching the network. Everything else works online.**
 
 Status: Draft for review. Phase 1 is in progress; Phase 0 device-matrix sign-off remains human-required.
 Date: 2026-08-09 · Supersedes v0.4 · *"Coldbox" is a working name — see §22*
+
+> **Product-direction amendment — 2026-08-17.** This file remains the
+> current-behavior specification. The permanent "toolkit only / not a wallet /
+> signs nothing" direction has been superseded by
+> [ADR-0051](../05-development/adr/0051-full-bitcoin-wallet-v1.md),
+> [ADR-0059](../05-development/adr/0059-self-custody-workstation-product-identity.md),
+> and the
+> [future v1 contract](v1-security-wallet-contract.md). Planned capabilities do
+> not become current behavior merely because the product direction changed;
+> their owning roadmap items must still ship and update this specification.
 
 ---
 
@@ -48,13 +58,12 @@ One HTML file you copy to a USB stick, a phone, or a laptop, open in a supported
 
 ### 1.3 Explicit non-goals
 
-- **No transaction building, signing, or broadcasting.** Signing turns a calculator into a target. PSBT *viewing* is a Phase 4 candidate; signing is not.
-  **Reaffirmed 2026-08 by [ADR-0019](../05-development/adr/0019-no-transaction-workbench.md)**, which worked up a proposal to permit unsigned construction, opaque relay, and ERC-7730 clear signing — and rejected all three. Read that ADR before re-proposing any of them; the short version is that the three were justifying each other rather than standing on their own, and that hardware wallets already perform clear signing with provenance Coldbox structurally cannot match. Keeping all three prohibited leaves three lines of defence against scope drift toward a hot wallet, rather than one.
+- **Current pre-WAL behavior has no transaction building, signing, or broadcasting.** This is no longer a permanent non-goal. [ADR-0051](../05-development/adr/0051-full-bitcoin-wallet-v1.md) supersedes ADR-0019 for the v1 Bitcoin lifecycle: WAL adds cold-owned construction/review, Level 3 signing, exact-byte broadcast, confirmation, RBF/CPFP, and PSBT. Non-Bitcoin signing, arbitrary smart-contract signing, injected-wallet-provider behavior, and unrelated trading/dApp scope remain outside the v1 signing authority.
 - **No Monero.** Different seed scheme entirely (25-word, dual keys). Bolting it on invites subtle, expensive errors.
 - **No custodial/exchange API integration.** Read-only exchange keys still get stolen and still leak your entire position. Exchange holdings are manual entries.
 - **No tax filing output.** The portfolio computes cost basis and realized gains; it does not produce tax forms and does not give tax advice.
-- **Not a hardware wallet replacement — a companion to one.** It holds no keys and signs nothing. See §14a.
-- **Not audited.** It will say so, in the app, permanently.
+- **No hardware-wallet prerequisite.** The current pre-WAL build often operates as a companion/verification environment, but accepted v1 is a complete standalone Bitcoin wallet. Post-v1 hardware signers are optional higher-assurance signing boundaries, not dependencies.
+- **Not audited yet.** `Pre-release · not audited` remains visible until the roadmap's professional audit, remediation, and release gates actually close; the warning is not a permanent post-audit product identity.
 - **No hosted version.** Download and verify, or don't use it. See §20.3.
 
 ---

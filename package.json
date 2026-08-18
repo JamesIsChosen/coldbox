@@ -2,7 +2,7 @@
   "name": "coldbox",
   "version": "0.0.0",
   "private": true,
-  "description": "A single-file, offline-first crypto toolkit.",
+  "description": "A single-file, offline-first self-custody security workstation.",
   "license": "AGPL-3.0-only",
   "engines": {
     "node": "24.16.0"
