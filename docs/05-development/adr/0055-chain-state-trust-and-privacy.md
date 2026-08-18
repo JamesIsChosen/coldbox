@@ -25,10 +25,43 @@ Coldbox exposes explicit Bitcoin source-assurance modes.
 3. **Single public source** — usable, but labeled as provider-trusted chain
    state rather than independently verified truth.
 
+Source assurance and network transport are separate choices. WAL.2 exposes
+three transport policies:
+
+1. **Standard network** — ordinary browser networking. Coldbox makes no Tor
+   claim and does not imply that Edge, Brave, Chrome, or an ordinarily
+   configured Firefox session became a Tor client.
+2. **Tor environment** — the user deliberately runs Coldbox inside Tor Browser,
+   Tails, or another separately configured Tor-providing environment. A normal
+   HTTPS Bitcoin source may therefore traverse Tor, but Coldbox does not
+   fingerprint the browser, probe for Tor, or claim that page JavaScript can
+   independently prove the transport path.
+3. **Tor-enforced onion source** — the selected Bitcoin source is a reviewed,
+   CSP-pinned version-3 `.onion` endpoint. If that endpoint cannot be reached,
+   wallet synchronization, broadcast, and monitoring fail closed. No clearnet
+   alias, public provider, or alternate transport is substituted automatically.
+
+Coldbox never presents a control that claims to *enable Tor* from ordinary
+browser JavaScript. Tor transport is supplied by the execution environment.
+The app controls policy: whether ordinary networking is acceptable, whether the
+user is relying on an external Tor environment, or whether only a pinned onion
+source is acceptable.
+
+The finite warm-realm egress policy remains intact. WAL.2 must not add
+`*.onion`, `http://*.onion`, `https://*.onion`, or another broad onion wildcard
+to `connect-src`. A shipped onion source is pinned by exact reviewed host in
+the same provenance/CSP mechanism as other network sources. A user-owned onion
+host that is not part of the shipped allowlist requires an explicitly
+reproducible custom build that pins that exact host, or a separately reviewed
+local transport bridge; convenience does not override the egress boundary.
+
 Direct Bitcoin Core RPC is supported only if WAL.2 proves a browser-safe,
 credential-safe path without weakening CSP or the standalone-file model.
 
-Source provenance and observed chain tip accompany wallet sync state.
+Source provenance, observed chain tip, selected source-assurance mode, and
+selected transport policy accompany wallet sync state. The UI never collapses
+"provider trust", "Tor transport", and "onion endpoint" into one generic
+"private" badge.
 
 For spending:
 
@@ -70,6 +103,12 @@ raw node RPC is safe from a local HTML origin.
 
 - Public-provider mode still leaks wallet-query interest.
 - Running a private browser-compatible source is extra operational work.
+- Tor Browser/Tails or another Tor-providing environment is an additional user
+  dependency; Coldbox cannot honestly manufacture that transport in ordinary
+  browser JavaScript.
+- Exact onion pinning limits turnkey support for arbitrary user-owned onion
+  hosts unless the user produces a reproducibly customized build or uses a
+  separately reviewed local bridge.
 - Network truth cannot be proven from warm data alone.
 
 ### Risks
@@ -101,3 +140,5 @@ own phase/ADR.
 - [api-sources.md](../../04-reference/api-sources.md)
 - [ADR-0052](0052-warm-network-cold-wallet-authority.md)
 - [v1 security and Bitcoin-wallet contract](../../01-spec/v1-security-wallet-contract.md)
+- [Tor Project: What is Tor Browser and how does it work?](https://support.torproject.org/tor-browser/getting-started/about-tor-browser/)
+- [Tor Project: What are .onion sites and onion services?](https://support.torproject.org/about-tor/onion-services/what-is-a-dot-onion/)

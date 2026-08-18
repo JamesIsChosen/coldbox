@@ -83,7 +83,11 @@ The second and third are real deanonymization vectors for Bitcoin. Someone corre
 **Mitigations, in order of effectiveness:**
 
 1. **Run your own node.** The `localhost` entries exist for this. Complete solution.
-2. **Use Tor Browser.** Hides your IP; the query content still reveals interest.
+2. **Use Tor Browser/Tails or another correctly configured Tor environment.**
+   This hides the ordinary client IP from the destination, but the query content
+   still reveals interest. Coldbox does not itself turn an ordinary browser into
+   a Tor client; the current pre-WAL app inherits whatever transport its browser
+   environment provides.
 3. **VPN.** Weaker — you've moved trust rather than removed it.
 4. **Query selectively.** Which is the default.
 
@@ -95,6 +99,33 @@ The second and third are real deanonymization vectors for Bitcoin. Someone corre
 - Before the first lookup, the app shows exactly what it will send and to whom.
 - **xpub scanning derives addresses locally** in the cold realm and sends only the resulting addresses. The xpub itself never leaves the device — handing an xpub to an API hands over your entire transaction history forever, and most wallet software gets this wrong.
 - Historical price backfill defaults to **manual entry**, so importing 500 transactions doesn't fire 500 dated queries.
+
+### Future v1 Bitcoin-wallet transport policy
+
+This subsection records accepted future WAL.2/WAL.10 direction only. It does
+**not** claim the current pre-WAL build has a Tor-mode wallet synchronizer.
+
+Future wallet networking distinguishes:
+
+- **Standard network:** ordinary browser transport; no Tor claim.
+- **Tor environment:** the user deliberately opens Coldbox in Tor Browser,
+  Tails, or another separately configured Tor-providing environment. Coldbox
+  does not fingerprint the browser or claim to prove Tor from page JavaScript.
+- **Tor-enforced onion source:** the selected Bitcoin source is an exact,
+  reviewed, CSP-pinned v3 `.onion` endpoint. Failure is fail-closed for sync,
+  broadcast, and monitoring; there is no automatic clearnet fallback.
+
+The official artifact keeps the finite-host egress model. It does not add
+`*.onion` or another broad onion wildcard to `connect-src`. Each shipped onion
+host is reviewed and pinned exactly. A user-owned onion service not present in
+the official allowlist requires a reproducibly customized build that pins that
+exact host, or a separately reviewed local bridge.
+
+Source assurance and transport privacy remain distinct. A public provider
+reached through Tor still learns the queried addresses/scripts; Tor changes the
+network-origin exposure, not the query content or provider trust. A user-owned
+onion-backed indexer combines stronger transport privacy with user-controlled
+chain-data infrastructure, subject to the browser/CSP constraints above.
 
 ---
 

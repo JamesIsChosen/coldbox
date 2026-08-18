@@ -218,7 +218,9 @@ The profile includes, as applicable:
 - verified release artifact;
 - clean no-extension browser profile or amnesic environment;
 - stricter Level 3 reauthentication;
-- user-owned browser-compatible Bitcoin data service where available;
+- user-owned browser-compatible Bitcoin data service where available, with a
+  CSP-pinned onion source preferred when the user selects Tor-enforced
+  transport and the required Tor environment is available;
 - tighter fee/spend/source-disagreement policies;
 - suspicious-UTXO quarantine;
 - stronger rollback anchoring;
@@ -488,7 +490,7 @@ It owns:
 
 A normal public/watch-only wallet session does not require secret plaintext.
 
-### 3.3 Browser-compatible data sources
+### 3.3 Browser-compatible data sources and Tor transport policy
 
 A self-hosted privacy mode must use a browser-compatible Bitcoin HTTP data
 surface that can be safely reached under the warm CSP, for example a
@@ -503,6 +505,32 @@ private-node path.
 Public providers remain available with explicit privacy/source provenance.
 A multi-source cross-check mode may improve integrity but leaks queries to more
 operators, so privacy and integrity modes are separate user-visible choices.
+
+Transport privacy is orthogonal to provider/source assurance:
+
+- **Standard network** uses the browser's ordinary transport and makes no Tor
+  claim.
+- **Tor environment** means the user deliberately runs Coldbox under Tor
+  Browser, Tails, or another separately configured Tor transport. Coldbox may
+  use a normal HTTPS source in that environment, but does not fingerprint the
+  browser or claim page-level proof that the connection traversed Tor.
+- **Tor-enforced onion source** requires the selected Bitcoin source to be a
+  reviewed, CSP-pinned v3 `.onion` endpoint. If it is unreachable, the wallet
+  remains unsynchronized/unbroadcast rather than falling back to clearnet.
+
+Coldbox does not claim that an in-page preference can turn Edge, Brave, Chrome,
+or an ordinary Firefox session into a Tor client. The execution environment
+provides transport; Coldbox enforces the selected network policy.
+
+The finite warm `connect-src` boundary remains a security control. The official
+artifact does not gain a broad `*.onion` wildcard merely to support arbitrary
+user-owned onion hosts. Shipped onion endpoints are exact reviewed CSP/provenance
+entries. A different user-owned onion host requires an exact reproducibly
+customized build or a separately reviewed local bridge.
+
+The source-status UI records source identity/tip/staleness, source-assurance
+mode, and transport policy separately. It never uses one generic "private" or
+"Tor" badge to imply more than the app can establish.
 
 ### 3.4 Descriptor-backed wallet identity
 
@@ -664,6 +692,12 @@ Cold returns only the exact finalized transaction authorized by the user plus
 its expected identifier.
 
 Warm may broadcast those exact bytes. It does not rebuild or mutate them.
+
+Broadcast and subsequent transaction monitoring inherit the selected WAL.2
+transport policy. In Tor-enforced onion mode, failure of the pinned onion path
+blocks broadcast/monitoring and never triggers a clearnet provider or clearnet
+alias fallback. Changing transport policy is explicit and visible; an error is
+not permission to downgrade privacy.
 
 Broadcast success is not confirmation. The wallet tracks mempool, confirmed,
 replaced, conflicted, dropped and reorganized states separately.
