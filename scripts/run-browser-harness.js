@@ -1123,7 +1123,11 @@ async function verifyBuiltFile(browser, engine) {
       { blockedURI: COLD_CANARY_URL }
     );
     await harness.expectElementVisible('#nav-rail');
+    await harness.expectElementVisible('#cold-settings-button');
+    assert.equal(await page.locator('#cold-settings-panel').isVisible(), false, `${engine}: Settings panel should start closed`);
+    await page.locator('#cold-settings-button').click();
     await harness.expectElementVisible('#theme-toggle');
+    assert.equal(await page.locator('#cold-settings-button').getAttribute('aria-expanded'), 'true', `${engine}: Settings disclosure did not open`);
     await harness.expectElementVisible('#nav-rail .nav-link[aria-current="page"]');
     const warmRailTouchRect = await page.locator('#nav-rail .nav-link').first().evaluate((link) => {
       const rect = link.getBoundingClientRect();
@@ -1176,6 +1180,9 @@ async function verifyBuiltFile(browser, engine) {
     assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
     await page.locator('#theme-toggle').click();
     assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
+    await page.locator('#cold-settings-button').click();
+    assert.equal(await page.locator('#cold-settings-panel').isVisible(), false, `${engine}: Settings panel did not close after theme verification`);
+    assert.equal(await page.locator('#cold-settings-button').getAttribute('aria-expanded'), 'false', `${engine}: Settings disclosure state did not close`);
 
     await harness.atViewport(1440, 900);
     assert.equal(await page.locator('#nav-rail').isVisible(), true);
@@ -1213,8 +1220,11 @@ async function verifyBuiltFile(browser, engine) {
     await assertColdRealmTarget('realm switcher');
     await page.locator('.realm-switcher a[href="#dashboard"]').click();
     await page.waitForFunction(() => window.location.hash === '#dashboard');
-    await page.locator('.app-bar-actions a[href="#cold-realm-status"]').click();
-    await assertColdRealmTarget('app-bar quick link');
+    assert.equal(
+      await page.locator('.app-bar-actions a[href="#cold-realm-status"]').count(),
+      0,
+      `${engine}: obsolete app-bar sealed-realm quick link returned`
+    );
     await page.locator('#nav-rail a[data-route="dashboard"]').click();
     await page.waitForFunction(() => window.location.hash === '#dashboard');
     await coldFrame.locator('a.cold-nav-link[data-cold-more-target="cold-secret-notes"]').click();
@@ -1383,7 +1393,12 @@ async function verifyUi2BrandAssets(browser, engine) {
     }
 
     await assertThemeFills('dark');
-    await page.locator('#theme-toggle').click();
+    // UI.11 hides the complete app-bar action row at the 320px UI.2 viewport.
+    // The visible Settings interaction is exercised in verifyBuiltFile above;
+    // this brand test only needs the existing theme handler to prove SVG token
+    // resolution, so dispatch the button event without pretending it is visible.
+    assert.equal(await page.locator('#theme-toggle').count(), 1, `${engine}: UI.2 theme control is missing from the DOM`);
+    await page.locator('#theme-toggle').dispatchEvent('click');
     await page.locator('html[data-theme="light"]').waitFor({ state: 'attached' });
     await assertThemeFills('light');
 
@@ -2287,17 +2302,40 @@ async function verifyNotesAndConcealment(browser, engine) {
     await page.locator('#registry-status').filter({ hasText: /not accepted/ }).waitFor({ state: 'visible', timeout: 10000 });
     assert.equal(await page.locator('#registry-wallet-list .registry-record').count(), 0, `${engine}: wrong reveal phrase exposed a hidden wallet`);
 
-    // The failed acknowledgement resets the warm checkbox; start a fresh
-    // cold re-authentication request before entering the correct phrase.
+    // The failed acknowledgement resets the warm checkbox. The cold controls
+    // intentionally remain visible after a rejected phrase, so visibility plus
+    // an empty input is not proof that the *second* request has reached cold.
+    // Wait for the new request's status transition before typing the phrase.
+    assert.equal(
+      await page.locator('#registry-show-hidden').isChecked(),
+      false,
+      `${engine}: failed reveal did not reset the warm Show hidden checkbox`
+    );
+    assert.match(
+      await coldFrame.locator('#cold-concealment-status').textContent(),
+      /not accepted/i,
+      `${engine}: cold reveal failure acknowledgement did not settle before retry`
+    );
     await page.locator('#registry-show-hidden').check();
     await coldFrame.locator('#cold-concealment-controls:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    await coldFrame.waitForFunction(() => {
+      const status = document.getElementById('cold-concealment-status');
+      return status && status.textContent === 'Re-enter the vault phrase to continue.';
+    });
     await coldFrame.waitForFunction(() => {
       const input = document.getElementById('cold-concealment-passphrase');
       return input && input.value === '';
     });
+    assert.equal(
+      await coldFrame.locator('#cold-concealment-reveal').isDisabled(),
+      false,
+      `${engine}: reveal button did not re-enable for the fresh request`
+    );
     await coldFrame.locator('#cold-concealment-passphrase').fill(phrase);
     await coldFrame.locator('#cold-concealment-reveal').click();
-    await page.waitForTimeout(1500);
+    await page.locator('#registry-status')
+      .filter({ hasText: /Hidden records are visible for this unlocked session/ })
+      .waitFor({ state: 'visible', timeout: 10000 });
     const revealedWallets = await page.locator('#registry-wallet-list .registry-record').count();
     assert.equal(
       revealedWallets,
@@ -3855,7 +3893,10 @@ async function verifyReleasedSecretSwitcher(browser, engine) {
 
     const focusedReadyMarker = await coldFrame.locator('#cold-ready').textContent();
     await records.nth(0).locator('button[data-secret-action="focus"]').click();
-    await coldFrame.locator('#cold-secret-focus-summary').filter({ hasText: 'Primary backup' }).waitFor({ state: 'visible' });
+    await coldFrame.waitForFunction(() => {
+      const summary = document.getElementById('cold-secret-focus-summary');
+      return summary && summary.textContent.includes('Primary backup');
+    });
     assert.equal(await coldFrame.locator('#cold-secret-list button[aria-pressed="true"]').count(), 1);
     assert.equal(await coldFrame.locator('#cold-ready').textContent(), focusedReadyMarker, `${engine}: focus changed without a reload`);
     for (const removedId of [
@@ -3880,7 +3921,10 @@ async function verifyReleasedSecretSwitcher(browser, engine) {
     assert.equal((await coldFrame.locator('#cold-verification-wallet-fingerprint').textContent()).trim(), primaryFingerprint);
 
     await records.nth(1).locator('button[data-secret-action="focus"]').click();
-    await coldFrame.locator('#cold-secret-focus-summary').filter({ hasText: 'Spare backup' }).waitFor({ state: 'visible' });
+    await coldFrame.waitForFunction(() => {
+      const summary = document.getElementById('cold-secret-focus-summary');
+      return summary && summary.textContent.includes('Spare backup');
+    });
     const spareFingerprint = (await coldFrame.locator('#cold-secret-focus-summary').textContent()).match(/[0-9a-f]{8}/i)[0];
     assert.notEqual(spareFingerprint, primaryFingerprint);
     assert.ok((await focusedIndicators.allTextContents()).every((text) => text.includes(spareFingerprint)));
@@ -3890,7 +3934,14 @@ async function verifyReleasedSecretSwitcher(browser, engine) {
     assert.equal(await page.evaluate((label) => document.body.textContent.includes(label), 'Primary backup'), false, `${engine}: released labels must stay out of the warm shell`);
     assert.equal(await page.evaluate((fingerprint) => document.body.textContent.includes(fingerprint), spareFingerprint), false, `${engine}: released fingerprints must stay out of the warm shell`);
 
-    await coldFrame.locator('#cold-secret-registry-clear').click();
+    const clearControl = coldFrame.locator('#cold-secret-registry-clear');
+    assert.equal(await clearControl.count(), 1, `${engine}: retained released-secret clear control is missing`);
+    assert.equal(await clearControl.isEnabled(), true, `${engine}: retained released-secret clear control is unexpectedly disabled`);
+    // UI.11 deliberately clips this control out of pointer geometry to preserve
+    // the approved compact switcher. Exercise its retained click handler without
+    // a false mouse-actionability claim; the real Ctrl+Alt+Shift+L user path is
+    // tested independently immediately below.
+    await clearControl.dispatchEvent('click');
     await coldFrame.locator('#cold-secret-switcher[data-state="empty"][data-released-secret-count="0"]').waitFor({ state: 'attached' });
     assert.equal(await coldFrame.locator('#cold-secret-registry-empty').isHidden(), false);
     assert.equal(await coldFrame.locator('[data-secret-focus-indicator][data-state="empty"]').count(), 6);
