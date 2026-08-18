@@ -15,7 +15,7 @@ describes what shipped, not what was imagined.
 
 The v1 sequence is:
 
-`UI.11 -> SEC.1..SEC.9 -> SEED.1..SEED.5 -> WAL.1..WAL.15 -> existing pre-v1 roadmap (P2.8, P3, P4, P5) -> REL.1..REL.5 -> v1.0.0`
+`UI.10a -> UI.10b -> UI.11 -> SEC.1..SEC.9 -> SEED.1..SEED.5 -> WAL.1..WAL.15 -> existing pre-v1 roadmap (P2.8, P3, P4, P5) -> REL.1..REL.5 -> v1.0.0`
 
 The professional security audit occurs on the complete v1 release candidate,
 after wallet signing exists and before the v1.0.0 tag.
@@ -24,8 +24,8 @@ after wallet signing exists and before the v1.0.0 tag.
 
 ## 1. Product direction
 
-Coldbox v1 is a **full single-signature Bitcoin wallet and Bitcoin security
-toolkit**.
+Coldbox v1 is a **self-custody security workstation with a complete
+standalone single-signature Bitcoin wallet**.
 
 It can operate as:
 

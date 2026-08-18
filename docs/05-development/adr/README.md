@@ -16,7 +16,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0006](0006-companion-not-replacement.md) | A companion to hardware wallets, not a replacement | Superseded for v1 roadmap by 0051; current pre-WAL behavior retained |
 | [0007](0007-headless-browser-harness.md) | Headless browser harness as a dev dependency | Accepted |
 | [0008](0008-csp-blocked-network-signals.md) | CSP-blocked network signals are not a throw contract | Accepted |
-| [0009](0009-comic-visual-language.md) | Comic visual language, with security surfaces exempted | Accepted · amended by 0044 |
+| [0009](0009-comic-visual-language.md) | Comic visual language, with security surfaces exempted | Accepted · amended by 0044/0059 |
 | [0010](0010-ios-local-html-execution.md) | iOS local-HTML execution is a portability gate, not a preview-equivalence claim | Accepted |
 | [0011](0011-wasm-secp256k1-for-recovery.md) | WASM secp256k1 for the recovery search, with `@noble` as the authority | Accepted |
 | [0012](0012-recovery-checkpoint.md) | Recovery checkpoints are a separate encrypted file, not vault records | Accepted |
@@ -66,6 +66,7 @@ They exist because six months from now, "why is there an iframe in here?" should
 | [0056](0056-seed-lineage-signing-and-secret-qr.md) | Seed lineage, signing authority and sealed SeedQR handoff | Accepted · future v1 |
 | [0057](0057-structured-public-identity-graph.md) | Structured public wallet/account/address identity graph | Accepted · future v1 |
 | [0058](0058-vault-credential-policy-and-generator.md) | Vault credential minimum, offline strength checks and sealed generator | Accepted · future v1 |
+| [0059](0059-self-custody-workstation-product-identity.md) | Self-custody workstation product identity and redesign-before-parity gate | Accepted · pre-v1 UI change control |
 
 ## When to write one
 

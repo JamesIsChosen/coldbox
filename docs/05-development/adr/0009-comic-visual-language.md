@@ -1,9 +1,11 @@
 # ADR-0009: Comic visual language, with security surfaces exempted
 
-**Status:** Accepted · scope amended by [ADR-0044](0044-panel-scoped-calm-rule.md)
+**Status:** Accepted · scope amended by [ADR-0044](0044-panel-scoped-calm-rule.md) · product framing amended by [ADR-0059](0059-self-custody-workstation-product-identity.md)
 **Date:** 2026-08-04
 
 ---
+
+> **Product-framing amendment (2026-08-17):** the comic visual-language and calm-security-surface decision remains fully accepted. Statements below treating "not a wallet / signs nothing" as a permanent product boundary are historical context and are superseded for future product direction by ADR-0051 and ADR-0059.
 
 ## Context
 
