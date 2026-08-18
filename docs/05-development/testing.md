@@ -199,12 +199,38 @@ Cover:
 - CPFP;
 - stale-vault/pending-spend reconciliation.
 
+### Tor and transport-privacy certification
+
+WAL.2/WAL.10/WAL.15 add transport-policy tests without weakening the cold
+network prohibition.
+
+Required cases include:
+
+- an ordinary Edge/Brave/Chrome/Firefox session in `standard` mode makes no Tor
+  claim;
+- selecting a Tor-related preference in an ordinary browser never changes that
+  browser into a Tor client and never produces a false "Tor active" status;
+- Tor Browser/Tails can exercise the separately provided Tor environment while
+  Coldbox avoids browser fingerprinting/probing as its source of truth;
+- a reviewed CSP-pinned v3 `.onion` Bitcoin source succeeds only when the
+  execution environment can route it through Tor;
+- the same Tor-enforced onion configuration fails closed when Tor is
+  unavailable, with captured requests proving no clearnet alias/provider
+  fallback for sync, broadcast, or monitoring;
+- changing from Tor-enforced onion to standard networking is an explicit visible
+  user action, never an automatic retry/downgrade;
+- the production warm CSP/provenance inventory contains each shipped onion host
+  exactly and contains no `*.onion`/broad onion wildcard;
+- cold-realm `connect-src 'none'`, fetch/XHR/WebSocket failure, and provider
+  neutering remain unchanged in every transport mode.
+
 ### Physical wallet certification
 
 WAL.15 adds safe test-network/regtest end-to-end wallet checks on the supported
-execution matrix. The professional REL.2 audit and REL.4 device/release gate
-remain separate. Real-value mainnet spending is never required just to prove a
-test.
+execution matrix, including the supported Tor path and a standard-browser
+negative/non-claim case. The professional REL.2 audit and REL.4 device/release
+gate remain separate. Real-value mainnet spending is never required just to prove
+a test.
 ## Browser harness — automated
 
 The UI.5 shell checkpoint also asserts the ten approved warm/cold navigation
