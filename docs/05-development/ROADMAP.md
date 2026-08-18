@@ -385,15 +385,53 @@ against the complete v1 release candidate after the full Bitcoin wallet exists.
   Treat password-protection parameters as dated policy rather than permanent constants.
   **Accept:** the app compares stored KDF profile/parameters with the current dated recommendation in `crypto-choices.md`; on-device benchmark precedes an upgrade; an accepted upgrade rewraps the DEK without changing seed material; no automatic downgrade exists; a failed upgrade leaves the old unlock record usable; old vaults continue opening; warnings distinguish "older than current recommendation" from "unsafe/unopenable."
 
+- [ ] **SEC.7a — Vault credential policy and sealed generator** 🌐
+  *Deps: SEC.1, SEC.7*
+  Implement [ADR-0058](adr/0058-vault-credential-policy-and-generator.md) before wallet/seed workflows depend on routine vault unlocking.
+  **Accept:** new vault creation and credential replacement reject user-chosen passwords/passphrases shorter than 15 Unicode code points under the documented normalization/counting rule; at least 64 characters are accepted with no silent truncation; spaces/printable characters are allowed and no uppercase/lowercase/digit/symbol composition rule is imposed; a bounded embedded offline denylist rejects common/compromised whole values and obvious Coldbox-specific guesses without any network query or candidate-derived network lookup; legacy vaults with shorter credentials still unlock under their historical exact semantics, receive a clear current-policy warning, and can upgrade by rewrapping the DEK without altering seed material or destroying the old usable unlock record before verified save; password-health UI does not claim exact entropy for human-chosen values and distinguishes credential quality from Argon2id/KDF cost; the sealed generator has `portable-password | full-password | passphrase` formats sharing one strength slider, uses only the required CSPRNG with unbiased sampling/no `Math.random`, and documents/tests every slider stop's alphabet/list size, output length/word count and minimum generated search space; every generated setting is strong, the default targets at least 128 bits, no setting falls below 80 bits or the creation floor, and exact entropy/search-space numbers are shown only for generator-controlled outputs; the passphrase mode uses a pinned/reviewed large Diceware/EFF-style list with independent uniform word draws; regeneration/format/slider changes produce fresh randomness; generated credentials never cross the cold/warm protocol, copy is explicit/warned with best-effort clearing, and create/change requires acknowledgement that the credential was stored safely; error/panic/lock/timeout/teardown clears generated plaintext; the implementation exposes one generator core for later P4.5 reuse rather than duplicate crypto logic; deterministic tests with an injected test RNG prove bounds/rejection sampling and browser tests prove creation blocking/generation/confirmation/legacy-upgrade UX in Chromium/Firefox.
+
 - [ ] **SEC.8 — High Assurance operating profile**
-  *Deps: SEC.5, SEC.6, SEC.7*
+  *Deps: SEC.5, SEC.6, SEC.7, SEC.7a*
   Add a named high-assurance workflow without pretending a browser can defeat a compromised OS.
   **Accept:** the mode/settings/guidance cover verified artifact use, clean no-extension/amnesic environment guidance, strict Level 3 reauthentication, stronger source-disagreement and future wallet-spend policies, suspicious-input quarantine hooks, external rollback anchor support, independent backup/recovery rehearsal and user-owned browser-compatible Bitcoin source guidance; enforceable rules are enforced, procedural rules are labeled as procedural; no text claims secure-element-equivalent host compromise resistance.
 
 - [ ] **SEC.9 — Security-hardening certification**
-  *Deps: SEC.1, SEC.2, SEC.3, SEC.4, SEC.5, SEC.6, SEC.7, SEC.8*
+  *Deps: SEC.1, SEC.2, SEC.3, SEC.4, SEC.5, SEC.6, SEC.7, SEC.7a, SEC.8*
   Close the hardening campaign before wallet construction begins.
-  **Accept:** all security claims in the current `threat-model.md` trace to tests or an explicitly documented limitation; the Level 3/v2 migration matrix passes; TCB and DOM-sink negative tests pass; deterministic fuzz smoke passes; action/dependency/repository/release controls have evidence; KDF/rollback/High Assurance docs agree; full Node/vendor/lint/docs/unit/browser/reproducibility checks pass; every changed current-behavior doc is reconciled and no future requirement is falsely described as already shipped.
+  **Accept:** all security claims in the current `threat-model.md` trace to tests or an explicitly documented limitation; the Level 3/v2 migration matrix passes; TCB and DOM-sink negative tests pass; deterministic fuzz smoke passes; action/dependency/repository/release controls have evidence; KDF/vault-credential/rollback/High Assurance docs agree; the 15-character new-credential floor, legacy unlock/upgrade path, generator bounds and cold-only teardown have regression evidence; full Node/vendor/lint/docs/unit/browser/reproducibility checks pass; every changed current-behavior doc is reconciled and no future requirement is falsely described as already shipped.
+
+## Phase SEED — seed lineage and public identity graph for v1
+
+This phase implements [ADR-0056](adr/0056-seed-lineage-signing-and-secret-qr.md)
+and [ADR-0057](adr/0057-structured-public-identity-graph.md) after Level 3
+hardening and before the Bitcoin wallet. It reconciles the original practical
+purpose of notes: identify a sealed secret or public address without making
+free-form prose carry facts Coldbox can validate.
+
+- [ ] **SEED.1 — Structured seed identity and note semantics**
+  *Deps: SEC.9*
+  Make every seed understandable while its secret record remains sealed.
+  **Accept:** the future Seed public projection has stable id, label, master fingerprint, word count/language/origin, `hasPassphrase`, role (`independent | bip85-root | bip85-child`), purpose, tags, linked-record relationships, signing-authority mode, verification state and a bounded public identification note; `Seed.notes` is explicitly non-secret identification context and the public validator rejects mnemonic/xprv/passphrase/share-shaped content; sensitive passphrase/recovery clues use linked secret Note records instead; the existing public `passphraseHint` concept is reconciled so no field advertised as safe identification quietly becomes a secret hint; Wallet/Account/Device/Backup facts are linked and rendered by reference rather than copied into drifting fields; migration from the existing Seed model preserves old records without inventing lineage.
+
+- [ ] **SEED.2 — BIP-85 child derivation, parent/child lineage and signing authority**
+  *Deps: SEED.1*
+  Promote BIP-85 child seeds into a real lineage workflow rather than a standalone calculator.
+  **Accept:** the implementation proves BIP-85 fully hardened derivation plus `bip-entropy-from-k` transformation against committed official vectors for supported BIP-39 child word counts/languages; each child records parent Seed id plus exact BIP-85 application recipe/index and gets its own seed fingerprint/identity; the root is marked high-authority and is opened only for bounded create/recover/verify/sign/secret-export operations; each child explicitly chooses `external-only | stored-child | derive-from-root`; `stored-child` uses a separate Level 3 secret record so normal Coldbox signing never reopens the root; `derive-from-root` is user-opt-in and may open the root only after one exact transaction has been reviewed/approved, derive only the selected child, verify that child's registered public identity, sign through WAL.8, and wipe root/child/derived keys on success/error/panic/timeout; no root-derived signing cache or session-wide child capability exists; duplicate parent+recipe cannot silently fork into different identities; the parent xpub is never accepted as sufficient to derive a BIP-85 child; an existing external child can be attached by deriving it once from the root and comparing fingerprint plus stronger public identity such as xpub/descriptor/address evidence, then wiping derived secret state; 32-bit fingerprint equality alone is never cryptographic proof. This absorbs the v1 BIP-39 child-seed baseline previously parked generically at P4.6.
+
+- [ ] **SEED.3 — Root/child SeedQR quick action and stateless-signer handoff** 🌐
+  *Deps: SEED.1, SEED.2, P1.10*
+  Make a selected root or child usable with a camera-based stateless/temporary signer without requiring a permanent paper QR.
+  **Accept:** every eligible stored root/child Seed can invoke Standard SeedQR and Compact SeedQR from its sealed record actions; a `derive-from-root` child can invoke the same action only after fresh root authorization, exact recipe derivation and registered child-identity verification; an `external-only` child with no authorized secret derivation path cannot fabricate a QR; the interaction visually reuses the UI.6 floating-record-menu pattern but is a separate cold-local implementation, and tests prove no secret QR payload/pixels/mnemonic/entropy cross the MessageChannel or enter warm DOM/state; the QR action names label, fingerprint, root/child role, purpose and lineage before reveal; fresh authorization plus explicit plaintext-secret acknowledgement is required; display-only is the default, with existing cold-local export/print retained only as secondary warned actions; QR state and transient mnemonic/entropy are cleared on close, timeout, subject switch, lock, panic and realm teardown; root QR shows a high-authority warning; a passphrase-protected seed states explicitly that SeedQR contains the mnemonic only and does not contain the BIP-39 passphrase; no combined mnemonic+passphrase QR is invented; published SeedSigner-compatible Standard/Compact vectors round-trip through the existing P1.10 encoder and a physical scan into at least one compatible stateless/temporary signer is recorded before SEED.5 closes. UI.6's historical "no secret QR from the public floating component" remains true: this item adds a visually matching sealed implementation rather than weakening that boundary.
+
+- [ ] **SEED.4 — Public wallet/account/address identity graph and xpub/descriptor export**
+  *Deps: SEED.2*
+  Give public records the same explicit identity treatment as seeds instead of making notes carry structure.
+  **Accept:** Address gains a bounded public purpose plus a finite role (`receive | change | deposit | withdrawal-payout | donation | service-custodial | other`) while retaining label/tags/optional notes; an address detail resolves asset/network, owning Wallet/Account, path/index or manual/imported origin, linked Seed including BIP-85 lineage, linked Device records through wallet/seed relationships, verification state/basis, used/reuse state and balance snapshot source/age without copying those facts into notes; absence of a seed/device is valid for watch-only/custodial/manual records and is displayed explicitly; machine-owned relationships are UUID links/references and stale/conflicting xpub/descriptor/address ownership cannot silently overwrite a verified link; the existing public floating record menu shows the same structured identity next to address QR/copy actions so the QR is visibly bound to the selected record; supported child/account records retain verified key origin, account xpub and output descriptor; applicable xpub/descriptor export works while every seed remains sealed, at minimum as exact text/file output with a privacy warning that public extended keys expose address graph/history; Bitcoin descriptors include origin fingerprint/path and round-trip against an independent parser; BIP-329 label import/export continues to preserve human work without being treated as the sole structured identity store.
+
+- [ ] **SEED.5 — Seed tree, identity graph, recovery and handoff certification** 🌐
+  *Deps: SEED.1, SEED.2, SEED.3, SEED.4*
+  Certify the complete identity/lineage layer before wallet construction.
+  **Accept:** desktop/mobile seed-tree views show root -> children and for each sealed child purpose, recipe/index, fingerprint, signing-authority mode, linked devices, wallet/account, public xpub/descriptor identity, backup health, verification state, notes/tags and secret-QR availability without revealing secret material; public wallet/account/address views traverse back to the same seed lineage and device graph and expose structured purpose/role rather than requiring users to parse notes; search/filter works on safe identity metadata while secrets remain sealed; recovery rehearsal rederives a selected child from the root, compares expected public identity and returns to sealed state without persisting transient child plaintext; root-derived signing and root QR both carry higher-authority warnings; tests cover wrong index/root passphrase, duplicate recipe, fingerprint-collision fixture, stale device/public identity, address-ownership conflict, signing-authority transitions, root-derived exact-spend binding, SeedQR passphrase omission, secret-QR teardown, public-address QR identity binding, migration and xpub/descriptor privacy warnings; current SPEC/data-model/standards/UI references are reconciled only when behavior ships; full Node/vendor/lint/docs/unit/browser/reproducibility checks pass.
 
 ## Phase WAL — full single-signature Bitcoin wallet for v1
 
@@ -402,7 +440,7 @@ This phase implements [ADR-0051](adr/0051-full-bitcoin-wallet-v1.md) through
 scope. Multisig and hardware signer integration are post-v1.
 
 - [ ] **WAL.1 — Wallet data model, descriptors and wallet UI contract** ⚠️
-  *Deps: SEC.9*
+  *Deps: SEED.5*
   Establish the v1 wallet entities and visual/security flow before transaction code.
   **Accept:** `data-model.md` gains versioned Bitcoin wallet-sync/UTXO/pending-spend/source-state entities with migration tests; singlesig receive/change identity uses checksummed standard descriptors for the exact supported P2WPKH/P2TR families; all values controlling money are integer satoshis; wallet IDs/descriptors cannot be silently replaced by warm data; watch-only and seed-backed wallets share the public model; new Send/Receive/UTXO/Transactions/Review/RBF/CPFP/PSBT/source-status desktop/mobile states are approved by the maintainer and become binding wallet visual evidence without altering the already-frozen UI.11 references.
 
@@ -439,7 +477,7 @@ scope. Multisig and hardware signer integration are post-v1.
 - [ ] **WAL.8 — Level 3 Bitcoin signer and signature self-verification**
   *Deps: WAL.7, SEC.1*
   Implement [ADR-0054](adr/0054-signing-lifecycle-and-exfiltration-boundary.md).
-  **Accept:** signing requires an approved exact transaction plus fresh secret authorization; only the selected seed record and required child key(s) become plaintext; supported ECDSA/Schnorr nonce/signing rules match their standards; each produced signature is verified before release; teardown occurs on success/error/panic/timeout; no resident general signing key exists between spends; unsupported sighash/script paths refuse; independent vectors and differential tests cover signatures and sighashes; the UI/security docs state the malicious-build signature-exfiltration residual honestly.
+  **Accept:** signing requires an approved exact transaction plus fresh secret authorization; a normal independent/stored-child wallet opens only the selected seed record and required child key(s); a SEED.2 `derive-from-root` wallet may instead open its registered BIP-85 root only by explicit user choice after exact review, derive only the selected child, verify the child against its registered public identity before using it, and never expose sibling children; supported ECDSA/Schnorr nonce/signing rules match their standards; each produced signature is verified before release; root/child/derived-key teardown occurs on success/error/panic/timeout; no resident general signing key, root authority or derived-child cache exists between spends; unsupported sighash/script paths refuse; independent vectors and differential tests cover signatures, sighashes and both stored-child/root-derived signing paths; the UI/security docs state the malicious-build signature-exfiltration residual honestly.
 
 - [ ] **WAL.9 — Send ceremony and exact review-to-sign binding** 🌐
   *Deps: WAL.8*
@@ -462,7 +500,7 @@ scope. Multisig and hardware signer integration are post-v1.
 - [ ] **WAL.13 — PSBT v0/v2 import, inspection, signing and export**
   *Deps: WAL.8*
   Implement BIP-174/BIP-370 with BIP-371 fields needed by the supported Taproot path.
-  **Accept:** parser limits/duplicate-key rules/version inclusion rules are enforced; unknown/proprietary fields are rejected or preserved only under a finite explicitly reviewed policy and never trusted for authorization; imported PSBT is treated as an untrusted proposal and must satisfy the same cold spending envelope/review as an internally created spend; signatures/finalization/export round-trip against independent fixtures; malformed/oversize/reordered/duplicate/adversarial corpora fail closed; WAL.13 absorbs the v1 baseline previously postponed as P5.5.
+  **Accept:** parser limits/duplicate-key rules/version inclusion rules are enforced; unknown/proprietary fields are rejected or preserved only under a finite explicitly reviewed policy and never trusted for authorization; imported PSBT is treated as an untrusted proposal and must satisfy the same cold spending envelope/review as an internally created spend; unsigned PSBTs can be exported before signing for an external signer; partially signed and finalized PSBTs can be exported after signing; the baseline v1 transport includes exact file/Base64 interchange, with animated-QR transport allowed to arrive later under P4.8; signatures/finalization/export round-trip against independent fixtures; malformed/oversize/reordered/duplicate/adversarial corpora fail closed; WAL.13 absorbs the v1 baseline previously postponed as P5.5.
 
 - [ ] **WAL.14 — Watch-only, rescan/recovery and stale-wallet conflict handling**
   *Deps: WAL.3, WAL.10, WAL.13*
@@ -475,7 +513,7 @@ scope. Multisig and hardware signer integration are post-v1.
 
 ## Phase 2 — Backup, continued
 
-Phase 2's last item resumes here after the interface, v1 security-hardening, and full single-signature Bitcoin-wallet work above; the rest of the existing roadmap then continues before the v1 release freeze. **Hard phase barrier:** SEC.1 through WAL.15 are intentionally ordered before this section and must all be `[x]` before P2.8 or any later phase begins, even though P2.8 retains its historical `P2.7, UI.11` dependency text because UI.4a's frozen parity regression contract asserts that exact dependency.
+Phase 2's last item resumes here after the interface, v1 security-hardening, seed-lineage/public-identity, and full single-signature Bitcoin-wallet work above; the rest of the existing roadmap then continues before the v1 release freeze. **Hard phase barrier:** SEC.1 through SEC.9 (including SEC.7a), SEED.1 through SEED.5, and WAL.1 through WAL.15 are intentionally ordered before this section and must all be `[x]` before P2.8 or any later phase begins, even though P2.8 retains its historical `P2.7, UI.11` dependency text because UI.4a's frozen parity regression contract asserts that exact dependency.
 
 - [ ] P2.8 Printable cards and hand-computation worksheets
   *Deps: P2.7, UI.11*
@@ -515,7 +553,7 @@ Phase 2's last item resumes here after the interface, v1 security-hardening, and
   *Deps: P4.3b, P2.1, P2.2*
   **Accept:** codex32 damage is *corrected* arithmetically, not searched, and is presented as deterministic; SLIP-39 repair uses independent test vectors.
 
-- [ ] P4.4 Verify Bench and file hasher · P4.5 Passphrase Studio · P4.6 BIP-85
+- [ ] P4.4 Verify Bench and file hasher · P4.5 General Passphrase Studio reusing SEC.7a generator core · P4.6 Advanced BIP-85 application formats beyond the SEED.2 v1 BIP-39 child-seed baseline
 - [ ] P4.7 Nostr NIP-06 · P4.8 BC-UR animated QR · P4.9 Advanced descriptor/BIP-388 policy tooling beyond the v1 singlesig descriptor baseline · P4.10 Reference
 
 ## Phase 5 — Advanced

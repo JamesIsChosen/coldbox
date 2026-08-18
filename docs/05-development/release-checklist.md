@@ -13,6 +13,7 @@ Copy this into the release issue and tick as you go.
 For the first `v1.0.0`, these are hard gates before ordinary release mechanics:
 
 - [ ] SEC.9 is `[x]` — the security-hardening campaign is independently certified
+- [ ] SEED.5 is `[x]` — seed identity/lineage, signing-authority choices, sealed SeedQR handoff, structured public address identity and xpub/descriptor export are independently certified
 - [ ] WAL.15 is `[x]` — the full single-signature Bitcoin wallet is independently certified
 - [ ] Every remaining pre-v1 roadmap item through Phase 5 is `[x]`
 - [ ] REL.1 feature freeze identifies the exact release-candidate commit/artifact/hash
@@ -81,6 +82,8 @@ Per platform: cold realm/handshake healthy · capability panel accurate · **two
 - [ ] Message schema matches the reviewed finite protocol, including any finalized-Bitcoin-transaction broadcast type
 - [ ] Every `connect-src` host is justified in `api-sources.md`, source-provenance behavior and in-app provenance
 - [ ] Level 3 idle-state invariant holds: no seed/private-key plaintext or universal secret-decryption capability remains merely because the public wallet is open
+- [ ] 15-character new-vault credential floor, legacy short-credential unlock/upgrade, offline common-value rejection, CSPRNG generator/slider bounds and generated-secret cold-only teardown tests pass
+- [ ] Seed-lineage/BIP-85 official vectors, existing-child verification, signing-authority modes, root/child SeedQR teardown/passphrase-omission, structured address identity and xpub/descriptor export/privacy tests pass
 - [ ] Exact review-to-sign binding and signature self-verification tests pass
 - [ ] Fee/coin-selection/change/spending-policy negative tests pass
 - [ ] PSBT/raw-transaction/node-response fuzz smoke passes
