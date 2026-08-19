@@ -413,38 +413,70 @@ __COLDBOX_WORDMARK__
           <header class="page-header">
             <p class="eyebrow">State / Security</p>
             <h1 id="page-title-security">Security &amp; verify</h1>
-            <p class="page-lede">Devices, address verification, backup health, boundary status and file verification — kept separate from each other, because they are separate facts.</p>
+            <p class="page-lede">Devices, address verification, backup health, boundary status, file verification and — later — network source and transport facts, kept separate from each other.</p>
           </header>
-          <div class="info-grid">
-            <article class="info-card">
-              <span class="card-icon" aria-hidden="true">✓</span>
-              <h2>Address verification</h2>
-              <p>Fingerprint, receive address, account xpub, metal backup and BIP-39 passphrase checks, each against an independent cold derivation.</p>
-              <p><a class="comic-btn" data-nav="security-verify-bench" href="#verify" data-route="verify">Open Verify Bench</a></p>
+
+          <p class="security-guard" id="security-guard" data-airgap-state="checking" aria-live="polite">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="security-guard-label">Checking the airgap guard</span>
+          </p>
+
+          <div class="fact-grid">
+            <article class="fact-card" aria-labelledby="fact-devices">
+              <p class="fact-card-owner"><span class="nav-tag" data-owner-item="P1.8">P1.8</span></p>
+              <h2 id="fact-devices">Device registry</h2>
+              <p>Hardware wallets and other signing devices as records: vendor, model, firmware, what they hold and when they were last checked.</p>
+              <p class="fact-card-availability" data-availability="available">Available now</p>
+              <a class="comic-btn" data-nav="security-devices" href="#devices" data-route="devices">Open Devices</a>
             </article>
-            <article class="info-card">
-              <span class="card-icon" aria-hidden="true">W</span>
-              <h2>Devices</h2>
-              <p>Which of your devices holds which key, what firmware it runs, and when it was last checked.</p>
-              <p><a class="comic-btn" href="#devices" data-route="devices">Open Devices</a></p>
+
+            <article class="fact-card" aria-labelledby="fact-address">
+              <p class="fact-card-owner"><span class="nav-tag" data-owner-item="P1.9">P1.9</span></p>
+              <h2 id="fact-address">Address verification</h2>
+              <p>Derive fingerprint, receive address, account xpub, metal backup and BIP-39 passphrase inside the sealed realm and compare each against what a device or the registry claims.</p>
+              <p class="fact-card-availability" data-availability="available">Available now</p>
+              <a class="comic-btn" data-nav="security-verify-bench" href="#verify" data-route="verify">Open Verify Bench</a>
             </article>
-            <article class="info-card">
-              <span class="card-icon" aria-hidden="true">H</span>
-              <h2>Backup health</h2>
-              <p>A backup set that has never been reconstructed scores as no backup at all. That is deliberate.</p>
-              <p><a class="comic-btn" href="#backup" data-route="backup">Open Backup &amp; recovery</a></p>
+
+            <article class="fact-card" aria-labelledby="fact-backup">
+              <p class="fact-card-owner"><span class="nav-tag" data-owner-item="P2.7">P2.7</span></p>
+              <h2 id="fact-backup">Backup health</h2>
+              <p>One score per seed, computed conservatively, with the exact reason it is not green. A set that has never been reconstructed scores as no backup at all.</p>
+              <p class="fact-card-availability" data-availability="available">Available now</p>
+              <a class="comic-btn" data-nav="security-backup" href="#backup/health" data-route="backup">Open Backup Health</a>
             </article>
-            <article class="info-card">
-              <span class="card-icon" aria-hidden="true">⌗</span>
-              <h2>Verify this file</h2>
-              <p>The embedded expected hash, the vendored library list and the full CSP, so you can check what is actually running.</p>
-              <p><a class="comic-btn" href="#reference" data-route="reference">Open Provenance</a></p>
+
+            <article class="fact-card" aria-labelledby="fact-file">
+              <p class="fact-card-owner"><span class="nav-tag" data-owner-item="P0.16">P0.16</span></p>
+              <h2 id="fact-file">Verify this file</h2>
+              <p>Check the Coldbox file you are running against the hash the build recorded — and understand why that is not enough on its own.</p>
+              <p class="fact-card-availability" data-availability="available">Available now</p>
+              <a class="comic-btn" data-nav="security-verify-file" href="#reference/verify" data-route="reference">Open the self-hash check</a>
+            </article>
+
+            <article class="fact-card" aria-labelledby="fact-provenance">
+              <p class="fact-card-owner"><span class="nav-tag" data-owner-item="P0.16">P0.16</span></p>
+              <h2 id="fact-provenance">Provenance &amp; legal</h2>
+              <p>Every embedded library with its version and upstream hash, the full CSP allowlist, the build date, and the licence.</p>
+              <p class="fact-card-availability" data-availability="available">Available now</p>
+              <a class="comic-btn" data-nav="security-provenance" href="#reference/legal" data-route="reference">Open Provenance</a>
+            </article>
+
+            <article class="fact-card fact-card-unavailable" aria-labelledby="fact-source">
+              <p class="fact-card-owner"><span class="nav-tag" data-owner-item="WAL.2">WAL.2</span></p>
+              <h2 id="fact-source">Source &amp; transport</h2>
+              <p>Where chain data comes from and how it travels — two separate facts, never one “private” badge.</p>
+              <p class="fact-card-availability" data-availability="roadmap">Roadmap-owned · unavailable in this build</p>
+              <button class="comic-btn comic-btn-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="WAL.2" data-phase="Phase WAL">Unavailable · WAL.2 · Phase WAL</button>
             </article>
           </div>
+
+          <p class="fact-grid-note">Each card is a separate fact with a single owner, and opens that owner's surface. A combined “secure” badge would hide exactly the distinctions that matter when one of them fails.</p>
+
           <div class="empty-panel">
             <span class="panel-kicker">Two facts, never one badge</span>
             <h2>Source assurance and transport privacy are separate.</h2>
-            <p>Coldbox never claims an in-page switch made your browser a Tor client, and there is no generic “private” badge anywhere in this build. The sealed realm's <code>connect-src 'none'</code> is a browser-enforced boundary; the warm shell's network reach is a separate, visible fact.</p>
+            <p>Coldbox never claims an in-page switch made your browser a Tor client, and there is no generic “private” badge anywhere in this build. The sealed realm's <code>connect-src 'none'</code> is a browser-enforced boundary; the warm shell's network reach is a separate, visible fact reported by the airgap guard above.</p>
           </div>
         </section>
 

@@ -4841,6 +4841,26 @@ async function verifyDevOnlyDependency() {
 async function openVerifyBench(page) {
   await page.locator('#nav-rail [data-nav="security"]').click();
   await page.locator('#page-security:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+
+  // UI.10b - Security & verify reports its facts separately. The guard pill
+  // renders from the same call that sets the airgap banner, so a disagreement
+  // between them means one of the two is stale about whether the boundary
+  // holds. Checked on the way through rather than in its own fixture, because
+  // it only means anything once the app has settled into a real guard state.
+  const guardState = await page.locator('#security-guard').getAttribute('data-airgap-state');
+  const bannerState = await page.locator('#airgap-banner').getAttribute('data-airgap-state');
+  assert.equal(guardState, bannerState, 'the Security guard pill disagreed with the airgap banner');
+  assert.equal(
+    await page.locator('#security-guard-label').textContent(),
+    await page.locator('#airgap-banner-title-text').textContent(),
+    'the Security guard pill and the airgap banner reported different states'
+  );
+
+  // The roadmap-owned fact is present, named and inert.
+  const sourceFact = page.locator('#page-security [data-roadmap-id="WAL.2"]');
+  assert.equal(await sourceFact.isDisabled(), true, 'Source & transport must not be actionable');
+  assert.equal(await sourceFact.getAttribute('aria-disabled'), 'true');
+
   await page.locator('[data-nav="security-verify-bench"]').click();
   await page.locator('#page-verify:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
 }

@@ -218,6 +218,8 @@ __COLDBOX_CONCEALMENT__
   var registryShowHidden = document.getElementById('registry-show-hidden');
   var registryHiddenHelp = document.getElementById('registry-hidden-help');
   var registryWalletList = document.getElementById('registry-wallet-list');
+  var securityGuard = document.getElementById('security-guard');
+  var securityGuardLabel = document.getElementById('security-guard-label');
   var walletsLocked = document.getElementById('wallets-locked');
   var walletsWorkspace = document.getElementById('wallets-workspace');
   var walletsTableBody = document.getElementById('wallets-table-body');
@@ -1546,6 +1548,16 @@ __COLDBOX_CONCEALMENT__
   function setAirgapBanner(state, title, copy, label) {
     root.setAttribute('data-airgap-state', state);
     app.setAttribute('data-airgap-state', state);
+    // UI.10b - Security & verify shows the guard as one of its separate facts.
+    // It renders from this call rather than keeping its own copy of the state,
+    // so the pill and the banner cannot disagree about whether the boundary
+    // holds - which is exactly the failure a second source of truth produces.
+    if (securityGuard) {
+      securityGuard.setAttribute('data-airgap-state', state);
+    }
+    if (securityGuardLabel) {
+      securityGuardLabel.textContent = title;
+    }
     if (!airgapBanner) {
       return;
     }

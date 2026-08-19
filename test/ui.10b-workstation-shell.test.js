@@ -501,6 +501,76 @@ test('no surface anywhere in src claims a completed roadmap item as unavailable'
     }
   }
   assert.ok(seen >= 20, `expected the product source to name roadmap owners, saw ${seen}`);
+
+  // `data-owner-item` is the informational counterpart: it labels which item
+  // owns a fact that IS available, so it may name a completed item. It must
+  // still name a real one.
+  let owners = 0;
+  for (const [name, source] of sources) {
+    for (const match of source.matchAll(/data-owner-item="([^"]+)"/g)) {
+      owners += 1;
+      assert.ok(statuses.has(match[1]), `${name} names owner ${match[1]}, which is not a roadmap item`);
+    }
+  }
+  assert.ok(owners >= 6, `expected the fact cards to name their owners, saw ${owners}`);
+});
+
+test('Security & verify keeps its facts separate and never aggregates them', () => {
+  const page = /<section class="page" id="page-security"[\s\S]*?\n        <\/section>/.exec(warmHtml);
+  assert.ok(page, 'The Security & verify page is missing');
+  const markup = page[0];
+
+  const cards = markup.match(/<article class="fact-card[\s\S]*?<\/article>/g) || [];
+  assert.equal(cards.length, 6, 'The approved screen has six separate facts');
+
+  const statuses = parseRoadmapStatuses();
+  for (const card of cards) {
+    const owner = /data-owner-item="([^"]+)"/.exec(card);
+    assert.ok(owner, 'Every fact card must name the item that owns it');
+    const availability = /data-availability="([a-z]+)"/.exec(card);
+    assert.ok(availability, 'Every fact card must state whether it is available');
+
+    if (availability[1] === 'available') {
+      // A card may only claim to be available if its owner is actually built.
+      assert.equal(
+        statuses.get(owner[1]),
+        'x',
+        `${owner[1]} is presented as available but is not complete in ROADMAP.md`
+      );
+      assert.match(card, /<a class="comic-btn"[^>]*href="#/, `${owner[1]} claims to be available but opens nothing`);
+    } else {
+      assert.notEqual(
+        statuses.get(owner[1]),
+        'x',
+        `${owner[1]} is presented as roadmap-owned but is complete`
+      );
+      assert.match(card, /disabled/, `${owner[1]} is unavailable and must not be actionable`);
+      assert.match(card, /data-roadmap-id="/, `${owner[1]} must carry its unavailable owner`);
+    }
+  }
+
+  // There is no aggregate. The one status element on this screen reports the
+  // airgap guard specifically, and it renders from the same call that sets the
+  // banner rather than keeping a second copy of the state - so the two cannot
+  // disagree about whether the boundary holds.
+  assert.match(markup, /id="security-guard"[^>]*data-airgap-state="checking"/);
+  assert.match(mainJs, /function setAirgapBanner\(state, title, copy, label\) \{[\s\S]{0,600}?securityGuard\.setAttribute\('data-airgap-state', state\)/);
+  assert.match(mainJs, /securityGuardLabel\.textContent = title;/);
+  // Exactly one live status region, and it is the guard. Grepping the prose for
+  // the words "secure" or "private" would fail on the copy that explains why
+  // there is no such badge, so assert the structural property instead: no
+  // second status element can appear without failing here.
+  const liveRegions = markup.match(/aria-live="[a-z]+"/g) || [];
+  assert.equal(liveRegions.length, 1, 'Security & verify must expose exactly one live status region');
+  assert.match(
+    markup,
+    /<p class="security-guard" id="security-guard"[^>]*aria-live="polite"/,
+    'The one live region on this screen must be the airgap guard'
+  );
+
+  // Every fact names its own owner; none aggregates two.
+  const owners = Array.from(markup.matchAll(/data-owner-item="([^"]+)"/g), (m) => m[1]);
+  assert.equal(owners.length, cards.length, 'Every card names exactly one owner');
 });
 
 test('the Wallets workspace reads the shipped registry and invents no balance', () => {

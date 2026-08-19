@@ -3329,3 +3329,105 @@ samp {
   gap: 0.5rem;
   margin: 1rem 0 0;
 }
+
+/* UI.10b - the "separate facts" grid on Security & verify.
+   Each card is one fact with one owner and one destination. There is
+   deliberately no aggregate badge: a combined "secure" indicator hides exactly
+   the distinction that matters when one of the facts fails. */
+.security-guard {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0.4rem 0.8rem;
+  border: var(--outline-width-thin) solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  letter-spacing: 0.03em;
+}
+
+.security-guard[data-airgap-state="ready"] .status-dot {
+  background: var(--success);
+}
+
+.security-guard[data-airgap-state="offline"] .status-dot {
+  background: var(--success);
+}
+
+.security-guard[data-airgap-state="online"] .status-dot,
+.security-guard[data-airgap-state="checking"] .status-dot {
+  background: var(--warning);
+}
+
+.security-guard[data-airgap-state="failed"] .status-dot,
+.security-guard[data-airgap-state="lockdown"] .status-dot {
+  background: var(--danger);
+}
+
+.fact-grid {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+}
+
+.fact-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.9rem 1rem;
+  border: var(--outline-width-thin) solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+}
+
+.fact-card h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.fact-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.fact-card-owner {
+  margin: 0;
+}
+
+.fact-card-availability {
+  margin-top: auto;
+  padding-top: 0.5rem;
+  border-top: var(--outline-width-thin) dashed var(--outline);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+.fact-card-availability[data-availability="available"] {
+  color: var(--success);
+}
+
+.fact-card-availability[data-availability="roadmap"] {
+  color: var(--faint);
+}
+
+.fact-card .comic-btn {
+  align-self: flex-start;
+  min-height: 44px;
+}
+
+.comic-btn-unavailable {
+  border-color: transparent;
+  background: transparent;
+  color: var(--faint);
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.fact-grid-note {
+  margin: 0.9rem 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
