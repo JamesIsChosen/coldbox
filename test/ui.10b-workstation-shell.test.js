@@ -476,3 +476,73 @@ test('every rail destination has a unique stable handle, and deep links resolve'
   // the user just activated.
   assert.match(mainJs, /return document\.activeElement === target;/);
 });
+
+test('no surface anywhere in src claims a completed roadmap item as unavailable', () => {
+  // The rail, the flow index, the More sheets and now the Wallets balance column
+  // all name a roadmap owner. One assertion over every `data-roadmap-id` in the
+  // product source catches the next one too, wherever it is added.
+  const statuses = parseRoadmapStatuses();
+  const sources = [
+    ['src/index.html', warmHtml],
+    ['src/cold/index.html', coldHtml],
+    ['src/main.js', mainJs]
+  ];
+  let seen = 0;
+  for (const [name, source] of sources) {
+    for (const match of source.matchAll(/data-roadmap-id="([^"]+)"|setAttribute\('data-roadmap-id', '([^']+)'\)/g)) {
+      const id = match[1] || match[2];
+      seen += 1;
+      assert.ok(statuses.has(id), `${name} names ${id}, which is not a roadmap item`);
+      assert.notEqual(
+        statuses.get(id),
+        'x',
+        `${name} presents ${id} as unavailable, but the roadmap has it complete`
+      );
+    }
+  }
+  assert.ok(seen >= 20, `expected the product source to name roadmap owners, saw ${seen}`);
+});
+
+test('the Wallets workspace reads the shipped registry and invents no balance', () => {
+  const page = /<section class="page" id="page-wallets"[\s\S]*?\n        <\/section>/.exec(warmHtml);
+  assert.ok(page, 'The Wallets page is missing');
+  const markup = page[0];
+
+  // Locked-first: wallet records live inside the encrypted vault, so the screen
+  // must say so rather than render an empty table that reads as "no wallets".
+  assert.match(markup, /id="wallets-locked"/);
+  assert.match(markup, /id="wallets-workspace"[^>]*hidden/);
+  assert.match(markup, /Unlock a vault to see your wallets/);
+
+  // The approved columns, in the approved order.
+  const headers = Array.from(markup.matchAll(/<th scope="col">(?:<span class="sr-only">)?([^<]+)</g), (m) => m[1].trim());
+  assert.deepEqual(headers, ['Wallet', 'Lineage', 'Balance', 'Addresses', 'Mode', 'Record']);
+
+  // No literal balance figure anywhere in the markup, and the render path emits
+  // an owner-named unavailable state instead.
+  assert.doesNotMatch(markup, /[0-9]+\.[0-9]{4,}/, 'The Wallets markup must not contain a balance figure');
+  assert.match(mainJs, /balance\.setAttribute\('data-roadmap-id', 'WAL\.3'\)/);
+  assert.match(mainJs, /balance\.textContent = 'Unavailable · WAL\.3'/);
+
+  // Mode is derived from what the vault recorded, not from what Coldbox can do.
+  assert.match(mainJs, /function walletMode\(wallet\) \{/);
+  assert.match(mainJs, /wallet\.type === 'watch-only' \|\| \(!wallet\.seedId && !wallet\.fingerprint\)/);
+  assert.doesNotMatch(markup, />\s*Spend\s*</, 'No wallet surface may offer a spend mode in this build');
+
+  // Every cell carries its column heading so the mobile block layout stays
+  // labelled, and the table actually transforms below the phone breakpoint.
+  assert.match(mainJs, /cell\.setAttribute\('data-label', label\)/);
+  assert.match(warmCss, /@media \(max-width: 720px\)[\s\S]*?\.wallets-table td::before[\s\S]*?content: attr\(data-label\)/);
+
+  // The object carries its own actions, outside the locked gate: opening QR
+  // Studio does not require an unlocked vault and must not be hidden behind one.
+  const workspace = /<section class="wallets-workspace"[\s\S]*?<\/section>/.exec(markup)[0];
+  for (const nav of ['wallets-registry', 'wallets-qr-studio', 'wallets-verify']) {
+    assert.ok(markup.includes(`data-nav="${nav}"`), `The Wallets page is missing its ${nav} action`);
+    assert.ok(!workspace.includes(`data-nav="${nav}"`), `${nav} must stay reachable while the vault is locked`);
+  }
+
+  // The record menu is the one interaction pattern for public records; the
+  // Wallets rows reuse it rather than introducing a second one.
+  assert.match(mainJs, /actionCell\.appendChild\(recordMenuTrigger\('wallet', entry\.wallet\.id\)\)/);
+});

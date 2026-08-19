@@ -218,6 +218,11 @@ __COLDBOX_CONCEALMENT__
   var registryShowHidden = document.getElementById('registry-show-hidden');
   var registryHiddenHelp = document.getElementById('registry-hidden-help');
   var registryWalletList = document.getElementById('registry-wallet-list');
+  var walletsLocked = document.getElementById('wallets-locked');
+  var walletsWorkspace = document.getElementById('wallets-workspace');
+  var walletsTableBody = document.getElementById('wallets-table-body');
+  var walletsSummary = document.getElementById('wallets-summary');
+  var walletsEmpty = document.getElementById('wallets-empty');
   var registryAccountList = document.getElementById('registry-account-list');
   var registryAddressList = document.getElementById('registry-address-list');
   var backupLocked = document.getElementById('backup-locked');
@@ -371,6 +376,9 @@ __COLDBOX_CONCEALMENT__
   var pendingReceivedTransfer = null;
   var pendingReceivedTransferMeta = null;
   var registryStore = null;
+  // UI.10b - which wallets the Wallets workspace is showing. View state only:
+  // it never reaches the vault and is not persisted.
+  var walletFilter = 'all';
   var pendingRegistryMutation = null;
   var pendingAddressVerification = null;
   var pendingBackupVerification = null;
@@ -4221,6 +4229,161 @@ __COLDBOX_CONCEALMENT__
     renderAddressVerificationOptions();
   }
 
+
+  // UI.10b - the approved Wallets screen.
+  //
+  // Every column is read from a public registry record that P1.6 already ships;
+  // nothing here is invented and nothing is fetched. Two columns deserve
+  // explanation because the approved reference shows them differently:
+  //
+  // Balance is rendered as an explicit unavailable state naming WAL.3 rather
+  // than a number. The reference shows demo balances; Coldbox has no chain
+  // access in this build, and a blank or zero cell would read as "you have
+  // nothing" rather than "this build cannot know". PAR-009 keeps the column in
+  // its approved place while refusing to fake its content.
+  //
+  // Mode says what this vault has recorded - a seed fingerprint, or an imported
+  // xpub with no seed - not what Coldbox can do with it. The reference's
+  // Spend/Hold labels describe a spending policy Coldbox does not model, and
+  // calling anything "Spend" while WAL is unbuilt would be untrue (PAR-002).
+  function walletMode(wallet) {
+    if (wallet.type === 'watch-only' || (!wallet.seedId && !wallet.fingerprint)) {
+      return { key: 'watch-only', label: 'Watch-only' };
+    }
+    return { key: 'signing', label: 'Seed recorded' };
+  }
+
+  function walletLineage(wallet) {
+    if (wallet.fingerprint) {
+      return 'fp ' + wallet.fingerprint;
+    }
+    if (wallet.seedId) {
+      return 'seed ' + wallet.seedId;
+    }
+    return 'imported xpub · no seed';
+  }
+
+  function walletAddressCount(wallet, accounts, addresses) {
+    var accountIds = accounts.filter(function (account) {
+      return account.walletId === wallet.id;
+    }).map(function (account) {
+      return account.id;
+    });
+    return addresses.filter(function (address) {
+      return accountIds.indexOf(address.accountId) !== -1;
+    }).length;
+  }
+
+  // The column heading travels with the cell as data-label, because the mobile
+  // presentation turns each row into a block and hides the header row - without
+  // it, a phone shows five unlabelled values per wallet.
+  function walletsCell(row, text, className, label) {
+    var cell = document.createElement('td');
+    if (className) {
+      cell.className = className;
+    }
+    cell.setAttribute('data-label', label);
+    cell.textContent = text;
+    row.appendChild(cell);
+    return cell;
+  }
+
+  function renderWalletsWorkspace(available, wallets, accounts, addresses) {
+    if (walletsLocked) {
+      walletsLocked.hidden = available;
+    }
+    if (walletsWorkspace) {
+      walletsWorkspace.hidden = !available;
+    }
+    if (!walletsTableBody) {
+      return;
+    }
+    clearRegistryNode(walletsTableBody);
+    if (!available) {
+      if (walletsSummary) {
+        walletsSummary.textContent = '';
+      }
+      if (walletsEmpty) {
+        walletsEmpty.hidden = true;
+      }
+      return;
+    }
+
+    var totalAddresses = 0;
+    var watchOnly = 0;
+    var rows = [];
+    wallets.forEach(function (wallet) {
+      var mode = walletMode(wallet);
+      var count = walletAddressCount(wallet, accounts, addresses);
+      totalAddresses += count;
+      if (mode.key === 'watch-only') {
+        watchOnly += 1;
+      }
+      rows.push({ wallet: wallet, mode: mode, addresses: count });
+    });
+
+    if (walletsSummary) {
+      walletsSummary.textContent = wallets.length + (wallets.length === 1 ? ' wallet · ' : ' wallets · ')
+        + totalAddresses + (totalAddresses === 1 ? ' address · ' : ' addresses · ')
+        + watchOnly + ' watch-only';
+    }
+
+    var visible = rows.filter(function (entry) {
+      return walletFilter === 'all' || entry.mode.key === walletFilter;
+    });
+
+    visible.forEach(function (entry) {
+      var row = document.createElement('tr');
+      row.setAttribute('data-registry-id', entry.wallet.id);
+      row.setAttribute('data-wallet-mode', entry.mode.key);
+
+      var nameCell = document.createElement('td');
+      nameCell.className = 'wallets-name';
+      nameCell.setAttribute('data-label', 'Wallet');
+      var name = document.createElement('span');
+      name.className = 'wallets-name-label';
+      name.textContent = entry.wallet.label || 'Unlabeled wallet';
+      nameCell.appendChild(name);
+      var meta = document.createElement('span');
+      meta.className = 'wallets-name-meta';
+      meta.textContent = [entry.wallet.network, entry.wallet.scriptType, entry.wallet.type]
+        .filter(Boolean).join(' · ') || 'Public wallet record';
+      nameCell.appendChild(meta);
+      row.appendChild(nameCell);
+
+      walletsCell(row, walletLineage(entry.wallet), 'wallets-lineage', 'Lineage');
+
+      var balanceCell = document.createElement('td');
+      balanceCell.className = 'wallets-balance';
+      balanceCell.setAttribute('data-label', 'Balance');
+      var balance = document.createElement('span');
+      balance.className = 'wallets-unavailable';
+      balance.setAttribute('data-roadmap-id', 'WAL.3');
+      balance.setAttribute('data-phase', 'Phase WAL');
+      balance.textContent = 'Unavailable · WAL.3';
+      balanceCell.appendChild(balance);
+      row.appendChild(balanceCell);
+
+      walletsCell(row, String(entry.addresses), 'wallets-addresses', 'Addresses');
+      walletsCell(row, entry.mode.label, 'wallets-mode', 'Mode');
+
+      var actionCell = document.createElement('td');
+      actionCell.className = 'wallets-actions';
+      actionCell.setAttribute('data-label', 'Record');
+      actionCell.appendChild(recordMenuTrigger('wallet', entry.wallet.id));
+      row.appendChild(actionCell);
+
+      walletsTableBody.appendChild(row);
+    });
+
+    if (walletsEmpty) {
+      walletsEmpty.hidden = visible.length !== 0;
+      walletsEmpty.textContent = wallets.length === 0
+        ? 'No wallets recorded yet. Add one in Records & registry.'
+        : 'No wallet matches this filter.';
+    }
+  }
+
   function renderRegistry() {
     var available = Boolean(registryStore && vaultState === 'unlocked');
     if (registryLocked) {
@@ -4244,6 +4407,7 @@ __COLDBOX_CONCEALMENT__
     renderBackupHealth(available ? registryStore.list('backups', hiddenRegistryVisible) : []);
     renderAddressVerificationOptions();
     if (!available) {
+      renderWalletsWorkspace(false, [], [], []);
       return;
     }
     var wallets = registryVisibleRecords('wallets');
@@ -4252,6 +4416,7 @@ __COLDBOX_CONCEALMENT__
     var neverVerifiedCount = addresses.filter(function (address) {
       return address.verificationState === 'unverified';
     }).length;
+    renderWalletsWorkspace(true, wallets, accounts, addresses);
     var devices = deviceVisibleRecords();
     var notes = registryVisibleRecords('notes');
     var backups = backupVisibleRecords();
@@ -5957,6 +6122,18 @@ __COLDBOX_CONCEALMENT__
   // phone the masthead lock controls scroll away. It calls the same handler the
   // masthead button does rather than duplicating the lock path, and closes the
   // sheet first so focus is not stranded inside a hidden menu.
+  // UI.10b - the Wallets filter chips. View state only: filtering never touches
+  // the vault, so this re-renders from the same records rather than reloading.
+  document.querySelectorAll('[data-wallet-filter]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      walletFilter = button.getAttribute('data-wallet-filter');
+      document.querySelectorAll('[data-wallet-filter]').forEach(function (other) {
+        other.setAttribute('aria-pressed', String(other === button));
+      });
+      renderRegistry();
+    });
+  });
+
   if (moreLock) {
     moreLock.addEventListener('click', function () {
       closeMoreMenu();

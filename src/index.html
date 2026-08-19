@@ -354,32 +354,58 @@ __COLDBOX_WORDMARK__
           <header class="page-header">
             <p class="eyebrow">Objects / Wallets</p>
             <h1 id="page-title-wallets">Wallets &amp; accounts</h1>
-            <p class="page-lede">One entry per wallet, with the seed lineage it came from and how much of it Coldbox can operate today. Watch-only is a first-class state, not a degraded one.</p>
+            <p class="page-lede">One row per wallet, with the seed lineage it came from and how much of it Coldbox can operate today. Watch-only is a first-class state, not a degraded one.</p>
           </header>
-          <div class="info-grid">
-            <article class="info-card">
-              <span class="card-icon" aria-hidden="true">R</span>
-              <h2>The wallet records live in the registry</h2>
-              <p>Wallets, accounts and addresses are public registry objects with labels, tags and concealment state. Create, edit and search them where they are stored.</p>
-              <p><a class="comic-btn" href="#registry" data-route="registry">Open Records &amp; registry</a></p>
-            </article>
-            <article class="info-card">
-              <span class="card-icon" aria-hidden="true">Q</span>
-              <h2>Receive</h2>
-              <p>Address QR codes are generated locally from public values only. No secret is involved in producing one.</p>
-              <p><a class="comic-btn" data-nav="wallets-qr-studio" href="#qr" data-route="qr">Open QR Studio</a></p>
-            </article>
-            <article class="info-card">
-              <span class="card-icon" aria-hidden="true">✓</span>
-              <h2>Check an address before you use it</h2>
-              <p>Compare a receive address against an independent cold derivation, character for character, rather than by eye.</p>
-              <p><a class="comic-btn" href="#security" data-route="security">Open Security &amp; verify</a></p>
-            </article>
-          </div>
+
+          <section class="wallets-locked" id="wallets-locked" aria-live="polite">
+            <div class="empty-panel">
+              <span class="panel-kicker">Vault locked</span>
+              <h2>Unlock a vault to see your wallets.</h2>
+              <p>Wallets, accounts and addresses are public records inside the encrypted vault. Nothing about them is readable until it is unlocked.</p>
+              <p><a class="comic-btn" href="#vault" data-route="vault">Open Vault files</a></p>
+            </div>
+          </section>
+
+          <section class="wallets-workspace" id="wallets-workspace" aria-labelledby="wallets-workspace-title" hidden>
+            <h2 class="sr-only" id="wallets-workspace-title">Recorded wallets</h2>
+            <div class="wallets-toolbar">
+              <div class="wallets-filters" role="group" aria-label="Filter wallets">
+                <button class="wallets-filter" type="button" data-wallet-filter="all" aria-pressed="true">All wallets</button>
+                <button class="wallets-filter" type="button" data-wallet-filter="signing" aria-pressed="false">Seed recorded</button>
+                <button class="wallets-filter" type="button" data-wallet-filter="watch-only" aria-pressed="false">Watch-only</button>
+              </div>
+              <p class="wallets-summary" id="wallets-summary" aria-live="polite"></p>
+            </div>
+
+            <table class="wallets-table" id="wallets-table">
+              <caption class="sr-only">Wallets recorded in this vault, with lineage, address count and signing mode.</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Wallet</th>
+                  <th scope="col">Lineage</th>
+                  <th scope="col">Balance</th>
+                  <th scope="col">Addresses</th>
+                  <th scope="col">Mode</th>
+                  <th scope="col"><span class="sr-only">Record</span></th>
+                </tr>
+              </thead>
+              <tbody id="wallets-table-body"></tbody>
+            </table>
+            <p class="wallets-empty" id="wallets-empty" hidden>No wallets recorded yet. Add one in Records &amp; registry.</p>
+
+            <p class="wallets-note">Wallets, accounts and addresses are shipped registry objects (P1.6). The lineage column states which recorded seed fingerprint a wallet came from; a wallet imported from an xpub says so plainly rather than looking broken.</p>
+          </section>
+
+            <div class="wallets-actions-row">
+              <a class="comic-btn" data-nav="wallets-registry" href="#registry" data-route="registry">Edit in Records &amp; registry</a>
+              <a class="comic-btn" data-nav="wallets-qr-studio" href="#qr" data-route="qr">Receive · Open QR Studio</a>
+              <a class="comic-btn" data-nav="wallets-verify" href="#security" data-route="security">Check an address</a>
+            </div>
+
           <div class="empty-panel">
             <span class="panel-kicker">Not available in this build</span>
             <h2>Coldbox does not build, sign or broadcast transactions yet.</h2>
-            <p>Balances, transaction history, UTXOs, coin control, fee choice, PSBT handling, signing and broadcast are owned by the WAL phase. Nothing on this screen constructs a transaction, and no screen in this build pretends to.</p>
+            <p>Balances, transaction history, UTXOs, coin control, fee choice, PSBT handling, signing and broadcast are owned by the WAL phase. Nothing on this screen constructs a transaction, and the Mode column describes what this vault has recorded — not an ability this build has.</p>
           </div>
         </section>
 

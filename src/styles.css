@@ -3184,3 +3184,148 @@ samp {
   font: inherit;
   text-align: left;
 }
+
+/* UI.10b - the Wallets workspace.
+   A real table on desktop; on a phone each row becomes a labelled block, which
+   is the transformation the approved mobile reference demonstrates for every
+   wide table. */
+.wallets-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 1.2rem 0 0.8rem;
+}
+
+.wallets-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.wallets-filter {
+  min-height: 44px;
+  padding: 0.45rem 0.9rem;
+  border: var(--outline-width-thin) solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  letter-spacing: 0.03em;
+}
+
+.wallets-filter[aria-pressed="true"] {
+  background: var(--fill-cyan);
+  color: var(--fill-ink);
+}
+
+.wallets-summary {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+}
+
+.wallets-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: var(--outline-width-thin) solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+}
+
+.wallets-table th,
+.wallets-table td {
+  padding: 0.6rem 0.8rem;
+  border-bottom: var(--outline-width-thin) solid var(--outline);
+  font-size: 0.82rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.wallets-table th {
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wallets-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.wallets-name-label {
+  display: block;
+  font-weight: 700;
+}
+
+.wallets-name-meta,
+.wallets-lineage {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.wallets-unavailable {
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.wallets-empty,
+.wallets-note {
+  margin: 0.8rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+@media (max-width: 720px) {
+  .wallets-table,
+  .wallets-table tbody,
+  .wallets-table tr,
+  .wallets-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .wallets-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .wallets-table tr {
+    padding: 0.5rem 0;
+    border-bottom: var(--outline-width-thin) solid var(--outline);
+  }
+
+  .wallets-table td {
+    border-bottom: 0;
+    word-break: break-all;
+  }
+
+  .wallets-table td::before {
+    display: block;
+    color: var(--faint);
+    content: attr(data-label);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+}
+
+/* UI.10b - the actions an object carries. The approved design keeps each
+   specialist tool one click from the object it acts on, so these are the
+   contextual half of the reachability guarantee the All flows index audits. */
+.wallets-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+}

@@ -1650,6 +1650,57 @@ async function verifyRegistryCrud(browser, engine) {
     await written.waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await page.locator('#registry-address-list .registry-record').count(), 1, `${engine}: address CRUD did not render the created address`);
 
+    // UI.10b - the Wallets workspace renders the same registry records the
+    // registry page just created. Checked here rather than in its own fixture
+    // because the point is that it reads the shipped store, not a parallel one.
+    await page.locator('#nav-rail [data-nav="wallets"]').click();
+    await page.locator('#page-wallets:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await page.locator('#wallets-locked').isVisible(), false, `${engine}: Wallets must leave its locked state once a vault is unlocked`);
+    assert.equal(await page.locator('#wallets-table-body tr').count(), 1, `${engine}: Wallets did not render the created wallet`);
+    const walletRow = page.locator('#wallets-table-body tr').first();
+    assert.match(await walletRow.textContent(), /Browser wallet/, `${engine}: Wallets row must name the wallet`);
+    assert.match(await walletRow.locator('.wallets-addresses').textContent(), /^1$/, `${engine}: Wallets must count addresses through their account`);
+    assert.match(await page.locator('#wallets-summary').textContent(), /1 wallet · 1 address/, `${engine}: Wallets summary must count the created records`);
+
+    // The balance column keeps its approved place and refuses to invent a
+    // number: this build has no chain access at all.
+    const walletBalance = walletRow.locator('.wallets-balance .wallets-unavailable');
+    assert.equal(await walletBalance.getAttribute('data-roadmap-id'), 'WAL.3', `${engine}: the balance column must name its roadmap owner`);
+    assert.match(await walletBalance.textContent(), /Unavailable/, `${engine}: the balance column must not show a figure`);
+    assert.doesNotMatch(await walletRow.textContent(), /[0-9]+\.[0-9]{4,}/, `${engine}: no wallet row may display a balance figure`);
+
+    // Every cell carries its column heading, because the mobile presentation
+    // turns the row into a block and hides the header row.
+    for (const label of ['Wallet', 'Lineage', 'Balance', 'Addresses', 'Mode', 'Record']) {
+      assert.equal(
+        await walletRow.locator(`td[data-label="${label}"]`).count(),
+        1,
+        `${engine}: the Wallets row is missing its ${label} cell label`
+      );
+    }
+
+    // This wallet was created with a label only - no seedId and no fingerprint -
+    // so Coldbox has recorded nothing that could sign for it and the row is
+    // watch-only. That is the honest reading of the record, and the reason Mode
+    // describes what the vault holds rather than what Coldbox can do.
+    assert.equal(await walletRow.getAttribute('data-wallet-mode'), 'watch-only', `${engine}: a wallet with no seed or fingerprint is watch-only`);
+    assert.match(await walletRow.locator('.wallets-mode').textContent(), /Watch-only/);
+    assert.match(await walletRow.locator('.wallets-lineage').textContent(), /no seed/, `${engine}: lineage must say plainly that no seed is recorded`);
+
+    // Filtering is view state and must not touch the vault.
+    await page.locator('[data-wallet-filter="signing"]').click();
+    assert.equal(await page.locator('#wallets-table-body tr').count(), 0, `${engine}: a watch-only wallet must not match the seed-recorded filter`);
+    assert.equal(await page.locator('#wallets-empty').isVisible(), true, `${engine}: an empty filter result must say so`);
+    await page.locator('[data-wallet-filter="watch-only"]').click();
+    assert.equal(await page.locator('#wallets-table-body tr').count(), 1, `${engine}: the watch-only filter must match the watch-only wallet`);
+    await page.locator('[data-wallet-filter="all"]').click();
+    assert.equal(await page.locator('#wallets-table-body tr').count(), 1, `${engine}: clearing the filter must restore the row`);
+    assert.equal(await page.locator('[data-wallet-filter="all"]').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('[data-wallet-filter="signing"]').getAttribute('aria-pressed'), 'false');
+
+    await page.locator('#nav-rail [data-nav="registry"]').click();
+    await page.locator('#page-registry:not([hidden])').waitFor({ state: 'visible' });
+
     // Empty optional text on an edit is an explicit clear, not an omitted patch.
     await page.locator('#registry-wallet-list [data-registry-action="edit"]').click();
     await page.locator('#registry-wallet-label').fill('');
@@ -1732,7 +1783,19 @@ async function verifyUi6RecordMenu(browser, engine) {
     await written.waitFor({ state: 'visible', timeout: 5000 });
 
     const addressTrigger = page.locator('#registry-address-list [data-record-menu-trigger="true"]');
-    assert.equal(await page.locator('[data-record-menu-trigger="true"]').count(), 3, `${engine}: every created record needs the shared menu trigger`);
+    // Scoped to the registry lists. UI.10b's Wallets workspace renders the same
+    // wallet record on its own object screen with the same shared trigger, so a
+    // document-wide count now legitimately exceeds the number of records.
+    assert.equal(
+      await page.locator('#page-registry [data-record-menu-trigger="true"]').count(),
+      3,
+      `${engine}: every created record needs the shared menu trigger`
+    );
+    assert.equal(
+      await page.locator('#page-wallets [data-record-menu-trigger="true"]').count(),
+      1,
+      `${engine}: the Wallets workspace must reach the same record through the same menu`
+    );
     await addressTrigger.click();
     await page.locator('#record-menu:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
     assert.match(await page.locator('#record-menu-fields').textContent(), /Address/);
