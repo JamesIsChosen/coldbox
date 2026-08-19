@@ -9,14 +9,14 @@
 ## 0. This is a partial packet. Read this first.
 
 UI.10b is one roadmap item but several passes of work. This branch contains
-**pass 1 of 3**, committed and green, so the work survives the session and can be
-reviewed in a coherent slice rather than as a half-rewrite.
+**passes 1 and 3**, committed and green, so the work survives the session and can
+be reviewed in coherent slices rather than as a half-rewrite.
 
 | Pass | Scope | State |
 |---|---|---|
 | **1 — navigation** | The approved hierarchy in both realms: rails, phone bar, realm-aware More sheets, four new warm destinations, the All flows index, deletion of the tool-first placeholder pages | **done, on this branch** |
+| **3 — harness reconciliation** | `scripts/run-browser-harness.js` reconciled to the new shell; stable `data-nav` handles; sub-destination deep links | **done, on this branch — Chromium verified, Firefox not run (§7)** |
 | 2 — screen content | Home / Wallets / Backup / Security composition against the approved screens; the seed record and Secret QR sealed screens | not started |
-| 3 — harness reconciliation | `scripts/run-browser-harness.js` reconciled to the new shell, and the two-engine run | not started |
 
 The roadmap marker stays `[ ]`, not `[~]`: `[~]` means implemented and awaiting
 review, and this is not implemented yet. A reviewer looking at this branch should
@@ -24,7 +24,7 @@ review **pass 1 on its own terms** — is the navigation change correct, truthfu
 and safe — and should not weigh it against UI.10b's full acceptance list, most of
 which passes 2 and 3 own.
 
-Everything in §§1–12 describes pass 1 only.
+Everything in §§1–12 describes passes 1 and 3.
 
 ---
 
@@ -50,11 +50,17 @@ flows index carry the capabilities that lost a top-level tool name.
 - `src/cold/index.html` — new sealed rail (6 groups), new sealed phone bar and
   More sheet.
 - `src/main.js` — `routeDetails` rewritten to the new groups; the More sheet's
-  Lock / panic control wired to the existing lock handler.
+  Lock / panic control wired to the existing lock handler; `routeSections` and
+  `focusRouteSection` added so the approved sub-destinations reach their own
+  panel (pass 3).
+- `scripts/run-browser-harness.js` — reconciled to the new shell: destinations
+  addressed by `data-nav`, Verify Bench and QR Studio reached contextually,
+  the sealed realm reached on mobile through the Seeds slot, realm purity
+  asserted in both More sheets (pass 3).
 - `src/styles.css` — the All flows index, the More sheet's action control, and
   the sealed-group separator rule that replaces the deleted `.nav-sealed-entry`.
 - `docs/05-development/ROADMAP.md` — **adds P1.4a** (§4).
-- `test/ui.10b-workstation-shell.test.js` — 12 new tests.
+- `test/ui.10b-workstation-shell.test.js` — 13 new tests.
 - `test/ui.5-shared-shell.test.js`, `test/ui.8-warm-realm-workspaces.test.js` —
   reconciled, not deleted (§9).
 - `test/ui.10a-workstation-reference.test.js` — leak sentinel changed (§9).
@@ -65,8 +71,8 @@ flows index carry the capabilities that lost a top-level tool name.
   UI.10b is `[x]`. Nothing here chases a colour, a shadow offset or a type size.
   The screenshots below look like the current Coldbox, not like the mock, and
   that is correct at this stage.
-- Screen content and the sealed seed-record screens — pass 2.
-- The browser harness — pass 3.
+- Screen content and the sealed seed-record screens — pass 2. This is the whole
+  of what remains.
 - Any new capability. Every new destination routes to something that already
   exists or is an explicit roadmap-owned unavailable control.
 
@@ -79,26 +85,56 @@ $ npm run lint
 Lint passed: forbidden constructs, JavaScript syntax, and LF source line endings are valid.
 
 $ node scripts/check-docs.js
-Documentation hygiene check passed: 264 markdown file(s) checked, 0 warning(s).
+Documentation hygiene check passed: 265 markdown file(s) checked, 0 warning(s).
 
 $ npm test
-# tests 464
-# pass 464
+# tests 465
+# pass 465
 # fail 0
 # skipped 0
 ```
 
-464 passing, **zero skipped** (452 at UI.10a + 12 new).
+465 passing, **zero skipped** (452 at UI.10a + 13 new).
 
 Reproducible build, two runs under different `TZ` and `LC_ALL`:
 
 ```
 $ rm -f build/coldbox.html && TZ=UTC LC_ALL=C node scripts/build.js && sha256sum build/coldbox.html
-692d2c02197adb340e8acc0a0412d27afd5bddee06650f1c4dba9db565d37f5c
+c393d3708fa0315f1b594adf30b52233aeebe8b8e0c8267d98df71a8beb185cd
 
-$ rm -f build/coldbox.html && TZ=Pacific/Kiritimati LC_ALL=en_US.UTF-8 node scripts/build.js && sha256sum build/coldbox.html
-692d2c02197adb340e8acc0a0412d27afd5bddee06650f1c4dba9db565d37f5c
+$ rm -f build/coldbox.html && TZ=Asia/Kolkata LC_ALL=en_US.UTF-8 node scripts/build.js && sha256sum build/coldbox.html
+c393d3708fa0315f1b594adf30b52233aeebe8b8e0c8267d98df71a8beb185cd
 ```
+
+### 3.0 The committed browser harness
+
+```
+$ npm run test:browser        # Chromium leg only, see §7 for exactly how
+...
+Chromium: warm shell routes, theme switch, responsive navigation, and cold boundary passed over file://
+Chromium: Learn page depth switching (persisted across reload), offline search, contextual help, fallback-on-missing-topic, and inline glossary verified
+Browser harness passed in Chromium and Firefox.
+```
+
+All 42 verification functions pass. The closing line is the harness's own
+unconditional message — it is **not** evidence that Firefox ran. §7 states what
+actually executed.
+
+**What it caught.** The harness failed at its first navigation step before any
+of this was fixed:
+
+```
+strict mode violation: locator('#nav-rail a[data-route="vault"]') resolved to 3 elements:
+  1) Vault files P0.13
+  2) Vault session P0.13
+  3) Device transfer (QR) P0.13
+```
+
+That is a real defect in pass 1, not a harness artifact: the approved rail has
+three destinations with three different accessible names all pointing at
+`#vault`, and three more at `#reference`. To a screen reader that reads as six
+destinations; in the browser it behaved as two. Fixed by deep-linking each
+sub-destination to the panel it names (§6).
 
 ### 3.1 Routing, in a real browser
 
@@ -280,15 +316,30 @@ this branch, not an N/A.**
 
 | Platform | Result | Notes |
 |---|---|---|
-| Linux Chromium (local, `file://`) | **PASS** for §§3.1–3.3 | routing, sealed anchors, mobile bar, More focus return, touch targets |
-| Chromium via the committed harness | **NOT RUN** | pass 3 has not reconciled `scripts/run-browser-harness.js` to the new shell |
-| Firefox | **NOT RUN** | no Firefox binary is obtainable in this environment; Playwright downloads are blocked (`cdn.playwright.dev` → `403 blocked-by-allowlist`) |
+| Chromium via the committed harness | **PASS** | all 42 verification functions, `file://`, with the caveat below |
+| Linux Chromium (ad-hoc, `file://`) | **PASS** for §§3.1–3.3 | routing, sealed anchors, mobile bar, More focus return, touch targets |
+| Firefox | **NOT RUN** | no Firefox binary is obtainable in this environment |
 | Physical mobile | **NOT RUN** | 390 × 844 emulation is not a device result |
 
-`npm run test:browser` was **not run and will not pass as-is**: the harness
-still drives the superseded shell. Reconciling it is pass 3 and is the largest
-remaining piece of this item. Nothing in this packet should be read as a claim
-that the committed harness is green.
+**Read this before trusting the Chromium row.** `npm run test:browser` as
+committed launches Chromium *and* Firefox from Playwright's own download cache,
+and this environment has neither: Playwright's downloads are blocked at the
+network layer (`cdn.playwright.dev` → `403 blocked-by-allowlist`), and the
+Chromium build present in the container is a different revision than
+`playwright@1.62.1` expects.
+
+So the run above was made against a **scratch copy** of the repository, patched
+to iterate `[['Chromium', chromium]]` alone and to launch from the container's
+pinned Chromium via `executablePath`. That patch was never committed and is not
+in this diff — `git diff` on `scripts/run-browser-harness.js` shows the engine
+loop unchanged, still `[['Chromium', chromium], ['Firefox', firefox]]`. A
+reviewer should confirm that, because it is the difference between "one engine
+verified" and "the harness was quietly weakened".
+
+**What this means in practice:** every selector, label and navigation path in
+the harness is now correct for the new shell and proven so in one engine. The
+Firefox leg is unverified and **CI is the only witness for it.** Require a green
+`browser-tests` job at this head SHA before treating pass 3 as done.
 
 ---
 
@@ -400,16 +451,19 @@ the mock, that expectation is the thing to correct, not the branch.
 
 **What I did not do that arguably should have been done:**
 
-- Did not reconcile the browser harness. It is the largest remaining piece and
-  the reason this item is not `[~]`.
 - Did not touch screen content, so Home still carries the old boundary panels
-  under the approved heading.
-- Did not verify on a physical device or in Firefox.
+  under the approved heading. That is the whole of what remains, and the reason
+  this item is not `[~]`.
+- Did not verify on a physical device or in Firefox. The Firefox leg of the
+  harness has no witness but CI.
 
 **Known limitations shipping with this:**
 
-- `npm run test:browser` does not pass on this branch.
+- The Firefox leg of `npm run test:browser` is unverified locally (§7).
 - The sealed realm has no *Return to warm shell* control of its own (§5).
+- `focusRouteSection` silently declines when its target panel is not rendered.
+  That is deliberate and asserted, but it means Backup Health's rail entry
+  currently lands on the page rather than the list while the vault is locked.
 
 **Follow-up:**
 
@@ -424,8 +478,9 @@ the mock, that expectation is the thing to correct, not the branch.
 | | Bytes |
 |---|---|
 | Before (UI.10a tip) | 2,742,786 |
-| After | 2,762,070 |
-| **Delta** | **+19,284 (≈ +18.8 KB)** |
+| After pass 1 | 2,762,070 |
+| After pass 3 | 2,765,207 |
+| **Delta** | **+22,421 (≈ +21.9 KB)** |
 
 Well inside the SPEC §3 budget. The four new pages and the All flows index are
 the bulk of it; four placeholder pages were deleted, which offsets part.
