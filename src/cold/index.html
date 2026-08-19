@@ -26,73 +26,77 @@ __COLDBOX_COLD_STYLES__
   <div class="cold-app-layout">
     <aside class="cold-nav-rail" aria-label="Sealed realm navigation">
       <div class="cold-nav-scroll">
+        <nav class="cold-nav-group" aria-label="Seeds &amp; lineage">
+          <p class="cold-nav-group-title">Seeds &amp; lineage</p>
+          <a class="cold-nav-link" href="#cold-secret-switcher"><span aria-hidden="true">★</span><span>Seeds &amp; lineage</span><small>UI.3</small></a>
+          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="SEED.2" data-phase="Phase SEED"><span aria-hidden="true">∿</span><span>Selected seed</span><small>SEED.2 · Phase SEED</small></button>
+          <a class="cold-nav-link" href="#cold-group-qr"><span aria-hidden="true">Q</span><span>Secret QR</span><small>P1.10</small></a>
+        </nav>
         <nav class="cold-nav-group" aria-label="Forge">
           <p class="cold-nav-group-title">Forge</p>
-          <a class="cold-nav-link" href="#cold-group-session"><span aria-hidden="true">V</span><span>Vault session</span><small>P0.13</small></a>
           <a class="cold-nav-link" href="#cold-group-entropy"><span aria-hidden="true">E</span><span>Entropy Lab</span><small>P1.1</small></a>
           <a class="cold-nav-link" href="#cold-group-seed-forge"><span aria-hidden="true">S</span><span>Seed Forge</span><small>P1.3</small></a>
           <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P4.5" data-phase="Phase 4"><span aria-hidden="true">P</span><span>Passphrase Studio</span><small>P4.5 · Phase 4</small></button>
           <a class="cold-nav-link" href="#cold-secret-notes" data-cold-more-target="cold-secret-notes"><span aria-hidden="true">N</span><span>Secret notes</span><small>P1.7</small></a>
           <a class="cold-nav-link" href="#cold-concealment-controls" data-cold-more-target="cold-concealment-controls"><span aria-hidden="true">◌</span><span>Reveal hidden</span><small>P1.7</small></a>
-          <a class="cold-nav-link" href="#cold-secret-switcher"><span aria-hidden="true">★</span><span>Active secret</span></a>
         </nav>
         <nav class="cold-nav-group" aria-label="Derive">
           <p class="cold-nav-group-title">Derive</p>
-          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P1.4" data-phase="Phase 1"><span aria-hidden="true">∿</span><span>Derivation paths</span><small>P1.4 · Phase 1</small></button>
-          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P1.4" data-phase="Phase 1"><span aria-hidden="true">A</span><span>Addresses</span><small>P1.4 · Phase 1</small></button>
-          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P4.6" data-phase="Phase 4"><span aria-hidden="true">C</span><span>Child seeds</span><small>P4.6 · Phase 4</small></button>
+          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P1.4a" data-phase="Phase 1"><span aria-hidden="true">∿</span><span>Derivation paths</span><small>P1.4a · Phase 1</small></button>
+          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P1.4a" data-phase="Phase 1"><span aria-hidden="true">A</span><span>Address derivation</span><small>P1.4a · Phase 1</small></button>
+          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P4.6" data-phase="Phase 4"><span aria-hidden="true">C</span><span>Child seeds · BIP-85</span><small>P4.6 · Phase 4</small></button>
           <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P4.9" data-phase="Phase 4"><span aria-hidden="true">D</span><span>Descriptors</span><small>P4.9 · Phase 4</small></button>
         </nav>
-        <nav class="cold-nav-group" aria-label="Split">
-          <p class="cold-nav-group-title">Split</p>
+        <nav class="cold-nav-group" aria-label="Split &amp; carry">
+          <p class="cold-nav-group-title">Split &amp; carry</p>
           <a class="cold-nav-link" href="#cold-group-backups"><span aria-hidden="true">B</span><span>Split lab</span><small>P2.1</small></a>
-          <a class="cold-nav-link" href="#cold-group-backups"><span aria-hidden="true">H</span><span>Backup Health</span><small>P2.7</small></a>
+          <a class="cold-nav-link" href="#cold-backup-verification"><span aria-hidden="true">↺</span><span>Verify / combine</span><small>P2.6</small></a>
           <a class="cold-nav-link" href="#cold-group-qr"><span aria-hidden="true">Q</span><span>SeedQR studio</span><small>P1.10</small></a>
+          <a class="cold-nav-link" href="#cold-backup-health-title"><span aria-hidden="true">H</span><span>Backup Health</span><small>P2.7</small></a>
         </nav>
-        <nav class="cold-nav-group" aria-label="Carry">
-          <p class="cold-nav-group-title">Carry</p>
-          <a class="cold-nav-link" href="#cold-group-qr"><span aria-hidden="true">Q</span><span>SeedQR &amp; print</span><small>P1.10</small></a>
-          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P4.8" data-phase="Phase 4"><span aria-hidden="true">↗</span><span>Animated QR</span><small>P4.8 · Phase 4</small></button>
-        </nav>
-        <nav class="cold-nav-group" aria-label="Recover">
-          <p class="cold-nav-group-title">Recover</p>
-          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P4.3" data-phase="Phase 4"><span aria-hidden="true">↺</span><span>Recovery Assistant</span><small>P4.3 · Phase 4</small></button>
+        <nav class="cold-nav-group" aria-label="Recover &amp; verify">
+          <p class="cold-nav-group-title">Recover &amp; verify</p>
+          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P4.3a" data-phase="Phase 4"><span aria-hidden="true">↺</span><span>Recovery assistant</span><small>P4.3a · Phase 4</small></button>
           <a class="cold-nav-link" href="#cold-verification"><span aria-hidden="true">✓</span><span>Verify Bench</span><small>P1.9</small></a>
-          <a class="cold-nav-link" href="#cold-vault-controls" data-cold-more-target="cold-vault-controls"><span aria-hidden="true">⏻</span><span>Lock / wipe</span></a>
+          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="WAL.8" data-phase="Phase WAL"><span aria-hidden="true">✍</span><span>Level 3 signing</span><small>WAL.8 · Phase WAL</small></button>
         </nav>
-        <nav class="cold-nav-group" aria-label="Verify">
-          <p class="cold-nav-group-title">Verify</p>
-          <a class="cold-nav-link" href="#cold-verification"><span aria-hidden="true">✓</span><span>Fingerprint &amp; address</span><small>P1.9</small></a>
-          <a class="cold-nav-link" href="#cold-realm-status"><span aria-hidden="true">◌</span><span>Airgap guard</span><small>P0.8</small></a>
-          <a class="cold-nav-link" href="#cold-tool-hub"><span aria-hidden="true">?</span><span>Learn</span><small>P0.17</small></a>
-          <span class="cold-nav-link cold-nav-link-unavailable" aria-disabled="true"><span aria-hidden="true">⊞</span><span>Tool map</span></span>
+        <nav class="cold-nav-group" aria-label="Session">
+          <p class="cold-nav-group-title">Session</p>
+          <a class="cold-nav-link" href="#cold-group-session"><span aria-hidden="true">V</span><span>Vault session</span><small>P0.13</small></a>
+          <a class="cold-nav-link" href="#cold-vault-controls" data-cold-more-target="cold-vault-controls"><span aria-hidden="true">⏻</span><span>Lock / wipe</span></a>
         </nav>
       </div>
       <p class="cold-nav-note">Same rail, same buttons, same halftone as the warm shell. Only the boundary strip and secret switcher change.</p>
     </aside>
     <nav class="cold-mobile-tabs" aria-label="Mobile sealed realm navigation">
+      <a href="#cold-secret-switcher"><span aria-hidden="true">★</span><span>Seeds</span></a>
       <a href="#cold-group-seed-forge"><span aria-hidden="true">S</span><span>Forge</span></a>
-      <a href="#cold-verification"><span aria-hidden="true">∿</span><span>Derive</span></a>
       <a href="#cold-group-backups"><span aria-hidden="true">B</span><span>Split</span></a>
-      <a href="#cold-secret-switcher"><span aria-hidden="true">★</span><span>Secret</span></a>
+      <a href="#cold-verification"><span aria-hidden="true">✓</span><span>Verify</span></a>
       <a href="#cold-tool-hub"><span aria-hidden="true">⊞</span><span>Hub</span></a>
     </nav>
     <details class="cold-mobile-more">
       <summary>More</summary>
       <div class="cold-mobile-more-links">
-        <a href="#cold-group-session">Vault session</a>
         <a href="#cold-group-entropy">Entropy Lab</a>
-        <a href="#cold-seed-forge-validator">Validate phrase</a>
-        <span class="cold-mobile-more-link cold-mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P1.5" data-phase="Phase 1">Child seeds · P1.5 · Phase 1</span>
+        <a href="#cold-group-seed-forge">Seed Forge</a>
         <span class="cold-mobile-more-link cold-mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P4.5" data-phase="Phase 4">Passphrase Studio · P4.5 · Phase 4</span>
-        <span class="cold-mobile-more-link cold-mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P4.9" data-phase="Phase 4">Descriptors · P4.9 · Phase 4</span>
-        <a href="#cold-group-qr">SeedQR studio</a>
-        <a href="#cold-group-backups">Backup Health</a>
-        <span class="cold-mobile-more-link cold-mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P4.3" data-phase="Phase 4">Recovery Assistant · P4.3 · Phase 4</span>
-        <a href="#cold-verification">Verify Bench</a>
-        <a href="#cold-concealment-controls" data-cold-more-target="cold-concealment-controls">Reveal hidden</a>
         <a href="#cold-secret-notes" data-cold-more-target="cold-secret-notes">Secret notes</a>
-        <a href="#cold-secret-switcher">No secret yet</a>
+        <a href="#cold-concealment-controls" data-cold-more-target="cold-concealment-controls">Reveal hidden</a>
+        <span class="cold-mobile-more-link cold-mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P1.4a" data-phase="Phase 1">Derivation paths · P1.4a · Phase 1</span>
+        <span class="cold-mobile-more-link cold-mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P1.4a" data-phase="Phase 1">Address derivation · P1.4a · Phase 1</span>
+        <span class="cold-mobile-more-link cold-mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P4.6" data-phase="Phase 4">Child seeds · BIP-85 · P4.6 · Phase 4</span>
+        <span class="cold-mobile-more-link cold-mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P4.9" data-phase="Phase 4">Descriptors · P4.9 · Phase 4</span>
+        <a href="#cold-group-backups">Split lab</a>
+        <a href="#cold-backup-verification">Verify / combine</a>
+        <a href="#cold-group-qr">SeedQR studio</a>
+        <a href="#cold-backup-health-title">Backup Health</a>
+        <span class="cold-mobile-more-link cold-mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P4.3a" data-phase="Phase 4">Recovery assistant · P4.3a · Phase 4</span>
+        <a href="#cold-verification">Verify Bench</a>
+        <span class="cold-mobile-more-link cold-mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="WAL.8" data-phase="Phase WAL">Level 3 signing · WAL.8 · Phase WAL</span>
+        <span class="cold-mobile-more-link cold-mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P4.8" data-phase="Phase 4">Animated QR · P4.8 · Phase 4</span>
+        <a href="#cold-group-session">Vault session</a>
+        <a href="#cold-secret-switcher">Active secret</a>
         <a href="#cold-vault-controls" data-cold-more-target="cold-vault-controls">Lock &amp; wipe</a>
       </div>
     </details>

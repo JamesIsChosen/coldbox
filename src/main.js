@@ -37,6 +37,7 @@ __COLDBOX_CONCEALMENT__
   var privacyBlurLabel = document.getElementById('privacy-blur-toggle-label');
   var moreMenu = document.getElementById('mobile-more-menu');
   var moreTab = document.getElementById('mobile-more-tab');
+  var moreLock = document.getElementById('mobile-more-lock');
   var moreClose = document.getElementById('mobile-more-close');
   var coldRealmStatus = document.getElementById('cold-realm-status');
   // R2-F2 remediation: this used to point at the <h2> itself, whose
@@ -393,23 +394,35 @@ __COLDBOX_CONCEALMENT__
 
   clipboardCanaryController = createClipboardCanary();
 
+  // UI.10b - the warm rail's groups are the maintainer-approved workstation
+  // taxonomy (ADR-0059, ui-parity.md section 6.2): Workspace, Records,
+  // Trust & reference, Vault & settings, Sealed work. `group` here is what the
+  // route announcer reads aloud, so it names the rail group the destination
+  // actually sits in.
+  //
+  // Route ids are intentionally NOT renamed to the approved reference's screen
+  // ids. `dashboard` stays `dashboard` even though the approved screen is
+  // `home`, because a hash id is not part of the approved visual design and
+  // renaming it would churn the committed browser harness for no user-visible
+  // gain. UI.11's harness maps reference screen ids to product routes, exactly
+  // as its predecessor did.
   var routeDetails = Object.freeze({
-    vault: Object.freeze({ label: 'Vault', title: 'Vault', group: 'Workspace' }),
-    dashboard: Object.freeze({ label: 'Dashboard', title: 'Dashboard', group: 'Workspace' }),
-    portfolio: Object.freeze({ label: 'Portfolio', title: 'Portfolio', group: 'Workspace' }),
-    prices: Object.freeze({ label: 'Prices', title: 'Prices', group: 'Workspace' }),
-    registry: Object.freeze({ label: 'Registry', title: 'Registry', group: 'Workspace' }),
-    devices: Object.freeze({ label: 'Devices', title: 'Devices', group: 'Workspace' }),
-    entropy: Object.freeze({ label: 'Entropy Lab', title: 'Entropy Lab', group: 'Tools' }),
-    'seed-forge': Object.freeze({ label: 'Seed Forge', title: 'Seed Forge', group: 'Tools' }),
-    derivation: Object.freeze({ label: 'Derivation', title: 'Derivation', group: 'Tools' }),
-    backup: Object.freeze({ label: 'Backup Lab', title: 'Backup Lab', group: 'Tools' }),
-    qr: Object.freeze({ label: 'QR Studio', title: 'QR Studio', group: 'Tools' }),
-    recovery: Object.freeze({ label: 'Recovery', title: 'Recovery', group: 'Tools' }),
-    verify: Object.freeze({ label: 'Verify Bench', title: 'Verify Bench', group: 'Reference' }),
-    reference: Object.freeze({ label: 'Reference', title: 'Reference', group: 'Reference' }),
-    learn: Object.freeze({ label: 'Learn', title: 'Learn', group: 'Reference' }),
-    'tool-map': Object.freeze({ label: 'Tool map', title: 'Tool map', group: 'Reference' })
+    dashboard: Object.freeze({ label: 'Home', title: 'Home', group: 'Workspace' }),
+    wallets: Object.freeze({ label: 'Wallets', title: 'Wallets', group: 'Workspace' }),
+    backup: Object.freeze({ label: 'Backup & recovery', title: 'Backup & recovery', group: 'Workspace' }),
+    portfolio: Object.freeze({ label: 'Portfolio & records', title: 'Portfolio & records', group: 'Workspace' }),
+    security: Object.freeze({ label: 'Security & verify', title: 'Security & verify', group: 'Workspace' }),
+    registry: Object.freeze({ label: 'Records & registry', title: 'Records & registry', group: 'Records' }),
+    devices: Object.freeze({ label: 'Devices', title: 'Devices', group: 'Records' }),
+    prices: Object.freeze({ label: 'Prices & FX', title: 'Prices & FX', group: 'Records' }),
+    reference: Object.freeze({ label: 'Reference & help', title: 'Reference & help', group: 'Trust & reference' }),
+    learn: Object.freeze({ label: 'Learn', title: 'Learn', group: 'Trust & reference' }),
+    'tool-map': Object.freeze({ label: 'Tool map', title: 'Tool map', group: 'Trust & reference' }),
+    verify: Object.freeze({ label: 'Verify Bench', title: 'Verify Bench', group: 'Trust & reference' }),
+    vault: Object.freeze({ label: 'Vault files', title: 'Vault files', group: 'Vault & settings' }),
+    settings: Object.freeze({ label: 'Settings', title: 'Settings', group: 'Vault & settings' }),
+    advanced: Object.freeze({ label: 'All flows index', title: 'All flows index', group: 'Vault & settings' }),
+    qr: Object.freeze({ label: 'QR Studio', title: 'QR Studio', group: 'Vault & settings' })
   });
 
   function readStoredTheme() {
@@ -5885,6 +5898,16 @@ __COLDBOX_CONCEALMENT__
   }
   if (moreClose) {
     moreClose.addEventListener('click', closeMoreMenu);
+  }
+  // UI.10b - the approved mobile More sheet ends with Lock / panic, because on a
+  // phone the masthead lock controls scroll away. It calls the same handler the
+  // masthead button does rather than duplicating the lock path, and closes the
+  // sheet first so focus is not stranded inside a hidden menu.
+  if (moreLock) {
+    moreLock.addEventListener('click', function () {
+      closeMoreMenu();
+      requestVaultLock();
+    });
   }
   routeLinks.forEach(function (link) {
     link.addEventListener('click', function () {

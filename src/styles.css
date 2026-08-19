@@ -417,8 +417,12 @@ samp {
   margin: 0 0 1.1rem;
 }
 
-.nav-sealed-entry {
-  margin: 0.25rem 0 1.1rem;
+/* UI.10b - the sealed destination is its own rail group rather than a single
+   strip appended to the warm workspaces, so the rule that separates it now
+   attaches to that group. Keyed on the accessible name so the visual separation
+   and the announced grouping cannot drift apart. */
+.nav-group[aria-label="Sealed work"] {
+  margin-top: 0.25rem;
   padding-top: 0.65rem;
   border-top: var(--outline-width-thin) solid var(--outline);
 }
@@ -3119,4 +3123,64 @@ samp {
   .record-menu-fields { grid-template-columns: 1fr; }
   .record-menu-fields dt { padding-bottom: 0.2rem; border-bottom: 0; }
   .record-menu-fields dd { padding-top: 0.2rem; }
+}
+
+/* UI.10b - All flows index.
+   The expert route and the reachability audit for the workstation
+   reorganisation: every specialist capability, grouped by family, with either a
+   live destination or an explicit roadmap owner. Built from the same nav
+   vocabulary as the rail so a destination looks the same wherever it appears. */
+.flow-index-group {
+  margin: 1.4rem 0 0;
+}
+
+.flow-index-title {
+  margin: 0 0 0.6rem;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.flow-index-links {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.flow-index-link {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 44px;
+  padding: 0.55rem 0.8rem;
+  border: var(--outline-width-thin) solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.flow-index-link .nav-tag {
+  margin-left: auto;
+}
+
+.flow-index-link-unavailable {
+  width: 100%;
+  border-color: transparent;
+  background: transparent;
+  color: var(--faint);
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.mobile-more-link-action {
+  width: 100%;
+  border: var(--outline-width-thin) solid var(--outline);
+  background: transparent;
+  font: inherit;
+  text-align: left;
 }

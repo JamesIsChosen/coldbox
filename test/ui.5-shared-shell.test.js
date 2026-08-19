@@ -12,15 +12,24 @@ const mainJs = fs.readFileSync(path.join(root, 'src', 'main.js'), 'utf8');
 const coldHtml = fs.readFileSync(path.join(root, 'src', 'cold', 'index.html'), 'utf8');
 const coldCss = fs.readFileSync(path.join(root, 'src', 'cold', 'styles.css'), 'utf8');
 
-const groups = ['Forge', 'Derive', 'Split', 'Carry', 'Recover', 'Verify', 'Records', 'Money', 'Vault files', 'Reference'];
-const warmMoreInventory = ['Devices', 'QR Studio', 'Address bench', 'Prices &amp; FX · P3.1 · Phase 3', 'Tax &amp; exports · P3.9 · Phase 3', 'Reference · P4.10 · Phase 4', 'Verify this file', 'Provenance &amp; legal', 'Learn', 'Tool map', 'Enter sealed realm'];
-const coldMoreInventory = ['Vault session', 'Entropy Lab', 'Validate phrase', 'Child seeds · P1.5 · Phase 1', 'Passphrase Studio · P4.5 · Phase 4', 'Descriptors · P4.9 · Phase 4', 'SeedQR studio', 'Backup Health', 'Recovery Assistant · P4.3 · Phase 4', 'Verify Bench', 'Reveal hidden', 'Secret notes', 'No secret yet', 'Lock &amp; wipe'];
+// UI.10b replaced the ten tool-first navigation groups this item shipped with
+// the eleven object-first groups of the maintainer-approved workstation design
+// (ADR-0059, ui-parity.md section 6.2). The taxonomy itself is asserted against
+// the approved manifest in test/ui.10b-workstation-shell.test.js; what stays
+// here is UI.5's own durable contract - that both realms carry a grouped rail,
+// that unbuilt entries are unfocusable disabled controls naming their owner,
+// that the boundary strips are calm, that the phone navigation is five slots
+// with a More sheet, and that both realms share one chrome vocabulary.
+const warmGroups = ['Workspace', 'Records', 'Trust &amp; reference', 'Vault &amp; settings', 'Sealed work'];
+const coldGroups = ['Seeds &amp; lineage', 'Forge', 'Derive', 'Split &amp; carry', 'Recover &amp; verify', 'Session'];
+const warmMoreInventory = ['Devices', 'Security &amp; verify', 'Records &amp; registry', 'Backup Health', 'Prices &amp; FX · P3.1 · Phase 3', 'Tax &amp; exports · P3.9 · Phase 3', 'Reference &amp; help', 'Vault files', 'Settings', 'Every flow', 'Learn', 'Tool map'];
+const coldMoreInventory = ['Vault session', 'Entropy Lab', 'Seed Forge', 'Child seeds · BIP-85 · P4.6 · Phase 4', 'Passphrase Studio · P4.5 · Phase 4', 'Descriptors · P4.9 · Phase 4', 'SeedQR studio', 'Backup Health', 'Recovery assistant · P4.3a · Phase 4', 'Verify Bench', 'Reveal hidden', 'Secret notes', 'Active secret', 'Lock &amp; wipe'];
 
-test('UI.5 implements the ten approved realm navigation groups', () => {
-  for (const label of groups.slice(0, 6)) {
+test('UI.5 implements a grouped navigation rail in both realms', () => {
+  for (const label of coldGroups) {
     assert.match(coldHtml, new RegExp(`<nav class="cold-nav-group" aria-label="${label}">`), `cold group ${label} is missing`);
   }
-  for (const label of groups.slice(6)) {
+  for (const label of warmGroups) {
     assert.match(warmHtml, new RegExp(`<nav class="nav-group" aria-label="${label}">`), `warm group ${label} is missing`);
   }
 });
@@ -28,18 +37,30 @@ test('UI.5 implements the ten approved realm navigation groups', () => {
 test('unbuilt navigation entries are disabled controls with roadmap and phase labels', () => {
   const unavailable = warmHtml.match(/<button class="nav-link nav-link-unavailable"[\s\S]*?<\/button>/g) || [];
   const coldUnavailable = coldHtml.match(/<button class="cold-nav-link cold-nav-link-unavailable"[\s\S]*?<\/button>/g) || [];
-  assert.ok(unavailable.length >= 4, 'warm rail must expose unavailable roadmap entries');
+  // UI.5 shipped four unavailable warm entries; Reference & help is a live
+  // destination under the workstation design, so three remain. The exact set is
+  // no longer this test's business - test/ui.10b-workstation-shell.test.js
+  // asserts every rail entry against the approved manifest and every owner
+  // against ROADMAP.md, which is strictly stronger than a count. What stays here
+  // is UI.5's own contract: whatever is unavailable is a disabled, unfocusable
+  // control that names its owner and phase.
+  assert.ok(unavailable.length >= 1, 'warm rail must expose unavailable roadmap entries');
   assert.ok(coldUnavailable.length >= 4, 'cold rail must expose unavailable roadmap entries');
   for (const item of unavailable.concat(coldUnavailable)) {
     assert.match(item, /disabled/);
     assert.match(item, /aria-disabled="true"/);
-    assert.match(item, /data-roadmap-id="[A-Z0-9.]+"/);
-    assert.match(item, /data-phase="(?:Phase|UI) [0-9.]+"/);
-    assert.match(item, /· (?:Phase|UI) [0-9.]+/);
+    // Sub-items carry a lowercase suffix: P0.3a, P4.3a, SEC.7a, UI.10a.
+    assert.match(item, /data-roadmap-id="[A-Z]+[0-9.]+[a-z]?"/);
+    // Phases gained names when the SEC/SEED/WAL campaigns were accepted, so a
+    // phase label is no longer always numeric.
+    assert.match(item, /data-phase="(?:Phase|UI) [0-9A-Za-z.]+"/);
+    assert.match(item, /· (?:Phase|UI) [0-9A-Za-z.]+/);
   }
-  assert.match(coldHtml, /data-roadmap-id="P4\.3" data-phase="Phase 4"/);
-  assert.doesNotMatch(coldHtml, /<a class="cold-nav-link" href="#cold-group-recovery">[\s\S]*Recovery Assistant/);
-  assert.match(coldHtml, /cold-mobile-more-link-unavailable[\s\S]*Recovery Assistant · P4\.3 · Phase 4/);
+  // P4.3 was never a roadmap item - it is split into P4.3a..P4.3e - so the
+  // recovery assistant now names the item that actually exists.
+  assert.match(coldHtml, /data-roadmap-id="P4\.3a" data-phase="Phase 4"/);
+  assert.doesNotMatch(coldHtml, /<a class="cold-nav-link" href="#cold-group-recovery">[\s\S]*Recovery assistant/);
+  assert.match(coldHtml, /cold-mobile-more-link-unavailable[\s\S]*Recovery assistant · P4\.3a · Phase 4/);
 });
 
 test('each realm has a calm striped boundary strip and five-slot phone navigation', () => {
@@ -63,7 +84,11 @@ test('navigation touch targets are at least 44px and unavailable items cannot re
   assert.match(coldCss, /\.cold-mobile-more-links a,\s*\.cold-mobile-more-links \.cold-mobile-more-link\s*\{[\s\S]*?min-height:\s*2\.75rem/);
   assert.match(warmHtml, /<button class="nav-link nav-link-unavailable" type="button" disabled/);
   assert.match(coldHtml, /<button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled/);
-  assert.match(warmHtml, /<button class="mobile-tab mobile-tab-unavailable" type="button" disabled[\s\S]*data-roadmap-id="P3\.4"/);
+  // The approved bottom bar is five available object slots, so the phone bar no
+  // longer carries an unavailable tab at all. Unavailable warm destinations live
+  // in the More sheet, where they are still disabled controls naming an owner.
+  assert.doesNotMatch(warmHtml, /class="mobile-tab mobile-tab-unavailable"/);
+  assert.match(warmHtml, /mobile-more-link-unavailable[^>]*aria-disabled="true"[^>]*data-roadmap-id="P3\.4"/);
 });
 
 test('mobile More sheets match the approved route inventories', () => {
@@ -71,10 +96,12 @@ test('mobile More sheets match the approved route inventories', () => {
   for (const item of coldMoreInventory) assert.ok(coldHtml.includes(item), `cold More inventory is missing ${item}`);
   assert.doesNotMatch(warmHtml, /<a class="mobile-tab" href="#(?:prices|portfolio)"/);
   assert.doesNotMatch(coldHtml, /SLIP-39 &amp; verification/);
-  for (const id of ['P3.1', 'P3.9', 'P4.10']) {
+  for (const id of ['P3.1', 'P3.9', 'P3.4']) {
     assert.match(warmHtml, new RegExp(`mobile-more-link-unavailable[^>]*aria-disabled="true"[^>]*data-roadmap-id="${id.replace('.', '\\.') }"`));
   }
-  for (const id of ['P1.5', 'P4.5', 'P4.9', 'P4.3']) {
+  // P1.5 was the wrong owner for Child seeds - that is P4.6 - and P4.3 is not a
+  // roadmap item at all; it is split into P4.3a..P4.3e.
+  for (const id of ['P4.6', 'P4.5', 'P4.9', 'P4.3a']) {
     assert.match(coldHtml, new RegExp(`cold-mobile-more-link-unavailable[^>]*aria-disabled="true"[^>]*data-roadmap-id="${id.replace('.', '\\.') }"`));
   }
   assert.match(coldHtml, /href="#cold-concealment-controls" data-cold-more-target="cold-concealment-controls"/);
@@ -89,11 +116,14 @@ test('desktop rails expose the approved built and unavailable navigation entries
   for (const label of ['Verify this file', 'Tool map']) assert.ok(warmHtml.includes(`<span>${label}</span>`), `warm rail is missing ${label}`);
   assert.match(warmHtml, /<a class="nav-link" href="#reference" data-route="reference">[\s\S]*Verify this file/);
   assert.match(warmHtml, /<a class="nav-link" href="#tool-map" data-route="tool-map"[\s\S]*Tool map/);
-  for (const label of ['Reveal hidden', 'Active secret', 'Lock / wipe', 'Tool map']) assert.ok(coldHtml.includes(`<span>${label}</span>`), `cold rail is missing ${label}`);
+  // Tool map is a warm destination in the approved design, so the sealed rail no
+  // longer carries a permanently-disabled copy of it. Reveal hidden and the
+  // sealed secret list keep their sealed-rail shortcuts.
+  for (const label of ['Reveal hidden', 'Lock / wipe', 'Seeds &amp; lineage']) assert.ok(coldHtml.includes(`<span>${label}</span>`), `cold rail is missing ${label}`);
   assert.match(coldHtml, /href="#cold-concealment-controls" data-cold-more-target="cold-concealment-controls"[\s\S]*Reveal hidden/);
-  assert.match(coldHtml, /href="#cold-secret-switcher"[\s\S]*Active secret/);
+  assert.match(coldHtml, /href="#cold-secret-switcher"[\s\S]*Seeds &amp; lineage/);
   assert.match(coldHtml, /href="#cold-vault-controls" data-cold-more-target="cold-vault-controls"[\s\S]*Lock \/ wipe/);
-  assert.match(coldHtml, /class="cold-nav-link cold-nav-link-unavailable" aria-disabled="true"[\s\S]*Tool map/);
+  assert.ok(coldHtml.includes('>Active secret<'), 'the sealed secret list keeps its mobile More entry');
 });
 
 test('warm and cold shells carry the same chrome vocabulary', () => {

@@ -475,10 +475,21 @@ test('the workstation references stay outside every product build input', () => 
   );
 
   const product = fs.readFileSync(path.join(projectRoot, 'build', 'coldbox.html'), 'utf8');
+  // The sentinel has to be copy that exists ONLY in the reference. UI.10b ships
+  // the approved Home heading as real product copy, so a phrase like "Your
+  // self-custody system" now appears legitimately in the build and cannot
+  // distinguish a leak. The mobile reference's outer annotation board is
+  // presentation context that PAR-008 unwraps and that no product surface may
+  // ever contain.
   assert.doesNotMatch(
     product,
-    /Your self-custody system/,
-    'Approved workstation copy leaked into build/coldbox.html'
+    /fully clickable/i,
+    'Approved mobile presentation board leaked into build/coldbox.html'
+  );
+  assert.doesNotMatch(
+    product,
+    /BOTTOM BAR TAXONOMY/i,
+    'Approved reviewer annotation leaked into build/coldbox.html'
   );
   assert.doesNotMatch(
     product,
