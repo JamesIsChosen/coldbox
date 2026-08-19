@@ -82,7 +82,7 @@ test('navigation touch targets are at least 44px and unavailable items cannot re
   assert.match(coldCss, /\.cold-nav-link\s*\{[\s\S]*?min-height:\s*2\.75rem/);
   assert.match(coldCss, /\.cold-mobile-tabs a\s*\{[\s\S]*?min-height:\s*2\.75rem/);
   assert.match(coldCss, /\.cold-mobile-more-links a,\s*\.cold-mobile-more-links \.cold-mobile-more-link\s*\{[\s\S]*?min-height:\s*2\.75rem/);
-  assert.match(warmHtml, /<button class="nav-link nav-link-unavailable" type="button" disabled/);
+  assert.match(warmHtml, /<button class="nav-link nav-link-unavailable"[^>]*type="button" disabled/);
   assert.match(coldHtml, /<button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled/);
   // The approved bottom bar is five available object slots, so the phone bar no
   // longer carries an unavailable tab at all. Unavailable warm destinations live
@@ -114,8 +114,8 @@ test('mobile More sheets match the approved route inventories', () => {
 
 test('desktop rails expose the approved built and unavailable navigation entries', () => {
   for (const label of ['Verify this file', 'Tool map']) assert.ok(warmHtml.includes(`<span>${label}</span>`), `warm rail is missing ${label}`);
-  assert.match(warmHtml, /<a class="nav-link" href="#reference" data-route="reference">[\s\S]*Verify this file/);
-  assert.match(warmHtml, /<a class="nav-link" href="#tool-map" data-route="tool-map"[\s\S]*Tool map/);
+  assert.match(warmHtml, /<a class="nav-link" data-nav="verify-file" href="#reference\/verify"[\s\S]*Verify this file/);
+  assert.match(warmHtml, /<a class="nav-link" data-nav="tool-map" href="#tool-map" data-route="tool-map"[\s\S]*Tool map/);
   // Tool map is a warm destination in the approved design, so the sealed rail no
   // longer carries a permanently-disabled copy of it. Reveal hidden and the
   // sealed secret list keep their sealed-rail shortcuts.

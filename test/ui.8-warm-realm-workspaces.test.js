@@ -32,7 +32,7 @@ test('UI.8 groups the warm workspace and every grouped route has a built page', 
     const groupMatch = warmHtml.match(new RegExp(`<nav class="nav-group" aria-label="${label}">([\\s\\S]*?)</nav>`));
     assert.ok(groupMatch, `${label} group is missing`);
     for (const route of routes) {
-      assert.match(groupMatch[1], new RegExp(`href="#${route}" data-route="${route}"`), `${label} is missing its ${route} route`);
+      assert.match(groupMatch[1], new RegExp(`href="#${route}(?:/[a-z]+)?" data-route="${route}"`), `${label} is missing its ${route} route`);
       assert.match(warmHtml, new RegExp(`<section class="page" id="page-${route}" data-page="${route}"`), `${route} has no built warm page`);
     }
   }

@@ -622,7 +622,7 @@ async function closePage(page) {
 }
 
 async function openDashboard(page, engine) {
-  const desktopRoute = page.locator('#nav-rail a[data-route="dashboard"]');
+  const desktopRoute = page.locator('#nav-rail [data-nav="home"]');
   if (await desktopRoute.isVisible()) {
     await desktopRoute.evaluate((element) => element.click());
     return;
@@ -818,7 +818,7 @@ async function verifyBuiltFile(browser, engine) {
     await page.locator('#airgap-banner[data-airgap-state="amber"]').waitFor({ state: 'visible', timeout: 5000 });
     await coldFrame.locator('html[data-warm-network-online="true"]').waitFor({ state: 'attached', timeout: 5000 });
 
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     reachability.setMode('unreachable');
     await triggerReachabilityRound(page);
@@ -1114,43 +1114,53 @@ async function verifyBuiltFile(browser, engine) {
     assert.ok(warmRailTouchRect.height >= 44, `${engine}: warm rail target height is below 44 CSS px`);
     assert.equal(
       await page.locator('#current-section').textContent(),
-      'Dashboard',
-      `${engine}: dashboard should be the default route`
+      'Home',
+      `${engine}: Home should be the default route`
     );
 
     const unavailablePortfolio = page.locator('#nav-rail button[data-roadmap-id="P3.4"]');
     assert.equal(await unavailablePortfolio.isDisabled(), true, `${engine}: unbuilt Portfolio must be disabled in the rail`);
     assert.equal(await unavailablePortfolio.getAttribute('aria-disabled'), 'true');
     assert.match(await unavailablePortfolio.textContent(), /P3\.4.*Phase 3/);
-    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#nav-rail [data-nav="registry"]').click();
     await page.waitForFunction(() => window.location.hash === '#registry');
     await harness.expectElementVisible('#page-registry:not([hidden])');
     assert.equal(
       await page.locator('#current-section').textContent(),
-      'Registry',
+      'Records & registry',
       `${engine}: route navigation did not update the current section`
     );
 
+    // UI.10b - the approved workstation rail. Each destination is addressed by
+    // its stable data-nav id rather than by route, because three destinations
+    // resolve to the vault page and three to the reference page: a route
+    // selector would need .first() and would silently depend on DOM order.
+    // Every entry is clicked and its landing page confirmed, so a rail entry
+    // that points nowhere fails here rather than in front of a user.
     const warmWorkspaceRoutes = [
-      ['Records', ['registry', 'devices', 'verify', 'qr']],
-      ['Money', ['dashboard']],
-      ['Vault files', ['vault', 'backup']],
-      ['Reference', ['reference', 'learn']]
+      ['Workspace', [['home', 'dashboard'], ['wallets', 'wallets'], ['backup', 'backup'], ['security', 'security']]],
+      ['Records', [['registry', 'registry'], ['devices', 'devices'], ['backup-health', 'backup']]],
+      ['Trust & reference', [['verify-file', 'reference'], ['provenance', 'reference'], ['learn', 'learn'], ['tool-map', 'tool-map'], ['reference', 'reference']]],
+      ['Vault & settings', [['vault-files', 'vault'], ['vault-session', 'vault'], ['vault-transfer', 'vault'], ['settings', 'settings'], ['all-flows', 'advanced']]]
     ];
-    assert.equal(await page.locator('#nav-rail > .nav-scroll > .nav-group').count(), 4, `${engine}: warm shell must expose exactly four workspace groups`);
-    for (const [group, routes] of warmWorkspaceRoutes) {
-      const groupNode = page.locator(`#nav-rail .nav-group[aria-label="${group}"]`);
-      assert.equal(await groupNode.count(), 1, `${engine}: ${group} workspace group is missing`);
-      for (const route of routes) {
-        const link = groupNode.locator(`a[data-route="${route}"]`).first();
-        assert.equal(await link.count(), 1, `${engine}: ${group} is missing its ${route} route`);
+    assert.equal(await page.locator('#nav-rail > .nav-scroll > .nav-group').count(), 5, `${engine}: warm shell must expose exactly five approved rail groups`);
+    for (const [group, destinations] of warmWorkspaceRoutes) {
+      const groupNode = page.locator(`#nav-rail .nav-group[aria-label="${group.replace(/&/g, '&')}"]`);
+      assert.equal(await groupNode.count(), 1, `${engine}: ${group} rail group is missing`);
+      for (const [nav, expectedPage] of destinations) {
+        const link = groupNode.locator(`[data-nav="${nav}"]`);
+        assert.equal(await link.count(), 1, `${engine}: ${group} is missing its ${nav} destination`);
         await link.click();
-        await page.waitForFunction((expected) => window.location.hash === '#' + expected, route);
-        await harness.expectElementVisible(`#page-${route}:not([hidden])`);
+        await harness.expectElementVisible(`#page-${expectedPage}:not([hidden])`);
       }
     }
-    assert.equal(await page.locator('#nav-rail .nav-sealed-entry a[href="#cold-realm-status"]').count(), 1, `${engine}: sealed entry must remain outside warm workspace groups`);
-    await page.locator('#nav-rail a[data-route="dashboard"]').click();
+    // The sealed destination is its own terminal group rather than one item in a
+    // list of warm work.
+    const sealedGroup = page.locator('#nav-rail .nav-group[aria-label="Sealed work"]');
+    assert.equal(await sealedGroup.count(), 1, `${engine}: the sealed destination must have its own rail group`);
+    assert.equal(await sealedGroup.locator('a[href="#cold-realm-status"]').count(), 1, `${engine}: sealed group must hold exactly the sealed entry`);
+    assert.equal(await sealedGroup.locator('.nav-link').count(), 1, `${engine}: sealed group must hold exactly one destination`);
+    await page.locator('#nav-rail [data-nav="home"]').click();
     await page.waitForFunction(() => window.location.hash === '#dashboard');
 
     await page.locator('#theme-toggle').click();
@@ -1186,7 +1196,7 @@ async function verifyBuiltFile(browser, engine) {
         `${engine}: ${label} did not focus the sealed-realm boundary target`
       );
     };
-    await page.locator('#nav-rail .nav-sealed-entry a[href="#cold-realm-status"]').click();
+    await page.locator('#nav-rail .nav-group[aria-label="Sealed work"] a[href="#cold-realm-status"]').click();
     await assertColdRealmTarget('sealed rail link');
     await page.locator('.realm-switcher a[href="#dashboard"]').click();
     await page.waitForFunction(() => window.location.hash === '#dashboard');
@@ -1196,7 +1206,7 @@ async function verifyBuiltFile(browser, engine) {
     await page.waitForFunction(() => window.location.hash === '#dashboard');
     await page.locator('.app-bar-actions a[href="#cold-realm-status"]').click();
     await assertColdRealmTarget('app-bar quick link');
-    await page.locator('#nav-rail a[data-route="dashboard"]').click();
+    await page.locator('#nav-rail [data-nav="home"]').click();
     await page.waitForFunction(() => window.location.hash === '#dashboard');
     await coldFrame.locator('a.cold-nav-link[data-cold-more-target="cold-secret-notes"]').click();
     await coldFrame.locator('#cold-secret-notes:not([hidden])').waitFor({ state: 'visible' });
@@ -1204,17 +1214,43 @@ async function verifyBuiltFile(browser, engine) {
     await coldFrame.evaluate(() => { document.getElementById('cold-secret-notes').hidden = true; });
     await harness.atViewport(360, 640);
 
-    const unavailableMoney = page.locator('#mobile-tabs button[data-roadmap-id="P3.4"]');
-    assert.equal(await unavailableMoney.isDisabled(), true, `${engine}: future Money tab must be unavailable`);
-    assert.equal(await unavailableMoney.getAttribute('aria-disabled'), 'true');
-    assert.match(await unavailableMoney.textContent(), /Money.*P3\.4.*Phase 3/);
+    // The approved phone bar is five available object slots. It no longer
+    // carries an unavailable tab at all - unbuilt destinations moved into the
+    // More sheet, where they are still disabled controls naming an owner, which
+    // is asserted below.
+    // The icon span is aria-hidden and some icons are letters ('H' for Backup),
+    // so read the label span rather than stripping the tab's whole text.
+    const mobileTabLabels = await page.locator('#mobile-tabs .mobile-tab > span:not(.mobile-tab-icon)').allTextContents();
+    assert.deepEqual(
+      mobileTabLabels.map((label) => label.trim()),
+      ['Home', 'Wallets', 'Seeds', 'Backup', 'More'],
+      `${engine}: the phone bar must be the five approved object slots`
+    );
+    assert.equal(
+      await page.locator('#mobile-tabs .mobile-tab-unavailable').count(),
+      0,
+      `${engine}: no approved phone-bar slot is unavailable`
+    );
+    assert.equal(
+      await page.locator('#mobile-tabs a[href="#cold-realm-status"]').count(),
+      1,
+      `${engine}: the Seeds slot must enter the sealed realm`
+    );
     await page.locator('#mobile-more-tab').click();
     assert.equal(await page.locator('#mobile-more-menu').isVisible(), true);
     const warmMoreText = await page.locator('#mobile-more-menu .mobile-more-link').allTextContents();
-    for (const expected of ['Devices', 'QR Studio', 'Address bench', 'Verify this file', 'Provenance & legal', 'Learn', 'Tool map', 'Enter sealed realm', 'Prices & FX', 'Tax & exports', 'Reference']) {
+    for (const expected of ['Security & verify', 'Records & registry', 'Backup Health', 'Reference & help', 'Vault files', 'Device transfer (QR)', 'Settings', 'Every flow', 'Devices', 'Learn', 'Tool map', 'Prices & FX', 'Tax & exports', 'Portfolio & records']) {
       assert.ok(warmMoreText.some((item) => item.includes(expected)), `${engine}: warm More is missing ${expected}`);
     }
-    for (const id of ['P3.1', 'P3.9', 'P4.10']) {
+    // Realm purity on a phone: a sealed capability is never reached from the
+    // warm More sheet.
+    for (const sealedOnly of ['Entropy Lab', 'Seed Forge', 'Split lab', 'Passphrase Studio', 'Child seeds']) {
+      assert.ok(
+        !warmMoreText.some((item) => item.includes(sealedOnly)),
+        `${engine}: warm More must not reach the sealed capability ${sealedOnly}`
+      );
+    }
+    for (const id of ['P3.1', 'P3.9', 'P3.4']) {
       const unavailable = page.locator(`#mobile-more-menu [data-roadmap-id="${id}"]`);
       assert.equal(await unavailable.getAttribute('aria-disabled'), 'true', `${engine}: warm More future ${id} must be unavailable`);
     }
@@ -1231,12 +1267,31 @@ async function verifyBuiltFile(browser, engine) {
     assert.ok(await page.locator('#tool-map-list .tool-map-entry').count() >= 20, `${engine}: generated Tool map is empty or incomplete`);
     await coldFrame.locator('.cold-mobile-more').evaluate((details) => { details.open = true; });
     const coldMoreText = await coldFrame.locator('.cold-mobile-more-links > *').allTextContents();
-    for (const expected of ['Vault session', 'Entropy Lab', 'Validate phrase', 'Child seeds', 'Passphrase Studio', 'Descriptors', 'SeedQR studio', 'Backup Health', 'Recovery Assistant', 'Verify Bench', 'Reveal hidden', 'Secret notes', 'No secret yet', 'Lock & wipe']) {
+    for (const expected of ['Vault session', 'Entropy Lab', 'Seed Forge', 'Validate phrase', 'Child seeds', 'Passphrase Studio', 'Descriptors', 'Split lab', 'SeedQR studio', 'Backup Health', 'Recovery assistant', 'Verify Bench', 'Level 3 signing', 'Reveal hidden', 'Secret notes', 'Active secret', 'Lock & wipe']) {
       assert.ok(coldMoreText.some((item) => item.includes(expected)), `${engine}: cold More is missing ${expected}`);
     }
-    for (const id of ['P1.5', 'P4.5', 'P4.9', 'P4.3']) {
+    // Realm purity from the sealed side.
+    for (const warmOnly of ['Portfolio', 'Prices & FX', 'Tax & exports', 'Records & registry', 'Reference & help', 'Tool map']) {
+      assert.ok(
+        !coldMoreText.some((item) => item.includes(warmOnly)),
+        `${engine}: sealed More must not reach the warm destination ${warmOnly}`
+      );
+    }
+    // P1.5 owned Child seeds (it is P4.6) and P4.3 is not a roadmap item; it is
+    // split into P4.3a..P4.3e. P1.4a now owns the derivation surfaces.
+    for (const id of ['P4.6', 'P4.5', 'P4.9', 'P4.3a', 'P1.4a', 'WAL.8', 'P4.8']) {
       const unavailable = coldFrame.locator(`.cold-mobile-more-links [data-roadmap-id="${id}"]`);
-      assert.equal(await unavailable.getAttribute('aria-disabled'), 'true', `${engine}: cold More future ${id} must be unavailable`);
+      const owned = await unavailable.count();
+      // P1.4a owns two destinations, so assert over every entry an owner claims
+      // rather than assuming one each.
+      assert.ok(owned >= 1, `${engine}: cold More is missing its ${id} destination`);
+      for (let index = 0; index < owned; index += 1) {
+        assert.equal(
+          await unavailable.nth(index).getAttribute('aria-disabled'),
+          'true',
+          `${engine}: cold More future ${id} must be unavailable`
+        );
+      }
     }
     for (const href of ['#cold-group-session', '#cold-group-entropy', '#cold-seed-forge-validator', '#cold-group-qr', '#cold-group-backups', '#cold-verification', '#cold-secret-switcher']) {
       await coldFrame.locator('.cold-mobile-more').evaluate((details) => { details.open = true; });
@@ -1275,9 +1330,13 @@ async function verifyBuiltFile(browser, engine) {
       'mobile-more-tab',
       `${engine}: Escape did not return focus to the mobile overflow tab`
     );
-    await page.locator('#mobile-more-tab').click();
-    await page.locator('#mobile-more-menu a[href="#cold-realm-status"]').click();
-    await assertColdRealmTarget('mobile More link');
+    // On a phone the sealed realm is the Seeds slot in the approved bottom bar,
+    // not an entry buried in More. The sheet is already closed here by the
+    // Escape assertion above, so this also proves the bar underneath stays
+    // operable once More has been dismissed.
+    assert.equal(await page.locator('#mobile-more-menu').isVisible(), false);
+    await page.locator('#mobile-tabs a[href="#cold-realm-status"]').click();
+    await assertColdRealmTarget('mobile Seeds tab');
     await page.locator('#mobile-tabs a[data-route="dashboard"]').click();
     await page.waitForFunction(() => window.location.hash === '#dashboard');
     await page.locator('#mobile-more-tab').click();
@@ -1416,7 +1475,7 @@ async function verifyStaleReachabilityOnlineSafety(browser, engine) {
   try {
     const { page, reachability } = opened;
     await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     const coldFrame = await getColdFrame(page, engine);
 
@@ -1458,7 +1517,7 @@ async function verifyVaultLibrary(browser, engine) {
   const { page } = await openPage(browser, buildPath);
   try {
     await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     const coldFrame = await getColdFrame(page, engine);
 
@@ -1566,11 +1625,11 @@ async function verifyRegistryCrud(browser, engine) {
   try {
     const coldFrame = await getColdFrame(page, engine);
     const phrase = 'registry browser round-trip phrase';
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     await createPreparedVault(page, coldFrame, phrase, 'Registry Browser');
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
-    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#nav-rail [data-nav="registry"]').click();
     await page.locator('#page-registry:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#registry-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
 
@@ -1599,7 +1658,7 @@ async function verifyRegistryCrud(browser, engine) {
     assert.match(await page.locator('#registry-wallet-list').textContent(), /Unlabeled wallet/);
     assert.doesNotMatch(await page.locator('#registry-wallet-list').textContent(), /Browser wallet/);
 
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#vault-save-download').click();
@@ -1628,18 +1687,18 @@ async function verifyRegistryCrud(browser, engine) {
     await coldFrame.locator('#cold-vault-passphrase').fill(phrase);
     await coldFrame.locator('#cold-vault-unlock').click();
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
-    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#nav-rail [data-nav="registry"]').click();
     await page.locator('#page-registry:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#registry-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await page.locator('#registry-wallet-list .registry-record').count(), 1, `${engine}: reopened registry lost the wallet`);
     assert.equal(await page.locator('#registry-account-list .registry-record').count(), 1, `${engine}: reopened registry lost the account`);
     assert.equal(await page.locator('#registry-address-list .registry-record').count(), 1, `${engine}: reopened registry lost the address`);
     assert.match(await page.locator('#registry-wallet-list').textContent(), /Unlabeled wallet/);
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     await lockVaultDiscardingUnsaved(page);
     await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 10000 });
-    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#nav-rail [data-nav="registry"]').click();
     await page.locator('#page-registry:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#registry-locked:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
     console.log(`${engine}: registry wallet/account/address CRUD, explicit clear, durable reopen, and lock state passed`);
@@ -1653,11 +1712,11 @@ async function verifyUi6RecordMenu(browser, engine) {
   try {
     const coldFrame = await getColdFrame(page, engine);
     const phrase = 'ui6 record menu harness phrase';
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     await createPreparedVault(page, coldFrame, phrase, 'UI6 Menu');
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
-    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#nav-rail [data-nav="registry"]').click();
     await page.locator('#registry-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
 
     const written = page.locator('#registry-status').filter({ hasText: /Public registry change written/ });
@@ -1700,7 +1759,7 @@ async function verifyUi6RecordMenu(browser, engine) {
     await page.locator('#page-verify:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await page.locator('#address-verify-record').inputValue(), await addressTrigger.getAttribute('data-registry-id'), `${engine}: Address bench send-to route selected the wrong record`);
 
-    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#nav-rail [data-nav="registry"]').click();
     await page.locator('#registry-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
     const reopenedAddressTrigger = page.locator('#registry-address-list [data-record-menu-trigger="true"]');
     await reopenedAddressTrigger.click();
@@ -1708,10 +1767,10 @@ async function verifyUi6RecordMenu(browser, engine) {
     await page.locator('#page-qr:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await page.locator('#qr-public-address').inputValue(), '1BoatSLRHtKNngkdXEeobR76b53LETtpyT', `${engine}: QR Studio send-to route lost the address`);
 
-    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#nav-rail [data-nav="registry"]').click();
     await page.locator('#registry-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
     const walletId = await page.locator('#registry-wallet-list [data-record-menu-trigger="true"]').getAttribute('data-registry-id');
-    await page.locator('#nav-rail a[data-route="backup"]').click();
+    await page.locator('#nav-rail [data-nav="backup"]').click();
     await page.locator('#backup-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
     await page.locator('#backup-subject-id').fill(walletId);
     await page.locator('#backup-share-label').fill('UI6 backup');
@@ -1760,7 +1819,7 @@ async function verifyStaleAddressDisplay(browser, engine) {
       return Array.from(bytes);
     }, { phrase });
 
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#vault-file-input').setInputFiles({
       name: 'stale-address-fixture--550e8400.cbx',
@@ -1777,7 +1836,7 @@ async function verifyStaleAddressDisplay(browser, engine) {
     } catch (error) {
       throw new Error(`${engine}: stale fixture unlock failed: ${await coldFrame.locator('#cold-vault-status').textContent()}`);
     }
-    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#nav-rail [data-nav="registry"]').click();
     await page.locator('#page-registry:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#registry-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
     const verification = page.locator('#registry-address-list .registry-record-verification');
@@ -1872,7 +1931,7 @@ async function verifyAddressVerification(browser, engine) {
       }
     }, { unlockPhrase: phrase, seedPhrase: mnemonic });
 
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#vault-file-input').setInputFiles({
       name: 'evm-address-verification--550e8400.cbx',
@@ -1890,8 +1949,7 @@ async function verifyAddressVerification(browser, engine) {
     await coldFrame.locator('#cold-seed-forge-validate').click();
     await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 10000 });
 
-    await page.locator('#nav-rail a[data-route="verify"]').click();
-    await page.locator('#page-verify:not([hidden])').waitFor({ state: 'visible' });
+    await openVerifyBench(page);
     await page.locator('#address-verify-record').selectOption(primaryAddressId);
     await page.locator('#address-verify-candidate').fill(fixtureBytes.primary);
     await page.locator('#address-verify-cold').click();
@@ -1929,7 +1987,7 @@ async function verifyAddressVerification(browser, engine) {
     assert.equal(releasedVerificationCapture.publicDataUpdatedCount, 0, `${engine}: released verification must not replace public data`);
     assert.deepEqual(releasedVerificationCapture.verificationStates, ['unverified'], `${engine}: released verification must not return a persisted cold state`);
 
-    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#nav-rail [data-nav="registry"]').click();
     await page.locator('#page-registry:not([hidden])').waitFor({ state: 'visible' });
     const releasedSecondaryCard = page.locator('#registry-address-list .registry-record').filter({ hasText: fixtureBytes.secondary });
     await releasedSecondaryCard.waitFor({ state: 'visible', timeout: 5000 });
@@ -1939,8 +1997,7 @@ async function verifyAddressVerification(browser, engine) {
       `${engine}: released verification must not persist a public derived state`
     );
 
-    await page.locator('#nav-rail a[data-route="verify"]').click();
-    await page.locator('#page-verify:not([hidden])').waitFor({ state: 'visible' });
+    await openVerifyBench(page);
     await page.locator('#address-verify-record').selectOption(primaryAddressId);
     await page.locator('#address-verify-candidate').fill(fixtureBytes.secondary);
     await page.locator('#address-verify-compare').click();
@@ -1994,8 +2051,7 @@ async function verifyClipboardCanary(browser, engine) {
   });
   try {
     await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
-    await page.locator('#nav-rail a[data-route="verify"]').click();
-    await page.locator('#page-verify:not([hidden])').waitFor({ state: 'visible' });
+    await openVerifyBench(page);
     const toggle = page.locator('#clipboard-canary-toggle');
     const status = page.locator('#clipboard-canary-status');
     assert.equal(await toggle.isChecked(), false);
@@ -2096,13 +2152,13 @@ async function verifyDeviceRegistry(browser, engine) {
   try {
     const phrase = 'device registry harness phrase';
     await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     const coldFrame = await getColdFrame(page, engine);
     await createPreparedVault(page, coldFrame, phrase, 'Device Registry Harness Vault');
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
-    await page.locator('#nav-rail a[data-route="devices"]').click();
+    await page.locator('#nav-rail [data-nav="devices"]').click();
     await page.locator('#page-devices:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#device-workspace:not([hidden])').waitFor({ state: 'visible' });
 
@@ -2160,7 +2216,7 @@ async function verifyDeviceRegistry(browser, engine) {
 
     // Save the cleared record, reload its durable .cbx bytes, and prove the
     // absence of each optional field survives the cold persistence boundary.
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#vault-save-download').click();
@@ -2184,7 +2240,7 @@ async function verifyDeviceRegistry(browser, engine) {
     await coldFrame.locator('#cold-vault-passphrase').fill(phrase);
     await coldFrame.locator('#cold-vault-unlock').click();
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
-    await page.locator('#nav-rail a[data-route="devices"]').click();
+    await page.locator('#nav-rail [data-nav="devices"]').click();
     await page.locator('#page-devices:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#device-workspace:not([hidden])').waitFor({ state: 'visible' });
     await deviceCard.waitFor({ state: 'visible', timeout: 5000 });
@@ -2212,7 +2268,7 @@ async function verifyDeviceRegistry(browser, engine) {
     await coldFrame.locator('#cold-concealment-reveal').click();
     await deviceCard.waitFor({ state: 'visible', timeout: 5000 });
 
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     await lockVaultDiscardingUnsaved(page);
     await coldFrame.locator('#cold-vault-status[data-state="locked"]').waitFor({ state: 'visible', timeout: 5000 });
@@ -2228,13 +2284,13 @@ async function verifyNotesAndConcealment(browser, engine) {
   try {
     await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
     const phrase = 'notes concealment browser phrase';
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     const coldFrame = await getColdFrame(page, engine);
     await createPreparedVault(page, coldFrame, phrase, 'Notes Concealment Browser');
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
     await page.locator('#vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
-    await page.locator('#nav-rail a[data-route="registry"]').click();
+    await page.locator('#nav-rail [data-nav="registry"]').click();
     await page.locator('#page-registry:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#registry-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
 
@@ -2307,7 +2363,7 @@ async function verifyColdSecretNotes(browser, engine) {
   try {
     const { page, reachability } = opened;
     await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     const coldFrame = await getColdFrame(page, engine);
 
@@ -2399,7 +2455,7 @@ async function verifyUnlockedRuntimeHealthLockdown(browser, engine) {
     let page = opened.page;
     let harness = opened.harness;
     await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     let coldFrame = await getColdFrame(page, engine);
     await createPreparedVault(page, coldFrame, 'runtime violation unlocked phrase', 'Runtime Violation Vault');
@@ -2427,7 +2483,7 @@ async function verifyUnlockedRuntimeHealthLockdown(browser, engine) {
     page = opened.page;
     harness = opened.harness;
     await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     coldFrame = await getColdFrame(page, engine);
     await createPreparedVault(page, coldFrame, 'save health drift phrase', 'Save Health Vault');
@@ -2452,7 +2508,7 @@ async function verifyPanicHide(browser, engine) {
   const { harness, page } = await openPage(browser, buildPath);
   try {
     await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     let coldFrame = await getColdFrame(page, engine);
     await createPreparedVault(page, coldFrame, 'panic session phrase', 'Warm Panic Vault');
@@ -2477,7 +2533,7 @@ async function verifyPanicHide(browser, engine) {
 
     await page.reload({ waitUntil: 'load' });
     await page.locator('#app[data-handshake-state="ready"]').waitFor({ state: 'visible', timeout: 5000 });
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     coldFrame = await getColdFrame(page, engine);
     await createPreparedVault(page, coldFrame, 'cold panic session phrase', 'Cold Panic Vault');
@@ -2877,7 +2933,7 @@ async function verifyKeyfileUiAndRegressions(browser, engine) {
     // other warm-shell save/lock/status controls this test also drives live
     // inside #page-vault, which is `hidden` until the vault route is
     // navigated to (matching the existing round-trip test's sequencing).
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
 
     const coldFrame = await getColdFrame(page, engine);
@@ -3035,7 +3091,7 @@ async function verifyProvenancePanel(browser, engine) {
   // marker on this item calls for.
   const { page } = await openPage(browser, buildPath);
   try {
-    await page.locator('#nav-rail a[data-route="reference"]').first().click();
+    await page.locator('#nav-rail [data-nav="reference"]').first().click();
     await page.locator('#page-reference:not([hidden])').waitFor({ state: 'visible' });
 
     const libraryRows = page.locator('#provenance-library-list .provenance-library-row');
@@ -3157,7 +3213,7 @@ async function verifyLegalNotices(browser, engine) {
     // verifyBuiltFile's airgap-banner checks above).
     await page.context().setOffline(true);
 
-    await page.locator('#nav-rail a[data-route="reference"]').first().click();
+    await page.locator('#nav-rail [data-nav="reference"]').first().click();
     await page.locator('#page-reference:not([hidden])').waitFor({ state: 'visible' });
 
     const noticesSection = page.locator('#provenance-legal-notices');
@@ -3237,15 +3293,19 @@ async function verifyHelpFramework(browser, engine) {
     // wipes the new button's <h2> content would go undetected exactly the
     // way the reviewer's F1 finding described.
     const contextualHelpMappings = [
-      { topic: 'glossary:cold-realm-warm-shell', anchorPrefix: 'help-glossary-cold-realm-warm-shell', route: 'dashboard' },
-      { topic: 'glossary:airgapped', anchorPrefix: 'help-glossary-airgapped', route: 'dashboard' },
-      { topic: 'glossary:capability-self-check', anchorPrefix: 'help-glossary-capability-self-check', route: 'dashboard' },
-      { topic: 'glossary:vault', anchorPrefix: 'help-glossary-vault', route: 'vault' },
-      { topic: 'glossary:provenance-panel', anchorPrefix: 'help-glossary-provenance-panel', route: 'reference' },
-      { topic: 'glossary:appropriate-legal-notices', anchorPrefix: 'help-glossary-appropriate-legal-notices', route: 'reference' }
+      { topic: 'glossary:cold-realm-warm-shell', anchorPrefix: 'help-glossary-cold-realm-warm-shell', nav: 'home' },
+      { topic: 'glossary:airgapped', anchorPrefix: 'help-glossary-airgapped', nav: 'home' },
+      { topic: 'glossary:capability-self-check', anchorPrefix: 'help-glossary-capability-self-check', nav: 'home' },
+      { topic: 'glossary:vault', anchorPrefix: 'help-glossary-vault', nav: 'vault-files' },
+      { topic: 'glossary:provenance-panel', anchorPrefix: 'help-glossary-provenance-panel', nav: 'reference' },
+      { topic: 'glossary:appropriate-legal-notices', anchorPrefix: 'help-glossary-appropriate-legal-notices', nav: 'reference' }
     ];
     for (const mapping of contextualHelpMappings) {
-      await page.locator(`#nav-rail a[data-route="${mapping.route}"]`).first().click();
+      // Addressed by the rail entry's stable id rather than by route: the
+      // approved rail has three destinations pointing at the vault page and
+      // three at the reference page, so a route selector needed `.first()` and
+      // silently depended on DOM order.
+      await page.locator(`#nav-rail [data-nav="${mapping.nav}"]`).click();
       const button = page.locator(`button.help-context-button[data-help-topic="${mapping.topic}"]`);
       await button.waitFor({ state: 'visible', timeout: 3000 });
       await button.click();
@@ -3253,7 +3313,7 @@ async function verifyHelpFramework(browser, engine) {
       await page.locator(`#${mapping.anchorPrefix}`).waitFor({ state: 'visible', timeout: 3000 });
     }
 
-    await page.locator('#nav-rail a[data-route="learn"]').click();
+    await page.locator('#nav-rail [data-nav="learn"]').click();
     await page.locator('#page-learn:not([hidden])').waitFor({ state: 'visible' });
 
     const glossaryTerms = page.locator('#help-glossary-list .help-glossary-term');
@@ -3287,7 +3347,7 @@ async function verifyHelpFramework(browser, engine) {
     // "no localStorage for secrets" rule - this is explicitly allowed) and
     // must survive a reload, per SPEC.md #18.1 ("remembered").
     await page.reload();
-    await page.locator('#nav-rail a[data-route="learn"]').click();
+    await page.locator('#nav-rail [data-nav="learn"]').click();
     await page.locator('#help-depth-technical[aria-pressed="true"]').waitFor({ state: 'visible' });
 
     // Offline search: no network request should be made while typing, and a
@@ -3322,7 +3382,7 @@ async function verifyHelpFramework(browser, engine) {
 
     // Inline glossary: a term inside the rendered guide body must be
     // tappable for a definition without leaving the page.
-    await page.locator('#nav-rail a[data-route="learn"]').click();
+    await page.locator('#nav-rail [data-nav="learn"]').click();
     const inlineTerm = page.locator('#help-guides-list .glossary-term').first();
     await inlineTerm.waitFor({ state: 'visible' });
     await inlineTerm.click();
@@ -3880,7 +3940,7 @@ async function verifyReleasedSecretSwitcher(browser, engine) {
     await coldFrame.locator('body').press('Control+Alt+Shift+L');
     await coldFrame.locator('#cold-secret-switcher[data-state="empty"][data-released-secret-count="0"]').waitFor({ state: 'attached' });
 
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     await createPreparedVault(page, coldFrame, 'ui3 lock test phrase', 'UI3 Lock ' + engine + ' ' + String(Date.now()));
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
@@ -4235,12 +4295,12 @@ async function verifyBackupRecordVerification(browser, engine) {
   const { page } = await openPage(browser, buildPath);
   try {
     const coldFrame = await getColdFrame(page, engine);
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     await createPreparedVault(page, coldFrame, 'backup record browser phrase', 'Backup Records Browser');
     await coldFrame.locator('#cold-vault-status[data-state="unlocked"]').waitFor({ state: 'visible', timeout: 10000 });
 
-    await page.locator('#nav-rail a[data-route="backup"]').click();
+    await page.locator('#nav-rail [data-nav="backup"]').click();
     await page.locator('#page-backup:not([hidden])').waitFor({ state: 'visible' });
     await page.locator('#backup-workspace:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
 
@@ -4270,7 +4330,7 @@ async function verifyBackupRecordVerification(browser, engine) {
     assert.match(await page.locator('#dashboard-backup-health-alerts').textContent(), /never passed a cold reconstruction/);
     assert.match(await page.locator('#dashboard-backup-health-alerts').textContent(), /threshold proof/);
 
-    await page.locator('#nav-rail a[data-route="backup"]').click();
+    await page.locator('#nav-rail [data-nav="backup"]').click();
     await page.locator('#page-backup:not([hidden])').waitFor({ state: 'visible' });
 
     await page.locator('#backup-list [data-registry-action="verify"]').click();
@@ -4282,7 +4342,7 @@ async function verifyBackupRecordVerification(browser, engine) {
     assert.equal((await page.locator('html').evaluate((element) => element.outerHTML)).includes(shares[0]), false, `${engine}: BackupRecord verification shares must never enter the warm DOM`);
     assert.equal(await coldFrame.locator('#cold-backup-verification-input').inputValue(), '', `${engine}: BackupRecord verification input must clear after reconstruction`);
 
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
     await lockVaultDiscardingUnsaved(page);
     await coldFrame.locator('html[data-cold-session-state="locked"]').waitFor({ state: 'attached', timeout: 5000 });
@@ -4404,8 +4464,7 @@ async function verifyQrStudio(browser, engine) {
     await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
     const coldFrame = await getColdFrame(page, engine);
 
-    await page.locator('#nav-rail a[data-route="qr"]').click();
-    await page.locator('#page-qr:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+    await openQrStudio(page);
     await page.locator('#qr-public-address').fill('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about');
     await page.locator('#qr-public-generate').click();
     assert.match(await page.locator('#qr-public-status').textContent(), /malformed input is rejected/i);
@@ -4538,7 +4597,7 @@ async function verifyVaultRecoveryShares(browser, engine) {
   });
   try {
     const coldFrame = await getColdFrame(page, engine);
-    await page.locator('#nav-rail a[data-route="vault"]').click();
+    await page.locator('#nav-rail [data-nav="vault-files"]').click();
     await page.locator('#page-vault:not([hidden])').waitFor({ state: 'visible' });
 
     reachability.setMode('unreachable');
@@ -4708,6 +4767,26 @@ async function verifyDevOnlyDependency() {
   } finally {
     fs.rmSync(temporaryRoot, { force: true, recursive: true });
   }
+}
+
+// UI.10b - Verify Bench and QR Studio are no longer top-level rail destinations.
+// The approved workstation IA reaches each from the object it acts on: Verify
+// Bench from Security & verify, QR Studio from Wallets. Routing through those
+// pages rather than jumping straight to the hash is deliberate - it exercises
+// the contextual reachability the reorganisation claims, so a broken link in
+// either page fails the harness instead of passing unnoticed.
+async function openVerifyBench(page) {
+  await page.locator('#nav-rail [data-nav="security"]').click();
+  await page.locator('#page-security:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+  await page.locator('[data-nav="security-verify-bench"]').click();
+  await page.locator('#page-verify:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+}
+
+async function openQrStudio(page) {
+  await page.locator('#nav-rail [data-nav="wallets"]').click();
+  await page.locator('#page-wallets:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
+  await page.locator('[data-nav="wallets-qr-studio"]').click();
+  await page.locator('#page-qr:not([hidden])').waitFor({ state: 'visible', timeout: 5000 });
 }
 
 async function run() {

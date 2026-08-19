@@ -422,3 +422,57 @@ test('the sealed More sheet reaches only sealed capability', () => {
     assert.ok(!sheet[1].includes(label), `The sealed More sheet must not reach the warm destination ${label}`);
   }
 });
+
+test('every rail destination has a unique stable handle, and deep links resolve', () => {
+  // Three approved destinations resolve to the vault page and three to the
+  // reference page, so a selector keyed on the route matches several elements.
+  // `data-nav` gives each destination one stable handle, which is what the
+  // committed browser harness addresses them by; without it the harness needed
+  // `.first()` and silently depended on DOM order.
+  const navs = Array.from(warmHtml.matchAll(/data-nav="([a-z-]+)"/g), (match) => match[1]);
+  const railNavs = railGroups().flatMap((group) => Array.from(
+    group.markup.matchAll(/data-nav="([a-z-]+)"/g),
+    (match) => match[1]
+  ));
+  assert.equal(new Set(navs).size, navs.length, 'A data-nav handle is used twice');
+  assert.equal(
+    railNavs.length,
+    railGroups().reduce((total, group) => total + entriesOf(group.markup).length, 0),
+    'Every rail destination must carry a data-nav handle'
+  );
+
+  // Each `#route/section` deep link must name a section main.js knows about,
+  // and that section must exist in the document. A typo here produces a link
+  // that navigates to the right page and then silently does nothing.
+  const sections = /var routeSections = Object\.freeze\(\{([\s\S]*?)\}\);/.exec(mainJs);
+  assert.ok(sections, 'main.js declares no routeSections map');
+  const declared = new Map(
+    Array.from(sections[1].matchAll(/(\w+): Object\.freeze\(\{([^}]*)\}\)/g), (match) => [
+      match[1],
+      new Map(Array.from(match[2].matchAll(/(\w+): '([^']+)'/g), (pair) => [pair[1], pair[2]]))
+    ])
+  );
+  assert.ok(declared.size > 0);
+
+  const deepLinks = Array.from(
+    warmHtml.matchAll(/href="#([a-z-]+)\/([a-z-]+)"/g),
+    (match) => ({ route: match[1], section: match[2] })
+  );
+  assert.ok(deepLinks.length >= 5, `expected the approved sub-destinations to deep link, saw ${deepLinks.length}`);
+  for (const link of deepLinks) {
+    const routeSections = declared.get(link.route);
+    assert.ok(routeSections, `#${link.route}/${link.section} has no routeSections entry for ${link.route}`);
+    const targetId = routeSections.get(link.section);
+    assert.ok(targetId, `#${link.route}/${link.section} names a section main.js does not map`);
+    assert.ok(
+      warmHtml.includes(`id="${targetId}"`),
+      `#${link.route}/${link.section} maps to #${targetId}, which does not exist`
+    );
+  }
+
+  // Focus must be confirmed, not assumed: a panel that is not rendered yet -
+  // Backup Health's list while the vault is locked - accepts neither focus nor
+  // a useful scroll, and reporting success there strands focus on the rail link
+  // the user just activated.
+  assert.match(mainJs, /return document\.activeElement === target;/);
+});

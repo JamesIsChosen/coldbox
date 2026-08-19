@@ -901,6 +901,58 @@ __COLDBOX_CONCEALMENT__
     });
   }
 
+  // UI.10b - some approved rail destinations share one built page. Vault files,
+  // Vault session and Device transfer (QR) are three approved destinations and
+  // one built vault page; Verify this file, Provenance & legal and Reference &
+  // help are three destinations and one reference page. Without this, three rail
+  // entries with three different accessible names would all land in the same
+  // place - which reads to a screen reader as three destinations and behaves as
+  // one.
+  //
+  // The `#route/section` form is the deep-link grammar contextual help already
+  // uses (`#learn/<topic>`), reused rather than duplicated: routeFromLocation
+  // takes the first segment, and normalizeLocation already leaves the rest
+  // alone so the link stays shareable.
+  var routeSections = Object.freeze({
+    vault: Object.freeze({ session: 'vault-status', transfer: 'vault-transfer-card' }),
+    backup: Object.freeze({ health: 'backup-list' }),
+    reference: Object.freeze({ verify: 'provenance-drop-zone', legal: 'provenance-legal-notices' })
+  });
+
+  // Returns true when the segment named a real section and focus moved there, so
+  // the caller knows not to fall back to focusing the page. An unknown segment
+  // is not an error: the route still rendered, and stealing focus to nowhere
+  // would be worse than leaving it on the page.
+  function focusRouteSection(route, segment) {
+    var sections = routeSections[route];
+    if (!sections || !Object.prototype.hasOwnProperty.call(sections, segment)) {
+      return false;
+    }
+    var target = document.getElementById(sections[segment]);
+    if (!target) {
+      return false;
+    }
+    if (!target.hasAttribute('tabindex')) {
+      target.setAttribute('tabindex', '-1');
+    }
+    try {
+      target.scrollIntoView({ block: 'start' });
+    } catch (error) {
+      target.scrollIntoView();
+    }
+    try {
+      target.focus({ preventScroll: true });
+    } catch (error) {
+      target.focus();
+    }
+    // A hidden panel accepts neither focus nor a meaningful scroll - Backup
+    // Health's list, for instance, is not rendered while the vault is locked.
+    // Reporting success there would strand focus on the rail link the user just
+    // activated, so confirm focus actually landed and let the caller fall back
+    // to the page if it did not.
+    return document.activeElement === target;
+  }
+
   function routeFromLocation() {
     var hash = window.location.hash.replace(/^#/, '').trim();
     var route = hash.split('/')[0];
@@ -5854,6 +5906,8 @@ __COLDBOX_CONCEALMENT__
 
     if (route === 'learn' && topicSegment) {
       focusHelpTopic(decodeURIComponent(topicSegment));
+    } else if (topicSegment && focusRouteSection(route, decodeURIComponent(topicSegment))) {
+      // focusRouteSection moved focus to the named panel.
     } else if (shouldFocus) {
       try {
         main.focus({ preventScroll: true });
