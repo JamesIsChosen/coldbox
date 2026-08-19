@@ -397,12 +397,18 @@ The three I am least sure of:
   certify as unavailable. I think PARITY is right and the enrichment is a rolling
   closure under §2, but this is the judgement call most worth a second opinion.
 - `seedqr` → `['P1.10', 'SEED.3']`, same reasoning via shipped SeedQR.
-- `reference` → `['P4.10']`, inherited from the UI.4a harness. This classifies
-  `UNAVAILABLE`, which matches what the shipped app already shows
-  (`src/index.html` renders Reference as `nav-link-unavailable` with
-  `data-roadmap-id="P4.10"`) — but P0.17's help framework *is* built and a
-  Reference route does render. I kept the existing precedent rather than change
-  it inside this item. It may deserve its own correction later.
+- `reference` → `['P0.17', 'P4.10']`. **This one I found and fixed while
+  starting UI.10b, rather than leaving flagged.** The UI.4a-era harness mapped it
+  to `P4.10` alone, which classified it `UNAVAILABLE` — and the shipped app does
+  render Reference as `nav-link-unavailable` with `data-roadmap-id="P4.10"`. But
+  P0.17's help framework is built, P0.16's provenance panel is built, a live
+  `#reference` route renders both today, and the approved artifact's own tag for
+  this destination is **P0.17**, not P4.10. `P4.10 Reference` is a Phase 4 item
+  that enriches the section, not the item that creates it. Leaving it wrong would
+  have put UI.10a (screen unavailable) in direct contradiction with UI.10b, which
+  must ship this destination live. Worth re-checking my reasoning: it is the one
+  place where I overrode both an inherited mapping *and* the shipped app's own
+  label in the same change.
 
 A cross-check the reviewer can run cheaply — and which found a real discrepancy:
 

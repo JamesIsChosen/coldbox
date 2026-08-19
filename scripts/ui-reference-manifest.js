@@ -73,7 +73,13 @@ const SCREEN_OWNERS = Object.freeze({
   backup: ['P2.6', 'P2.7'],
   portfolio: ['P3.4'],
   security: ['P1.8', 'P1.9'],
-  reference: ['P4.10'],
+  // "Reference & help" exists today: P0.17's help framework and P0.16's
+  // provenance panel both render at this destination. P4.10 is the Phase 4
+  // item that enriches it, not the item that creates it. Mapping it to P4.10
+  // alone - inherited from the UI.4a-era harness - classified a shipped screen
+  // UNAVAILABLE, and the approved artifact's own tag for this destination is
+  // P0.17, not P4.10.
+  reference: ['P0.17', 'P4.10'],
   advanced: ['UI.9'],
   vault: ['P0.13'],
   create: ['UI.10'],
