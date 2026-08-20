@@ -19,7 +19,8 @@ const toolingJavaScriptFiles = Object.freeze([
   path.join(projectRoot, 'scripts', 'lint.js'),
   path.join(projectRoot, 'scripts', 'verify-vendor.js'),
   path.join(projectRoot, 'scripts', 'run-browser-harness.js'),
-  path.join(projectRoot, 'scripts', 'trace-brand-wordmark.js')
+  path.join(projectRoot, 'scripts', 'trace-brand-wordmark.js'),
+  path.join(projectRoot, 'scripts', 'ui11-parity.js')
 ]);
 
 const forbiddenConstructs = Object.freeze([

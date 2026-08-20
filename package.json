@@ -13,6 +13,7 @@
     "verify-vendor": "node scripts/verify-vendor.js",
     "check-docs": "node scripts/check-docs.js",
     "test:browser": "node scripts/run-browser-harness.js",
+    "test:parity": "node scripts/ui11-parity.js",
     "test": "node --test --test-concurrency=1"
   },
   "devDependencies": {
