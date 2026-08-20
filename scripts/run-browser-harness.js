@@ -1267,7 +1267,7 @@ async function verifyBuiltFile(browser, engine) {
     assert.ok(await page.locator('#tool-map-list .tool-map-entry').count() >= 20, `${engine}: generated Tool map is empty or incomplete`);
     await coldFrame.locator('.cold-mobile-more').evaluate((details) => { details.open = true; });
     const coldMoreText = await coldFrame.locator('.cold-mobile-more-links > *').allTextContents();
-    for (const expected of ['Vault session', 'Entropy Lab', 'Seed Forge', 'Validate phrase', 'Child seeds', 'Passphrase Studio', 'Descriptors', 'Split lab', 'SeedQR studio', 'Backup Health', 'Recovery assistant', 'Verify Bench', 'Level 3 signing', 'Reveal hidden', 'Secret notes', 'Active secret', 'Lock & wipe']) {
+    for (const expected of ['Vault session', 'Entropy Lab', 'Seed Forge', 'Validate phrase', 'Derivation paths', 'Address derivation', 'Child seeds', 'Passphrase Studio', 'Descriptors', 'Split lab', 'SeedQR studio', 'Backup Health', 'Recovery assistant', 'Verify Bench', 'Level 3 signing', 'Reveal hidden', 'Secret notes', 'Active secret', 'Lock & wipe']) {
       assert.ok(coldMoreText.some((item) => item.includes(expected)), `${engine}: cold More is missing ${expected}`);
     }
     // Realm purity from the sealed side.
@@ -1278,12 +1278,13 @@ async function verifyBuiltFile(browser, engine) {
       );
     }
     // P1.5 owned Child seeds (it is P4.6) and P4.3 is not a roadmap item; it is
-    // split into P4.3a..P4.3e. P1.4a now owns the derivation surfaces.
-    for (const id of ['P4.6', 'P4.5', 'P4.9', 'P4.3a', 'P1.4a', 'WAL.8', 'P4.8']) {
+    // split into P4.3a..P4.3e. P1.4a owned the two derivation destinations and
+    // has now built them, so they are reachable links rather than unavailable
+    // entries; the list above already asserts they are present and the
+    // P1.4a scenario asserts they navigate.
+    for (const id of ['P4.6', 'P4.5', 'P4.9', 'P4.3a', 'WAL.8', 'P4.8']) {
       const unavailable = coldFrame.locator(`.cold-mobile-more-links [data-roadmap-id="${id}"]`);
       const owned = await unavailable.count();
-      // P1.4a owns two destinations, so assert over every entry an owner claims
-      // rather than assuming one each.
       assert.ok(owned >= 1, `${engine}: cold More is missing its ${id} destination`);
       for (let index = 0; index < owned; index += 1) {
         assert.equal(
@@ -3997,7 +3998,7 @@ async function verifyReleasedSecretSwitcher(browser, engine) {
     await coldFrame.locator('#cold-secret-registry-clear').click();
     await coldFrame.locator('#cold-secret-switcher[data-state="empty"][data-released-secret-count="0"]').waitFor({ state: 'attached' });
     assert.equal(await coldFrame.locator('#cold-secret-registry-empty').isHidden(), false);
-    assert.equal(await coldFrame.locator('[data-secret-focus-indicator][data-state="empty"]').count(), 6);
+    assert.equal(await coldFrame.locator('[data-secret-focus-indicator][data-state="empty"]').count(), 8);
 
     await releaseValidated('Shortcut test');
     await coldFrame.locator('body').press('Control+Alt+Shift+L');
@@ -4748,6 +4749,7 @@ async function verifyDerivationSurfaces(browser, engine) {
     await harness.expectNoConsoleErrors({
       allowedFragments: [CANARY_ERROR_FRAGMENT, COLD_CANARY_ERROR_FRAGMENT]
     });
+    console.log(`${engine}: P1.4a chain facts, published BIP-84 receive/change/xpub vectors, path validation, sealed-only computation, keyboard focus, registry teardown, and mobile reach and touch targets passed`);
   } finally {
     await closePage(page);
   }
