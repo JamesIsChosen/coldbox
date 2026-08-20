@@ -3139,3 +3139,161 @@ body {
     display: block;
   }
 }
+
+/* P1.4a - Derivation paths and Address derivation. */
+.cold-derivation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.5rem;
+}
+
+.cold-derivation-grid > div {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.cold-derivation-grid label,
+.cold-derivation-generic label {
+  color: var(--cold-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+/* design-system.md's 44px touch floor, stated here in rem against the cold
+   frame's 16px root. Every control in this workspace is one a person taps on
+   a phone while comparing an address against another wallet, so none of them
+   may fall under it. */
+#cold-group-derive input,
+#cold-group-derive select,
+#cold-group-derive button {
+  box-sizing: border-box;
+  min-height: 2.75rem;
+  padding: 0.45rem 0.55rem;
+  border: 2px solid var(--cold-outline);
+  border-radius: 0.25rem;
+  background: var(--cold-input);
+  color: var(--cold-text);
+  font: inherit;
+}
+
+#cold-group-derive input,
+#cold-group-derive select {
+  width: 100%;
+}
+
+#cold-group-derive button {
+  width: fit-content;
+  min-width: 2.75rem;
+  margin-top: 0.5rem;
+  background: var(--cold-yellow);
+  color: var(--cold-ink);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#cold-group-derive input:focus,
+#cold-group-derive select:focus,
+#cold-group-derive button:focus-visible {
+  outline: 2px solid var(--cold-yellow);
+  outline-offset: 2px;
+}
+
+#cold-group-derive input:disabled,
+#cold-group-derive select:disabled,
+#cold-group-derive button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.cold-derivation-facts {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.75rem 0 0;
+}
+
+.cold-derivation-facts > div {
+  display: grid;
+  grid-template-columns: minmax(9rem, 12rem) minmax(0, 1fr);
+  gap: 0.35rem;
+}
+
+.cold-derivation-facts dt {
+  margin: 0;
+  color: var(--cold-muted);
+  font-size: 0.78rem;
+}
+
+.cold-derivation-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.78rem;
+}
+
+.cold-derivation-generic {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+}
+
+.cold-derivation-status {
+  margin: 0;
+  padding: 0.55rem;
+  border-left: 4px solid var(--cold-outline);
+  background: var(--cold-input);
+  color: var(--cold-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.cold-derivation-status[data-state="valid"] {
+  border-color: var(--cold-green);
+  color: var(--cold-green);
+}
+
+.cold-derivation-status[data-state="error"] {
+  border-color: var(--cold-red);
+  color: var(--cold-red);
+}
+
+.cold-derivation-chains {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.cold-derivation-address-list {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cold-derivation-address-list li {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.5rem;
+  border: 2px solid var(--cold-outline);
+  border-radius: 0.3rem;
+  background: var(--cold-input);
+}
+
+.cold-derivation-address-path,
+.cold-derivation-address-value {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.78rem;
+}
+
+.cold-derivation-address-path {
+  color: var(--cold-muted);
+}
+
+.cold-derivation-address-list small {
+  color: var(--cold-muted);
+  font-size: 0.7rem;
+}

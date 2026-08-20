@@ -266,6 +266,35 @@ __COLDBOX_QR_ENCODER__
   var verificationBackupExpected = document.getElementById('cold-verification-backup-expected');
   var verificationBackupRun = document.getElementById('cold-verification-backup-run');
   var verificationBackupStatus = document.getElementById('cold-verification-backup-status');
+  var derivationPathsPanel = document.getElementById('cold-derivation-paths');
+  var derivationPathsChain = document.getElementById('cold-derivation-paths-chain');
+  var derivationPathsScript = document.getElementById('cold-derivation-paths-script');
+  var derivationPathsAccount = document.getElementById('cold-derivation-paths-account');
+  var derivationPathsChainName = document.getElementById('cold-derivation-paths-chain-name');
+  var derivationPathsCoinType = document.getElementById('cold-derivation-paths-coin-type');
+  var derivationPathsAccountPath = document.getElementById('cold-derivation-paths-account-path');
+  var derivationPathsEncoding = document.getElementById('cold-derivation-paths-encoding');
+  var derivationPathsVectors = document.getElementById('cold-derivation-paths-vectors');
+  var derivationPathsCustom = document.getElementById('cold-derivation-paths-custom');
+  var derivationPathsValidate = document.getElementById('cold-derivation-paths-validate');
+  var derivationPathsStatus = document.getElementById('cold-derivation-paths-status');
+  var derivationPathsResultPath = document.getElementById('cold-derivation-paths-result-path');
+  var derivationPathsResultDepth = document.getElementById('cold-derivation-paths-result-depth');
+  var derivationPathsResultFingerprint = document.getElementById('cold-derivation-paths-result-fingerprint');
+  var derivationPathsResultXpub = document.getElementById('cold-derivation-paths-result-xpub');
+  var addressDerivationPanel = document.getElementById('cold-address-derivation');
+  var addressDerivationChain = document.getElementById('cold-address-derivation-chain');
+  var addressDerivationScript = document.getElementById('cold-address-derivation-script');
+  var addressDerivationAccount = document.getElementById('cold-address-derivation-account');
+  var addressDerivationStart = document.getElementById('cold-address-derivation-start');
+  var addressDerivationCount = document.getElementById('cold-address-derivation-count');
+  var addressDerivationRun = document.getElementById('cold-address-derivation-run');
+  var addressDerivationStatus = document.getElementById('cold-address-derivation-status');
+  var addressDerivationFingerprint = document.getElementById('cold-address-derivation-fingerprint');
+  var addressDerivationAccountPath = document.getElementById('cold-address-derivation-account-path');
+  var addressDerivationXpub = document.getElementById('cold-address-derivation-xpub');
+  var addressDerivationReceiveList = document.getElementById('cold-address-derivation-receive');
+  var addressDerivationChangeList = document.getElementById('cold-address-derivation-change');
   var qrStudio = document.getElementById('cold-qr-studio');
   var qrLanguage = document.getElementById('cold-qr-language');
   var qrFormat = document.getElementById('cold-qr-format');
@@ -684,6 +713,515 @@ __COLDBOX_QR_ENCODER__
     renderReleasedSecretIndicators();
   }
 
+  // ---------------------------------------------------------------------
+  // P1.4a - Derivation paths and Address derivation.
+  //
+  // Both panels are lenses on the focused released secret (ADR-0045): they
+  // read it from the registry, they never accept a phrase of their own, and
+  // they render public values only. Every derivation runs through the
+  // existing P1.4/P1.5 engine in src/cold/derivation.js; there is no second
+  // derivation implementation here. No code path in this section posts a
+  // message to the warm shell.
+  // ---------------------------------------------------------------------
+
+  // A chain is offered only while this build carries independent test
+  // vectors for it, per the "Adding a chain" rule in chain-registry.md. A
+  // user-defined custom chain (P4.2) therefore cannot be derived from until
+  // its vectors are recorded, because an entry with no `testVectors` string
+  // is filtered out of the selectable set and refused on lookup.
+  var DERIVATION_CHAINS = Object.freeze([
+    Object.freeze({
+      id: 'bitcoin-mainnet',
+      label: 'Bitcoin mainnet',
+      mode: 'bitcoin',
+      network: 'mainnet',
+      addresses: true,
+      encoding: 'Base58Check (legacy, nested SegWit), Bech32 (native SegWit), Bech32m (Taproot)',
+      testVectors: 'BIP-32, BIP-84 and BIP-86 published vectors'
+    }),
+    Object.freeze({
+      id: 'bitcoin-testnet',
+      label: 'Bitcoin testnet',
+      mode: 'bitcoin',
+      network: 'testnet',
+      addresses: true,
+      encoding: 'Base58Check (legacy, nested SegWit), Bech32 (native SegWit), Bech32m (Taproot)',
+      testVectors: 'BIP-49 published testnet vector'
+    }),
+    Object.freeze({
+      id: 'evm',
+      label: 'Ethereum and all EVM chains',
+      mode: 'evm',
+      network: null,
+      addresses: true,
+      encoding: 'Keccak-256 with the ERC-55 mixed-case checksum',
+      testVectors: 'EIP-55 official vectors and a published Ethereum HD-key fixture'
+    }),
+    Object.freeze({
+      id: 'generic',
+      label: 'Generic (any BIP-32 path)',
+      mode: 'generic',
+      network: 'mainnet',
+      addresses: false,
+      encoding: 'None. Generic mode reports keys and paths, not addresses',
+      testVectors: 'BIP-32 published vector 1'
+    })
+  ]);
+
+  function chainHasIndependentVectors(chain) {
+    return Boolean(chain)
+      && typeof chain.testVectors === 'string'
+      && chain.testVectors.trim().length > 0;
+  }
+
+  function selectableDerivationChains(catalogue) {
+    return catalogue.filter(chainHasIndependentVectors);
+  }
+
+  function findSelectableDerivationChain(catalogue, id) {
+    var match = null;
+    for (var index = 0; index < catalogue.length; index += 1) {
+      if (catalogue[index].id === id) {
+        match = catalogue[index];
+        break;
+      }
+    }
+    return chainHasIndependentVectors(match) ? match : null;
+  }
+
+  function fillChainSelect(select, chains) {
+    if (!select) {
+      return;
+    }
+    select.textContent = '';
+    chains.forEach(function (chain) {
+      var option = document.createElement('option');
+      option.value = chain.id;
+      option.textContent = chain.label;
+      select.appendChild(option);
+    });
+  }
+
+  function selectedDerivationChain(select) {
+    if (!select) {
+      return null;
+    }
+    return findSelectableDerivationChain(DERIVATION_CHAINS, select.value);
+  }
+
+  function numberFieldValue(field, fallback) {
+    if (!field) {
+      return fallback;
+    }
+    var parsed = Number.parseInt(field.value, 10);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  function derivationReady() {
+    return Boolean(derivation) && vaultCryptoReady;
+  }
+
+  function setDerivationStatus(element, state, message) {
+    if (!element) {
+      return;
+    }
+    element.setAttribute('data-state', state);
+    element.textContent = message;
+  }
+
+  function chainAccountPath(chain, scriptType, account) {
+    if (chain.mode === 'bitcoin') {
+      return derivation.bitcoinAccountPath(chain.network, scriptType, account);
+    }
+    if (chain.mode === 'evm') {
+      return derivation.evmAccountPath(account);
+    }
+    return null;
+  }
+
+  function chainCoinType(chain) {
+    if (chain.mode === 'bitcoin') {
+      return derivation.coinType(chain.network);
+    }
+    if (chain.mode === 'evm') {
+      return derivation.constants.evmCoinType;
+    }
+    return null;
+  }
+
+  function renderDerivationPathFacts() {
+    if (!derivationPathsPanel) {
+      return;
+    }
+    var chain = selectedDerivationChain(derivationPathsChain);
+    var generic = Boolean(chain) && chain.mode === 'generic';
+    var bitcoin = Boolean(chain) && chain.mode === 'bitcoin';
+    if (derivationPathsScript) {
+      derivationPathsScript.disabled = !derivationReady() || !bitcoin;
+    }
+    if (derivationPathsAccount) {
+      derivationPathsAccount.disabled = !derivationReady() || generic;
+    }
+    if (derivationPathsCustom) {
+      derivationPathsCustom.disabled = !derivationReady() || !generic;
+    }
+    if (derivationPathsValidate) {
+      derivationPathsValidate.disabled = !derivationReady() || !generic
+        || !focusedReleasedSecret();
+    }
+    if (!chain) {
+      [
+        derivationPathsChainName,
+        derivationPathsCoinType,
+        derivationPathsAccountPath,
+        derivationPathsEncoding,
+        derivationPathsVectors
+      ].forEach(function (element) {
+        if (element) {
+          element.textContent = 'Not selected';
+        }
+      });
+      return;
+    }
+    var account = numberFieldValue(derivationPathsAccount, 0);
+    var scriptType = derivationPathsScript ? derivationPathsScript.value : 'p2wpkh';
+    var coinType = chainCoinType(chain);
+    var path = null;
+    try {
+      path = chainAccountPath(chain, scriptType, account);
+    } catch (error) {
+      path = null;
+    }
+    if (derivationPathsChainName) {
+      derivationPathsChainName.textContent = chain.label;
+    }
+    if (derivationPathsCoinType) {
+      derivationPathsCoinType.textContent = coinType === null
+        ? 'Not fixed. Generic mode derives whatever path you enter.'
+        : String(coinType);
+    }
+    if (derivationPathsAccountPath) {
+      derivationPathsAccountPath.textContent = path === null
+        ? 'Any canonical BIP-32 path'
+        : path;
+    }
+    if (derivationPathsEncoding) {
+      derivationPathsEncoding.textContent = chain.encoding;
+    }
+    if (derivationPathsVectors) {
+      derivationPathsVectors.textContent = chain.testVectors;
+    }
+    if (!generic) {
+      setDerivationStatus(
+        derivationPathsStatus,
+        'idle',
+        'Select Generic (any BIP-32 path) to enter a path.'
+      );
+    } else if (derivationPathsStatus
+      && derivationPathsStatus.getAttribute('data-state') === 'idle') {
+      setDerivationStatus(
+        derivationPathsStatus,
+        'idle',
+        focusedReleasedSecret()
+          ? 'Enter a canonical BIP-32 path, then validate it.'
+          : 'Release a secret from Seed Forge before deriving a path.'
+      );
+    }
+  }
+
+  function clearDerivationPathResult() {
+    [
+      derivationPathsResultPath,
+      derivationPathsResultDepth,
+      derivationPathsResultFingerprint,
+      derivationPathsResultXpub
+    ].forEach(function (element) {
+      if (element) {
+        element.textContent = 'Not derived';
+      }
+    });
+  }
+
+  function runDerivationPath() {
+    if (!derivationReady() || !derivationPathsCustom) {
+      return;
+    }
+    var chain = selectedDerivationChain(derivationPathsChain);
+    if (!chain || chain.mode !== 'generic') {
+      setDerivationStatus(
+        derivationPathsStatus,
+        'error',
+        'Arbitrary paths are entered in generic mode only.'
+      );
+      return;
+    }
+    var focused = focusedReleasedSecret();
+    if (!focused) {
+      clearDerivationPathResult();
+      setDerivationStatus(
+        derivationPathsStatus,
+        'error',
+        'No released secret is focused. Release one from Seed Forge first.'
+      );
+      return;
+    }
+    var candidate = derivationPathsCustom.value.trim();
+    var parsed = null;
+    try {
+      parsed = derivation.parsePath(candidate);
+    } catch (error) {
+      clearDerivationPathResult();
+      setDerivationStatus(
+        derivationPathsStatus,
+        'error',
+        'That is not a canonical BIP-32 path. Use m, then / and a child number, with an apostrophe for a hardened step.'
+      );
+      return;
+    }
+    var projection = null;
+    try {
+      projection = derivation.deriveNodeProjection(focused.seedBytes, parsed.normalized, {
+        network: chain.network
+      });
+    } catch (error) {
+      clearDerivationPathResult();
+      setDerivationStatus(
+        derivationPathsStatus,
+        'error',
+        'That path is canonical but this build cannot derive it from the focused secret.'
+      );
+      return;
+    }
+    if (derivationPathsResultPath) {
+      derivationPathsResultPath.textContent = projection.path;
+    }
+    if (derivationPathsResultDepth) {
+      derivationPathsResultDepth.textContent = 'Depth ' + String(projection.depth)
+        + ' · child index ' + String(projection.index);
+    }
+    if (derivationPathsResultFingerprint) {
+      derivationPathsResultFingerprint.textContent = projection.fingerprint;
+    }
+    if (derivationPathsResultXpub) {
+      derivationPathsResultXpub.textContent = projection.xpub;
+    }
+    setDerivationStatus(
+      derivationPathsStatus,
+      'valid',
+      'Validated ' + projection.path + ' and derived its public node.'
+    );
+  }
+
+  function clearDerivationPathsState() {
+    if (derivationPathsCustom) {
+      derivationPathsCustom.value = '';
+    }
+    clearDerivationPathResult();
+    setDerivationStatus(
+      derivationPathsStatus,
+      'idle',
+      'Select Generic (any BIP-32 path) to enter a path.'
+    );
+  }
+
+  function renderDerivedAddressList(list, entries) {
+    if (!list) {
+      return;
+    }
+    list.textContent = '';
+    entries.forEach(function (entry) {
+      var item = document.createElement('li');
+      item.setAttribute('data-derived-path', entry.path);
+      var path = document.createElement('span');
+      path.className = 'cold-derivation-address-path';
+      path.textContent = entry.path;
+      var address = document.createElement('span');
+      address.className = 'cold-derivation-address-value';
+      address.textContent = entry.address;
+      var encoding = document.createElement('small');
+      encoding.textContent = entry.encoding;
+      item.appendChild(path);
+      item.appendChild(address);
+      item.appendChild(encoding);
+      list.appendChild(item);
+    });
+  }
+
+  function bitcoinAddressEncoding(scriptType) {
+    if (scriptType === 'p2wpkh') {
+      return 'Bech32';
+    }
+    if (scriptType === 'p2tr') {
+      return 'Bech32m';
+    }
+    return 'Base58Check';
+  }
+
+  function deriveAddressChain(chain, scriptType, account, change, start, count, seedBytes) {
+    if (chain.mode === 'evm') {
+      var evm = derivation.deriveEvmFromSeed(seedBytes, {
+        account: account,
+        change: change,
+        start: start,
+        count: count
+      });
+      return {
+        accountPath: derivation.evmAccountPath(account),
+        fingerprint: evm.fingerprint,
+        xpub: evm.xpub,
+        entries: evm.addresses.map(function (address, offset) {
+          return {
+            path: evm.paths[offset],
+            address: address,
+            encoding: 'Keccak-256 / ERC-55'
+          };
+        })
+      };
+    }
+    var bitcoin = derivation.deriveBitcoinFromSeed(seedBytes, {
+      network: chain.network,
+      scriptType: scriptType,
+      account: account,
+      change: change,
+      start: start,
+      count: count
+    });
+    return {
+      accountPath: bitcoin.accountPath,
+      fingerprint: bitcoin.fingerprint,
+      xpub: bitcoin.xpub,
+      entries: bitcoin.addresses.map(function (address, offset) {
+        return {
+          path: bitcoin.accountPath + '/' + String(change) + '/' + String(start + offset),
+          address: address,
+          encoding: bitcoinAddressEncoding(scriptType)
+        };
+      })
+    };
+  }
+
+  function runAddressDerivation() {
+    if (!derivationReady() || !addressDerivationPanel) {
+      return;
+    }
+    var chain = selectedDerivationChain(addressDerivationChain);
+    if (!chain || !chain.addresses) {
+      setDerivationStatus(
+        addressDerivationStatus,
+        'error',
+        'That chain has no address encoding in this build.'
+      );
+      return;
+    }
+    var focused = focusedReleasedSecret();
+    if (!focused) {
+      clearAddressDerivationOutput();
+      setDerivationStatus(
+        addressDerivationStatus,
+        'error',
+        'No released secret is focused. Release one from Seed Forge first.'
+      );
+      return;
+    }
+    var scriptType = addressDerivationScript ? addressDerivationScript.value : 'p2wpkh';
+    var account = numberFieldValue(addressDerivationAccount, 0);
+    var start = numberFieldValue(addressDerivationStart, 0);
+    var count = numberFieldValue(addressDerivationCount, 5);
+    var receive = null;
+    var change = null;
+    try {
+      receive = deriveAddressChain(chain, scriptType, account, 0, start, count, focused.seedBytes);
+      change = deriveAddressChain(chain, scriptType, account, 1, start, count, focused.seedBytes);
+    } catch (error) {
+      clearAddressDerivationOutput();
+      setDerivationStatus(
+        addressDerivationStatus,
+        'error',
+        'This build refused that range. Account and index must be 0 or greater, and a range is capped at '
+          + String(derivation.constants.maxBatch) + ' addresses.'
+      );
+      return;
+    }
+    if (addressDerivationFingerprint) {
+      addressDerivationFingerprint.textContent = receive.fingerprint || focused.fingerprint;
+    }
+    if (addressDerivationAccountPath) {
+      addressDerivationAccountPath.textContent = receive.accountPath;
+    }
+    if (addressDerivationXpub) {
+      addressDerivationXpub.textContent = receive.xpub;
+    }
+    renderDerivedAddressList(addressDerivationReceiveList, receive.entries);
+    renderDerivedAddressList(addressDerivationChangeList, change.entries);
+    setDerivationStatus(
+      addressDerivationStatus,
+      'valid',
+      'Derived ' + String(receive.entries.length) + ' receive and '
+        + String(change.entries.length) + ' change addresses from '
+        + receive.accountPath + ' for master fingerprint ' + focused.fingerprint + '.'
+    );
+  }
+
+  function clearAddressDerivationOutput() {
+    [
+      addressDerivationFingerprint,
+      addressDerivationAccountPath,
+      addressDerivationXpub
+    ].forEach(function (element) {
+      if (element) {
+        element.textContent = 'Not derived';
+      }
+    });
+    if (addressDerivationReceiveList) {
+      addressDerivationReceiveList.textContent = '';
+    }
+    if (addressDerivationChangeList) {
+      addressDerivationChangeList.textContent = '';
+    }
+  }
+
+  function clearAddressDerivationState() {
+    clearAddressDerivationOutput();
+    setDerivationStatus(addressDerivationStatus, 'idle', 'No addresses derived.');
+  }
+
+  function updateDerivationControls() {
+    var ready = derivationReady();
+    var focused = Boolean(focusedReleasedSecret());
+    if (derivationPathsPanel) {
+      derivationPathsPanel.setAttribute('data-state', ready ? 'ready' : 'locked');
+      derivationPathsPanel.setAttribute('data-focused-secret', focused ? 'ready' : 'empty');
+    }
+    if (addressDerivationPanel) {
+      addressDerivationPanel.setAttribute('data-state', ready ? 'ready' : 'locked');
+      addressDerivationPanel.setAttribute('data-focused-secret', focused ? 'ready' : 'empty');
+    }
+    if (derivationPathsChain) {
+      derivationPathsChain.disabled = !ready;
+    }
+    if (addressDerivationChain) {
+      addressDerivationChain.disabled = !ready;
+    }
+    var addressChain = selectedDerivationChain(addressDerivationChain);
+    [
+      addressDerivationAccount,
+      addressDerivationStart,
+      addressDerivationCount
+    ].forEach(function (control) {
+      if (control) {
+        control.disabled = !ready;
+      }
+    });
+    if (addressDerivationScript) {
+      addressDerivationScript.disabled = !ready
+        || !addressChain || addressChain.mode !== 'bitcoin';
+    }
+    if (addressDerivationRun) {
+      addressDerivationRun.disabled = !ready || !focused;
+    }
+    renderDerivationPathFacts();
+  }
+
   function clearReleasedSecretLensState(preserveVerificationInputs) {
     var relinkVerification = Boolean(preserveVerificationInputs && linkedVerificationWallet);
     clearSeedXorSession();
@@ -693,6 +1231,8 @@ __COLDBOX_QR_ENCODER__
     clearCodex32State();
     clearVerificationSession(Boolean(preserveVerificationInputs));
     clearBackupVerificationState();
+    clearDerivationPathsState();
+    clearAddressDerivationState();
     return relinkVerification;
   }
 
@@ -705,6 +1245,7 @@ __COLDBOX_QR_ENCODER__
     updateQrControls();
     updateCodex32Controls();
     updateSlip39Controls();
+    updateDerivationControls();
   }
 
   function focusReleasedSecret(id) {
@@ -733,6 +1274,7 @@ __COLDBOX_QR_ENCODER__
     updateQrControls();
     updateCodex32Controls();
     updateSlip39Controls();
+    updateDerivationControls();
   }
 
   function fingerprintText(output) {
@@ -6444,6 +6986,7 @@ __COLDBOX_QR_ENCODER__
     updateVerificationControls();
     updateQrControls();
     updateCodex32Controls();
+    updateDerivationControls();
     window.parent.postMessage({ type: 'cold.ready' }, '*');
   }
 
@@ -6794,6 +7337,12 @@ __COLDBOX_QR_ENCODER__
           vaultStatus.focus();
         }
       }
+    } else {
+      // Destinations with no control of their own to land on - the P1.4a
+      // Derive panels - take focus themselves, so a keyboard user who
+      // activates a rail or More-sheet entry ends up inside the panel rather
+      // than back at the top of a document that merely scrolled.
+      target.focus();
     }
     var moreSheet = link.closest('.cold-mobile-more');
     if (moreSheet) {
@@ -6812,6 +7361,38 @@ __COLDBOX_QR_ENCODER__
       mobileMoreSheet.open = false;
     }
   });
+  fillChainSelect(derivationPathsChain, selectableDerivationChains(DERIVATION_CHAINS));
+  fillChainSelect(
+    addressDerivationChain,
+    selectableDerivationChains(DERIVATION_CHAINS).filter(function (chain) {
+      return chain.addresses === true;
+    })
+  );
+  if (derivationPathsChain) {
+    derivationPathsChain.addEventListener('change', function () {
+      clearDerivationPathsState();
+      updateDerivationControls();
+    });
+  }
+  if (derivationPathsScript) {
+    derivationPathsScript.addEventListener('change', renderDerivationPathFacts);
+  }
+  if (derivationPathsAccount) {
+    derivationPathsAccount.addEventListener('input', renderDerivationPathFacts);
+  }
+  if (derivationPathsValidate) {
+    derivationPathsValidate.addEventListener('click', runDerivationPath);
+  }
+  if (addressDerivationChain) {
+    addressDerivationChain.addEventListener('change', function () {
+      clearAddressDerivationState();
+      updateDerivationControls();
+    });
+  }
+  if (addressDerivationRun) {
+    addressDerivationRun.addEventListener('click', runAddressDerivation);
+  }
+  updateDerivationControls();
   window.addEventListener('message', handleGlobalMessage);
   document.documentElement.setAttribute('data-cold-state', 'checking');
   document.documentElement.setAttribute('data-airgap-state', 'checking');
