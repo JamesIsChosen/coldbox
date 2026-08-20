@@ -3972,11 +3972,11 @@ async function verifyReleasedSecretSwitcher(browser, engine) {
       assert.equal(await coldFrame.locator(removedId).count(), 0, `${engine}: duplicate loader ${removedId} must be removed`);
     }
     assert.equal(await coldFrame.locator('#cold-qr-seed-source').count(), 0);
-    assert.equal(await coldFrame.locator('[data-cold-group]').count(), 6, `${engine}: sealed realm must expose six tool groups`);
+    assert.equal(await coldFrame.locator('[data-cold-group]').count(), 7, `${engine}: sealed realm must expose every tool group, including P1.4a's Derive`);
     assert.equal(await coldFrame.locator('#cold-tool-hub-link').count(), 0);
-    assert.equal(await coldFrame.locator('.cold-tool-hub-link').count(), 6, `${engine}: hub must link to every sealed tool group`);
+    assert.equal(await coldFrame.locator('.cold-tool-hub-link').count(), 7, `${engine}: hub must link to every sealed tool group`);
     const focusedIndicators = coldFrame.locator('[data-secret-focus-indicator][data-state="focused"]');
-    assert.equal(await focusedIndicators.count(), 6, `${engine}: every destructive, splitting, or exporting panel must show focus`);
+    assert.equal(await focusedIndicators.count(), 8, `${engine}: every destructive, splitting, or exporting panel must show focus`);
     const primaryFingerprint = (await coldFrame.locator('#cold-secret-focus-summary').textContent()).match(/[0-9a-f]{8}/i)[0];
     assert.ok((await focusedIndicators.allTextContents()).every((text) => text.includes(primaryFingerprint)));
     await coldFrame.locator('#cold-verification-wallet-use').click();
@@ -4521,6 +4521,238 @@ async function verifyVerificationWorkflows(browser, engine) {
   }
 }
 
+// P1.4a - the two sealed-realm derivation surfaces.
+//
+// The interesting failure this covers is not "does the engine derive"
+// (test/derivation.test.js already proves that against published vectors) but
+// "is the engine actually wired to a surface a person can reach and read".
+// So this scenario navigates to each destination the way a user would, drives
+// the real controls, and compares the rendered strings with the published
+// BIP-84 vectors - which only match if the focused released secret, the chain
+// selection, the account path composition and the rendering are all correct.
+const BIP84_VECTOR_RECEIVE = Object.freeze([
+  'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu',
+  'bc1qnjg0jd8228aq7egyzacy8cys3knf9xvrerkf9g'
+]);
+const BIP84_VECTOR_CHANGE_ZERO = 'bc1q8c6fshw2dlwun7ekn9qwf37cu2rn755upcp6el';
+const BIP84_VECTOR_ACCOUNT_XPUB =
+  'zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs';
+
+// The published BIP-84 vectors are stated for the all-zero-entropy phrase with
+// no BIP-39 passphrase, so this release deliberately leaves the passphrase
+// pair empty rather than reusing releaseFocusedSeed()'s TREZOR fixture.
+async function releaseVectorSeed(coldFrame, label) {
+  await coldFrame.locator('#cold-seed-forge-mnemonic-input').fill(UI4_OFFICIAL_MNEMONIC);
+  await coldFrame.locator('#cold-seed-forge-validate').click();
+  await coldFrame.locator('#cold-seed-forge-validation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 5000 });
+  await coldFrame.locator('#cold-seed-forge-validation-release-label').fill(label);
+  await coldFrame.locator('#cold-seed-forge-validation-release').click();
+  await coldFrame.locator('#cold-secret-list [data-secret-id]').filter({ hasText: label }).waitFor({ state: 'visible', timeout: 5000 });
+}
+
+async function verifyDerivationSurfaces(browser, engine) {
+  const { harness, page } = await openPage(browser, buildPath, 'reachable', {
+    initScript: COLD_TO_WARM_CAPTURE_SCRIPT
+  });
+  try {
+    await page.locator('#cold-realm-status[data-cold-state="ready"]').waitFor({ state: 'visible', timeout: 10000 });
+    const coldFrame = await getColdFrame(page, engine);
+
+    // Both destinations are present and neither is an unavailable stub.
+    await harness.atViewport(1440, 900);
+    for (const id of ['#cold-derivation-paths', '#cold-address-derivation']) {
+      await coldFrame.locator(`${id}[data-state="ready"]`).waitFor({ state: 'attached', timeout: 10000 });
+    }
+    assert.equal(
+      await coldFrame.locator('.cold-nav-link[href="#cold-derivation-paths"]').count(),
+      1,
+      `${engine}: the rail must reach Derivation paths`
+    );
+    assert.equal(
+      await coldFrame.locator('.cold-nav-link[href="#cold-address-derivation"]').count(),
+      1,
+      `${engine}: the rail must reach Address derivation`
+    );
+    assert.equal(
+      await coldFrame.locator('[data-roadmap-id="P1.4a"]').count(),
+      0,
+      `${engine}: no sealed navigation entry may still mark P1.4a unavailable`
+    );
+    // The Tool map legitimately lists every roadmap item, P1.4a included; what
+    // must not survive is an *unavailable navigation control* pointing at it.
+    assert.equal(
+      await page.locator('[data-roadmap-id="P1.4a"]:not(.tool-map-entry)').count(),
+      0,
+      `${engine}: the All flows index must not still mark P1.4a unavailable`
+    );
+    assert.equal(
+      await page.locator('.tool-map-entry[data-roadmap-id="P1.4a"]').count(),
+      1,
+      `${engine}: the Tool map must still list P1.4a with its roadmap status`
+    );
+
+    // With no released secret, both surfaces refuse rather than deriving.
+    assert.equal(await coldFrame.locator('#cold-address-derivation-run').isDisabled(), true);
+    assert.equal(await coldFrame.locator('#cold-derivation-paths-validate').isDisabled(), true);
+    assert.equal(
+      await coldFrame.locator('#cold-address-derivation[data-focused-secret="empty"]').count(),
+      1
+    );
+
+    // Chain facts are readable before any secret exists, and they come from
+    // the engine rather than a hand-copied table.
+    await coldFrame.locator('#cold-derivation-paths-chain').selectOption('bitcoin-mainnet');
+    await coldFrame.locator('#cold-derivation-paths-script').selectOption('p2wpkh');
+    assert.equal(await coldFrame.locator('#cold-derivation-paths-coin-type').textContent(), '0');
+    assert.equal(await coldFrame.locator('#cold-derivation-paths-account-path').textContent(), "m/84'/0'/0'");
+    assert.match(await coldFrame.locator('#cold-derivation-paths-encoding').textContent(), /Bech32/);
+    await coldFrame.locator('#cold-derivation-paths-script').selectOption('p2tr');
+    assert.equal(await coldFrame.locator('#cold-derivation-paths-account-path').textContent(), "m/86'/0'/0'");
+    await coldFrame.locator('#cold-derivation-paths-chain').selectOption('bitcoin-testnet');
+    await coldFrame.locator('#cold-derivation-paths-script').selectOption('p2sh-p2wpkh');
+    assert.equal(await coldFrame.locator('#cold-derivation-paths-coin-type').textContent(), '1');
+    assert.equal(await coldFrame.locator('#cold-derivation-paths-account-path').textContent(), "m/49'/1'/0'");
+    await coldFrame.locator('#cold-derivation-paths-chain').selectOption('evm');
+    assert.equal(await coldFrame.locator('#cold-derivation-paths-coin-type').textContent(), '60');
+    assert.equal(await coldFrame.locator('#cold-derivation-paths-account-path').textContent(), "m/44'/60'/0'");
+
+    // Only vector-backed chains are offered at all.
+    const offeredChains = await coldFrame.locator('#cold-derivation-paths-chain option').evaluateAll(
+      (options) => options.map((option) => option.value)
+    );
+    assert.deepEqual(offeredChains, ['bitcoin-mainnet', 'bitcoin-testnet', 'evm', 'generic']);
+    const addressChains = await coldFrame.locator('#cold-address-derivation-chain option').evaluateAll(
+      (options) => options.map((option) => option.value)
+    );
+    assert.deepEqual(addressChains, ['bitcoin-mainnet', 'bitcoin-testnet', 'evm']);
+
+    const capturedBeforeDerivation = await page.evaluate(() => (
+      window.__coldboxCapturedColdToWarm ? window.__coldboxCapturedColdToWarm.length : 0
+    ));
+    await releaseVectorSeed(coldFrame, 'Derivation surfaces fixture');
+    const focusedFingerprint = (await coldFrame.locator('#cold-secret-focus-summary').textContent()).match(/[0-9a-f]{8}/i)[0];
+
+    // Address derivation: the published BIP-84 vectors, receive and change.
+    await coldFrame.locator('#cold-address-derivation-chain').selectOption('bitcoin-mainnet');
+    await coldFrame.locator('#cold-address-derivation-script').selectOption('p2wpkh');
+    await coldFrame.locator('#cold-address-derivation-account').fill('0');
+    await coldFrame.locator('#cold-address-derivation-start').fill('0');
+    await coldFrame.locator('#cold-address-derivation-count').fill('2');
+    await coldFrame.locator('#cold-address-derivation-run').click();
+    await coldFrame.locator('#cold-address-derivation-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 15000 });
+
+    const receiveItems = coldFrame.locator('#cold-address-derivation-receive li');
+    assert.equal(await receiveItems.count(), 2, `${engine}: the requested receive range must render`);
+    for (let index = 0; index < BIP84_VECTOR_RECEIVE.length; index += 1) {
+      const text = await receiveItems.nth(index).textContent();
+      assert.ok(
+        text.includes(BIP84_VECTOR_RECEIVE[index]),
+        `${engine}: receive ${index} must be the published BIP-84 address`
+      );
+      assert.ok(
+        text.includes(`m/84'/0'/0'/0/${index}`),
+        `${engine}: receive ${index} must be shown with its full path`
+      );
+      assert.ok(text.includes('Bech32'), `${engine}: receive ${index} must state its encoding`);
+    }
+    const firstChange = await coldFrame.locator('#cold-address-derivation-change li').first().textContent();
+    assert.ok(firstChange.includes(BIP84_VECTOR_CHANGE_ZERO), `${engine}: change 0 must be the published BIP-84 address`);
+    assert.ok(firstChange.includes("m/84'/0'/0'/1/0"), `${engine}: change 0 must be shown with its full path`);
+    assert.equal(
+      await coldFrame.locator('#cold-address-derivation-xpub').textContent(),
+      BIP84_VECTOR_ACCOUNT_XPUB,
+      `${engine}: the account extended public key must be the published one`
+    );
+    assert.equal(await coldFrame.locator('#cold-address-derivation-account-path').textContent(), "m/84'/0'/0'");
+    assert.equal(await coldFrame.locator('#cold-address-derivation-fingerprint').textContent(), focusedFingerprint);
+
+    // Derivation paths: an invalid path is refused before anything derives,
+    // and a canonical one returns public node metadata only.
+    await coldFrame.locator('#cold-derivation-paths-chain').selectOption('generic');
+    await coldFrame.locator('#cold-derivation-paths-custom').fill("m/44'/0'/zero");
+    await coldFrame.locator('#cold-derivation-paths-validate').click();
+    await coldFrame.locator('#cold-derivation-paths-status[data-state="error"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-derivation-paths-result-xpub').textContent(), 'Not derived');
+    await coldFrame.locator('#cold-derivation-paths-custom').fill("m/84'/0'/0'");
+    await coldFrame.locator('#cold-derivation-paths-validate').click();
+    await coldFrame.locator('#cold-derivation-paths-status[data-state="valid"]').waitFor({ state: 'visible', timeout: 15000 });
+    assert.equal(await coldFrame.locator('#cold-derivation-paths-result-path').textContent(), "m/84'/0'/0'");
+    assert.match(await coldFrame.locator('#cold-derivation-paths-result-depth').textContent(), /Depth 3/);
+    assert.match(await coldFrame.locator('#cold-derivation-paths-result-fingerprint').textContent(), /^[0-9a-f]{8}$/);
+
+    // Nothing private is rendered anywhere in the Derive workspace, and
+    // nothing derived crossed the realm boundary.
+    const deriveText = await coldFrame.locator('#cold-group-derive').innerText();
+    for (const token of ['xprv', 'zprv', 'yprv', 'tprv', 'vprv', 'uprv']) {
+      assert.equal(deriveText.toLowerCase().includes(token), false, `${engine}: ${token} was rendered`);
+    }
+    assert.equal(/\babandon\b/i.test(deriveText), false, `${engine}: the focused phrase was rendered`);
+    const crossed = await page.evaluate((start) => {
+      const messages = (window.__coldboxCapturedColdToWarm || []).slice(start);
+      return JSON.stringify(messages);
+    }, capturedBeforeDerivation);
+    for (const derived of BIP84_VECTOR_RECEIVE.concat([BIP84_VECTOR_CHANGE_ZERO, BIP84_VECTOR_ACCOUNT_XPUB])) {
+      assert.equal(crossed.includes(derived), false, `${engine}: ${derived} crossed the realm boundary`);
+    }
+
+    // Keyboard access and focus return: activating the rail entry from the
+    // keyboard moves focus into the destination itself, and the destination's
+    // controls are then reachable from there.
+    await coldFrame.locator('.cold-nav-link[href="#cold-address-derivation"]').focus();
+    await page.keyboard.press('Enter');
+    assert.equal(
+      await coldFrame.evaluate(() => document.activeElement && document.activeElement.id),
+      'cold-address-derivation',
+      `${engine}: the rail must move keyboard focus into Address derivation`
+    );
+    await page.keyboard.press('Tab');
+    assert.equal(
+      await coldFrame.evaluate(() => document.activeElement && document.activeElement.id),
+      'cold-address-derivation-chain',
+      `${engine}: the first Address derivation control must follow the destination in tab order`
+    );
+
+    // Clearing the registry clears both surfaces rather than leaving values
+    // derived from a secret that is no longer loaded.
+    await coldFrame.locator('#cold-secret-registry-clear').click();
+    await coldFrame.locator('#cold-secret-switcher[data-state="empty"]').waitFor({ state: 'attached', timeout: 5000 });
+    assert.equal(await coldFrame.locator('#cold-address-derivation-receive li').count(), 0);
+    assert.equal(await coldFrame.locator('#cold-address-derivation-change li').count(), 0);
+    assert.equal(await coldFrame.locator('#cold-address-derivation-xpub').textContent(), 'Not derived');
+    assert.equal(await coldFrame.locator('#cold-derivation-paths-result-xpub').textContent(), 'Not derived');
+    assert.equal(await coldFrame.locator('#cold-address-derivation-run').isDisabled(), true);
+
+    // Mobile: both destinations stay reachable through the More sheet and
+    // every control still meets the 44px touch floor.
+    await harness.atViewport(360, 640);
+    // The sealed frame is taller than a phone viewport, so the sheet is opened
+    // through the element rather than a synthesised pointer that Playwright
+    // would refuse as off-screen.
+    await coldFrame.locator('.cold-mobile-more summary').evaluate((summary) => summary.click());
+    for (const href of ['#cold-derivation-paths', '#cold-address-derivation']) {
+      const link = coldFrame.locator(`.cold-mobile-more-links a[href="${href}"]`);
+      await link.waitFor({ state: 'visible', timeout: 5000 });
+      const height = await link.evaluate((element) => element.getBoundingClientRect().height);
+      assert.ok(height >= 44, `${engine}: More sheet target ${href} is ${height}px tall, below the 44px floor`);
+    }
+    const controlHeights = await coldFrame.locator(
+      '#cold-group-derive input, #cold-group-derive select, #cold-group-derive button'
+    ).evaluateAll((controls) => controls.map((control) => control.getBoundingClientRect().height));
+    assert.ok(controlHeights.length > 0, `${engine}: the Derive workspace exposes no controls on mobile`);
+    for (const height of controlHeights) {
+      assert.ok(height >= 44, `${engine}: a Derive control is ${height}px tall, below the 44px floor`);
+    }
+
+    // The two canary violations are the product working as designed and are
+    // owned by the P0.8 scenario; everything else must be silent.
+    await harness.expectNoConsoleErrors({
+      allowedFragments: [CANARY_ERROR_FRAGMENT, COLD_CANARY_ERROR_FRAGMENT]
+    });
+  } finally {
+    await closePage(page);
+  }
+}
+
 async function verifyQrStudio(browser, engine) {
   const { page } = await openPage(browser, buildPath);
   try {
@@ -4902,6 +5134,7 @@ async function run() {
       await verifySlip39(browser, engine);
       await verifyBackupRecordVerification(browser, engine);
       await verifyVerificationWorkflows(browser, engine);
+      await verifyDerivationSurfaces(browser, engine);
       await verifyQrStudio(browser, engine);
       await verifyUnlockedRuntimeHealthLockdown(browser, engine);
       await verifyProviderNeutering(browser, engine);
