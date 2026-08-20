@@ -98,17 +98,34 @@ $ npm test
 481 passing, **zero skipped**; `ui.10b-workstation-shell` is 468 and the 13 new
 tests are all in `test/ui.11-parity-harness.test.js`.
 
-Reproducible build — four runs, three timezones, three locales, two Node majors,
-two paths, one hash:
+Reproducible build. **At the code commit `c64bb5d`:**
 
 ```
-TZ=UTC                 LC_ALL=C        node 22   994f6b0761b2d7001e8ec8e70f2f4ce9d507f92992a60810269c48de342f2ad8
-TZ=Pacific/Kiritimati  LC_ALL=C.utf8   node 22   994f6b07…  (from "/var/tmp/cbx-ui11/deep path/repo")
-TZ=Asia/Kolkata        LC_ALL=POSIX    node 20   994f6b07…
+$ rm -rf build && npm run build && sha256sum build/coldbox.html
+27f832ffcfe7e51f4f1321342cc0726b61dfbc07fb10ed5fa885bc60dee94389
+
+$ rm -rf build && TZ=Pacific/Kiritimati LC_ALL=C.utf8 node scripts/build.js
+27f832ffcfe7e51f4f1321342cc0726b61dfbc07fb10ed5fa885bc60dee94389   (match)
 ```
 
-Adding `test:parity` to `package.json` — which *is* a product build input — left
-the artifact hash unchanged; measured before and after.
+Determinism was additionally established on the pre-commit tree across four runs
+— three timezones (`UTC`, `Pacific/Kiritimati`, `Asia/Kolkata`), three locales
+(`C`, `C.utf8`, `POSIX`), two Node majors (20 and 22) and two paths, one of them
+`"/var/tmp/cbx-ui11/deep path/repo"` — all producing a single hash
+(`994f6b07…`, the hash of that tree). Adding `test:parity` to `package.json` —
+which *is* a product build input — left that hash unchanged; measured before and
+after.
+
+**Why two hashes, and how to keep this row honest.** `scripts/build.js` derives
+`PROVENANCE_BUILD_DATE` from `git log -1 -- src scripts vendor`, so *any* commit
+touching `scripts/` moves the date and therefore the artifact hash. A packet that
+records a hash and is then committed alongside the code it measured is stale the
+moment it lands — which is exactly what happened to UI.10a's packet (§3/§3.1 there
+record `a7d9c0ea…`, which reproduces at `af34a1d`, not at its own head). The fix
+is mechanical: land the code, measure the artifact, then record the hash in a
+**docs-only** commit. Because the date is path-scoped to `src scripts vendor`, a
+docs-only commit does not move it, so the recorded hash stays true at the branch
+tip. That is how the `27f832ff…` above was recorded, and it is verified below.
 
 ### 3.1 The reference half, over all 92 states
 
@@ -400,9 +417,12 @@ both sides encode identically), plus the negative test the contract requires.**
 | After | 2,742,786 |
 | **Delta** | **0** |
 
-`src/` is byte-identical and the artifact hash is unchanged
-(`994f6b07…`), including after the `package.json` script addition — measured, not
-assumed.
+`src/` is byte-identical to `d02e48c`, so there is no bundle impact. The artifact
+hash moves from `d02e48c`'s to `27f832ff…` for one reason only —
+`PROVENANCE_BUILD_DATE` follows the last commit touching `src scripts vendor`, and
+this branch touches `scripts/`. The bundle **content** delta is 0 bytes: byte
+length is identical, and adding `test:parity` to `package.json` (a build input)
+left the hash unchanged when measured in isolation.
 
 ---
 
