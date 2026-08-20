@@ -39,7 +39,7 @@ Everything about Coldbox lives here. Guides and the glossary compile into the ap
 
 ## Guides
 
-[Index](03-guides/README.md) — first wallet · verifying hardware wallets · verifying an address · SLIP-39 · codex32 · recovery · multisig · inheritance · airgap · portfolio
+[Index](03-guides/README.md) — first wallet · verifying hardware wallets · verifying an address · deriving paths and addresses · SLIP-39 · codex32 · recovery · multisig · inheritance · airgap · portfolio
 
 ## Reference
 
