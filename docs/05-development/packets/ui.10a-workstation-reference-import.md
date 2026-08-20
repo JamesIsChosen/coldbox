@@ -98,7 +98,7 @@ $ npm test -- --test-reporter=tap
 # fail 0
 # skipped 0
 # todo 0
-`
+```
 
 458 passing, **zero skipped** at source-remediation commit
 `5a863766c7501c2609ccff52a1902f16725cfac2`. The original UI.10a suite remains in place and the dedicated
@@ -121,6 +121,7 @@ bytes=2742963
 The two consecutive builds are byte-identical. The full Node suite also retains
 the existing locale/timezone determinism regression, so this evidence does not
 claim that the runner manually changed `TZ` or `LC_ALL` when it did not.
+
 ### 3.1 The build hash and byte length change, and here is exactly why
 
 Production `src/` remains byte-identical to `origin/main`, but the generated
@@ -143,6 +144,7 @@ Two author-side metadata inputs explain the artifact change:
 The approved `*.html.reference` files themselves remain quarantined outside
 the transitive product build-input graph. The size change is roadmap/provenance
 metadata, not imported prototype bytes or a `src/` implementation change.
+
 ### 3.2 The imported references render fully offline
 
 The parity contract requires the references to render in a network-blocked
@@ -216,7 +218,7 @@ Verbatim from the roadmap item, split at its semicolons.
 | after maintainer approval, the new desktop/mobile artifacts are imported as **new immutable reference files** with new hashes/byte sizes/viewports/screen inventory/navigation metadata | Two new `*.html.reference` files, `.gitattributes` already binds `*.html.reference binary`, and the manifest records all of it. | `'the workstation references are imported as new immutable byte-exact evidence'` |
 | the old approved files remain byte-identical audit evidence | Both UI.4a artifacts are untouched; `verifyReferenceBytes()` checks **every** set, not just the current one, so drift in a retired artifact fails too. | `'the superseded toolkit set is retained and can never become current'`, plus the whole unchanged UI.4a suite |
 | the manifest/harness unambiguously selects the new set as current | Exactly one set may be `current`, `manifest.current` must name it, a superseded set must name a real successor, and no two sets may share an artifact. One module answers the question. | `'an ambiguous or retired current selection fails closed'` — eight negative fixtures |
-| reference-integrity/docs tests pass | 452/452, 0 skipped; `check-docs` 0 warnings. | §3 |
+| reference-integrity/docs tests pass | 458/458, 0 skipped; `check-docs` 0 warnings. | §3 |
 
 **Nothing in this table is marked met that isn't**, with judgement-only rows identified explicitly. The canonical scanner criterion is independently verified, and F1's missing automation is remediated in CI.
 
