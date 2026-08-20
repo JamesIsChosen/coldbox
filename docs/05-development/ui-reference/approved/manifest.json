@@ -1,173 +1,775 @@
 {
-  "schema": "coldbox.approved-ui-reference.v1",
-  "approval": {
-    "authority": "maintainer",
-    "date": "2026-08-15",
-    "contract": "../../../01-spec/ui-parity.md"
-  },
-  "references": {
-    "desktop": {
-      "file": "coldbox-desktop-mockup.html.reference",
-      "bytes": 526996,
-      "sha256": "fb7ff0643bda8f12a0a7e64daea91f51d74276cfc9bfb66c80baaf874bb2ded9",
-      "renderViewport": {
-        "width": 1440,
-        "height": 940
+  "schema": "coldbox.approved-ui-reference.v2",
+  "contract": "../../../01-spec/ui-parity.md",
+  "current": "workstation-2026-08-19",
+  "sets": [
+    {
+      "id": "toolkit-2026-08-15",
+      "status": "superseded",
+      "supersededBy": "workstation-2026-08-19",
+      "productIdentity": "Offline crypto toolkit and hardware-wallet companion",
+      "approval": {
+        "authority": "maintainer",
+        "date": "2026-08-15"
       },
-      "comparisonRegion": {
-        "kind": "full-viewport",
-        "width": 1440,
-        "height": 940
+      "references": {
+        "desktop": {
+          "file": "coldbox-desktop-mockup.html.reference",
+          "bytes": 526996,
+          "sha256": "fb7ff0643bda8f12a0a7e64daea91f51d74276cfc9bfb66c80baaf874bb2ded9",
+          "renderViewport": {
+            "width": 1440,
+            "height": 940
+          },
+          "comparisonRegion": {
+            "kind": "full-viewport",
+            "width": 1440,
+            "height": 940
+          },
+          "screens": [
+            "dashboard",
+            "portfolio",
+            "qrpublic",
+            "addrbench",
+            "registry",
+            "devices",
+            "vault",
+            "unlock",
+            "learn",
+            "empty",
+            "entropy",
+            "forge",
+            "secret",
+            "paths",
+            "addresses",
+            "children",
+            "shares",
+            "qr",
+            "lock",
+            "map",
+            "prices",
+            "taxes",
+            "reference",
+            "settings",
+            "verifyfile",
+            "provenance",
+            "passphrase",
+            "conceal",
+            "notes",
+            "descriptors",
+            "backuphealth",
+            "recovery",
+            "verifybench",
+            "hub"
+          ]
+        },
+        "mobile": {
+          "file": "coldbox-mobile-mockup.html.reference",
+          "bytes": 322927,
+          "sha256": "af0c1fe08e689f755869a6eb4cc06dcaf0f4d44b7dfe6426d6a322b464c7d7f8",
+          "renderViewport": {
+            "width": 880,
+            "height": 1000
+          },
+          "comparisonRegion": {
+            "kind": "product-frame",
+            "width": 390,
+            "height": 844
+          },
+          "screens": [
+            "hub",
+            "secret",
+            "forge",
+            "paths",
+            "addresses",
+            "shares",
+            "entropy",
+            "settings",
+            "dashboard",
+            "portfolio",
+            "registry",
+            "unlock",
+            "empty",
+            "lock",
+            "passphrase",
+            "notes",
+            "descriptors",
+            "recovery",
+            "verifybench",
+            "qrpublic",
+            "addrbench",
+            "prices",
+            "taxes",
+            "reference",
+            "provenance",
+            "map",
+            "children",
+            "qr",
+            "conceal",
+            "validate",
+            "backuphealth",
+            "verifyfile",
+            "devices",
+            "learn",
+            "vault"
+          ]
+        }
       },
-      "screens": [
-        "dashboard",
-        "portfolio",
-        "qrpublic",
-        "addrbench",
-        "registry",
-        "devices",
-        "vault",
-        "unlock",
-        "learn",
-        "empty",
-        "entropy",
-        "forge",
-        "secret",
-        "paths",
-        "addresses",
-        "children",
-        "shares",
-        "qr",
-        "lock",
-        "map",
-        "prices",
-        "taxes",
-        "reference",
-        "settings",
-        "verifyfile",
-        "provenance",
-        "passphrase",
-        "conceal",
-        "notes",
-        "descriptors",
-        "backuphealth",
-        "recovery",
-        "verifybench",
-        "hub"
-      ]
-    },
-    "mobile": {
-      "file": "coldbox-mobile-mockup.html.reference",
-      "bytes": 322927,
-      "sha256": "af0c1fe08e689f755869a6eb4cc06dcaf0f4d44b7dfe6426d6a322b464c7d7f8",
-      "renderViewport": {
-        "width": 880,
-        "height": 1000
-      },
-      "comparisonRegion": {
-        "kind": "product-frame",
-        "width": 390,
-        "height": 844
-      },
-      "screens": [
-        "hub",
-        "secret",
-        "forge",
-        "paths",
-        "addresses",
-        "shares",
-        "entropy",
-        "settings",
-        "dashboard",
-        "portfolio",
-        "registry",
-        "unlock",
-        "empty",
-        "lock",
-        "passphrase",
-        "notes",
-        "descriptors",
-        "recovery",
-        "verifybench",
-        "qrpublic",
-        "addrbench",
-        "prices",
-        "taxes",
-        "reference",
-        "provenance",
-        "map",
-        "children",
-        "qr",
-        "conceal",
-        "validate",
-        "backuphealth",
-        "verifyfile",
-        "devices",
-        "learn",
-        "vault"
-      ]
-    }
-  },
-  "navigation": {
-    "groups": [
-      {
-        "realm": "cold",
-        "label": "Forge"
-      },
-      {
-        "realm": "cold",
-        "label": "Derive"
-      },
-      {
-        "realm": "cold",
-        "label": "Split"
-      },
-      {
-        "realm": "cold",
-        "label": "Carry"
-      },
-      {
-        "realm": "cold",
-        "label": "Recover"
-      },
-      {
-        "realm": "cold",
-        "label": "Verify"
-      },
-      {
-        "realm": "warm",
-        "label": "Records"
-      },
-      {
-        "realm": "warm",
-        "label": "Money"
-      },
-      {
-        "realm": "warm",
-        "label": "Vault files"
-      },
-      {
-        "realm": "warm",
-        "label": "Reference"
+      "navigation": {
+        "groups": [
+          {
+            "realm": "cold",
+            "label": "Forge"
+          },
+          {
+            "realm": "cold",
+            "label": "Derive"
+          },
+          {
+            "realm": "cold",
+            "label": "Split"
+          },
+          {
+            "realm": "cold",
+            "label": "Carry"
+          },
+          {
+            "realm": "cold",
+            "label": "Recover"
+          },
+          {
+            "realm": "cold",
+            "label": "Verify"
+          },
+          {
+            "realm": "warm",
+            "label": "Records"
+          },
+          {
+            "realm": "warm",
+            "label": "Money"
+          },
+          {
+            "realm": "warm",
+            "label": "Vault files"
+          },
+          {
+            "realm": "warm",
+            "label": "Reference"
+          }
+        ],
+        "mobileBottomBar": {
+          "cold": [
+            "Forge",
+            "Derive",
+            "Split",
+            "Secret",
+            "Hub"
+          ],
+          "warm": [
+            "Home",
+            "Money",
+            "Records",
+            "Vault",
+            "Set"
+          ]
+        }
       }
-    ],
-    "mobileBottomBar": {
-      "cold": [
-        "Forge",
-        "Derive",
-        "Split",
-        "Secret",
-        "Hub"
+    },
+    {
+      "id": "workstation-2026-08-19",
+      "status": "current",
+      "productIdentity": "Self-Custody Security Workstation",
+      "approval": {
+        "authority": "maintainer",
+        "date": "2026-08-19",
+        "adr": "../../adr/0059-self-custody-workstation-product-identity.md",
+        "changeControl": "../../../01-spec/ui-parity.md#61-product-identity-redesign-before-ui11-resumes"
+      },
+      "references": {
+        "desktop": {
+          "file": "coldbox-workstation-desktop-mockup.html.reference",
+          "bytes": 397090,
+          "sha256": "e657a14d86428f5558bf5655b12d05d3e9b732ac403c5344f73e60dd1d85066c",
+          "renderViewport": {
+            "width": 1440,
+            "height": 940
+          },
+          "comparisonRegion": {
+            "kind": "full-viewport",
+            "width": 1440,
+            "height": 940
+          },
+          "screens": [
+            "home",
+            "wallets",
+            "walletDetail",
+            "seeds",
+            "seedDetail",
+            "seedqr",
+            "backup",
+            "portfolio",
+            "security",
+            "reference",
+            "advanced",
+            "vault",
+            "create",
+            "lock",
+            "flow:entropy",
+            "flow:transfer",
+            "flow:settings",
+            "flow:forge",
+            "flow:passphrase",
+            "flow:notes",
+            "flow:paths",
+            "flow:addresses",
+            "flow:children",
+            "flow:descriptors",
+            "flow:shares",
+            "flow:combine",
+            "flow:qrstudio",
+            "flow:recovery",
+            "flow:verifybench",
+            "flow:registry",
+            "flow:devices",
+            "flow:prices",
+            "flow:taxes",
+            "flow:backuphealth",
+            "flow:verifyfile",
+            "flow:provenance",
+            "flow:learn",
+            "flow:toolmap",
+            "flow:empty",
+            "flow:unlock",
+            "flow:send",
+            "flow:signing",
+            "flow:broadcast",
+            "flow:psbt",
+            "flow:coincontrol",
+            "flow:source"
+          ]
+        },
+        "mobile": {
+          "file": "coldbox-workstation-mobile-mockup.html.reference",
+          "bytes": 353595,
+          "sha256": "f4deca09c69151985e9e960282999bed0bb8c4828b2718cc573a02d2d811e2aa",
+          "renderViewport": {
+            "width": 880,
+            "height": 1000
+          },
+          "comparisonRegion": {
+            "kind": "product-frame",
+            "width": 390,
+            "height": 844
+          },
+          "screens": [
+            "home",
+            "wallets",
+            "walletDetail",
+            "seeds",
+            "seedDetail",
+            "seedqr",
+            "backup",
+            "portfolio",
+            "security",
+            "reference",
+            "advanced",
+            "vault",
+            "create",
+            "lock",
+            "flow:entropy",
+            "flow:transfer",
+            "flow:settings",
+            "flow:forge",
+            "flow:passphrase",
+            "flow:notes",
+            "flow:paths",
+            "flow:addresses",
+            "flow:children",
+            "flow:descriptors",
+            "flow:shares",
+            "flow:combine",
+            "flow:qrstudio",
+            "flow:recovery",
+            "flow:verifybench",
+            "flow:registry",
+            "flow:devices",
+            "flow:prices",
+            "flow:taxes",
+            "flow:backuphealth",
+            "flow:verifyfile",
+            "flow:provenance",
+            "flow:learn",
+            "flow:toolmap",
+            "flow:empty",
+            "flow:unlock",
+            "flow:send",
+            "flow:signing",
+            "flow:broadcast",
+            "flow:psbt",
+            "flow:coincontrol",
+            "flow:source"
+          ]
+        }
+      },
+      "navigation": {
+        "groups": [
+          {
+            "realm": "warm",
+            "label": "Workspace"
+          },
+          {
+            "realm": "warm",
+            "label": "Records"
+          },
+          {
+            "realm": "warm",
+            "label": "Trust & reference"
+          },
+          {
+            "realm": "warm",
+            "label": "Vault & settings"
+          },
+          {
+            "realm": "warm",
+            "label": "Sealed work"
+          },
+          {
+            "realm": "cold",
+            "label": "Seeds & lineage"
+          },
+          {
+            "realm": "cold",
+            "label": "Forge"
+          },
+          {
+            "realm": "cold",
+            "label": "Derive"
+          },
+          {
+            "realm": "cold",
+            "label": "Split & carry"
+          },
+          {
+            "realm": "cold",
+            "label": "Recover & verify"
+          },
+          {
+            "realm": "cold",
+            "label": "Session"
+          }
+        ],
+        "mobileBottomBar": [
+          "Home",
+          "Wallets",
+          "Seeds",
+          "Backup",
+          "More"
+        ],
+        "mobileMore": {
+          "warm": [
+            "Portfolio & records",
+            "Security & verify",
+            "Records & registry",
+            "Backup Health",
+            "Reference & help",
+            "Vault files",
+            "Device transfer (QR)",
+            "Settings",
+            "Every flow",
+            "Lock / panic"
+          ],
+          "cold": [
+            "Entropy Lab",
+            "Seed Forge",
+            "Passphrase Studio",
+            "Secret notes",
+            "Derivation paths",
+            "Address derivation",
+            "Child seeds · BIP-85",
+            "Descriptors",
+            "Split lab",
+            "Verify / combine",
+            "SeedQR studio",
+            "Recovery assistant",
+            "Verify Bench",
+            "Level 3 signing",
+            "Lock / wipe",
+            "Return to warm shell"
+          ]
+        }
+      },
+      "shellScreens": [
+        {
+          "id": "home",
+          "prototypeRoadmapTags": []
+        },
+        {
+          "id": "wallets",
+          "prototypeRoadmapTags": [
+            "P1.6"
+          ]
+        },
+        {
+          "id": "walletDetail",
+          "prototypeRoadmapTags": []
+        },
+        {
+          "id": "seeds",
+          "prototypeRoadmapTags": [
+            "SEED",
+            "SEED.1"
+          ]
+        },
+        {
+          "id": "seedDetail",
+          "prototypeRoadmapTags": [
+            "SEED.2"
+          ]
+        },
+        {
+          "id": "seedqr",
+          "prototypeRoadmapTags": [
+            "SEED.4"
+          ]
+        },
+        {
+          "id": "backup",
+          "prototypeRoadmapTags": [
+            "P2.7"
+          ]
+        },
+        {
+          "id": "portfolio",
+          "prototypeRoadmapTags": [
+            "P3.4"
+          ]
+        },
+        {
+          "id": "security",
+          "prototypeRoadmapTags": [
+            "P1.8"
+          ]
+        },
+        {
+          "id": "reference",
+          "prototypeRoadmapTags": [
+            "P0.17"
+          ]
+        },
+        {
+          "id": "advanced",
+          "prototypeRoadmapTags": [
+            "all"
+          ]
+        },
+        {
+          "id": "vault",
+          "prototypeRoadmapTags": [
+            "P0.13"
+          ]
+        },
+        {
+          "id": "create",
+          "prototypeRoadmapTags": []
+        },
+        {
+          "id": "lock",
+          "prototypeRoadmapTags": []
+        }
       ],
-      "warm": [
-        "Home",
-        "Money",
-        "Records",
-        "Vault",
-        "Set"
+      "flows": [
+        {
+          "id": "entropy",
+          "realm": "cold",
+          "family": "Forge",
+          "prototypeRoadmapTag": "P1.1",
+          "title": "Entropy Lab",
+          "steps": 6,
+          "availability": "available"
+        },
+        {
+          "id": "transfer",
+          "realm": "warm",
+          "family": "Vault",
+          "prototypeRoadmapTag": "P0.13",
+          "title": "Device-to-device vault transfer",
+          "steps": 4,
+          "availability": "available"
+        },
+        {
+          "id": "settings",
+          "realm": "warm",
+          "family": "Vault",
+          "prototypeRoadmapTag": null,
+          "title": "Settings",
+          "steps": 5,
+          "availability": "available"
+        },
+        {
+          "id": "forge",
+          "realm": "cold",
+          "family": "Forge",
+          "prototypeRoadmapTag": "P1.3",
+          "title": "Seed Forge",
+          "steps": 5,
+          "availability": "available"
+        },
+        {
+          "id": "passphrase",
+          "realm": "cold",
+          "family": "Forge",
+          "prototypeRoadmapTag": "P4.5",
+          "title": "Passphrase Studio",
+          "steps": 3,
+          "availability": "available"
+        },
+        {
+          "id": "notes",
+          "realm": "cold",
+          "family": "Forge",
+          "prototypeRoadmapTag": "P1.7",
+          "title": "Secret notes & concealment",
+          "steps": 3,
+          "availability": "available"
+        },
+        {
+          "id": "paths",
+          "realm": "cold",
+          "family": "Derive",
+          "prototypeRoadmapTag": "P1.4",
+          "title": "Derivation paths",
+          "steps": 3,
+          "availability": "available"
+        },
+        {
+          "id": "addresses",
+          "realm": "cold",
+          "family": "Derive",
+          "prototypeRoadmapTag": "P1.4",
+          "title": "Address derivation",
+          "steps": 3,
+          "availability": "available"
+        },
+        {
+          "id": "children",
+          "realm": "cold",
+          "family": "Derive",
+          "prototypeRoadmapTag": "P4.6",
+          "title": "Child seeds · BIP-85",
+          "steps": 4,
+          "availability": "available"
+        },
+        {
+          "id": "descriptors",
+          "realm": "cold",
+          "family": "Derive",
+          "prototypeRoadmapTag": "P4.9",
+          "title": "Descriptors",
+          "steps": 3,
+          "availability": "available"
+        },
+        {
+          "id": "shares",
+          "realm": "cold",
+          "family": "Split & carry",
+          "prototypeRoadmapTag": "P2.1",
+          "title": "Split lab",
+          "steps": 4,
+          "availability": "available"
+        },
+        {
+          "id": "combine",
+          "realm": "cold",
+          "family": "Split & carry",
+          "prototypeRoadmapTag": "P2.6",
+          "title": "Verify / combine shares",
+          "steps": 3,
+          "availability": "available"
+        },
+        {
+          "id": "qrstudio",
+          "realm": "cold",
+          "family": "Split & carry",
+          "prototypeRoadmapTag": "P1.10",
+          "title": "SeedQR studio",
+          "steps": 3,
+          "availability": "available"
+        },
+        {
+          "id": "recovery",
+          "realm": "cold",
+          "family": "Recover & verify",
+          "prototypeRoadmapTag": "P4.3",
+          "title": "Recovery assistant",
+          "steps": 4,
+          "availability": "available"
+        },
+        {
+          "id": "verifybench",
+          "realm": "cold",
+          "family": "Recover & verify",
+          "prototypeRoadmapTag": "P4.4",
+          "title": "Verify Bench",
+          "steps": 3,
+          "availability": "available"
+        },
+        {
+          "id": "registry",
+          "realm": "warm",
+          "family": "Records",
+          "prototypeRoadmapTag": "P1.6",
+          "title": "Records & registry",
+          "steps": 3,
+          "availability": "available"
+        },
+        {
+          "id": "devices",
+          "realm": "warm",
+          "family": "Records",
+          "prototypeRoadmapTag": "P1.8",
+          "title": "Device registry",
+          "steps": 3,
+          "availability": "available"
+        },
+        {
+          "id": "prices",
+          "realm": "warm",
+          "family": "Records",
+          "prototypeRoadmapTag": "P3.1",
+          "title": "Prices & FX",
+          "steps": 3,
+          "availability": "available"
+        },
+        {
+          "id": "taxes",
+          "realm": "warm",
+          "family": "Records",
+          "prototypeRoadmapTag": "P3.9",
+          "title": "Tax & exports",
+          "steps": 3,
+          "availability": "available"
+        },
+        {
+          "id": "backuphealth",
+          "realm": "warm",
+          "family": "Records",
+          "prototypeRoadmapTag": "P2.7",
+          "title": "Backup Health",
+          "steps": 3,
+          "availability": "available"
+        },
+        {
+          "id": "verifyfile",
+          "realm": "warm",
+          "family": "Trust",
+          "prototypeRoadmapTag": "P0.16",
+          "title": "Verify this file",
+          "steps": 3,
+          "availability": "available"
+        },
+        {
+          "id": "provenance",
+          "realm": "warm",
+          "family": "Trust",
+          "prototypeRoadmapTag": "P0.16",
+          "title": "Provenance & legal",
+          "steps": 3,
+          "availability": "available"
+        },
+        {
+          "id": "learn",
+          "realm": "warm",
+          "family": "Reference",
+          "prototypeRoadmapTag": "P0.17",
+          "title": "Learn",
+          "steps": 3,
+          "availability": "available"
+        },
+        {
+          "id": "toolmap",
+          "realm": "warm",
+          "family": "Reference",
+          "prototypeRoadmapTag": "all",
+          "title": "Tool map",
+          "steps": 3,
+          "availability": "available"
+        },
+        {
+          "id": "empty",
+          "realm": "warm",
+          "family": "Reference",
+          "prototypeRoadmapTag": null,
+          "title": "First run",
+          "steps": 3,
+          "availability": "available"
+        },
+        {
+          "id": "unlock",
+          "realm": "warm",
+          "family": "Vault",
+          "prototypeRoadmapTag": "P0.13",
+          "title": "Vault session",
+          "steps": 4,
+          "availability": "available"
+        },
+        {
+          "id": "send",
+          "realm": "warm",
+          "family": "Wallet (future)",
+          "prototypeRoadmapTag": "WAL.5",
+          "title": "Send & review",
+          "steps": 3,
+          "availability": "roadmap-owned"
+        },
+        {
+          "id": "signing",
+          "realm": "cold",
+          "family": "Wallet (future)",
+          "prototypeRoadmapTag": "WAL.6",
+          "title": "Level 3 signing",
+          "steps": 3,
+          "availability": "roadmap-owned"
+        },
+        {
+          "id": "broadcast",
+          "realm": "warm",
+          "family": "Wallet (future)",
+          "prototypeRoadmapTag": "WAL.7",
+          "title": "Broadcast, RBF & CPFP",
+          "steps": 3,
+          "availability": "roadmap-owned"
+        },
+        {
+          "id": "psbt",
+          "realm": "warm",
+          "family": "Wallet (future)",
+          "prototypeRoadmapTag": "WAL.10",
+          "title": "PSBT inspector",
+          "steps": 3,
+          "availability": "roadmap-owned"
+        },
+        {
+          "id": "coincontrol",
+          "realm": "warm",
+          "family": "Wallet (future)",
+          "prototypeRoadmapTag": "WAL.4",
+          "title": "Coin control",
+          "steps": 3,
+          "availability": "roadmap-owned"
+        },
+        {
+          "id": "source",
+          "realm": "warm",
+          "family": "Trust",
+          "prototypeRoadmapTag": "WAL.2",
+          "title": "Source & transport",
+          "steps": 3,
+          "availability": "roadmap-owned"
+        }
       ]
     }
-  },
+  ],
   "allowedDeviationIds": [
     "PAR-001",
     "PAR-002",

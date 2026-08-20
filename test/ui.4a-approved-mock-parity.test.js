@@ -25,6 +25,16 @@ const referenceRoot = path.join(
 const manifestPath = path.join(referenceRoot, 'manifest.json');
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 
+// UI.10a moved the approved package from one reference set to two: the toolkit
+// set frozen here at UI.4a, and the maintainer-approved self-custody-workstation
+// set that replaced it (ADR-0059). This file is the frozen regression contract
+// for the *superseded* set, so it reaches for that set by id rather than
+// following whichever set is current. Every byte, hash, screen and navigation
+// value it asserts is unchanged from UI.4a; only the path to them moved.
+const SUPERSEDED_SET_ID = 'toolkit-2026-08-15';
+const supersededSet = manifest.sets.find((entry) => entry.id === SUPERSEDED_SET_ID);
+assert.ok(supersededSet, `The UI.4a reference set ${SUPERSEDED_SET_ID} is absent from the manifest`);
+
 const EXPECTED_REFERENCES = Object.freeze({
   desktop: Object.freeze({
     file: 'coldbox-desktop-mockup.html.reference',
@@ -131,21 +141,26 @@ function constantBlock(template, constantName) {
 }
 
 test('approved desktop and mobile references are immutable byte-exact evidence', () => {
-  assert.equal(manifest.schema, 'coldbox.approved-ui-reference.v1');
-  assert.deepEqual(manifest.approval, {
+  assert.equal(manifest.schema, 'coldbox.approved-ui-reference.v2');
+  assert.equal(supersededSet.status, 'superseded', 'The UI.4a reference set is no longer marked superseded');
+  assert.notEqual(
+    manifest.current,
+    SUPERSEDED_SET_ID,
+    'The superseded UI.4a reference set became current again'
+  );
+  assert.deepEqual(supersededSet.approval, {
     authority: 'maintainer',
-    date: '2026-08-15',
-    contract: '../../../01-spec/ui-parity.md'
+    date: '2026-08-15'
   });
   assert.equal(
-    path.resolve(referenceRoot, manifest.approval.contract),
+    path.resolve(referenceRoot, manifest.contract),
     path.join(projectRoot, 'docs', '01-spec', 'ui-parity.md'),
     'Manifest contract path no longer resolves to the canonical parity document'
   );
-  assert.deepEqual(Object.keys(manifest.references).sort(), ['desktop', 'mobile']);
+  assert.deepEqual(Object.keys(supersededSet.references).sort(), ['desktop', 'mobile']);
 
   for (const [id, expected] of Object.entries(EXPECTED_REFERENCES)) {
-    const declared = manifest.references[id];
+    const declared = supersededSet.references[id];
     const bytes = fs.readFileSync(path.join(referenceRoot, declared.file));
     assertReferenceEvidence(id, declared, expected, bytes);
   }
@@ -157,11 +172,20 @@ test('approved desktop and mobile references are immutable byte-exact evidence',
       return entry.name;
     })
     .sort();
+  const declaredReferenceFiles = manifest.sets
+    .flatMap((entry) => Object.values(entry.references).map((reference) => reference.file))
+    .sort();
   assert.deepEqual(
     actualReferenceFiles,
-    Object.values(EXPECTED_REFERENCES).map((entry) => entry.file).sort(),
+    declaredReferenceFiles,
     'Approved reference directory contains an undeclared or missing snapshot'
   );
+  for (const file of Object.values(EXPECTED_REFERENCES).map((entry) => entry.file)) {
+    assert.ok(
+      actualReferenceFiles.includes(file),
+      `The superseded UI.4a artifact ${file} was removed from the approved package`
+    );
+  }
 
   const attributes = fs.readFileSync(path.join(projectRoot, '.gitattributes'), 'utf8');
   assert.match(attributes, /^\*\.html\.reference binary$/m,
@@ -170,7 +194,7 @@ test('approved desktop and mobile references are immutable byte-exact evidence',
 
 test('reference integrity guard rejects byte and manifest mutation fixtures', () => {
   const expected = EXPECTED_REFERENCES.desktop;
-  const declared = manifest.references.desktop;
+  const declared = supersededSet.references.desktop;
   const bytes = fs.readFileSync(path.join(referenceRoot, declared.file));
   const mutatedBytes = Buffer.from(bytes);
   mutatedBytes[Math.floor(mutatedBytes.length / 2)] ^= 0x01;
@@ -190,12 +214,12 @@ test('manifest screen inventories and navigation match the inert approved payloa
   const mobile = readInertTemplate(EXPECTED_REFERENCES.mobile.file);
 
   for (const id of ['desktop', 'mobile']) {
-    assertUniqueStrings(manifest.references[id].screens, `${id} screens`);
+    assertUniqueStrings(supersededSet.references[id].screens, `${id} screens`);
   }
-  assert.deepEqual(objectKeysFromTemplate(desktop, 'SCREENS'), manifest.references.desktop.screens);
-  assert.deepEqual(objectKeysFromTemplate(mobile, 'SCREENS'), manifest.references.mobile.screens);
+  assert.deepEqual(objectKeysFromTemplate(desktop, 'SCREENS'), supersededSet.references.desktop.screens);
+  assert.deepEqual(objectKeysFromTemplate(mobile, 'SCREENS'), supersededSet.references.mobile.screens);
 
-  assert.deepEqual(manifest.navigation.groups, EXPECTED_GROUPS);
+  assert.deepEqual(supersededSet.navigation.groups, EXPECTED_GROUPS);
   const desktopItems = desktop.slice(
     desktop.indexOf('const ITEMS = ['),
     desktop.indexOf('\n];', desktop.indexOf('const ITEMS = [')) + 3
@@ -208,7 +232,7 @@ test('manifest screen inventories and navigation match the inert approved payloa
     );
   }
 
-  assert.deepEqual(manifest.navigation.mobileBottomBar, EXPECTED_MOBILE_TABS);
+  assert.deepEqual(supersededSet.navigation.mobileBottomBar, EXPECTED_MOBILE_TABS);
   const mobileTabs = constantBlock(mobile, 'TABS');
   for (const [realm, labels] of Object.entries(EXPECTED_MOBILE_TABS)) {
     assert.match(mobileTabs, new RegExp(`  ${realm}: \\[`), `Mobile ${realm} tab row is absent`);

@@ -1,30 +1,5 @@
 name: CI
 
-# P0.18 - CI. Implements the pipeline described in docs/05-development/build.md
-# and docs/05-development/doc-hygiene.md's "Automated checks" table. See
-# docs/05-development/adr/0017-ci-workflow-structure.md for the structural
-# decisions behind this file's job layout (why two OSes, why browser tests
-# are a separate opt-in job, how attestation is gated).
-#
-# Every job pins the exact Node version from .nvmrc (never "latest") because
-# a different toolchain can legitimately produce different build output -
-# see build.md's determinism requirements.
-#
-# Third-party Actions (checkout/setup-node/upload-artifact/download-artifact/
-# attest-build-provenance) are pinned to the newest major each supports as of
-# this commit (checkout v7, setup-node v7, upload-artifact v7,
-# download-artifact v8, attest-build-provenance v4 - all Node 24-runtime,
-# confirmed via each action's GitHub Releases API at the time this was
-# written). Action releases move; a reviewer or future maintainer should
-# re-check these are still current rather than assuming this comment stays
-# accurate forever.
-#
-# setup-node was bumped v6 -> v7 during P0.18 R2 remediation (see the packet's
-# "Remediation of R2 review FAIL" section): v7 migrated the action to ESM and
-# removed a NODE_AUTH_TOKEN fallback that only mattered for actions that pass
-# that input. This workflow only ever passes node-version-file to
-# actions/setup-node, so that removal does not affect it.
-
 on:
   push:
     branches: [main]
@@ -33,8 +8,6 @@ on:
   release:
     types: [published]
 
-# Cancel superseded runs on the same ref so PRs pushed twice in a row don't
-# queue two full cross-OS build matrices.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -43,14 +16,6 @@ permissions:
   contents: read
 
 jobs:
-  # ---------------------------------------------------------------------
-  # Build, verify, lint, and test on two operating systems. Each leg is
-  # fully independent (its own npm ci, its own two builds) so that a
-  # nondeterminism bug tied to filesystem case-sensitivity, path separators,
-  # or locale defaults surfaces here rather than only in a human's hands
-  # later. The compare-hashes job below then checks the two OSes agree with
-  # each other, on top of each OS agreeing with itself.
-  # ---------------------------------------------------------------------
   build:
     name: build (${{ matrix.os }})
     strategy:
@@ -59,27 +24,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout
-        # Explicit checkout semantics, not actions/checkout@v4's defaults.
-        # Two things the defaults get wrong for this repository's
-        # reproducibility contract (see review finding F1 on P0.18):
-        #
-        # 1. On `pull_request` events, actions/checkout@v4 by default
-        #    checks out GitHub's synthetic merge commit (the PR head
-        #    merged into the base branch), not the actual PR head SHA.
-        #    build.js embeds a build date derived from git history, so
-        #    building the synthetic merge commit produces different bytes
-        #    than building the real commit a reviewer would check out
-        #    locally. `ref` pins to the real head SHA on pull_request
-        #    events (falling through to the default ref - the pushed
-        #    branch/tag/release commit - on every other event, since
-        #    github.event.pull_request is only populated for PRs).
-        # 2. The default `fetch-depth: 1` (shallow clone) means
-        #    `git log -1 -- src scripts vendor` in build.js may not
-        #    resolve to the same commit a full-history local clone would
-        #    find, if the most recent commit touching those paths isn't
-        #    the tip itself. `fetch-depth: 0` fetches full history,
-        #    matching what a plain `git clone` gives a local builder.
+      - name: Checkout exact commit
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -102,29 +47,15 @@ jobs:
         run: npm ci
 
       - name: Verify vendored dependencies against upstream
-        # The one step that touches the network - re-downloads every
-        # vendored release from the real npm registry and compares hashes.
-        # This is the check the review protocol calls out by name: "download
-        # vendored dependencies from upstream to compare bytes."
         run: npm run verify-vendor
 
       - name: Forbidden-construct lint
         run: npm run lint
 
       - name: Documentation hygiene checks
-        # Internal link resolution, review dates (missing = FAIL, stale =
-        # WARN), help-content depth blocks, doc index consistency, roadmap
-        # ID references, and dependencies.md vs vendor-manifest.json - all
-        # implemented in scripts/check-docs.js. WARN-severity findings
-        # (stale review dates, TODO/TBD in user-facing docs) print but do
-        # not fail this step, matching the P0.18 acceptance criterion "an
-        # out-of-date review date warns."
         run: npm run check-docs
 
       - name: Unit and vector tests
-        # A skipped test is not a passed test. Read-only reviewers rely on this
-        # run as their execution witness (ADR-0048), so a suite that self-skips
-        # on a missing dependency would report green while checking nothing.
         shell: pwsh
         run: |
           $log = Join-Path $env:RUNNER_TEMP 'test.log'
@@ -153,10 +84,6 @@ jobs:
         run: cp build/coldbox.html.sha256 first-pass.sha256
 
       - name: Build (second pass, same checkout)
-        # P0.18 acceptance: "a nondeterministic change fails CI." Two builds
-        # from the identical checked-out source, in the identical job, must
-        # produce byte-identical output. build.js overwrites build/ in
-        # place, so no directory removal is needed between passes.
         run: npm run build
 
       - name: Compare double-build hashes
@@ -196,12 +123,10 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  # ---------------------------------------------------------------------
-  # Exact-reference secret scan. This is deliberately a separate job so a
-  # read-only reviewer can witness the approved UI snapshots being scanned at
-  # the exact PR head without trusting an author-side packet. Only temporary
-  # copies are scanned; the immutable reference directory is never modified.
-  # ---------------------------------------------------------------------
+  # UI.4a/UI.10a approved references are untrusted prototype evidence. The
+  # manifest is the only authoritative inventory. This job derives every file
+  # from every set, requires the on-disk *.html.reference set to match exactly,
+  # copies only those files to a temporary root, and scans the copies.
   approved-ui-reference-secret-scan:
     name: Approved UI reference secret scan
     runs-on: ubuntu-latest
@@ -212,27 +137,61 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
-      - name: Scan temporary copies of both approved references
+      - name: Scan every manifest-declared approved reference
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           . ./scripts/runner/secret-scan.ps1
 
           $referenceRoot = Join-Path (Get-Location) 'docs/05-development/ui-reference/approved'
-          $auditRoot = Join-Path $env:RUNNER_TEMP ('coldbox-ui4a-reference-scan-' + [guid]::NewGuid().ToString('N'))
-          $expected = @(
-            'coldbox-desktop-mockup.html.reference',
-            'coldbox-mobile-mockup.html.reference'
+          $manifestPath = Join-Path $referenceRoot 'manifest.json'
+          $auditRoot = Join-Path $env:RUNNER_TEMP ('coldbox-approved-reference-scan-' + [guid]::NewGuid().ToString('N'))
+
+          if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+            throw 'Approved reference manifest is missing'
+          }
+
+          $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json -Depth 100
+          $declared = @(
+            foreach ($set in @($manifest.sets)) {
+              if (-not $set.references) {
+                throw "Reference set '$($set.id)' has no references object"
+              }
+              foreach ($property in $set.references.PSObject.Properties) {
+                $name = [string]$property.Value.file
+                if ($name -notmatch '^[a-z0-9-]+\.html\.reference$') {
+                  throw "Unsafe or missing approved reference filename in manifest: '$name'"
+                }
+                $name
+              }
+            }
           )
+
+          if ($declared.Count -eq 0) {
+            throw 'Approved reference manifest declares no reference files'
+          }
+          $declaredUnique = @($declared | Sort-Object -Unique)
+          if ($declaredUnique.Count -ne $declared.Count) {
+            throw 'Approved reference manifest declares a reference file more than once'
+          }
+
+          $actual = @(
+            Get-ChildItem -LiteralPath $referenceRoot -File -Filter '*.html.reference' |
+              Select-Object -ExpandProperty Name |
+              Sort-Object
+          )
+          $declaredSorted = @($declared | Sort-Object)
+          $directoryDelta = @(Compare-Object -ReferenceObject $declaredSorted -DifferenceObject $actual)
+          if ($directoryDelta.Count -ne 0) {
+            $directoryDelta | Format-Table | Out-Host
+            throw 'Approved reference directory is not exactly the manifest-declared file set; refusing an incomplete scan'
+          }
 
           New-Item -ItemType Directory -Path $auditRoot -Force | Out-Null
           try {
-            foreach ($name in $expected) {
+            foreach ($name in $declaredSorted) {
               $source = Join-Path $referenceRoot $name
               $destination = Join-Path $auditRoot $name
-              if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
-                throw "Missing approved reference: $name"
-              }
               Copy-Item -LiteralPath $source -Destination $destination
               $sourceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $source).Hash
               $copyHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $destination).Hash
@@ -242,10 +201,14 @@ jobs:
               Write-Host "$name SHA256 $copyHash"
             }
 
-            $actual = @(Get-ChildItem -LiteralPath $auditRoot -File | Select-Object -ExpandProperty Name | Sort-Object)
-            $expectedSorted = @($expected | Sort-Object)
-            if ((Compare-Object -ReferenceObject $expectedSorted -DifferenceObject $actual)) {
-              throw 'Temporary scan root does not contain exactly the two approved references'
+            $auditFiles = @(
+              Get-ChildItem -LiteralPath $auditRoot -File |
+                Select-Object -ExpandProperty Name |
+                Sort-Object
+            )
+            $auditDelta = @(Compare-Object -ReferenceObject $declaredSorted -DifferenceObject $auditFiles)
+            if ($auditDelta.Count -ne 0) {
+              throw 'Temporary scan root does not contain exactly the manifest-declared references'
             }
 
             $scan = Invoke-ColdboxSecretScan -Root $auditRoot -RepoPath (Get-Location).Path
@@ -261,20 +224,13 @@ jobs:
             if ($report -notmatch '(?m)^SKIPPED-BINARY - 0 files\.$') {
               throw 'Secret scan report did not prove that zero candidate files were skipped'
             }
-            Write-Host 'Approved UI reference secret scan passed: findings=0, skipped=0.'
+            Write-Host "Approved UI reference secret scan passed: scanned=$($declaredSorted.Count), findings=0, skipped=0."
           } finally {
             if (Test-Path -LiteralPath $auditRoot) {
               Remove-Item -LiteralPath $auditRoot -Recurse -Force
             }
           }
 
-  # ---------------------------------------------------------------------
-  # Cross-OS reproducibility. Downloads both matrix legs' hash sidecars and
-  # confirms they're identical - the "second-OS build comparison" acceptance
-  # item. A mismatch here means something OS-specific (path separators,
-  # default text encoding, a tool version difference) leaked into the
-  # output, which double-build-on-one-OS alone cannot catch.
-  # ---------------------------------------------------------------------
   compare-hashes:
     name: Compare build hash across operating systems
     needs: build
@@ -306,27 +262,11 @@ jobs:
           fi
           echo "Build hash matches across ubuntu-latest and windows-latest: $ubuntu_digest"
 
-  # ---------------------------------------------------------------------
-  # Browser (Playwright) verification. GitHub-hosted runners have normal
-  # outbound network access, unlike the offline dev sandbox this project's
-  # own packets repeatedly note cannot download Playwright's browser
-  # binaries - so this job is expected to actually run here, not just be
-  # wired up and hoped for. Runs on every push and pull request, same as
-  # every other job in this file - not path-filtered, deliberately: a
-  # per-job path filter needs either GitHub's workflow-level `on.paths`
-  # (which would skip doc-only-looking changes for the *whole* workflow,
-  # including doc-hygiene checks that must always run) or a third-party
-  # diffing action, and this item does not add a new dependency to solve a
-  # cost problem that has not yet been observed. See ADR-0017's "What would
-  # change our mind" for the condition under which path-scoping this job
-  # becomes worth it, echoing ADR-0007's own note that CI cost was always
-  # expected to eventually need this.
-  # ---------------------------------------------------------------------
   browser-tests:
     name: Browser harness (Chromium + Firefox)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout exact commit
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -349,16 +289,6 @@ jobs:
       - name: Run browser harness
         run: npm run test:browser
 
-  # ---------------------------------------------------------------------
-  # Release attestation. Gated to only run on a published GitHub release or
-  # a v*-tagged push, per the roadmap item's own note that this needs repo
-  # secrets/permissions a human configures - it cannot be verified end to
-  # end from this authoring session. See the PR packet's "what to
-  # scrutinise" section: this step is implemented per GitHub's documented
-  # actions/attest-build-provenance contract, but its actual success has
-  # not been observed, because doing so requires a real tag/release push
-  # this session cannot make.
-  # ---------------------------------------------------------------------
   attestation:
     name: Release build attestation
     needs: build
@@ -369,14 +299,7 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - name: Checkout
-        # Same explicit checkout semantics as the build/browser-tests jobs
-        # (see the build job's Checkout step comment). This job only ever
-        # runs on `release`/tag-push events, so
-        # github.event.pull_request.head.sha is always empty here and this
-        # falls through to github.sha - kept identical to the other jobs
-        # for consistency and so a future trigger change doesn't silently
-        # regress this job back to shallow/synthetic checkout semantics.
+      - name: Checkout exact commit
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
