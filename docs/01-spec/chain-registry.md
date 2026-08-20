@@ -110,6 +110,39 @@ Injective uses `ethsecp256k1` — an Ethereum-style key scheme with Cosmos-style
 
 **A chain without test vectors will not be merged.** Silently producing a wrong address is worse than not supporting the chain — the user has no way to notice until funds are gone.
 
+### What "has test vectors" has to mean in code
+
+A gate that checks whether a chain *claims* vectors is not a gate. Prose is not
+evidence, and a check that accepts prose is worse than no check because it reads
+like protection. The requirement is therefore structural and executed, not
+documentary:
+
+1. **A vector is a record, not a sentence.** Each carries `source` (the
+   independent implementation it came from, precisely enough to re-fetch),
+   `seed` (a known test seed or mnemonic, never a real one), `path`, and
+   `expectedAddress`. A vector missing any field is invalid, not merely
+   incomplete.
+2. **At least three distinct paths per chain**, per the rule above. Three
+   records that share a path are one vector, not three.
+3. **The vectors are executed, not inspected.** The gate derives from `seed`
+   along `path` using the shipped engine and compares the result to
+   `expectedAddress`. A chain is selectable only if every one of its vectors
+   was executed and matched in this build.
+4. **Absence, malformation and mismatch all fail closed** — an unusable chain,
+   not a usable chain with a warning.
+5. **CI executes the same vectors** and fails the build on any absence,
+   malformation or mismatch, so the gate cannot pass at runtime while being
+   broken in the repository.
+
+The property under protection is address correctness. A chain the app cannot
+independently prove it derives correctly must not be offered, because the user
+discovers the error only after sending funds to an address nobody controls.
+
+Tests for this gate must include a negative case proving that metadata alone —
+a chain entry carrying a plausible label where its vectors should be — leaves
+the chain unselectable. A positive case that only asserts "selectable" without
+asserting the vectors ran is not evidence that they ran.
+
 ---
 
 ## Deliberately excluded

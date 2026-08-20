@@ -287,9 +287,14 @@ test('UI.4 registry audit rejects unmarked static and dynamic secret controls', 
   );
 });
 
-test('UI.4 creates six sealed groups and leaves the cold CSP network rule unchanged', () => {
+// P1.4a added the seventh group, `derive`, for the Derivation paths and
+// Address derivation surfaces. UI.4's actual invariant is that the sealed
+// groups are declared in one place, the hub links to exactly those groups in
+// order, and the cold CSP is untouched by any restructure - not that the
+// count stays at the six UI.4 itself created.
+test('the sealed groups are hub-linked in order and leave the cold CSP network rule unchanged', () => {
   const groups = Array.from(coldHtml.matchAll(/<section\b[^>]*data-cold-group="([^"]+)"/g), (match) => match[1]);
-  assert.deepEqual(groups, ['session', 'entropy', 'seed-forge', 'backups', 'qr', 'recovery']);
+  assert.deepEqual(groups, ['session', 'entropy', 'seed-forge', 'derive', 'backups', 'qr', 'recovery']);
   const policy = /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/i.exec(coldHtml);
   assert.ok(policy, 'cold CSP meta tag is missing');
   assert.equal(

@@ -726,13 +726,38 @@
     }
   }
 
+  // P1.4a: the Derivation paths surface must show a chain's SLIP-44 coin type
+  // and its default account path without re-implementing either fact. These
+  // three wrappers expose the existing internals rather than letting the UI
+  // carry a second copy of the purpose and coin-type tables, which would be
+  // free to drift away from the tables the derivation itself uses.
+  function bitcoinAccountPathFor(networkName, scriptType, account) {
+    return accountPath(
+      networkFor(networkName),
+      scriptTypeFor(scriptType),
+      integerOption(account, 'account', 0, MAX_INDEX, 0)
+    );
+  }
+
+  function evmAccountPathFor(account) {
+    return evmAccountPath(integerOption(account, 'account', 0, MAX_INDEX, 0));
+  }
+
+  function coinTypeFor(networkName) {
+    return networkFor(networkName).coinType;
+  }
+
   var api = Object.freeze({
     constants: Object.freeze({
       hardenedOffset: HARDENED_OFFSET,
       maxBatch: MAX_BATCH,
       scriptTypes: SCRIPT_TYPES,
-      networks: Object.freeze(['mainnet', 'testnet'])
+      networks: Object.freeze(['mainnet', 'testnet']),
+      evmCoinType: EVM_COIN_TYPE
     }),
+    bitcoinAccountPath: bitcoinAccountPathFor,
+    evmAccountPath: evmAccountPathFor,
+    coinType: coinTypeFor,
     parsePath: parseFullPath,
     deriveNode: deriveNode,
     deriveNodeProjection: deriveNodeProjection,

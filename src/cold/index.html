@@ -42,8 +42,8 @@ __COLDBOX_COLD_STYLES__
         </nav>
         <nav class="cold-nav-group" aria-label="Derive">
           <p class="cold-nav-group-title">Derive</p>
-          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P1.4a" data-phase="Phase 1"><span aria-hidden="true">∿</span><span>Derivation paths</span><small>P1.4a · Phase 1</small></button>
-          <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P1.4a" data-phase="Phase 1"><span aria-hidden="true">A</span><span>Address derivation</span><small>P1.4a · Phase 1</small></button>
+          <a class="cold-nav-link" href="#cold-derivation-paths" data-cold-more-target="cold-derivation-paths"><span aria-hidden="true">∿</span><span>Derivation paths</span><small>P1.4a</small></a>
+          <a class="cold-nav-link" href="#cold-address-derivation" data-cold-more-target="cold-address-derivation"><span aria-hidden="true">A</span><span>Address derivation</span><small>P1.4a</small></a>
           <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P4.6" data-phase="Phase 4"><span aria-hidden="true">C</span><span>Child seeds · BIP-85</span><small>P4.6 · Phase 4</small></button>
           <button class="cold-nav-link cold-nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P4.9" data-phase="Phase 4"><span aria-hidden="true">D</span><span>Descriptors</span><small>P4.9 · Phase 4</small></button>
         </nav>
@@ -84,8 +84,8 @@ __COLDBOX_COLD_STYLES__
         <span class="cold-mobile-more-link cold-mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P4.5" data-phase="Phase 4">Passphrase Studio · P4.5 · Phase 4</span>
         <a href="#cold-secret-notes" data-cold-more-target="cold-secret-notes">Secret notes</a>
         <a href="#cold-concealment-controls" data-cold-more-target="cold-concealment-controls">Reveal hidden</a>
-        <span class="cold-mobile-more-link cold-mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P1.4a" data-phase="Phase 1">Derivation paths · P1.4a · Phase 1</span>
-        <span class="cold-mobile-more-link cold-mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P1.4a" data-phase="Phase 1">Address derivation · P1.4a · Phase 1</span>
+        <a href="#cold-derivation-paths" data-cold-more-target="cold-derivation-paths">Derivation paths</a>
+        <a href="#cold-address-derivation" data-cold-more-target="cold-address-derivation">Address derivation</a>
         <span class="cold-mobile-more-link cold-mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P4.6" data-phase="Phase 4">Child seeds · BIP-85 · P4.6 · Phase 4</span>
         <span class="cold-mobile-more-link cold-mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P4.9" data-phase="Phase 4">Descriptors · P4.9 · Phase 4</span>
         <a href="#cold-group-backups">Split lab</a>
@@ -122,6 +122,7 @@ __COLDBOX_COLD_STYLES__
         <a class="cold-tool-hub-link" href="#cold-group-session">Vault &amp; session</a>
         <a class="cold-tool-hub-link" href="#cold-group-entropy">Entropy Lab</a>
         <a class="cold-tool-hub-link" href="#cold-group-seed-forge">Seed Forge</a>
+        <a class="cold-tool-hub-link" href="#cold-group-derive">Derive</a>
         <a class="cold-tool-hub-link" href="#cold-group-backups">Backup Lab</a>
         <a class="cold-tool-hub-link" href="#cold-group-qr">SeedQR Studio</a>
         <a class="cold-tool-hub-link" href="#cold-group-recovery">Recovery &amp; verification</a>
@@ -129,7 +130,7 @@ __COLDBOX_COLD_STYLES__
     </section>
     <section id="cold-group-session" class="cold-tool-group" data-cold-group="session" aria-labelledby="cold-group-session-title">
       <header class="cold-tool-group-header">
-        <p class="eyebrow">Workspace 1 of 6</p>
+        <p class="eyebrow">Workspace 1 of 7</p>
         <h2 id="cold-group-session-title">Vault &amp; session</h2>
         <p>Unlocking, concealment, and secret notes stay in the sealed realm.</p>
       </header>
@@ -248,7 +249,7 @@ __COLDBOX_COLD_STYLES__
     </section>
     <section id="cold-group-entropy" class="cold-tool-group" data-cold-group="entropy" aria-labelledby="cold-group-entropy-title">
       <header class="cold-tool-group-header">
-        <p class="eyebrow">Workspace 2 of 6</p>
+        <p class="eyebrow">Workspace 2 of 7</p>
         <h2 id="cold-group-entropy-title">Entropy Lab</h2>
         <p>Collect and inspect physical or manual entropy before handing it to Seed Forge.</p>
       </header>
@@ -388,7 +389,7 @@ __COLDBOX_COLD_STYLES__
     </section>
     <section id="cold-group-seed-forge" class="cold-tool-group" data-cold-group="seed-forge" aria-labelledby="cold-group-seed-forge-title">
       <header class="cold-tool-group-header">
-        <p class="eyebrow">Workspace 3 of 6</p>
+        <p class="eyebrow">Workspace 3 of 7</p>
         <h2 id="cold-group-seed-forge-title">Seed Forge</h2>
         <p>Create or validate a phrase here, then release it once to make it available to the other cold-only lenses.</p>
       </header>
@@ -483,9 +484,112 @@ __COLDBOX_COLD_STYLES__
       <p id="cold-seed-forge-note">Write the words down offline and verify them from paper. A fingerprint is only a public identifier: it cannot recover a phrase. The raw BIP-39 seed is an advanced cold-only output; it is masked by default and has no clipboard or storage action. BIP-85 child phrases, xprv/xpub/ypub/zpub, script/path derivation, WIF, addresses, and password derivation are separate roadmap items.</p>
     </section>
     </section>
+    <section id="cold-group-derive" class="cold-tool-group" data-cold-group="derive" aria-labelledby="cold-group-derive-title">
+      <header class="cold-tool-group-header">
+        <p class="eyebrow">Workspace 4 of 7</p>
+        <h2 id="cold-group-derive-title">Derive</h2>
+        <p>Read the focused released secret through the P1.4/P1.5 derivation engine. Nothing here accepts a phrase, and no derived private key leaves this frame.</p>
+      </header>
+    <section id="cold-derivation-paths" aria-label="Derivation paths" data-state="locked">
+      <p class="eyebrow">Derivation paths / P1.4a</p>
+      <h2>Chains, coin types and paths</h2>
+      <p id="cold-derivation-paths-help">Choose a chain to see the SLIP-44 coin type, default account path and address encoding this build derives for it. Generic mode accepts any canonical BIP-32 path and validates it before deriving. Path structure and the common wallet defaults are explained in the derivation-paths reference in Learn.</p>
+      <p class="cold-secret-focus-indicator" data-secret-focus-indicator="derivation-paths" data-state="empty">No released secret is focused. Release one from Seed Forge before using this panel.</p>
+      <div class="cold-derivation-grid">
+        <div>
+          <label for="cold-derivation-paths-chain">Chain</label>
+          <select id="cold-derivation-paths-chain" disabled data-input-surface="public"></select>
+        </div>
+        <div>
+          <label for="cold-derivation-paths-script">Script family</label>
+          <select id="cold-derivation-paths-script" disabled data-input-surface="public">
+            <option value="p2wpkh">Native SegWit (p2wpkh)</option>
+            <option value="p2pkh">Legacy (p2pkh)</option>
+            <option value="p2sh-p2wpkh">Nested SegWit (p2sh-p2wpkh)</option>
+            <option value="p2tr">Taproot (p2tr)</option>
+          </select>
+        </div>
+        <div>
+          <label for="cold-derivation-paths-account">Account number</label>
+          <input id="cold-derivation-paths-account" type="number" min="0" max="2147483647" step="1" value="0" disabled data-input-surface="public">
+        </div>
+      </div>
+      <dl class="cold-derivation-facts">
+        <div><dt>Chain</dt><dd id="cold-derivation-paths-chain-name">Not selected</dd></div>
+        <div><dt>SLIP-44 coin type</dt><dd id="cold-derivation-paths-coin-type">Not selected</dd></div>
+        <div><dt>Default account path</dt><dd id="cold-derivation-paths-account-path">Not selected</dd></div>
+        <div><dt>Address encoding</dt><dd id="cold-derivation-paths-encoding">Not selected</dd></div>
+        <div><dt>Test vectors</dt><dd id="cold-derivation-paths-vectors">Not selected</dd></div>
+      </dl>
+      <div id="cold-derivation-paths-generic" class="cold-derivation-generic">
+        <label for="cold-derivation-paths-custom">Arbitrary BIP-32 path (generic mode)</label>
+        <input id="cold-derivation-paths-custom" type="text" inputmode="text" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" placeholder="m/44&#39;/0&#39;/0&#39;/0/0" disabled data-input-surface="public">
+        <button id="cold-derivation-paths-validate" type="button" disabled>Validate and derive this path</button>
+        <p id="cold-derivation-paths-status" class="cold-derivation-status" data-state="idle" role="status" aria-live="polite">Select Generic (any BIP-32 path) to enter a path.</p>
+      </div>
+      <dl class="cold-derivation-facts" id="cold-derivation-paths-result">
+        <div><dt>Validated path</dt><dd id="cold-derivation-paths-result-path">Not derived</dd></div>
+        <div><dt>Depth and child index</dt><dd id="cold-derivation-paths-result-depth">Not derived</dd></div>
+        <div><dt>Node fingerprint</dt><dd id="cold-derivation-paths-result-fingerprint">Not derived</dd></div>
+        <div><dt>Extended public key</dt><dd id="cold-derivation-paths-result-xpub">Not derived</dd></div>
+      </dl>
+      <p id="cold-derivation-paths-note">This panel shows public values only. Extended private keys, raw private keys and WIF are never rendered, logged or copied here, and no derivation on this panel sends a message to the warm shell.</p>
+    </section>
+    <section id="cold-address-derivation" aria-label="Address derivation" data-state="locked">
+      <p class="eyebrow">Address derivation / P1.4a</p>
+      <h2>Receive and change addresses</h2>
+      <p id="cold-address-derivation-help">Derive a range of receive and change addresses for the focused released secret. Every address is shown with its full path and encoding so it can be compared against another wallet character by character.</p>
+      <p class="cold-secret-focus-indicator" data-secret-focus-indicator="address-derivation" data-state="empty">No released secret is focused. Release one from Seed Forge before using this panel.</p>
+      <div class="cold-derivation-grid">
+        <div>
+          <label for="cold-address-derivation-chain">Chain</label>
+          <select id="cold-address-derivation-chain" disabled data-input-surface="public"></select>
+        </div>
+        <div>
+          <label for="cold-address-derivation-script">Script family</label>
+          <select id="cold-address-derivation-script" disabled data-input-surface="public">
+            <option value="p2wpkh">Native SegWit (p2wpkh)</option>
+            <option value="p2pkh">Legacy (p2pkh)</option>
+            <option value="p2sh-p2wpkh">Nested SegWit (p2sh-p2wpkh)</option>
+            <option value="p2tr">Taproot (p2tr)</option>
+          </select>
+        </div>
+        <div>
+          <label for="cold-address-derivation-account">Account number</label>
+          <input id="cold-address-derivation-account" type="number" min="0" max="2147483647" step="1" value="0" disabled data-input-surface="public">
+        </div>
+        <div>
+          <label for="cold-address-derivation-start">First address index</label>
+          <input id="cold-address-derivation-start" type="number" min="0" max="2147483647" step="1" value="0" disabled data-input-surface="public">
+        </div>
+        <div>
+          <label for="cold-address-derivation-count">How many addresses</label>
+          <input id="cold-address-derivation-count" type="number" min="1" max="1000" step="1" value="5" disabled data-input-surface="public">
+        </div>
+      </div>
+      <button id="cold-address-derivation-run" type="button" disabled>Derive receive and change addresses</button>
+      <p id="cold-address-derivation-status" class="cold-derivation-status" data-state="idle" role="status" aria-live="polite">No addresses derived.</p>
+      <dl class="cold-derivation-facts">
+        <div><dt>Master fingerprint</dt><dd id="cold-address-derivation-fingerprint">Not derived</dd></div>
+        <div><dt>Account path</dt><dd id="cold-address-derivation-account-path">Not derived</dd></div>
+        <div><dt>Account extended public key</dt><dd id="cold-address-derivation-xpub">Not derived</dd></div>
+      </dl>
+      <div class="cold-derivation-chains">
+        <section aria-labelledby="cold-address-derivation-receive-title">
+          <h3 id="cold-address-derivation-receive-title">Receive addresses</h3>
+          <ul id="cold-address-derivation-receive" class="cold-derivation-address-list"></ul>
+        </section>
+        <section aria-labelledby="cold-address-derivation-change-title">
+          <h3 id="cold-address-derivation-change-title">Change addresses</h3>
+          <ul id="cold-address-derivation-change" class="cold-derivation-address-list"></ul>
+        </section>
+      </div>
+      <p id="cold-address-derivation-note">An address here is a public value derived inside this sealed frame. Seeing it does not prove another wallet will use the same path: compare the full path, the script family and every character of the address. Private keys and extended private keys are never rendered by this panel.</p>
+    </section>
+    </section>
     <section id="cold-group-backups" class="cold-tool-group" data-cold-group="backups" aria-labelledby="cold-group-backups-title">
       <header class="cold-tool-group-header">
-        <p class="eyebrow">Workspace 4 of 6</p>
+        <p class="eyebrow">Workspace 5 of 7</p>
         <h2 id="cold-group-backups-title">Backup Lab</h2>
         <p>Split a focused secret into offline backup shares. Existing share-entry fields remain available for recovery.</p>
       </header>
@@ -691,7 +795,7 @@ __COLDBOX_COLD_STYLES__
     </section>
     <section id="cold-group-qr" class="cold-tool-group" data-cold-group="qr" aria-labelledby="cold-group-qr-title">
       <header class="cold-tool-group-header">
-        <p class="eyebrow">Workspace 5 of 6</p>
+        <p class="eyebrow">Workspace 6 of 7</p>
         <h2 id="cold-group-qr-title">SeedQR Studio</h2>
         <p>Export a plaintext seed QR only after confirming the focused secret and the physical handling risk.</p>
       </header>
@@ -739,7 +843,7 @@ __COLDBOX_COLD_STYLES__
     </section>
     <section id="cold-group-recovery" class="cold-tool-group" data-cold-group="recovery" aria-labelledby="cold-group-recovery-title">
       <header class="cold-tool-group-header">
-        <p class="eyebrow">Workspace 6 of 6</p>
+        <p class="eyebrow">Workspace 7 of 7</p>
         <h2 id="cold-group-recovery-title">Recovery &amp; verification</h2>
         <p>Reconstruct from written shares or compare public values without entering a second mnemonic.</p>
       </header>

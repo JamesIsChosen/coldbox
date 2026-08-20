@@ -514,8 +514,10 @@ that workflow's derived outputs. The raw seed is an advanced cold-only output,
 masked by default, revealed only by an explicit timed action, and has no
 clipboard or storage action. Japanese U+3000 is retained for canonical
 display, then the reconstructed mnemonic sentence is NFKD-normalized before
-PBKDF2 so the separator becomes the required ASCII space. xprv/xpub/ypub/zpub,
-script/path derivation, and child derivation remain later roadmap scope.
+PBKDF2 so the separator becomes the required ASCII space. Seed Forge itself renders no extended key, script/path
+derivation or child seed: path and address surfaces are the separate sealed
+**Derive** workspace described in §12.4, and child derivation remains later
+roadmap scope.
 
 #### 11.1a Entropy Health Meter
 
@@ -731,6 +733,29 @@ Each needs a curve or encoding we don't otherwise carry, so they're grouped and 
 - **Unknown coins always produce the correct private and public key** for the path, even with no address formatter. That is the recovery-critical data; the address is presentation.
 
 Common features: account/change/index controls, batch generation (default 20, max 1000), hardened-vs-unhardened explainer, xpub/ypub/zpub/vpub conversion, **watch-only xpub mode**, and one-click "add to Registry". Phase 4: multisig `m/48'/…`, output descriptors, BLS12-381/EIP-2333.
+
+### 12.4 The Derive workspace — how the engine is reached
+
+The engine has two sealed-realm destinations, both lenses on the focused
+released secret under [ADR-0045](../05-development/adr/0045-released-secret-model.md)
+and neither accepting a phrase of its own:
+
+**Derivation paths** reports the selected chain's SLIP-44 coin type, its
+default account path for the selected script family, its address encoding,
+and the independent test vectors this build carries for it. In Tier 3 generic
+mode it validates an arbitrary BIP-32 path before use and derives that node's
+public metadata only.
+
+**Address derivation** derives a range of receive and change addresses for the
+focused secret and shows each with its full path and encoding.
+
+A chain that carries no independently recorded test vectors is not selectable
+on either surface, which is what keeps a future custom registry entry
+(§12.3) from deriving before its vectors exist. Neither surface renders an
+extended private key, a raw private key or WIF, and no derived value crosses
+the realm boundary. Path structure, purposes and wallet defaults are in
+[derivation-paths.md](../04-reference/derivation-paths.md); the user-facing
+walkthrough is [derive-addresses.md](../03-guides/derive-addresses.md).
 
 ---
 

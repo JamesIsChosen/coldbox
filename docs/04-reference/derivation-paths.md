@@ -41,6 +41,12 @@ The P1.4/P1.5 engine runs inside the sealed cold realm. Bitcoin accepts a copied
 
 Seed derivation uses the path `m / purpose' / coin_type' / account' / change / index`, with account and purpose levels hardened. A batch defaults to 20 addresses and is capped at 1,000; the engine refuses a batch that would enter the hardened index range. Watch-only derivation accepts only a depth-3 account-level xpub/ypub/zpub/tpub/upub/vpub whose account child number is hardened, then derives non-hardened children below it. An xpub cannot prove the master fingerprint, so watch-only results expose only the account fingerprint. Every Bitcoin script family validates that the compressed public key is an actual secp256k1 point before hashing it into an address.
 
+The engine is reached through two sealed-realm destinations, **Derivation
+paths** and **Address derivation**, specified in [SPEC.md §12.4](../01-spec/SPEC.md);
+the walkthrough is [derive-addresses.md](../03-guides/derive-addresses.md).
+Neither surface renders private material, and a chain with no independently
+recorded test vectors is not selectable on either.
+
 Taproot uses the BIP-86 key-path construction: the internal key is normalized to even-Y x-only form, the tagged `TapTweak` is applied with no script tree, and the result is encoded as Bech32m. Legacy and nested SegWit use Base58Check; native SegWit uses Bech32. EVM addresses hash the uncompressed secp256k1 public-key body with Keccak-256 and apply the ERC-55 mixed-case checksum; all-lower and all-upper input remains accepted for validation. The authoritative primitive choices remain in [crypto-choices.md](../02-security/crypto-choices.md), and the structural cold-only decisions are [ADR-0029](../05-development/adr/0029-cold-only-bitcoin-derivation-engine.md) and [ADR-0030](../05-development/adr/0030-cold-only-evm-and-arbitrary-path-derivation.md).
 
 ---

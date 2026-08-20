@@ -143,6 +143,32 @@ check required by its roadmap acceptance. The packet records the actual device,
 OS, browser, orientation and result. A deferred device row is an explicit gap,
 not parity evidence.
 
+### 4.5 Certification debt register
+
+A screen classifies `PARITY` as soon as an owning roadmap item is complete, but
+the comparison in section 4.3 only actually runs while UI.11 convergence is
+active. Section 6.1 paused that convergence. Any screen that becomes `PARITY`
+during the pause is therefore claiming a comparison that has not happened, and
+the claim is invisible unless it is written down.
+
+Every such screen is recorded here when it ships, and removed only by an
+executed section 4.3 comparison. **UI.11 does not close while this register has
+a row.** A row may not be discharged by reclassification, by normalization, or
+by a reviewer judging the screen to look correct.
+
+| Screen | Shipped by | Reference set | Debt |
+|---|---|---|---|
+| `flow:paths` | P1.4a | `workstation-2026-08-19` | Desktop and mobile section 4.3 comparison never executed. |
+| `flow:addresses` | P1.4a | `workstation-2026-08-19` | Desktop and mobile section 4.3 comparison never executed. |
+
+Both rows exist because P1.4a implemented two destinations the approved
+workstation reference already depicts, while pixel convergence was paused. The
+screens are in the manifest inventory, so the harness will enumerate them the
+moment it resumes; section 4.2 already fails missing, skipped and unclassified
+rows. This register is what makes the omission legible in the meantime, and what
+stops the two screens from being read as certified merely because they are
+classified `PARITY`.
+
 ## 5. Deviation register
 
 The manifest lists these IDs so a missing or invented ID fails automatically.
