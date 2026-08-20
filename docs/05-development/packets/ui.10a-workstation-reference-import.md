@@ -90,65 +90,59 @@ $ npm run lint
 Lint passed: forbidden constructs, JavaScript syntax, and LF source line endings are valid.
 
 $ node scripts/check-docs.js
-Documentation hygiene check passed: 264 markdown file(s) checked, 0 warning(s).
+Documentation hygiene check passed: 266 markdown file(s) checked, 0 warning(s).
 
-$ npm test
-# tests 452
-# pass 452
+$ npm test -- --test-reporter=tap
+# tests 458
+# pass 458
 # fail 0
 # skipped 0
 # todo 0
-```
+`
 
-452 passing, **zero skipped**. `origin/main` is 444; the eight new tests are 10
-in `ui.10a-workstation-reference.test.js` minus two consolidations in the UI.4a
-file (its file-list and byte-mutation assertions merged into the reworked
-selection tests).
+458 passing, **zero skipped** at source-remediation commit
+`5a863766c7501c2609ccff52a1902f16725cfac2`. The original UI.10a suite remains in place and the dedicated
+`test/ui.10a-review-remediation.test.js` adds six focused regressions for the
+independent F1-F5/F8/F9 findings.
 
-Reproducible build, two runs under different `TZ` and `LC_ALL`:
-
-```
-$ rm -f build/coldbox.html && TZ=UTC LC_ALL=C node scripts/build.js
-$ sha256sum build/coldbox.html
-a7d9c0eacf8b6093b7a4a4e4c4b14f6b9b3ede5317b05e813a94920399ac4fbf
-
-$ rm -f build/coldbox.html && TZ=Pacific/Kiritimati LC_ALL=en_US.UTF-8 node scripts/build.js
-$ sha256sum build/coldbox.html
-a7d9c0eacf8b6093b7a4a4e4c4b14f6b9b3ede5317b05e813a94920399ac4fbf
-```
-
-### 3.1 The build hash changes, and here is exactly why
-
-`src/` is byte-identical, but the artifact hash is not. A reviewer who diffs the
-build against `origin/main` will see this immediately, so it is stated up front
-rather than left to be discovered.
+Reproducible build at the exact source-remediation commit
+`5a863766c7501c2609ccff52a1902f16725cfac2`:
 
 ```
-main   e1e09d68b6cb77bbd07814563f5a8d84908965c5fa28df46685ba2379ac11d3b  2742786 bytes
-UI.10a a7d9c0eacf8b6093b7a4a4e4c4b14f6b9b3ede5317b05e813a94920399ac4fbf  2742786 bytes
+$ npm run build
+sha256=f9f58a17b0fda5103d50d3e6d0ba5493d4a403e3fd8d16beffb00bac5ad394a4
+bytes=2742963
+
+$ npm run build
+sha256=f9f58a17b0fda5103d50d3e6d0ba5493d4a403e3fd8d16beffb00bac5ad394a4
+bytes=2742963
 ```
 
-**Identical byte length.** A byte-level diff finds 12 differing regions, all
-accounted for by two causes:
+The two consecutive builds are byte-identical. The full Node suite also retains
+the existing locale/timezone determinism regression, so this evidence does not
+claim that the runner manually changed `TZ` or `LC_ALL` when it did not.
+### 3.1 The build hash and byte length change, and here is exactly why
 
-1. `PROVENANCE_BUILD_DATE` moves from `2026-08-16T12:23:50-07:00` to this
-   branch's commit time. `scripts/build.js` derives it from
-   `git log -1 -- src scripts vendor`, which is **path**-scoped, not
-   build-input-graph-scoped, so adding `scripts/ui-reference-manifest.js` moves
-   it even though that file is not a build input. This cascades into the
-   `coldbox-expected-hash` meta tag and the inline script's CSP `sha256-` pin.
-   Eleven of the twelve regions are this one cause (one CSP pin, five in the
-   expected-hash meta tag, five in the date literal itself). The same is true of the existing
-   `scripts/ui11-parity.js`, `scripts/run-browser-harness.js` and
-   `scripts/build-input-graph.js`, none of which are build inputs either — this
-   is pre-existing behaviour, not something this branch introduces.
-2. The UI.9 tool map, which compiles from `ROADMAP.md` at build time, now reads
-   `"status":"in-progress"` for UI.10a instead of `"not-started"`. That is UI.9
-   working as specified.
+Production `src/` remains byte-identical to `origin/main`, but the generated
+single-file artifact is **2742963 bytes**, versus **2742786 bytes** on the
+recorded `origin/main` baseline: **+177 bytes**.
 
-After normalising only the build date, the two artifacts are otherwise identical
-in structure and length. **Bundle delta: 0 bytes.**
+Two author-side metadata inputs explain the artifact change:
 
+1. `scripts/ui-reference-manifest.js` changed in the F1-F9 remediation.
+   `scripts/build.js` derives `PROVENANCE_BUILD_DATE` from
+   `git log -1 -- src scripts vendor`, so that script-path commit moves the
+   embedded provenance date and its dependent expected-hash/CSP bytes even though
+   the reference-manifest helper is not itself a product build input.
+2. The UI.9 Tool Map compiles `ROADMAP.md` into the artifact. UI.10a already
+   changes its own status to `[~]`; maintainer decision D1 additionally adds the
+   open **P1.4a — Derivation paths and address derivation surfaces** item while
+   leaving P1.4/P1.5 complete. That new roadmap record is therefore intentionally
+   present in the generated Tool Map and accounts for the non-zero byte delta.
+
+The approved `*.html.reference` files themselves remain quarantined outside
+the transitive product build-input graph. The size change is roadmap/provenance
+metadata, not imported prototype bytes or a `src/` implementation change.
 ### 3.2 The imported references render fully offline
 
 The parity contract requires the references to render in a network-blocked
@@ -175,52 +169,34 @@ a `.html` name before a browser will parse them as HTML. Opened under their real
 source. That is the extension doing its job, and the existing
 `scripts/ui11-parity.js` already copies to a disposable path (line 217).
 
-### 3.3 Secret-shaped-content scan — **partial, read §7**
+### 3.3 Secret-shaped-content scan — **canonically verified; automation remediated**
 
-UI.4a's acceptance requires the repository secret-shaped-content scanner to
-report supplied artifacts clean before import. The canonical scanner is
-PowerShell (`scripts/runner/secret-scan.ps1`) and **no PowerShell interpreter was
-available in this session's environment**, so it was not the thing that ran.
+UI.4a's inherited import control is satisfied on independent-review evidence at
+the reviewed implementation commit: the repository's canonical
+`Invoke-ColdboxSecretScan` was run unmodified under **PowerShell 7.4.6** on
+byte-exact temporary copies of both new workstation reference artifacts. It
+reported **CLEAN**, **0 skipped binary files**, and exit 0. The reviewer also ran
+a positive control containing twelve consecutive BIP-39 words; the scanner
+correctly returned a finding and non-zero exit. This author-side remediation did
+**not** rerun that scanner by hand.
 
-What did run: a line-for-line Node port of `Invoke-ColdboxSecretScan`'s two
-content rules — the `\b(?:xprv|yprv|zprv|tprv|uprv|vprv)[0-9A-HJ-NP-Za-km-z]{50,}`
-extended-private-key shape, and a run of 12+ consecutive vendored-BIP-39-wordlist
-words on one line — reading the same 2048-word list out of
-`vendor/npm/@scure/bip39/2.2.0/package.tgz` and asserting it parses to exactly
-2048 words, `abandon` first and `zoo` last, as the PowerShell does.
+F1 was not about the content result; it was about automation. The CI
+`approved-ui-reference-secret-scan` job now derives every declared
+`*.html.reference` filename from `manifest.json`, compares that declared set
+against every approved reference file present on disk, fails closed on any
+undeclared/unscanned file, copies the exact declared set to a temporary root, and
+runs the canonical scanner there. Future reference imports therefore cannot gain
+a green scan by being absent from a hard-coded list.
 
-```
-$ node <port> coldbox-workstation-desktop-mockup.html coldbox-workstation-mobile-mockup.html
-CLEAN - no vault, private-key, or BIP-39 mnemonic-shaped content found in candidate text.
-```
+The illustrative phrase disclosed by the design handoff is:
 
-The port was also run against the **decoded** payloads — the gunzipped shared
-flow model and both inert bundler templates — because the outer files are largely
-base64 and a text scan of them alone proves little:
+`ripple canyon velvet oyster timber plunge ladder nectar quarry siphon walnut orbit`
 
-```
-$ node <port> cbx-flows.js tpl-desktop.js tpl-mobile.js
-CLEAN - no vault, private-key, or BIP-39 mnemonic-shaped content found in candidate text.
-```
-
-The handoff's own `DELIVERABLES.md` discloses "a public BIP-39 wordlist sample
-used only as an illustrative reconstructed phrase". The longest such run in the
-artifacts is 12 words on one line in the `forge:1` variant
-(`ripple canyon velvet oyster timber plunge ladder nectar quarry siphon walnut orbit`)
-— this is exactly the shape the rule targets, and it did **not** trip, because
-`ripple`, `velvet` and `siphon` are not in the BIP-39 English list. The sample is
-deliberately not a valid mnemonic. A reviewer should confirm that independently
-rather than take it from here.
-
-**🙋 Action required from the maintainer, on a Windows host:**
-
-```powershell
-. .\scripts\runner\secret-scan.ps1
-Invoke-ColdboxSecretScan -Root '<path to the approved directory>' -RepoPath '<repo root>'
-```
-
-Until that runs, treat this criterion as **evidenced but not canonically
-verified**.
+The correct BIP-39 explanation is that **`nectar`, `quarry` and `siphon`**
+are not in the vendored English wordlist. The longest consecutive in-list run in
+that sample is therefore **7 words** (`ripple` through `ladder`), below the
+scanner's 12-word threshold. `ripple` and `velvet` are BIP-39 words; the
+earlier packet text saying otherwise was wrong and is superseded here.
 
 ---
 
@@ -236,15 +212,13 @@ Verbatim from the roadmap item, split at its semicolons.
 | information architecture is object/workflow-centered rather than tool-first while every current specialist capability remains mapped to a contextual or Advanced-tools destination | Rail groups are Workspace / Records / Trust & reference / Vault & settings / Sealed work — objects, not tool names. All 32 flows keep a direct route under **All flows index** (desktop) and **Every flow** (mobile). The handoff's coverage matrix maps all 35 old screen IDs; nothing was dropped. | `'the manifest inventory and navigation match the inert approved payloads'` asserts the 11 groups, the 5 bottom-bar slots, both More sheets and all 32 flows against the artifact bytes |
 | exact navigation/grouping is owned by the maintainer-approved replacement mocks rather than predetermined by roadmap prose | Every navigation value in the manifest is extracted from the reference bytes, never hand-authored. The test re-derives them from the inert payload and compares. | same test |
 | warm/cold authority, calm security panels, accessibility, 44px mobile targets, secret switcher/record identity, truthful unavailable future features, and offline/single-file constraints remain non-negotiable | The More sheet is realm-aware and the test proves no destination appears in both sheets, so a sealed capability is never reached through a warm one. Truthful unavailability is machine-checked. The rest are **design properties of the artifact** asserted by the handoff, and become *product* obligations at UI.10b/UI.11 — this item ships no UI. | `'the manifest inventory…'` (realm-aware More sheet), `'every manifest state is classified exactly once…'` (unavailability) |
-| the redesign accommodates the accepted SEED/WAL/SEC concepts … without presenting unfinished functionality as currently available | Six flows are roadmap-owned; each is present in navigation on both viewports, classified `UNAVAILABLE`, and carries PAR-009. Seed lineage, root/child SeedQR and structured address identity have screens whose owners are SEED.1/2/3. | `'every manifest state is classified exactly once…'` asserts all six by name, both viewports, `UNAVAILABLE` + PAR-009 |
+| the redesign accommodates the accepted SEED/WAL/SEC concepts … without presenting unfinished functionality as currently available | The six wallet flows remain roadmap-owned and unavailable; maintainer decision D1 separately assigns `flow:paths` and `flow:addresses` to open `P1.4a`, while P1.4/P1.5 remain complete engines. Both derivation surfaces therefore classify `UNAVAILABLE` and carry PAR-009 until P1.4a is independently `[x]`. Seed lineage, root/child SeedQR and structured address identity have screens whose owners are SEED.1/2/3. | `'every manifest state is classified exactly once…'` asserts all six by name, both viewports, `UNAVAILABLE` + PAR-009 |
 | after maintainer approval, the new desktop/mobile artifacts are imported as **new immutable reference files** with new hashes/byte sizes/viewports/screen inventory/navigation metadata | Two new `*.html.reference` files, `.gitattributes` already binds `*.html.reference binary`, and the manifest records all of it. | `'the workstation references are imported as new immutable byte-exact evidence'` |
 | the old approved files remain byte-identical audit evidence | Both UI.4a artifacts are untouched; `verifyReferenceBytes()` checks **every** set, not just the current one, so drift in a retired artifact fails too. | `'the superseded toolkit set is retained and can never become current'`, plus the whole unchanged UI.4a suite |
 | the manifest/harness unambiguously selects the new set as current | Exactly one set may be `current`, `manifest.current` must name it, a superseded set must name a real successor, and no two sets may share an artifact. One module answers the question. | `'an ambiguous or retired current selection fails closed'` — eight negative fixtures |
 | reference-integrity/docs tests pass | 452/452, 0 skipped; `check-docs` 0 warnings. | §3 |
 
-**Nothing in this table is marked met that isn't**, with two rows explicitly
-flagged as judgement rather than test, and §3.3's scanner criterion flagged
-partial.
+**Nothing in this table is marked met that isn't**, with judgement-only rows identified explicitly. The canonical scanner criterion is independently verified, and F1's missing automation is remediated in CI.
 
 ---
 
@@ -418,17 +392,15 @@ warm: P3.1 P3.4 P3.9 P4.10
 cold: P1.4 P1.5 P4.3 P4.5 P4.6 P4.8 P4.9
 ```
 
-Everything the shipped app marks unavailable lines up with this branch's
-`UNAVAILABLE` set **except two, and they are worth a look:**
-
-- **The shipped cold rail marks Derivation paths and Addresses unavailable with
-  `P1.4`/`P1.5`, but the roadmap has both at `[x]`.** This branch therefore
-  classifies `flow:paths` and `flow:addresses` as PARITY. One of the two is
-  wrong: either the shipped nav under-claims a built feature, or those roadmap
-  items are marked complete without a cold surface behind them. I did not change
-  either — `src/` is out of scope here and the roadmap marker is a reviewer's to
-  set — but **UI.10b cannot ship without resolving it**, because it decides
-  whether those two destinations render or sit disabled.
+The shipped app's unavailable derivation entries are now reconciled by
+**maintainer decision D1**, committed in
+`docs/05-development/maintainer-decisions.md`. `P1.4` and `P1.5` remain
+complete as derivation-engine work; they do not certify the replacement
+workstation surfaces. `flow:paths` and `flow:addresses` are owned by
+`P1.4a`. P1.4/P1.5 remain complete derivation engines; P1.4a is the open
+surface item and therefore keeps both states `UNAVAILABLE` + `PAR-009` until
+it is independently `[x]`. UI.10a does not make the currently disabled cold
+navigation live merely to satisfy the matrix.
 - The shipped cold rail also carries `data-roadmap-id="P4.3"`, a bare id the
   roadmap does not define — the same defect the prototype has, independently. It
   is split into P4.3a..P4.3e. This branch maps `flow:recovery` to all five.
@@ -438,9 +410,7 @@ P0.13-owned and available. That is a deliberate consequence of the reorganisatio
 not a dropped capability — the handoff's coverage matrix routes it through
 Device-to-device vault transfer.
 
-**Second — the prototype's roadmap tags are wrong and I overrode them.** Five of
-the six wallet flows are mislabelled in the approved artifact, and it names a
-bare `P4.3` the roadmap does not define:
+**Second — prototype roadmap tags and owner overrides are now fully auditable.** The manifest transcribes prototype tags for all fourteen shell screens as well as flows. The regression pins the complete divergence set: eight flow-level divergences plus the `seeds` and `seedqr` shell divergences.
 
 | Flow | Artifact says | Actually |
 |---|---|---|
@@ -450,6 +420,10 @@ bare `P4.3` the roadmap does not define:
 | PSBT inspector | WAL.10 | WAL.13 — WAL.10 is exact-byte broadcast |
 | Coin control | WAL.4 | WAL.5 — WAL.4 is the receive workflow |
 | Recovery assistant | P4.3 | P4.3a..P4.3e — bare P4.3 does not exist |
+| Derivation paths | P1.4 | P1.4a — D1 separates the user-facing surface from the completed engine |
+| Address derivation | P1.4 | P1.4a — D1 assigns the user-facing surface to the open item |
+| Seeds (shell) | SEED | UI.3 / SEED.1 — the artifact carries a bare prototype phase label |
+| Secret QR (shell) | SEED.4 | P1.10 / SEED.3 — SEED.4 owns the public identity graph/export, not the secret SeedQR surface |
 
 PAR-005 authorises exactly this ("availability labels and roadmap phases come
 from the current roadmap at build time, not the frozen prototype's statuses"), so
@@ -510,7 +484,7 @@ different shape, now is the time — UI.11 is about to depend on it.
 
 **What I did not do that arguably should have been done:**
 
-- Did not run the canonical PowerShell secret scanner (§3.3). No interpreter.
+- Did not redundantly rerun the canonical PowerShell secret scanner during remediation; independent review already recorded canonical CLEAN plus positive-control evidence, and F1 fixes the missing CI automation.
 - Did not run the two-engine browser harness (§7). No Firefox obtainable.
 - Did not port `scripts/ui11-parity.js` forward. Argued in §2; a reviewer who
   reads UI.10a's "manifest/harness" clause as requiring the whole harness will
@@ -540,14 +514,16 @@ different shape, now is the time — UI.11 is about to depend on it.
 ## 11. Bundle impact
 
 | | Bytes |
-|---|---|
-| Before (`origin/main`) | 2,742,786 |
-| After | 2,742,786 |
-| **Delta** | **0** |
+|---|---:|
+| Before (recorded `origin/main` baseline) | 2742786 |
+| After (source-remediation commit `5a863766c7501c2609ccff52a1902f16725cfac2`) | 2742963 |
+| **Delta** | **+177** |
 
-`src/` is byte-identical, so there is no bundle impact. The hash differs for the
-reasons in §3.1. The four reference artifacts add 1,600,608 bytes to the
-repository and 0 bytes to the shipped file.
+Production `src/` is still byte-identical to `origin/main`. The non-zero
+artifact delta comes from build provenance plus the D1/P1.4a roadmap record
+compiled into UI.9's Tool Map, as detailed in §3.1. The four approved reference
+artifacts remain repository evidence and contribute **0 direct reference-file
+bytes** to the shipped HTML.
 
 ---
 
@@ -558,7 +534,8 @@ repository and 0 bytes to the shipped file.
 | `docs/01-spec/ui-parity.md` | §1 now states that only the current set is binding and names the one module that decides. New **§6.2** records the 2026-08-19 approval, both sets, the IA summary, and that UI.10a imports and selects but does not certify. |
 | `docs/05-development/ui-reference/README.md` | Explains the multi-set package; lists current and superseded files separately. |
 | `docs/01-spec/SPEC.md` | §24's permanent "holds no keys and signs nothing" claim replaced with truthful current behaviour plus the accepted direction. |
-| `docs/05-development/ROADMAP.md` | UI.10a `[ ]` → `[~]`. |
+| `docs/05-development/ROADMAP.md` | UI.10a `[ ]` → `[~]`; maintainer D1 also adds open P1.4a while P1.4/P1.5 remain complete engines. |
+| docs/05-development/maintainer-decisions.md | Commits the binding maintainer decisions; UI.10a consumes D1 rather than choosing surface ownership author-side. |
 | `CHANGELOG.md` | Unreleased entry. |
 
 **No ADR added.** ADR-0059 already carries the structural decision and this item
@@ -581,3 +558,32 @@ This packet's author also self-gated it. That gate is a **filter, not an
 independent review** — it shares every assumption that produced the code. The
 independent reviewer should weight it accordingly, and should be a different
 session.
+---
+
+## 14. Remediation of independent review FAIL
+
+Starting author-side remediation point: `15aec1b6171215c2f62df5b2707e7af08492c645`
+(the independent FAIL report). Reviewed implementation: `7e7997a225ab52a16f9c24e3f50c82ac3b81a0ba`.
+Source-remediation commit: `5a863766c7501c2609ccff52a1902f16725cfac2`.
+The original review report remains unchanged as audit history.
+
+| Finding | Resolution |
+|---|---|
+| **F1** | **Fixed.** CI now derives the approved-reference scan set from `manifest.json`, checks it against every `*.html.reference` on disk, and scans that exact set. No manual scanner rerun was performed; §3.3 records the already-satisfied canonical CLEAN + positive-control evidence. |
+| **F2** | **Fixed per maintainer D1.** `flow:paths` and `flow:addresses` are owned by open `P1.4a`. P1.4/P1.5 remain complete engines. Both states stay `UNAVAILABLE` + `PAR-009` until P1.4a is independently `[x]`. |
+| **F3** | **Fixed.** Both mobile More sheets are parsed from the inert approved mobile artifact and compared order-sensitively to the manifest in both directions. |
+| **F4** | **Fixed.** The 11 desktop rail groups and five mobile bottom-bar slots are parsed in declaration order and deep-equaled to manifest metadata; containment-only checks are no longer the proof. |
+| **F5** | **Fixed.** The current set transcribes prototype roadmap tags for all fourteen shell screens. The regression test enumerates every prototype/owner divergence, including `seedqr: SEED.4 → P1.10/SEED.3` and D1's `P1.4 → P1.4a` derivation-surface ownership. |
+| **F6** | **Fixed.** Build evidence is tied explicitly to source-remediation commit `5a863766c7501c2609ccff52a1902f16725cfac2`: `f9f58a17b0fda5103d50d3e6d0ba5493d4a403e3fd8d16beffb00bac5ad394a4` (`2742963` bytes), reproduced twice. The packet-only closeout commit cannot move the source-path provenance timestamp. |
+| **F7** | **Fixed.** §3.3 now names the actual non-BIP-39 words — `nectar`, `quarry`, `siphon` — and the longest consecutive in-list run (7). |
+| **F8** | **Fixed.** Manifest validation requires positive integer render and comparison-region dimensions; negative fixtures prove zero/negative dimensions fail closed. |
+| **F9** | **Fixed.** Dark rows no longer claim light-theme-only PAR-001. PAR-004 is applied exactly to `vault`, `create` and `flow:unlock` states. Regression coverage pins both applicability rules. |
+
+**Verification at the source-remediation commit:** `npm ci`, `npm run
+verify-vendor`, `npm run lint`, `npm run check-docs`, the complete Node test
+suite with zero skips, `git diff --check`, and two reproducible builds all
+passed. The PowerShell secret scanner was intentionally not rerun manually,
+because the independent review already satisfied that content criterion and F1
+was the missing automation.
+
+UI.10a remains `[~]`. The independent reviewer, not the author, sets `[x]`.
