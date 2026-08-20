@@ -803,3 +803,68 @@ The roadmap marker stays at `[~]`. Nothing merges.
 - Style, naming and formatting, per the protocol.
 - The unmerged `ui.11-approved-visual-parity-certification` branch, and UI.10b's
   in-flight work. Out of scope for this item.
+---
+
+## Fresh independent re-review - PASS (2026-08-20)
+
+**Reviewed head:** `4b888571387396480325e9ee4a01f8a0ff7f6abf`
+**Mode:** READ-ONLY, CI-witnessed Mode B
+**Verdict:** **PASS - 0 findings**
+
+The prior FAIL report above is preserved as review history. This re-review independently
+re-checked all nine findings F1-F9 and every UI.10a acceptance criterion against the
+exact remediated PR head.
+
+### Prior findings
+
+- **F1 - FIXED.** Approved-reference CI scanning is manifest-driven and fail-closed.
+  The exact-head CI scanner inventories every manifest-declared reference, rejects
+  unsafe or duplicate paths and undeclared `*.html.reference` files, verifies
+  source/copy hashes, and fails on findings or skipped files. Exact-head CI scanned
+  all four current and superseded references with `findings=0` and `skipped=0`.
+- **F2 - FIXED.** Maintainer decision D1 is implemented: `flow:paths` and
+  `flow:addresses` are owned by open **P1.4a**, while P1.4 and P1.5 remain complete
+  derivation engines. Until P1.4a ships those destinations classify
+  `UNAVAILABLE` with `PAR-009`.
+- **F3 - FIXED.** Mobile More navigation is compared against the approved reference
+  artifact, including the warm and cold lists.
+- **F4 - FIXED.** Desktop rail groups, mobile bottom-bar slots, and More lists are
+  exact and order-sensitive rather than one-directional containment checks.
+- **F5 - FIXED.** Prototype tags are represented audibly, including the seventh
+  `seedqr` divergence (prototype `SEED.4` vs canonical P1.10/SEED.3), without using
+  prototype tags as roadmap truth.
+- **F6 - FIXED.** Packet build/test provenance is reconciled. Exact-head CI reproduced
+  458/458 passing tests and build SHA-256
+  `f9f58a17b0fda5103d50d3e6d0ba5493d4a403e3fd8d16beffb00bac5ad394a4`
+  at 2,742,963 bytes.
+- **F7 - FIXED.** Packet BIP-39 discussion correctly identifies `nectar`, `quarry`,
+  and `siphon` as the non-list breakers and records a maximum valid-word run of 7.
+- **F8 - FIXED.** Comparison-region geometry now requires positive integer width and
+  height, matching viewport validation.
+- **F9 - FIXED.** Deviation applicability is state-specific: `PAR-004` is limited to
+  vault/create/unlock rows, `PAR-009` marks unavailable rows, and dark rows do not
+  inherit light-theme-only `PAR-001`.
+
+### Acceptance and verification
+
+All UI.10a acceptance criteria are satisfied. The immutable workstation desktop/mobile
+references and superseded UI.4a references verify at their declared hashes; exactly one
+reference set is current; the 46-screen-per-viewport / 32-flow inventory and exact
+desktop/mobile navigation are derived from the approved artifacts; truthful availability
+comes from roadmap ownership/status; production `src/` remains unchanged by this design
+import; and the approved comic visual identity/offline behavior remain supported by the
+unchanged exact reference bytes and prior independent render evidence.
+
+Mode B exact-head CI run **32341539920** was audited and succeeded at the reviewed SHA:
+458 tests passed with zero failures/skips, documentation hygiene checked 266 Markdown
+files with 0 warnings, Chromium and Firefox browser harnesses passed, Ubuntu and Windows
+reproducible builds matched at
+`f9f58a17b0fda5103d50d3e6d0ba5493d4a403e3fd8d16beffb00bac5ad394a4`, and the
+approved-reference scanner reported all four references clean with no skips.
+
+The canonical secret-scan criterion is carried forward from the prior independent evidence,
+as instructed: `Invoke-ColdboxSecretScan`, PowerShell 7.4.6, CLEAN, zero skipped binaries,
+and a 12-word BIP-39 positive control correctly failed with exit 1. No redundant manual
+secret scan was required for this re-review.
+
+**Final independent verdict: PASS. UI.10a may be marked `[x]` and merged.**
