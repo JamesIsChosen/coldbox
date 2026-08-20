@@ -1,25 +1,5 @@
 'use strict';
 
-// UI.10a - the single place that answers "which approved references are
-// current?".
-//
-// Before this item the approved package held exactly one reference set, so
-// "the manifest" and "the current set" were the same object and every consumer
-// could reach straight into `manifest.references`. ADR-0059 ended that: the
-// maintainer approved a replacement self-custody-workstation design, the
-// superseded toolkit references stay in the package as byte-identical audit
-// evidence, and the package now holds two sets at once.
-//
-// Two sets means a selection, and a selection that lives in more than one file
-// eventually disagrees with itself. UI.11's pixel harness, the reference
-// integrity suite and any later consumer all read the current set from here so
-// that a superseded artifact cannot become current by being read through a
-// different code path.
-//
-// This module never renders a reference. It reads bytes, validates the
-// manifest's shape and fails closed. The parity harness that drives browsers is
-// UI.11's, and it consumes `createStateMatrix()` from here.
-
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -37,33 +17,18 @@ const manifestPath = path.join(referenceRoot, 'manifest.json');
 const roadmapPath = path.join(projectRoot, 'docs', '05-development', 'ROADMAP.md');
 
 const SCHEMA = 'coldbox.approved-ui-reference.v2';
-
-// A manifest screen id is either a shell screen (`walletDetail`) or a flow
-// screen (`flow:entropy`). The v1 grammar allowed neither camelCase nor the
-// flow prefix, so it is stated here rather than inherited.
 const SCREEN_ID = /^(?:[a-z][A-Za-z0-9]*|flow:[a-z][a-z0-9]*)$/;
 const DEVIATION_ID = /^PAR-\d{3}$/;
 
-// Which roadmap items own each manifest screen.
+// UI.10a's parity owner map. A screen is PARITY only when at least one owner is
+// independently complete. Empty owner arrays are shared shell and always PARITY.
 //
-// This mapping is deliberately NOT read out of the approved artifacts. The
-// prototype carries its own per-flow roadmap tags and five of the six
-// wallet-owned tags are wrong against the accepted roadmap - it labels
-// Send & review WAL.5 (actually UTXO management), Level 3 signing WAL.6
-// (actually the fee engine), Broadcast/RBF/CPFP WAL.7 (actually the cold
-// transaction builder), the PSBT inspector WAL.10 (actually exact-byte
-// broadcast), Coin control WAL.4 (actually the receive workflow), and it names
-// a bare `P4.3` that the roadmap does not define at all - it is split into
-// P4.3a..P4.3e. PAR-005 already governs exactly this: availability and phase
-// come from the current roadmap at build time, not from the frozen prototype's
-// statuses. The prototype's own tags stay recorded in the manifest under
-// `prototypeRoadmapTag` so the correction remains auditable against the
-// reference bytes rather than being silently applied.
-//
-// An empty owner list means the shared shell, which ui-parity.md section 4.2
-// forbids from ever classifying UNAVAILABLE.
+// D1 in docs/05-development/maintainer-decisions.md is load-bearing here:
+// P1.4/P1.5 own the already-complete derivation engines. P1.4a owns the
+// user-facing derivation-path and address-derivation surfaces. Until P1.4a is
+// independently [x], the approved `flow:paths` and `flow:addresses` states are
+// UNAVAILABLE.
 const SCREEN_OWNERS = Object.freeze({
-  // Shell screens.
   home: [],
   wallets: ['P1.6'],
   walletDetail: ['P1.6'],
@@ -73,31 +38,24 @@ const SCREEN_OWNERS = Object.freeze({
   backup: ['P2.6', 'P2.7'],
   portfolio: ['P3.4'],
   security: ['P1.8', 'P1.9'],
-  // "Reference & help" exists today: P0.17's help framework and P0.16's
-  // provenance panel both render at this destination. P4.10 is the Phase 4
-  // item that enriches it, not the item that creates it. Mapping it to P4.10
-  // alone - inherited from the UI.4a-era harness - classified a shipped screen
-  // UNAVAILABLE, and the approved artifact's own tag for this destination is
-  // P0.17, not P4.10.
   reference: ['P0.17', 'P4.10'],
   advanced: ['UI.9'],
   vault: ['P0.13'],
   create: ['UI.10'],
   lock: ['P0.13'],
-  // Flow screens.
   'flow:entropy': ['P1.1', 'P1.2'],
   'flow:transfer': ['P0.13'],
   'flow:settings': [],
   'flow:forge': ['P1.3'],
   'flow:passphrase': ['P4.5'],
   'flow:notes': ['P1.7'],
-  'flow:paths': ['P1.4', 'P1.5'],
-  'flow:addresses': ['P1.4', 'P1.5'],
+  'flow:paths': ['P1.4a'],
+  'flow:addresses': ['P1.4a'],
   'flow:children': ['P4.6'],
   'flow:descriptors': ['P4.9'],
   'flow:shares': ['P2.1', 'P2.2', 'P2.3', 'P2.4', 'P2.5'],
   'flow:combine': ['P2.6'],
-  'flow:qrstudio': ['P1.10'],
+  'flow:qrstudio': ['P1.10', 'SEED.3'],
   'flow:recovery': ['P4.3a', 'P4.3b', 'P4.3c', 'P4.3d', 'P4.3e'],
   'flow:verifybench': ['P1.9', 'P4.4'],
   'flow:registry': ['P1.6', 'P1.7'],
@@ -119,8 +77,6 @@ const SCREEN_OWNERS = Object.freeze({
   'flow:source': ['WAL.2']
 });
 
-// Which realm owns each shell screen. Flow screens declare their own realm in
-// the manifest, so only the shell needs a table.
 const SHELL_SCREEN_REALM = Object.freeze({
   home: 'warm',
   wallets: 'warm',
@@ -138,8 +94,14 @@ const SHELL_SCREEN_REALM = Object.freeze({
   lock: 'warm'
 });
 
+const VAULT_NAMING_SCREENS = new Set(['vault', 'create', 'flow:unlock']);
+
 function sha256(bytes) {
   return crypto.createHash('sha256').update(bytes).digest('hex');
+}
+
+function assertPositiveInteger(value, label) {
+  assert.ok(Number.isInteger(value) && value > 0, `${label} must be a positive integer`);
 }
 
 function assertUniqueScreens(screens, label) {
@@ -154,25 +116,60 @@ function assertUniqueScreens(screens, label) {
 function assertReferenceShape(setId, viewportId, reference) {
   const where = `${setId}/${viewportId}`;
   assert.match(reference.file, /^[a-z0-9-]+\.html\.reference$/, `${where} reference filename is unsafe`);
-  assert.ok(Number.isInteger(reference.bytes) && reference.bytes > 0, `${where} byte length is not a positive integer`);
+  assertPositiveInteger(reference.bytes, `${where} byte length`);
   assert.match(reference.sha256, /^[0-9a-f]{64}$/, `${where} hash is not a lowercase sha256`);
-  assert.ok(Number.isInteger(reference.renderViewport.width), `${where} render viewport width is not an integer`);
-  assert.ok(Number.isInteger(reference.renderViewport.height), `${where} render viewport height is not an integer`);
+  assertPositiveInteger(reference.renderViewport.width, `${where} render viewport width`);
+  assertPositiveInteger(reference.renderViewport.height, `${where} render viewport height`);
   assert.ok(
     ['full-viewport', 'product-frame'].includes(reference.comparisonRegion.kind),
     `${where} comparison region kind is unknown`
   );
+  assertPositiveInteger(reference.comparisonRegion.width, `${where} comparison region width`);
+  assertPositiveInteger(reference.comparisonRegion.height, `${where} comparison region height`);
   assertUniqueScreens(reference.screens, `${where} screens`);
 }
 
-// Structurally validates an already-parsed manifest against the list of
-// reference files actually present in the approved package. Every rule here
-// exists to make "which set is current" a question with exactly one answer.
-//
-// It is separated from the file reading so the negative suite can hand it a
-// deliberately broken manifest - two current sets, a retired set named current,
-// two sets sharing one artifact - and prove each one fails, without writing a
-// fake approved package to disk.
+function assertShellScreenMetadata(set) {
+  if (set.shellScreens === undefined) {
+    return;
+  }
+  assert.ok(Array.isArray(set.shellScreens), `Reference set ${set.id} shellScreens must be an array`);
+  const ids = [];
+  for (const entry of set.shellScreens) {
+    assert.ok(entry && typeof entry === 'object', `Reference set ${set.id} has an invalid shellScreens entry`);
+    assert.match(entry.id, /^[a-z][A-Za-z0-9]*$/, `Reference set ${set.id} has an unsafe shell screen id`);
+    assert.ok(
+      Array.isArray(entry.prototypeRoadmapTags),
+      `Reference set ${set.id}/${entry.id} prototypeRoadmapTags must be an array`
+    );
+    for (const tag of entry.prototypeRoadmapTags) {
+      assert.equal(typeof tag, 'string', `${set.id}/${entry.id} prototype roadmap tag must be a string`);
+      assert.match(
+        tag,
+        /^(?:P\d+\.\d+[a-z]?|UI\.\d+[a-z]?|SEC\.\d+[a-z]?|SEED(?:\.\d+)?|WAL\.\d+|all)$/,
+        `${set.id}/${entry.id} has an unsafe prototype roadmap tag: ${tag}`
+      );
+    }
+    assert.equal(
+      new Set(entry.prototypeRoadmapTags).size,
+      entry.prototypeRoadmapTags.length,
+      `${set.id}/${entry.id} repeats a prototype roadmap tag`
+    );
+    ids.push(entry.id);
+  }
+  assert.equal(new Set(ids).size, ids.length, `Reference set ${set.id} repeats shell screen metadata`);
+
+  const shellScreens = Object.values(set.references)
+    .flatMap((reference) => reference.screens)
+    .filter((screen) => !screen.startsWith('flow:'));
+  const expected = [...new Set(shellScreens)].sort();
+  assert.deepEqual(
+    [...ids].sort(),
+    expected,
+    `Reference set ${set.id} shellScreens metadata does not cover exactly its shell screens`
+  );
+}
+
 function validateManifest(manifest, onDiskFiles) {
   assert.equal(manifest.schema, SCHEMA, 'Approved reference manifest schema is not the UI.10a two-set schema');
   assert.equal(
@@ -192,7 +189,6 @@ function validateManifest(manifest, onDiskFiles) {
   );
 
   assert.ok(Array.isArray(manifest.sets) && manifest.sets.length >= 2, 'The manifest must retain the superseded set');
-
   const ids = manifest.sets.map((set) => set.id);
   assert.equal(new Set(ids).size, ids.length, 'Two reference sets share an id');
 
@@ -205,10 +201,7 @@ function validateManifest(manifest, onDiskFiles) {
     assert.match(set.id, /^[a-z][a-z0-9-]*$/, `Reference set id ${set.id} is unsafe`);
     assert.ok(['current', 'superseded'].includes(set.status), `Reference set ${set.id} has an unknown status`);
     if (set.status === 'superseded') {
-      assert.ok(
-        ids.includes(set.supersededBy),
-        `Superseded set ${set.id} does not name a set that replaced it`
-      );
+      assert.ok(ids.includes(set.supersededBy), `Superseded set ${set.id} does not name a set that replaced it`);
       assert.notEqual(set.supersededBy, set.id, `Superseded set ${set.id} cannot supersede itself`);
     } else {
       assert.equal(set.supersededBy, undefined, 'The current set cannot carry supersededBy');
@@ -224,22 +217,19 @@ function validateManifest(manifest, onDiskFiles) {
       assertReferenceShape(set.id, viewportId, reference);
       declaredFiles.push(reference.file);
     }
+    assertShellScreenMetadata(set);
   }
 
-  // A reference file belongs to exactly one set. Sharing bytes between the
-  // superseded and current sets is how a retired artifact silently stays live.
   assert.equal(
     new Set(declaredFiles).size,
     declaredFiles.length,
     'A reference file is declared by more than one set'
   );
-
   assert.deepEqual(
     [...onDiskFiles].sort(),
     [...declaredFiles].sort(),
     'The approved reference directory contains an undeclared or missing snapshot'
   );
-
   return manifest;
 }
 
@@ -252,12 +242,8 @@ function listReferenceFiles() {
     });
 }
 
-// Reads the manifest from the approved package and validates it.
 function readManifest() {
-  return validateManifest(
-    JSON.parse(fs.readFileSync(manifestPath, 'utf8')),
-    listReferenceFiles()
-  );
+  return validateManifest(JSON.parse(fs.readFileSync(manifestPath, 'utf8')), listReferenceFiles());
 }
 
 function currentSet(manifest) {
@@ -271,32 +257,16 @@ function supersededSets(manifest) {
   return manifest.sets.filter((set) => set.status === 'superseded');
 }
 
-// Every set's bytes are verified, not just the current one. The superseded
-// artifacts are audit evidence and the contract calls them immutable, so drift
-// in a retired reference is as much a failure as drift in a live one.
 function verifyReferenceBytes(manifest) {
   for (const set of manifest.sets) {
     for (const [viewportId, reference] of Object.entries(set.references)) {
       const bytes = fs.readFileSync(path.join(referenceRoot, reference.file));
-      assert.equal(
-        bytes.length,
-        reference.bytes,
-        `${set.id}/${viewportId} reference length changed`
-      );
-      assert.equal(
-        sha256(bytes),
-        reference.sha256,
-        `${set.id}/${viewportId} reference hash changed`
-      );
+      assert.equal(bytes.length, reference.bytes, `${set.id}/${viewportId} reference length changed`);
+      assert.equal(sha256(bytes), reference.sha256, `${set.id}/${viewportId} reference hash changed`);
     }
   }
 }
 
-// Roadmap statuses, read only from bullet lines that carry a checkbox.
-//
-// `*Deps: ...*` is stripped first: a dependency edge names another item without
-// making any claim about that item's status, and letting it set one made UI.11
-// read as complete on a line that only mentioned it.
 function parseRoadmapStatuses() {
   const roadmap = fs.readFileSync(roadmapPath, 'utf8');
   const idPattern = /\b(?:P\d+\.\d+[a-z]?|UI\.\d+[a-z]?|SEC\.\d+[a-z]?|SEED\.\d+|WAL\.\d+)\b/g;
@@ -316,10 +286,6 @@ function parseRoadmapStatuses() {
   return statuses;
 }
 
-// PARITY when at least one owning roadmap item is independently verified `[x]`;
-// UNAVAILABLE otherwise. `[~]` is deliberately not enough: it means implemented
-// and awaiting review, and certifying a screen against work that has not passed
-// review is exactly the claim this contract exists to prevent.
 function classifyScreen(screen, statuses) {
   const owners = SCREEN_OWNERS[screen];
   assert.ok(owners, `No UI.11 owner mapping for manifest screen ${screen}`);
@@ -344,8 +310,6 @@ function realmOfScreen(screen, set) {
   return realm;
 }
 
-// The deterministic state matrix UI.11 enumerates, built from the current set
-// only. A superseded set never produces a row: it is evidence, not a target.
 function createStateMatrix(manifest) {
   const set = currentSet(manifest);
   const statuses = parseRoadmapStatuses();
@@ -355,21 +319,29 @@ function createStateMatrix(manifest) {
     for (const screen of reference.screens) {
       const classification = classifyScreen(screen, statuses);
       const realm = realmOfScreen(screen, set);
+
+      // All currently enumerated states are dark-theme states. PAR-001 is a
+      // light-theme deviation and therefore must not be attached to these rows.
       const deviations = realm === 'cold'
         ? ['PAR-003', 'PAR-005', 'PAR-007']
-        : ['PAR-001', 'PAR-002', 'PAR-005', 'PAR-007'];
+        : ['PAR-002', 'PAR-005', 'PAR-007'];
+
+      // PAR-004 is specifically the approved vault naming / placement
+      // difference. Apply it only to the states it governs.
+      if (VAULT_NAMING_SCREENS.has(screen)) {
+        deviations.push('PAR-004');
+      }
       if (viewportId === 'mobile') {
         deviations.push('PAR-008');
       }
       if (classification === 'UNAVAILABLE') {
         deviations.push('PAR-009');
       }
+
       for (const id of deviations) {
-        assert.ok(
-          manifest.allowedDeviationIds.includes(id),
-          `State matrix applied unregistered deviation ${id}`
-        );
+        assert.ok(manifest.allowedDeviationIds.includes(id), `State matrix applied unregistered deviation ${id}`);
       }
+
       rows.push({
         id: `${viewportId}/${screen}`,
         set: set.id,
@@ -387,23 +359,12 @@ function createStateMatrix(manifest) {
     }
   }
 
-  assert.equal(
-    new Set(rows.map((row) => row.id)).size,
-    rows.length,
-    'State matrix contains duplicate rows'
-  );
-
-  // ui-parity.md section 4.2: the shared shell can never be unavailable.
+  assert.equal(new Set(rows.map((row) => row.id)).size, rows.length, 'State matrix contains duplicate rows');
   for (const row of rows) {
     if (row.owner.length === 0) {
-      assert.equal(
-        row.classification,
-        'PARITY',
-        `Shared-shell state ${row.id} classified ${row.classification}`
-      );
+      assert.equal(row.classification, 'PARITY', `Shared-shell state ${row.id} classified ${row.classification}`);
     }
   }
-
   return rows;
 }
 

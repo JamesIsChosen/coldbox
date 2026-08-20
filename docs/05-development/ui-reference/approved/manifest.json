@@ -399,6 +399,85 @@
           ]
         }
       },
+      "shellScreens": [
+        {
+          "id": "home",
+          "prototypeRoadmapTags": []
+        },
+        {
+          "id": "wallets",
+          "prototypeRoadmapTags": [
+            "P1.6"
+          ]
+        },
+        {
+          "id": "walletDetail",
+          "prototypeRoadmapTags": []
+        },
+        {
+          "id": "seeds",
+          "prototypeRoadmapTags": [
+            "SEED",
+            "SEED.1"
+          ]
+        },
+        {
+          "id": "seedDetail",
+          "prototypeRoadmapTags": [
+            "SEED.2"
+          ]
+        },
+        {
+          "id": "seedqr",
+          "prototypeRoadmapTags": [
+            "SEED.4"
+          ]
+        },
+        {
+          "id": "backup",
+          "prototypeRoadmapTags": [
+            "P2.7"
+          ]
+        },
+        {
+          "id": "portfolio",
+          "prototypeRoadmapTags": [
+            "P3.4"
+          ]
+        },
+        {
+          "id": "security",
+          "prototypeRoadmapTags": [
+            "P1.8"
+          ]
+        },
+        {
+          "id": "reference",
+          "prototypeRoadmapTags": [
+            "P0.17"
+          ]
+        },
+        {
+          "id": "advanced",
+          "prototypeRoadmapTags": [
+            "all"
+          ]
+        },
+        {
+          "id": "vault",
+          "prototypeRoadmapTags": [
+            "P0.13"
+          ]
+        },
+        {
+          "id": "create",
+          "prototypeRoadmapTags": []
+        },
+        {
+          "id": "lock",
+          "prototypeRoadmapTags": []
+        }
+      ],
       "flows": [
         {
           "id": "entropy",
