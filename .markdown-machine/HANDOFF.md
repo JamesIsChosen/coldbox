@@ -5,7 +5,7 @@
   "authoritative": false,
   "project_id": "coldbox-d105f94a-f83e-4f85-9671-c64bcca74803",
   "basis_head_ref": {"ref": "sha256:33e0a9e7e16b3ed6482d88296b2c454c936522c8f1999b7bd84dabf00b21f83e", "path": ".markdown-machine/authority/authority-transition-kernel-migrate-v0.7.0.md"},
-  "basis_repository_commit": "9630a3336462ab5442e95c285259cf5a876cf160",
+  "basis_repository_commit": "20de0c265af89fba1d77709ffb5f2854bfb39d87",
   "authority_epoch": 0,
   "sequence": 5,
   "origin_ref": {"ref": "sha256:b3e0080189145d8b77edc7e5b115623df8e2501a3a34e80d61003c08f960e27b", "path": ".markdown-machine/ORIGIN.md"},
@@ -20,9 +20,9 @@
   "review_barrier": [],
   "convergence_remaining": {"design_verification_cycles": 2, "governance_adoption_cycles": 0, "product_challenge_cycles": 1, "product_discovery_cycles": 2, "product_freeze_reviews": 1},
   "repository_sync": "REPOSITORY_SYNCED",
-  "next_lawful": "CURRENT_TASK",
+  "next_lawful": "HUMAN_DECISION_REQUIRED",
   "lifecycle_node_id": "product_discovery",
-  "generated_at_closeout": "2026-09-03T05:55:15Z"
+  "generated_at_closeout": "2026-09-03T05:59:42Z"
 }
 ---
 # Markdown Machine handoff projection
