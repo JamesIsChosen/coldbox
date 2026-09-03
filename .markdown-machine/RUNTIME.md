@@ -10,9 +10,10 @@
 # Universal Project Runtime
 
 This is the compact universal narrative exported into a child project's
-`.markdown-machine/RUNTIME.md`. It describes the rules whose exact structured
-definitions live in the six canonical contracts. It is not a template factory
-and cannot be used to relax a contract.
+`.markdown-machine/RUNTIME.md`. It defines universal runtime and closeout
+procedure; exact structured record schemas, reducers, operators, and invariants
+live in the six canonical contracts. It is not a template factory and cannot
+be used to relax a contract.
 
 ## 1. Authority and records
 
@@ -142,6 +143,38 @@ authority, lifecycle/horizon, capabilities, inbox, Tasks/Attempts,
 convergence, effects/resources, blockers, meaningful transient state, and next
 legal route without prior chat. A clean worktree alone is not closeout proof.
 
+Recurring clean-closeout validation is source-free and uses only this exported
+runtime plus the exact six contracts carried by the child. Before claiming a
+clean closeout, freeze the current governed path-and-byte set for that
+evaluation. Validate every current governed record locally under the exported
+record grammar and its governing or recovery family: required/optional/fixed
+fields, field types and enums, unknown-field rejection, record-local
+invariants, typed references, contract-key references, and uniqueness of each
+`profile_id`, `registry_id`, and `contract_id` must pass. Resolve all required
+typed and contract-key references exactly once within the current governed set;
+zero or multiple matches reject. Then evaluate the exported authority,
+current-binding, STOP, Task/Attempt, review, convergence, effect/resource,
+repository-currentness, and source-free-closure rules needed to recover the
+truthful current state. Unknown or unresolved state remains deny-only.
+
+The compile-time whole-child publication marker on `COMPILED_MANIFEST` is not a
+recurring steady-state invariant. Its publication satisfaction is established
+by the compiler before the child is published. Source-free closeout instead
+verifies that the published compiled closure and exact exported contract
+identities remain available and internally resolvable, then applies the current
+runtime/recovery rules above. After authoritative and recovery-critical state
+is durable, validate the resulting `HANDOFF_PROJECTION` under `MM-RECOVERY/1`,
+including its basis/currentness checks and highest-precedence `next_lawful`
+invariant. If the frozen governed path set or any bytes already validated by
+this closeout check change before the claim is made, discard that evaluation
+and repeat against a new frozen set after the mutation is durable. Clean
+closeout may be claimed only when this finite source-free evaluation passes and
+exactly one truthful next lawful route or terminal result remains.
+
+The original distribution, `MM-COMPILER/1`, verification corpus, hidden state,
+database, daemon, external index, or prior chat is never required to perform
+this recurring closeout validation.
+
 ## 8. Handoff
 
 `HANDOFF.md` is a non-authoritative, one-screen orientation projection. Its
@@ -250,5 +283,6 @@ and actual project state. `COMPILED-MANIFEST.md` is validated under
 `MM-GOVERNING-RECORDS/1#contracts.COMPILED_MANIFEST`; it is compilation metadata, not a
 seventh governing contract or authority source.
 It does not contain distribution, compiler, verification, source, or factory
-roots. Cold recovery uses `.markdown-machine/HANDOFF.md` and exact compiled
-contracts, not prior chat, hidden state, or agent-invented semantics.
+roots. Cold recovery and later clean closeout use `.markdown-machine/HANDOFF.md`,
+this exported runtime, and the exact compiled contracts—not prior chat, hidden
+state, or the original compiler/distribution source.
