@@ -5,7 +5,7 @@
   "authoritative": false,
   "project_id": "coldbox-d105f94a-f83e-4f85-9671-c64bcca74803",
   "basis_head_ref": {"ref": "sha256:0f9ce09bb944ae76ecec598d95ea097f257a8d5ca0a8146a123780e01b76ae22", "path": ".markdown-machine/authority/authority-transition-task-authorize.md"},
-  "basis_repository_commit": "d8d9b2c651397de6c825ef05481c5134c15bbf00",
+  "basis_repository_commit": "1252c2730cae636accc91ab71b27b9ec2e9ba8e3",
   "authority_epoch": 0,
   "sequence": 4,
   "origin_ref": {"ref": "sha256:daa5dfbded1c23c705fb16aab45b8627d6627534324af55f3c083508cbf9aa8b", "path": ".markdown-machine/ORIGIN.md"},
@@ -22,7 +22,7 @@
   "repository_sync": "REPOSITORY_SYNCED",
   "next_lawful": "Execute the current mock-rereview-product-discovery Task under DISCOVERY; do not implement or freeze.",
   "lifecycle_node_id": "product_discovery",
-  "generated_at_closeout": "2026-09-02T23:53:18Z"
+  "generated_at_closeout": "2026-09-03T00:05:43Z"
 }
 ---
 # Markdown Machine handoff projection
