@@ -1,0 +1,343 @@
+# Review protocol
+
+The contract for whoever reviews a PR packet — human or agent.
+
+**Every review ends in exactly one word: PASS or FAIL.** There is no third option, no "approve with comments," no "LGTM with nits."
+
+---
+
+## The core rule
+
+> **Any advisory, nit, concern, suggestion, or "worth considering later" is a FAIL.**
+
+If it's worth writing down, it's worth fixing before merge.
+
+This is deliberately stricter than normal software review, for two reasons.
+
+**"Approve with comments" is where defects go to live.** A comment attached to a merged PR is a comment nobody will action. The author has moved on, the branch is gone, and the concern quietly becomes permanent. Requiring a FAIL means the concern gets resolved or explicitly dismissed with reasoning — either way, someone decides.
+
+**This tool handles seed phrases.** The cost asymmetry is extreme: a delayed merge costs hours, a wrong merge can cost someone everything they own. When those are the stakes, a reviewer who can hedge will hedge, and the hedge is worth nothing.
+
+If you genuinely think something is fine, say nothing about it and PASS. If you're not sure, that uncertainty is itself a finding — write it down and FAIL.
+
+---
+
+## Verdict definitions
+
+**PASS** — every acceptance criterion is met and independently verified, all hard constraints hold, and you have no findings of any severity. The work merges as-is.
+
+**FAIL** — anything else. Including:
+
+- An acceptance criterion is unmet, or reinterpreted to fit what was built
+- An acceptance criterion **cannot be verified** — you can't pass what you can't check
+- A hard constraint is violated
+- You have a finding of any severity, including cosmetic
+- The packet's claims don't reproduce on your machine
+- Something is unclear enough that you'd need to ask the author
+
+FAIL is not an insult and carries no implication about effort or competence. It means "not yet."
+
+---
+
+## Two review modes — declare which one you used
+
+Reviewers differ in what they can reach. Both modes are legitimate. They require
+different evidence and are not equally strong in the same places.
+
+**The verdict standard is identical in both.** Binary PASS/FAIL; any finding of
+any severity is a FAIL. The mode changes what counts as evidence, never how
+strict the verdict is.
+
+**Declare the mode in the verdict block** — `Review mode: CONNECTED` or
+`Review mode: READ-ONLY (CI-witnessed, run <id>)`. A reader must be able to tell
+what kind of assurance they are holding.
+
+### Mode A — CONNECTED
+
+The reviewer can check out the repository and run commands. Every requirement in
+"What you must do before deciding" applies as written.
+
+Note honestly what this mode is **not**: a single reviewer machine is usually one
+OS, one browser, and whatever Node happens to be installed. It cannot reproduce
+this project's cross-OS build comparison or its Chromium **and** Firefox matrix.
+
+### Mode B — READ-ONLY, CI-witnessed
+
+The reviewer can read the code, the diff, and the PR, but cannot check out or
+execute — typically a browser-hosted agent in a network-isolated sandbox with a
+read-only token.
+
+**This is a supported mode, not a degraded one.** Its strength is where automated
+checks are weakest: reading the code, reasoning through production paths, and
+checking acceptance criteria verbatim. A suite can be green while the real path
+is dead; only reading catches that.
+
+Execution is witnessed by CI at the reviewed commit, under **all** of:
+
+1. **Exact commit.** The run's `head_sha` equals the reviewed commit in full —
+   not the branch tip. Record the run ID.
+2. **Audit the workflow at that commit.** Read `.github/workflows/` as it exists
+   on the reviewed commit and confirm it runs the required checks. **Name the
+   ones you confirmed.** The workflow is author-controlled; an unaudited green
+   run proves only that the author's chosen commands succeeded.
+3. **No silent skips.** Confirm zero skipped tests in every required suite. **A
+   skipped test is not a passed test** — a suite that self-skips on a missing
+   browser or binary reports success while checking nothing. Name any skip and
+   treat it as unverified.
+4. **Who triggered the run is immaterial**, provided 1 and 2 hold. A run's
+   `head_sha` and conclusion are attested by GitHub and cannot be forged by the
+   author, and re-running the same commit executes the same workflow over the
+   same tree. Do not require reviewer-initiated CI; it protects nothing that
+   commit-pinning does not already cover. See ADR-0048.
+5. **CI never covers what CI cannot reach.** The manual device matrix,
+   clean-directory execution, offline operation, iOS status, and any
+   human-observed behaviour remain separate and are recorded as unverified until
+   a human performs them.
+
+CI substitutes for the reviewer's **hands**, never its **judgement**. A review
+citing a green checkmark without naming what it audited has not reviewed anything.
+
+### Security properties are established only by what executes them
+
+This project handles seed phrases. A higher bar here means **more evidence**, not
+an unsatisfiable procedural step.
+
+The cold-realm properties — opaque-origin isolation, CSP inheritance, the private
+`MessageChannel` handshake, vault save/load, the Argon2id/WASM path — are
+established only by whatever actually exercises them. Where CI's browser job
+exercises them, CI is the witness. Where it does not, they stay manual and
+unverified. **No mode change converts an unexecuted security property into a
+verified one.**
+
+### Delivering a Mode B report
+
+A read-only reviewer usually cannot write to the branch or post a PR review. The
+report is still required on the branch, so:
+
+1. The reviewer emits the full report as text.
+2. The human pastes it to the author-side agent **verbatim**.
+3. That agent commits it unedited, with an attribution block naming the reviewer,
+   the reviewed commit, the date, and the fact that it transcribed the report
+   because the reviewer lacked write access.
+4. It commits **alone**, separate from any fix.
+
+The transcribing agent must never summarise, soften, or reconstruct wording it
+does not have. A paraphrase presented as a reviewer's findings is a falsified
+audit record.
+
+### What the author owes a Mode B reviewer
+
+A reviewer that cannot clone sees only what it is given. The handoff must carry
+the **full 40-character head SHA**, the **CI run ID**, the packet, and the
+acceptance criteria verbatim. It cannot look any of them up.
+
+## What you must do before deciding
+
+**Verify independently. Do not trust the packet.** Its purpose is to tell you what to check, not to be the evidence itself.
+
+### Always
+
+```bash
+git checkout <branch>
+npm ci
+npm run verify-vendor
+npm run lint
+npm test
+npm run build && shasum -a 256 build/coldbox.html
+rm -rf build && npm run build && shasum -a 256 build/coldbox.html   # must match
+```
+
+Then, beyond re-running what the author ran:
+
+- **Build under a different path, timezone, and locale.** Two builds in the same shell prove almost nothing about determinism.
+- **Break something on purpose** and confirm it fails — with a **non-zero exit code**, not just an error message. A build that throws but exits 0 passes CI silently.
+- **Check the acceptance criteria verbatim** against the roadmap, not as summarized in the packet.
+- **Read the diff.** All of it.
+
+### When the change touches security-relevant code
+
+| Area | Verify |
+|---|---|
+| Realm boundary | `connect-src 'none'` present at runtime; `allow-same-origin` absent; no message type can carry secret material |
+| Message schema | Unknown types dropped; unknown fields stripped; global handler ignored post-handshake |
+| Vault format | Fresh nonce per save; header in AAD; secret subkey unreachable while online; tampering fails authentication |
+| Derivation | Vectors come from a genuinely **independent** implementation — check the source, don't take the citation on faith |
+| Randomness | `getRandomValues` for all key material; no `Math.random` anywhere in a security path; hard-fail when absent |
+| Dependencies | Vendored bytes match **real upstream**, downloaded yourself — not just the project's own manifest |
+| CSP | Policy in the built artifact matches what's documented |
+
+### Automatic FAIL
+
+No amount of good work elsewhere offsets these:
+
+- A secret can cross the realm boundary
+- `connect-src 'none'` removed or weakened in the cold realm
+- Build is not reproducible
+- A vendored dependency doesn't match upstream
+- Test vectors are self-generated
+- A failure mode fails **open**
+- `Math.random` in a security-relevant path
+- A chain added without independent test vectors
+- More than one roadmap item in the PR
+- Acceptance criteria reinterpreted rather than met
+
+---
+
+## The report
+
+Write `docs/05-development/packets/<roadmap-id>-<slug>.review.md`, alongside the packet you're reviewing, and post its contents as the PR review.
+
+**Commit it to the branch you are reviewing**, not to your working tree and not to a branch of your own — see [Close the item out](#close-the-item-out-on-the-branch-before-you-merge) below. A report that exists only in a working tree is destroyed by the merge that follows it.
+
+**It must open with the verdict block**, before anything else:
+
+```markdown
+# Review: P0.3 — Forbidden-construct lint
+
+**VERDICT: FAIL**
+
+Findings: 3 (0 blocking, 3 advisory — all must be addressed)
+Reviewed commit: <full 40-char sha>
+Reviewed by: <agent/human>
+Review mode: CONNECTED | READ-ONLY (CI-witnessed, run <id>)
+Date: YYYY-MM-DD
+```
+
+Note the phrasing. Advisories are listed separately for clarity but **counted as must-fix**. A report with zero findings and a FAIL verdict is a contradiction; so is a report with findings and a PASS.
+
+### Required sections
+
+**1. What I verified** — commands run, with real output pasted. Include the environment variations you tried.
+
+**2. What I could not verify** — and why. Every entry here is a finding. If it blocks an acceptance criterion, the verdict is FAIL.
+
+**3. Acceptance criteria** — verbatim from the roadmap, one row each:
+
+| # | Criterion | Met? | Evidence |
+|---|---|---|---|
+| 1 | | ✅ / ❌ | |
+
+**4. Findings** — every one gets an ID, a location, and a required action:
+
+```markdown
+### F1 — Build script does not fail on missing vendor directory
+
+**Severity:** advisory
+**Location:** scripts/build.js:47
+**Observed:** With `vendor/` removed entirely, the build exits 0 and emits an empty bundle.
+**Expected:** Non-zero exit with a clear message, per the fail-closed principle.
+**Required action:** Add an existence check before verification and a test covering it.
+```
+
+Severity is recorded for triage, **not** to excuse anything. Advisory findings must still be fixed.
+
+**5. Verdict rationale** — one paragraph. On a FAIL, state exactly what would make it a PASS.
+
+---
+
+## Close the item out on the branch, before you merge
+
+**Everything a reviewer produces belongs on the branch being reviewed, committed before the merge.** There are exactly two such artifacts:
+
+1. Your `.review.md` report.
+2. The roadmap marker, flipped from `[~]` to `[x]` — on a PASS only.
+
+**The author cannot flip that marker and should not try.** [ROADMAP.md](ROADMAP.md) says an item whose criteria you cannot verify is `[~]`, never `[x]`, and when the author opens the PR the criteria have not yet been *independently* verified. Only your PASS establishes that. So the author leaves `[~]` and you close it — the marker is a reviewer artifact, not an author one.
+
+Miss either artifact and it has nowhere to live, because `--delete-branch` removes the only branch it could have gone on. That is not hypothetical: it is how this repository ended up with review reports stranded on rescue branches and a follow-up PR whose entire content was one character.
+
+On a PASS, from the PR branch:
+
+```
+git checkout <branch> && git pull
+# write your report, then flip the roadmap marker to [x]
+git add docs/05-development/packets/<slug>.review.md docs/05-development/ROADMAP.md
+git commit -m "review(<id>): record independent PASS and close item"
+git push
+```
+
+Then, and only then, merge.
+
+On a FAIL, commit the report the same way but leave the marker at `[~]`. Nothing merges, so the report stays on the branch and the fixing session builds on top of it.
+
+### Never open a pull request that only moves governance
+
+A missed marker, an absent review report, or a stale checkbox is **not** grounds for a PR of its own. Fold it into the next PR that touches the repository for any reason, and note it in that PR's description.
+
+A pull request whose diff is one checkbox costs a branch, a packet, a review cycle and a merge, and delivers nothing a reader can use. The repository is more wrong for the ceremony than it was for the checkbox.
+
+**If you cannot push to the branch you are reviewing** — some browser-based sessions cannot — do not open a governance PR to compensate. Post the report as the PR review, state plainly in your handoff that the roadmap marker is still `[~]` and which item it belongs to, and hand the closeout to the next session as its first action. One line in a handoff is cheaper than a pull request, and it cannot be silently lost the way an uncommitted file can.
+
+---
+
+## Merge it yourself on PASS
+
+**A PASS verdict means you merge.** First confirm the closeout commit is pushed — report committed, roadmap marker at `[x]` — because after `--delete-branch` there is no branch left to put it on. Then run it, confirm `main` updated, and report in the handoff:
+
+```
+git log --oneline -1 <branch>     # confirm the closeout commit is the tip
+gh pr merge 12 --merge --delete-branch
+git checkout main && git pull && git fetch --prune
+```
+
+**Use `--delete-branch`, not `--delete-branch=false`.** Merged branches are dead weight, and leaving them makes it impossible to tell at a glance which branches are live work. GitHub retargets any stacked child PR to the merged branch's base before deleting, so this is safe even mid-stack.
+
+The one exception: if the repo-level *"Automatically delete head branches"* setting is on, `--delete-branch` is redundant but harmless.
+
+**Do not merge if:**
+
+- You are the session that wrote the code — self-merge is not review
+- The verdict is anything other than PASS
+- The item touches the **realm boundary, message schema, or vault format** (P0.6, P0.7, P0.11). Issue the PASS, then hand the merge to the human with the exact command in a §0 block. Those three are the security core and warrant a human looking at the diff
+
+On FAIL, nobody merges. It gets fixed first.
+
+## End your response with a handoff block
+
+**Mandatory, and the last thing in your response.** Templates: **[handoff.md](handoff.md)** §7 (PASS, merged) and §8 (FAIL). Fill in every placeholder — you know the branch and the PR number.
+
+**Reviewers never fix findings.** That would make the reviewer an author and destroy the independence this protocol exists for. Hand off to a fixing session instead.
+
+## After a FAIL
+
+1. The **author** fixes the findings. The reviewer does not fix them — that would make the reviewer an author and destroy the independence the process exists for.
+2. The author addresses **every** finding: fix it, or argue it should be dismissed and say why.
+3. The author pushes and requests re-review.
+4. The reviewer issues a **fresh verdict** on the new commit — not an amendment to the old one. Re-review is a new review; findings from the previous round are re-checked, and new ones can appear.
+
+A dismissed finding needs the reviewer to agree. If author and reviewer disagree, the human decides and the reasoning goes in an ADR if it's structural.
+
+---
+
+## Reviewer conduct
+
+**Independence is the whole point.** Don't read the packet's conclusions first and then look for confirmation. Run the checks, form your own view, then compare against what the packet claims. A gap between the two is itself informative.
+
+**Be specific.** "This feels fragile" is not a finding. "With `vendor/` removed, `build.js:47` exits 0 instead of failing" is.
+
+**Don't review style.** Formatting, naming, and structure are not findings unless they violate a documented constraint. Save the mechanism for things that matter.
+
+**Don't scope-creep.** A finding must relate to this roadmap item. "It would be nice if this also did X" belongs in an issue, not a review.
+
+### Documentation is in scope
+
+Per [doc-hygiene.md](doc-hygiene.md), a stale doc is a defect — and a worse one than a missing doc, because it makes readers confident and wrong. Since the docs compile into the app's Help system, a user can lose money acting on an out-of-date instruction.
+
+Check, and raise as findings:
+
+- A doc that now contradicts the code
+- A fact restated in two places instead of linked
+- A number in prose that no longer matches reality
+- A dated doc touched by this change without its review date updated
+- Help content missing any of the three depth blocks
+- A broken internal link
+
+**Say what you didn't check.** A review that silently omits a whole area is worse than one that admits the gap.
+
+---
+
+## Kickoff prompt
+
+Review and re-review prompts are in **[prompts.md](prompts.md)**.
+
+Use a **different session** from the one that wrote the code. An agent reviewing its own work in the same context isn't reviewing, it's re-reading.

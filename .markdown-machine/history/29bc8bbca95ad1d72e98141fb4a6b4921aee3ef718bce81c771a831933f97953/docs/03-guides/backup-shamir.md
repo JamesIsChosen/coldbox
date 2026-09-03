@@ -1,0 +1,155 @@
+# Backing up with Shamir39 or raw SSS
+
+Coldbox offers two non-SLIP-39 threshold-share formats for cold-local use:
+Shamir39 turns the focused Seed Forge BIP-39 phrase into mnemonic shares, while
+raw SSS turns that focused phrase's BIP-39 seed bytes into hexadecimal shares.
+The Ian Coleman Shamir39
+specification and the secrets.js reference behavior were reviewed on
+2026-08-12.
+
+::: plain
+Choose a threshold, such as 2 of 3 or 3 of 5. Any threshold number of shares
+can rebuild the secret. Coldbox samples the hidden polynomial coefficients
+across the complete field, including zero, so fewer than the threshold shares
+do not reveal useful information about the field-segment secret under the
+stated randomness assumption. Keep the shares in separate offline places, and
+keep the original phrase or raw secret protected too.
+:::
+::: working
+Shamir39 is a non-standard mnemonic format for splitting a valid BIP-39
+phrase. Raw SSS is Shamir Secret Sharing over a configurable binary finite
+field for the focused phrase's hexadecimal BIP-39 seed bytes. Neither format
+is SLIP-39, and neither provides wallet-device interoperability by itself.
+Shamir39 shares phrase entropy, so its BIP-39 passphrase is separate; raw SSS
+shares the derived seed bytes, so the selected passphrase is reflected in its
+source bytes. The full-uniform coefficient policy protects the field-segment
+secret below threshold, but it does not authenticate shares.
+:::
+::: technical
+The pinned Ian Coleman commit contains two historical artifacts that must not
+be conflated: its `specification.md` names the prototype marker `shamir39`,
+while its `src/js/shamir39.js` implementation emits `shamir39-p1`. Coldbox
+follows that implementation for new output and accepts the legacy marker when
+combining. The pinned specification's three-word example is not a valid BIP-39
+input for this tool, so the shipped input boundary remains 12, 15, 18, 21, or
+24 valid BIP-39 words. Parameter words carry the threshold and share order,
+and data words encode the share polynomial over GF(2^11). Raw SSS follows the pinned
+[secrets.js share format](https://github.com/grempe/secrets.js/blob/master/README.md):
+the leading base-36 field-size digit, hexadecimal share identifier, padded
+field data, default 8-bit field, and default 128-bit padding. Both generators
+require `crypto.getRandomValues`; there is no `Math.random` fallback. Coldbox
+samples every nonconstant coefficient uniformly from the entire finite field,
+including zero. This intentionally differs from the pinned Ian Coleman and
+secrets.js generators, which reject an all-zero random coefficient; existing
+share encoding and combine compatibility remain unchanged, but generator
+outputs are not promised to match byte-for-byte. The below-threshold secrecy
+claim is limited to field-segment secret values conditioned on public
+parameters and an independent uniform CSPRNG; it does not cover share
+authenticity, host compromise, metadata, or a BIP-39 passphrase.
+:::
+
+## Which format should you use?
+
+| Need | Use | Why |
+|---|---|---|
+| A standard wallet backup with broad documented support | [SLIP-39](backup-slip39.md) | It is the project’s preferred interoperable threshold mnemonic format |
+| A BIP-39 phrase split into mnemonic-looking pieces | Shamir39 | It preserves the BIP-39 wordlist choice, but is a non-standard format |
+| A raw key, entropy blob, or other hexadecimal secret | Raw SSS | It shares bytes rather than a mnemonic and supports GF(2^n) field sizes |
+| A backup you can verify by hand | [codex32](backup-codex32.md) | Its checksum and correction procedure are designed for paper work |
+
+If a hardware wallet must restore the backup directly, check its documented
+format support first. Shamir39 and raw SSS normally require reconstructing the
+original material in Coldbox and then using the result in the target wallet.
+
+## Generate shares
+
+1. Work offline and open **Backup Shares / P2.4** in the sealed realm.
+2. In **Seed Forge**, validate or generate the phrase and its exact BIP-39
+   passphrase, release it, and confirm the focused fingerprint.
+3. In Backup Shares, choose the language, threshold, and total share count for
+   Shamir39, or the field size for raw SSS. Both generators use the focused
+   Seed Forge secret; there is no second phrase or raw-hex source field.
+4. Generate the shares. The focused registry and generated output are cleared
+   after the cold session ends.
+5. Reveal the generated shares briefly and transcribe each one to a separate
+   offline record. Hide them again before moving on.
+6. Type the written shares into the matching combine fields and reconstruct a
+   candidate. This verifies transcription only when the shares came from your
+   physical records, not when you reuse the just-displayed values.
+
+Coldbox has no clipboard, download, print, or storage action for these values.
+The share fields, generated arrays, result, and reveal timers are cleared when
+the cold session locks or the panic-hide gesture runs.
+
+## Store and distribute shares
+
+- Never put threshold-many shares in one place. That makes a burglary or one
+  disaster sufficient to reconstruct the secret.
+- Label the threshold and share index, such as “backup fragment 2 of 5,” but
+  do not put the wallet name or asset value on the share itself.
+- Use durable offline media and protect it from water, fire, and legibility
+  loss. A share that cannot be read is a lost share.
+- Record custodians and locations separately from the share text. Do not
+  photograph, sync, email, or paste a share.
+- Keep the BIP-39 passphrase or raw-secret context as a separate backup. A
+  reconstructed phrase without its passphrase may open the wrong wallet.
+
+## Recover and verify
+
+1. Gather at least the threshold number of shares from separate locations.
+2. Work offline and enter each complete share into the same format’s combine
+   fields. Share order does not matter.
+3. Reveal the result briefly. For Shamir39, confirm the BIP-39 words and
+   checksum and compare an independently recorded fingerprint. For raw SSS,
+   compare the complete hexadecimal value with an independent record.
+4. If the result is wrong, do not guess or “repair” it. Check the format,
+   field size, threshold, share set, and every character on the physical
+   records. A wrong share can produce a candidate rather than a helpful error.
+
+Fewer than the threshold number of shares must not be treated as partial
+recovery. Reconstructing with a damaged or mixed share set is not evidence
+that the output is correct; independent verification is mandatory.
+
+For a public BackupRecord, **Verify shares** opens the corresponding cold-only
+workflow. Type the physical shares there; P2.6 writes a public
+`lastVerifiedAt` only after the selected Shamir39 or raw SSS reconstruction
+succeeds **and** the reconstructed candidate matches the cold-stored subject
+named by the record. A valid set for another subject, or a subject that cannot
+be resolved inside the cold realm, remains incomplete. Share text, the
+reconstructed phrase or hexadecimal value, and any passphrase remain inside
+the cold realm. The record's timestamp is evidence of subject-bound format
+reconstruction, not proof that the physical custodian or location is safe.
+
+## Important limitations
+
+- Shamir39 is not SLIP-39. It does not promise the same checksum, metadata, or
+  wallet compatibility.
+- Raw SSS shares do not authenticate their contents. A maliciously changed
+  share may cause a wrong candidate; verify the reconstructed value
+  independently.
+- The full-uniform coefficient policy gives the field-segment secret the
+  standard below-threshold information-theoretic secrecy property when the
+  CSPRNG produces independent uniform field elements. It does not authenticate
+  shares, protect against a compromised host, hide public metadata, or
+  preserve the original passphrase.
+- Field size limits the maximum share count. Coldbox’s UI exposes up to eight
+  shares; the cold API enforces the mathematical field limit.
+- Missing `crypto.getRandomValues` is a hard failure. Coldbox never substitutes
+  `Math.random` for share generation.
+
+## Related standards and references
+
+- [Backup Health](backup-health.md) — public verification schedules and conservative placement warnings.
+
+- [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) —
+  mnemonic entropy and checksum rules.
+- [Ian Coleman Shamir39 specification](https://github.com/iancoleman/shamir39/blob/master/specification.md)
+  — version marker, parameter words, and data encoding.
+- [Ian Coleman Shamir39 reference implementation](https://github.com/iancoleman/shamir39)
+  — independent compatibility source.
+- [secrets.js README](https://github.com/grempe/secrets.js/blob/master/README.md)
+  — raw SSS field, padding, and share-format behavior.
+- [secrets.js source](https://github.com/grempe/secrets.js/blob/master/secrets.js)
+  — independent compatibility source.
+- [SLIP-39 guide](backup-slip39.md) — the preferred interoperable threshold
+  mnemonic workflow.
