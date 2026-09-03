@@ -26,7 +26,7 @@
       "selected_capability_sources_item": {"capability_id": "ascii_id", "path": "canonical_logical_path", "sha256": "sha256_hex"},
       "invariants": ["SOURCE_ORIGIN_EQUALITY", "FIXED_GOVERNING_SOURCE_MEMBERSHIP", "GOVERNING_SOURCE_SET_EXACT", "GIT_IDENTITY_REQUIRED_FOR_GIT_TRANSPORT"]
     },
-    "COMPILED_MANIFEST": {"required_fields": ["record_type", "schema_version", "project_id", "compiled_manifest_id", "distribution_origin_ref", "runtime_export", "contract_exports", "selected_capability_exports", "child_layout", "forbidden_distribution_roots", "closure_status", "revision"], "optional_fields": ["repository_binding_ref"], "invariants": ["EXACT_COMPILED_SOURCE_BINDING", "EXACT_SIX_CONTRACT_EXPORTS", "FORBIDDEN_DISTRIBUTION_ROOTS_ABSENT", "CHILD_CLOSURE_COMPLETE", "WHOLE_CHILD_RECORD_VALIDATION"]},
+    "COMPILED_MANIFEST": {"required_fields": ["record_type", "schema_version", "project_id", "compiled_manifest_id", "distribution_origin_ref", "runtime_export", "contract_exports", "selected_capability_exports", "child_layout", "forbidden_distribution_roots", "closure_status", "revision"], "optional_fields": ["repository_binding_ref"], "invariants": ["EXACT_COMPILED_SOURCE_BINDING", "EXACT_SIX_CONTRACT_EXPORTS", "FORBIDDEN_DISTRIBUTION_ROOTS_ABSENT", "CHILD_CLOSURE_COMPLETE"]},
     "KERNEL_MANIFEST": {
       "required_fields": ["record_type", "schema_version", "project_id", "distribution_origin_ref", "compatibility_family", "admission_contract_ref", "selected_capability_runtime_refs"],
       "optional_fields": ["compiled_under_authority_ref", "candidate_shaped_binding_types"],
@@ -109,7 +109,7 @@
     "RUN_HORIZON_LOWER": {"binding_cardinality":{"RUN_HORIZON":{"min":1,"max":1}},"human_statement_class":null,"human_subject_mode":"NONE","effect_delta":"DENY_ONLY","predecessor":{"min":1,"max":1},"preconditions":["NEW_HORIZON_SUBSET_OR_EQUAL_CURRENT"]},
     "TASK_AUTHORIZE": {"binding_cardinality":{"TASK_CONTRACT":{"min":1,"max":1},"REVIEW_REQUEST":{"min":0,"max":20}},"human_statement_class":null,"human_subject_mode":"NONE","effect_delta":"BOUND_OPERATION_CEILING_ONLY","predecessor":{"min":1,"max":1},"preconditions":["TASK_REFERENCES_CURRENT_INTENT_CAPABILITY_OPERATION","TASK_REVIEW_REQUIREMENT_MATERIALIZED"]},
     "TASK_CANCEL": {"binding_cardinality":{"TASK_CONTRACT":{"min":1,"max":1}},"human_statement_class":null,"human_subject_mode":"NONE","effect_delta":"DENY_ONLY","predecessor":{"min":1,"max":1},"preconditions":["TASK_CANCELS_CURRENT_TASK"]},
-    "REVIEW_AUTHORIZE": {"binding_cardinality":{"REVIEW_REQUEST":{"min":1,"max":20}},"human_statement_class":null,"human_subject_mode":"NONE","effect_delta":"NO_NEW_EFFECT_AUTHORITY","predecessor":{"min":1,"max":1},"preconditions":["REVIEW_REQUEST_MATCHES_CURRENT_SUBJECT"]},
+    "REVIEW_AUTHORIZE": {"binding_cardinality":{"REVIEW_REQUEST":{"min":1,"max":20}},"human_statement_class":null,"human_subject_mode":"NONE","effect_delta":"NO_NEW_EFFECT_AUTHORITY","predecessor":{"min":1,"max":1},"preconditions":["REVIEW_REQUEST_MATCHES_CURRENT_TASK"]},
     "RESULT_ACCEPT": {"binding_cardinality":{"TASK_CONTRACT":{"min":1,"max":1}},"human_statement_class":null,"human_subject_mode":"NONE","effect_delta":"NO_NEW_EFFECT_AUTHORITY","predecessor":{"min":1,"max":1},"preconditions":["RESULT_ACCEPT_LINKS_CURRENT_TASK","REQUIRED_REVIEW_RESULTS_PASS"]},
     "STOP": {"binding_cardinality":{},"human_statement_class":"STOP","human_subject_mode":"EXACT_PREDECESSOR_SET","effect_delta":"DENY_ONLY","predecessor":{"min":1,"max":1},"preconditions":[]},
     "RESUME": {"binding_cardinality":{},"human_statement_class":"RESUME","human_subject_mode":"EXACT_PREDECESSOR_SET","effect_delta":"NO_NEW_EFFECT_AUTHORITY","predecessor":{"min":1,"max":1},"preconditions":["ACTIVE_STOP_BARRIER_REQUIRED"]},
@@ -132,19 +132,6 @@ This registry defines positive records and operation floors. Records are
 validated with `MM-RECORD-GRAMMAR/1`; recovery-only records are defined in
 `MM-RECOVERY/1`. Lists marked by an id or pair key are sets and duplicate keys
 are invalid. All omitted or unknown fields fail closed.
-
-`WHOLE_CHILD_RECORD_VALIDATION` is a compiler publication marker, not an
-independent record-local recursive evaluator. `MM-COMPILER/1` defines its finite
-once-only evaluation order: ordinary local validation first, then one fixed-set
-whole-child pass, with re-entry into the marker prohibited while that top-level
-gate is active. It creates no validator record, service, or runtime state.
-
-`REVIEW_REQUEST_MATCHES_CURRENT_SUBJECT` repairs the review-admission predicate
-to match the subject model already declared by `REVIEW_REQUEST`. Its exact
-family-specific current/non-inert tests are defined by `MM-AUTHORITY/1` using
-existing reducers. Exact path/digest subjects may review inert candidate bytes
-without making them current. Authorizing a review creates no positive authority
-for its subjects and never makes an inert candidate current.
 
 The registry intentionally contains no publication-plan, publication-receipt,
 authority-currentness-observation, worker-assignment, worker-requirement, or

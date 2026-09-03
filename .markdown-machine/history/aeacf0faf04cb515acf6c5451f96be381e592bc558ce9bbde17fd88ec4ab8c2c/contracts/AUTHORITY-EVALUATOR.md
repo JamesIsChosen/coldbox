@@ -70,46 +70,6 @@ For `KERNEL_MIGRATE`, the exact current-human subject set is one candidate
 is one `EXTERNAL_SUBJECT` plus one candidate `KERNEL_MANIFEST`. No fixture or
 candidate-origin shorthand changes these target types.
 
-`REVIEW_REQUEST_MATCHES_CURRENT_SUBJECT` is the closed precondition used by
-`REVIEW_AUTHORIZE`. It does not add an operator. Evaluate it as follows:
-
-1. Every `subjects` item must match the exact bytes at its declared current
-   project/candidate path. Path/digest subjects may describe inert candidate
-   bytes because authorizing review never grants authority to those bytes. For
-   adoption acceptance, the path/digest set must equal the frozen adoption
-   payload defined by `MM-RECONCILIATION/1`; review-control records and HANDOFF
-   are outside that frozen set.
-2. Every `subject_record_ref` must resolve exactly to one allowed record family
-   and pass that family's existing current/non-inert rule:
-   - `TASK_CONTRACT`: the exact Task is present and non-tombstoned in the current
-     Task map produced by `BINDING_REDUCER`/ordinary Task binding replay;
-   - `OPERATION_CONTRACT`: the exact contract is selected by
-     `CURRENT_BINDING_STATE_VALID` as a current operation binding for the
-     current capability/intent state;
-   - `INTENT_BASELINE`: the exact record is the current intent binding selected
-     by `CURRENT_BINDING_STATE_VALID`;
-   - `LIFECYCLE_GRAPH`: the exact record is the current lifecycle binding
-     selected by `CURRENT_BINDING_STATE_VALID`;
-   - `ATTEMPT_RECORD`: `REQUIRE_CURRENT_TASK_BINDING` is `ELIGIBLE` for its
-     `task_contract_ref`, and this record is the greatest valid `revision` for
-     its `attempt_id` in the current governed set;
-   - `EFFECT_CLAIM`: its `operation_ref` resolves to a current operation binding
-     under `CURRENT_BINDING_STATE_VALID`, and this record is the greatest valid
-     `revision` for its `effect_claim_id` in the current governed set.
-3. If a review needs to assess immutable historical/non-current bytes rather
-   than a current governed record, it must use exact `subjects`
-   `{path,source_digest}` entries instead of laundering that artifact through a
-   `subject_record_ref` currentness claim.
-4. If any family test is ambiguous, multiply resolved, stale, superseded, or
-   otherwise not established by the named existing reducers, the precondition
-   rejects. A review authorization never changes any subject's binding/current
-   status.
-
-This family table is finite and closed over the already-permitted
-`REVIEW_REQUEST.subject_record_ref_targets`; adding another permitted target
-family in a future law requires an explicit corresponding currentness rule in
-that future law.
-
 `AUTHORITY_FORK_RESOLVE` must carry `predecessor_refs` equal to the complete
 visible competing-head set, carry the exact `fork_base_ref`, identify the
 selected winner, set epoch to one greater than the maximum parent epoch, and
@@ -123,11 +83,7 @@ canonical single-winner cutover. Before any successor transition, a fresh
 Definitions: governed tree means `.markdown-machine/`; persistence ref is
 `REPOSITORY_BINDING.persistence_ref`; durable head is the commit resolved by
 that ref; fresh observation is produced by the evaluating session's own
-readback. For repository-backed adoption before the first `INTENT_ACCEPT`, the
-compiler-selected binding used for candidate currentness must resolve to the
-actual durable ref whose head contains the adoption Genesis; naming a ref that
-does not contain that Genesis is simply rule 1's inert-candidate condition and
-never establishes canonical authority.
+readback.
 
 1. An authority file absent from the durable head commit is an inert candidate.
 2. A local HEAD that is not the persistence-ref commit or an ancestor-consistent
@@ -243,9 +199,5 @@ list, including the projection-tested `REPLAY_SINGLETON_CHILDREN`,
 `REPLAY_FORK_RESOLUTION`, `TASK_BINDING_MUTATION_ALLOWED`,
 `RESULT_ACCEPT_LINKS_CURRENT_TASK`, `APPLY_ORDINARY_BINDINGS`,
 `ADOPTION_ELIGIBLE`, and `SOURCE_FREE_CLOSURE` operators. Unknown names
-reject. Transition preconditions named by `MM-GOVERNING-RECORDS/1`, including
-`REVIEW_REQUEST_MATCHES_CURRENT_SUBJECT`, are evaluated by the finite rules in
-this contract and the named existing reducers; they do not become additional
-operator-registry members merely by being transition preconditions. The
-evaluator is finite, source-free, and digest-bound; repository state can satisfy
-only durability or currentness evidence predicates.
+reject. The evaluator is finite, source-free, and digest-bound; repository
+state can satisfy only durability or currentness evidence predicates.
