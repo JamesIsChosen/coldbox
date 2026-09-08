@@ -17,8 +17,7 @@
 
 This contract is the canonical byte, front-matter, primitive-type, reference,
 predicate, operator, and human-boundary grammar. The tables below are closed:
-an unknown field, record type, descriptor, predicate, operator, precondition,
-or retained invariant is invalid.
+an unknown field, record type, descriptor, predicate, or operator is invalid.
 
 ## 1. Record bytes
 
@@ -38,7 +37,7 @@ semantics. Required, optional, and forbidden fields are evaluated exactly.
 The closed primitive vocabulary is `ascii_id`, `ascii_token`, `unicode_scalar_string`,
 `canonical_logical_path`, `sha256_hex`, `git_object_id`, `sha256_ref`, `typed_ref`,
 `rfc3339_utc_timestamp`, `canonical_markdown_fragment_ref`, `contract_key_ref`,
-`markdown_document_ref`, `canonical_integer`, `nonnegative_safe_integer`, `boolean`, `enum`, `object`, and
+`markdown_document_ref`, `canonical_integer`, `boolean`, `enum`, `object`, and
 `list`. `ascii_id` is nonempty ASCII
 `[A-Za-z0-9][A-Za-z0-9._/-]*`;
 `ascii_token` is nonempty ASCII without control characters or whitespace;
@@ -47,11 +46,7 @@ is exactly 64 lowercase hexadecimal characters. A
 `rfc3339_utc_timestamp` is an RFC3339 timestamp with a `Z` UTC designator
 (`YYYY-MM-DDTHH:MM:SS[.fraction]Z`) and a valid calendar date/time. A
 `canonical_integer` is a JSON integer within the safe range above; a schema
-that needs a wider exact integer must declare a canonical decimal string.
-`nonnegative_safe_integer` is a JSON integer in the closed interval
-`0..(2^53−1)`. It is the only admissible primitive for convergence quantities;
-negative values, fractions, exponent notation, numeric strings, and values
-outside that interval are invalid. A
+that needs a wider exact integer must declare a canonical decimal string. A
 `canonical_markdown_fragment_ref` is a canonical logical path followed by `#`
 and one ASCII case-stable fragment id matching `[A-Za-z0-9][A-Za-z0-9_-]*`.
 The target Markdown file and exact fragment heading must both resolve. A
@@ -63,15 +58,11 @@ hinted form:
 ```
 
 The digest is identity. The optional path is an advisory lookup hint; if it is
-stale, resolution searches the bounded governed tree for the digest. Failure
-to find the digest is invalid. Exact digest lookup within that finite tree is
-lawful resolution; speculative filename guessing, proximity, fuzzy matching,
-and Git-object archaeology are not.
-
-A `typed_ref` is an object with exactly `ref` and, when the schema requires it,
-`path`; `ref` must resolve to the declared target record type in the same
-project unless the schema explicitly declares an external identity. Typed
-references cannot be replaced by paths or prose.
+stale, resolution searches the governed tree for the digest. Failure to find
+the digest is invalid. A `typed_ref` is an object with exactly `ref` and, when
+the schema requires it, `path`; `ref` must resolve to the declared target
+record type in the same project unless the schema explicitly declares an
+external identity. Typed references cannot be replaced by paths or prose.
 
 A `contract_key_ref` is `<contract_identity>#<key.path>` or `#<key.path>` for
 the current contract. `contract_identity` is the value of a target
@@ -98,30 +89,24 @@ separator, normalization, or host case folding. Record files use
 `<family-dir>/<record-type-lowercase>-<id>[-r<revision>].md`. The convention is
 compiler-enforced; no index file is authoritative.
 
-## 4. Closed executable vocabulary
+## 4. Closed semantic vocabulary
 
-Executable names resolve by kind; a kind label is never itself an executable
-name.
+Cross-record predicates include exact reference equality, target-record-type
+checking, project/epoch/sequence consistency, predecessor ancestry,
+same-project binding, fixed source membership, origin equality, current
+revision uniqueness, immutable-field preservation, typed-reference closure,
+human-statement precedence, barrier preservation, review independence,
+convergence accounting, Task tombstones, and no-self-reference. Each predicate
+is evaluated fail-closed with its declared arguments; prose cannot add a
+predicate.
 
-- **Operator.** A named operator is executable only when the exact name is a
-  key in one admitted contract's `operator_registry`. Zero or multiple matches
-  are invalid.
-- **Transition precondition.** A transition-precondition name is executable
-  only when it resolves exactly once to
-  `MM-GOVERNING-RECORDS/1#precondition_bindings.<name>`. Each binding declares
-  `resolution_kind` as exactly `OPERATOR`, `FINITE_RELATION`, or
-  `BOUNDED_RULE`. Only `OPERATOR` carries an operator key. `FINITE_RELATION`
-  and `BOUNDED_RULE` carry a closed relation/rule and MUST NOT be interpreted
-  as operator names.
-- **Retained record invariant.** A named invariant is executable only when it
-  resolves exactly once through the applicable admitted
-  `invariant_bindings` table.
-- **Unknown or aliased names.** Zero matches, multiple matches, or prose-only
-  aliases are invalid. Prose cannot manufacture executable vocabulary.
-
-Cross-record relations are finite over exact record fields and exact current
-reducers. Operators and bounded rules terminate over finite records and visited
-identities. This grammar does not create a generalized predicate engine.
+Algorithm operators are closed and deterministic: parse/validate bytes,
+resolve typed or hinted references, replay admitted authority, reduce current
+bindings, reduce recovery leaves, evaluate operation floors, calculate finite
+reference closure, compare ContentSetDigest inputs, evaluate repository
+currentness, and classify human language under the human-control contract.
+Operators terminate over finite records and visited identities. An unknown
+operator or predicate is invalid, never an invitation to infer behavior.
 
 ## 5. Human boundary
 
@@ -136,5 +121,4 @@ transitions that cite them.
 A contract is usable only when its exact bytes are selected, digest-bound in
 the distribution origin, and admitted into the current kernel manifest. A
 candidate contract is inert until admitted by the old/current law. Candidate
-semantics may validate candidate shape only and never authorize their own
-admission.
+semantics never authorize their own admission.

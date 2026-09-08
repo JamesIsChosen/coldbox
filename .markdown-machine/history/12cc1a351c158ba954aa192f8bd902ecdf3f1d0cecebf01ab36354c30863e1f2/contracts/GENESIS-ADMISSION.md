@@ -16,9 +16,8 @@ or convergence beyond the initial human-authorized records.
 ## Fresh Genesis
 
 The human selects an exact archive or authenticated Git distribution. The
-selected source, ContentSetDigest, exact origin, candidate status, the exact
-six-contract closure, and the universal runtime source binding are verified:
-`project-runtime/RECORD-GRAMMAR.md`,
+selected source, ContentSetDigest, exact origin, candidate status, and the
+exact six-contract closure are verified: `project-runtime/RECORD-GRAMMAR.md`,
 `project-runtime/GOVERNING-RECORD-CONTRACTS.md`,
 `project-runtime/RECOVERY-CONTRACTS.md`,
 `project-runtime/AUTHORITY-EVALUATOR.md`,
@@ -28,11 +27,6 @@ bootstrap profile, immutable human statements, DistributionOrigin,
 KernelManifest, ConvergenceRoot, ConvergencePolicy, and required references
 are captured. Genesis has epoch `0` and sequence `0`; its initial bindings are
 narrow and exact.
-
-`DistributionOrigin.runtime_source` is required at Genesis admission and must
-bind `{path: project-runtime/RUNTIME.md, sha256: exact selected source bytes}`.
-The runtime source is not proven by `content_set_digest` or by hashing a child
-copy after publication.
 
 ## Adoption eligibility
 

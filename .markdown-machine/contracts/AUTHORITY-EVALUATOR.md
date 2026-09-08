@@ -4,248 +4,471 @@
   "schema_version": 1,
   "contract_id": "MM-AUTHORITY/1",
   "distribution_only": true,
-  "normative": true
-  ,"reducer_outputs": ["SINGLETON", "AUTHORITY_FORK_UNRESOLVED", "AUTHORITY_CURRENTNESS_UNKNOWN", "NO_PROVABLE_LINEAGE"]
-  ,"operators": ["VALIDATE_GENESIS_BASE", "REDUCE_AUTHORITY_HEAD", "REPLAY_SINGLETON_CHILDREN", "REPLAY_FORK_RESOLUTION", "TASK_BINDING_MUTATION_ALLOWED", "RESULT_ACCEPT_LINKS_CURRENT_TASK", "APPLY_ORDINARY_BINDINGS", "BINDING_REDUCER", "CAPABILITY_FLOOR_ALGORITHM", "CURRENT_BINDING_STATE_VALID", "CURRENT_AUTHORITY_STATE_VALID", "KERNEL_MIGRATION_CUTOVER_VALID", "FORK_RESOLUTION_VALID", "FORK_RESOLUTION_PUBLICATION_GUARANTEE", "REPOSITORY_CURRENTNESS_VALID", "CANDIDATE_SHAPE_VALID", "ADOPTION_ELIGIBLE", "SOURCE_FREE_CLOSURE", "HISTORICAL_CLOSURE_VALID", "NO_HANDOFF_AUTHORITY_REFERENCE", "NO_SELF_AUTHORIZATION"]
-  ,"transition_families": ["INTENT_ACCEPT", "INTENT_SUPERSEDE", "CAPABILITY_BIND", "CAPABILITY_SUSPEND", "CAPABILITY_MIGRATE", "LIFECYCLE_PUBLISH", "RUN_HORIZON_RAISE", "RUN_HORIZON_LOWER", "TASK_AUTHORIZE", "TASK_CANCEL", "REVIEW_AUTHORIZE", "RESULT_ACCEPT", "STOP", "RESUME", "CONVERGENCE_EXTEND", "AUTHORITY_FORK_RESOLVE", "KERNEL_MIGRATE"]
-  ,"transition_admission_shape_source": "MM-GOVERNING-RECORDS/1#transition_families"
-  ,"human_subject_type_filter_source": "MM-GOVERNING-RECORDS/1#human_subject_type_filter_by_statement_class"
-  ,"candidate_shape_sources": [{"role":"GRAMMAR","path":"project-runtime/RECORD-GRAMMAR.md","required_record_type":"GOVERNING_CONTRACT"},{"role":"GOVERNING_REGISTRY","path":"project-runtime/GOVERNING-RECORD-CONTRACTS.md","required_record_type":"GOVERNING_RECORD_CONTRACT_REGISTRY"}]
-  ,"candidate_shaped_binding_types_default": ["DISTRIBUTION_ORIGIN","KERNEL_MANIFEST"]
-  ,"operator_registry": {
-    "REPLAY_SINGLETON_CHILDREN": {"input_vocabulary":["PROJECT_GENESIS_PROJECTION","AUTHORITY_TRANSITION_PROJECTION","INERT_CANDIDATE_PROJECTION","REPOSITORY_OBSERVATION_PROJECTION"],"output_vocabulary":["SINGLETON","AUTHORITY_FORK_UNRESOLVED","head_set"],"output_fields":["authority_reduction","head_set","fork_set"]},
-    "REPLAY_FORK_RESOLUTION": {"input_vocabulary":["AUTHORITY_FORK_PROJECTION","FORK_RESOLUTION_PLAN_PROJECTION","ENFORCEMENT_ASSESSMENT_PROJECTION","REPOSITORY_OBSERVATION_PROJECTION"],"output_vocabulary":["SINGLETON","AUTHORITY_FORK_UNRESOLVED","ADMIT","REJECT"],"output_fields":["authority_reduction","admission_decision"]},
-    "TASK_BINDING_MUTATION_ALLOWED": {"input_vocabulary":["CURRENT_TASK_MAP_PROJECTION","REVIEW_PREDICATE_PROJECTION"],"output_vocabulary":["ADMIT","REJECT","task_map_delta"],"output_fields":["admission_decision","task_map_delta"]},
-    "RESULT_ACCEPT_LINKS_CURRENT_TASK": {"input_vocabulary":["CURRENT_TASK_MAP_PROJECTION","REVIEW_PREDICATE_PROJECTION"],"output_vocabulary":["ADMIT","REJECT"],"output_fields":["admission_decision"]},
-    "APPLY_ORDINARY_BINDINGS": {"input_vocabulary":["CURRENT_TASK_MAP_PROJECTION","REVIEW_PREDICATE_PROJECTION"],"output_vocabulary":["ADMIT","REJECT","task_map_delta"],"output_fields":["admission_decision","task_map_delta"]},
-    "BINDING_REDUCER": {"input_vocabulary":["CURRENT_TASK_MAP_PROJECTION","REVIEW_PREDICATE_PROJECTION"],"output_vocabulary":["BOUND","UNBOUND"],"output_fields":["binding_reduction"]},
-    "CAPABILITY_FLOOR_ALGORITHM": {"input_vocabulary":["SELECTED_CAPABILITY_PROJECTION"],"output_vocabulary":["PASS","REJECT"],"output_fields":["capability_floor_decision"]},
-    "VALIDATE_GENESIS_BASE": {"input_vocabulary":["OWN_LAW_PROJECTION","ADOPTION_SUBJECT_PROJECTION","CANDIDATE_ORIGIN_PROJECTION","HUMAN_STATEMENT_PROJECTION"],"output_vocabulary":["NO_PROVABLE_LINEAGE","SINGLETON","REJECT"],"output_fields":["lineage_status","authority_reduction"]},
-    "ADOPTION_ELIGIBLE": {"input_vocabulary":["OWN_LAW_PROJECTION","OLD_LAW_MIGRATION_PROJECTION","OLD_LAW_PREDICATE_PROJECTION","SHAPE_VALIDATION_PROJECTION","ADOPTION_SUBJECT_PROJECTION","HUMAN_STATEMENT_PROJECTION"],"output_vocabulary":["ELIGIBLE","REJECT","lineage_status"],"output_fields":["adoption_decision","lineage_status"]},
-    "KERNEL_MIGRATION_CUTOVER_VALID": {"input_vocabulary":["OWN_LAW_PROJECTION","CANDIDATE_ORIGIN_PROJECTION","SHAPE_VALIDATION_PROJECTION","OLD_LAW_PREDICATE_PROJECTION","HUMAN_STATEMENT_PROJECTION"],"output_vocabulary":["ADMIT","REJECT","NO_MIGRATION_REQUIRED"],"output_fields":["migration_decision","admission_decision"]},
-    "SOURCE_FREE_CLOSURE": {"input_vocabulary":["SOURCE_AVAILABILITY_PROJECTION","AUTHORITY_RECOVERY_PROJECTION","CURRENT_TASK_MAP_PROJECTION","ATTEMPT_ELIGIBILITY_PROJECTION","SELECTED_CAPABILITY_PROJECTION"],"output_vocabulary":["PASS","REJECT","cold_resume"],"output_fields":["cold_resume","closure_status"],"closure_operator_dependencies":["ATTEMPT_EXECUTION_ELIGIBILITY","REQUIRE_STOP_STATE","BINDING_REDUCER","CAPABILITY_FLOOR_ALGORITHM"]}
+  "normative": true,
+  "reducer_outputs": [
+    "SINGLETON",
+    "AUTHORITY_FORK_UNRESOLVED",
+    "AUTHORITY_CURRENTNESS_UNKNOWN",
+    "NO_PROVABLE_LINEAGE"
+  ],
+  "transition_admission_shape_source": "MM-GOVERNING-RECORDS/1#transition_families",
+  "human_subject_type_filter_source": "MM-GOVERNING-RECORDS/1#human_subject_type_filter_by_statement_class",
+  "candidate_shape_sources": [
+    {
+      "role": "GRAMMAR",
+      "path": "project-runtime/RECORD-GRAMMAR.md",
+      "required_record_type": "GOVERNING_CONTRACT"
+    },
+    {
+      "role": "GOVERNING_REGISTRY",
+      "path": "project-runtime/GOVERNING-RECORD-CONTRACTS.md",
+      "required_record_type": "GOVERNING_RECORD_CONTRACT_REGISTRY"
+    }
+  ],
+  "candidate_shaped_binding_types_default": [
+    "DISTRIBUTION_ORIGIN",
+    "KERNEL_MANIFEST"
+  ],
+  "operator_registry": {
+    "VALIDATE_GENESIS_BASE": {
+      "input_vocabulary": [
+        "OWN_LAW_PROJECTION",
+        "ADOPTION_SUBJECT_PROJECTION",
+        "CANDIDATE_ORIGIN_PROJECTION",
+        "HUMAN_STATEMENT_PROJECTION"
+      ],
+      "output_vocabulary": [
+        "NO_PROVABLE_LINEAGE",
+        "SINGLETON",
+        "REJECT"
+      ],
+      "output_fields": [
+        "lineage_status",
+        "authority_reduction"
+      ]
+    },
+    "REPLAY_SINGLETON_CHILDREN": {
+      "input_vocabulary": [
+        "PROJECT_GENESIS_PROJECTION",
+        "AUTHORITY_TRANSITION_PROJECTION",
+        "INERT_CANDIDATE_PROJECTION",
+        "REPOSITORY_OBSERVATION_PROJECTION"
+      ],
+      "output_vocabulary": [
+        "SINGLETON",
+        "AUTHORITY_FORK_UNRESOLVED",
+        "head_set"
+      ],
+      "output_fields": [
+        "authority_reduction",
+        "head_set",
+        "fork_set"
+      ]
+    },
+    "REPLAY_FORK_RESOLUTION": {
+      "input_vocabulary": [
+        "AUTHORITY_FORK_PROJECTION",
+        "FORK_RESOLUTION_PLAN_PROJECTION",
+        "ENFORCEMENT_ASSESSMENT_PROJECTION",
+        "REPOSITORY_OBSERVATION_PROJECTION"
+      ],
+      "output_vocabulary": [
+        "SINGLETON",
+        "AUTHORITY_FORK_UNRESOLVED",
+        "ADMIT",
+        "REJECT"
+      ],
+      "output_fields": [
+        "authority_reduction",
+        "admission_decision"
+      ]
+    },
+    "TASK_BINDING_MUTATION_ALLOWED": {
+      "input_vocabulary": [
+        "CURRENT_TASK_MAP_PROJECTION",
+        "REVIEW_PREDICATE_PROJECTION"
+      ],
+      "output_vocabulary": [
+        "ADMIT",
+        "REJECT",
+        "task_map_delta"
+      ],
+      "output_fields": [
+        "admission_decision",
+        "task_map_delta"
+      ]
+    },
+    "RESULT_ACCEPT_LINKS_CURRENT_TASK": {
+      "input_vocabulary": [
+        "CURRENT_TASK_MAP_PROJECTION",
+        "REVIEW_PREDICATE_PROJECTION"
+      ],
+      "output_vocabulary": [
+        "ADMIT",
+        "REJECT"
+      ],
+      "output_fields": [
+        "admission_decision"
+      ]
+    },
+    "APPLY_ORDINARY_BINDINGS": {
+      "input_vocabulary": [
+        "CURRENT_BINDING_PROJECTION",
+        "AUTHORITY_TRANSITION_PROJECTION",
+        "CURRENT_TASK_MAP_PROJECTION",
+        "REVIEW_PREDICATE_PROJECTION"
+      ],
+      "output_vocabulary": [
+        "ADMIT",
+        "REJECT",
+        "binding_delta",
+        "task_map_delta"
+      ],
+      "output_fields": [
+        "admission_decision",
+        "binding_delta",
+        "task_map_delta"
+      ]
+    },
+    "BINDING_REDUCER": {
+      "input_vocabulary": [
+        "ADMITTED_AUTHORITY_PROJECTION",
+        "CURRENT_TASK_MAP_PROJECTION",
+        "CURRENT_REVIEW_PROJECTION"
+      ],
+      "output_vocabulary": [
+        "BOUND",
+        "UNBOUND",
+        "CURRENT_BINDING_PROJECTION"
+      ],
+      "output_fields": [
+        "binding_reduction",
+        "current_bindings"
+      ]
+    },
+    "CAPABILITY_FLOOR_ALGORITHM": {
+      "input_vocabulary": [
+        "SELECTED_CAPABILITY_PROJECTION",
+        "CURRENT_TASK_MAP_PROJECTION",
+        "OPERATION_CONTRACT_PROJECTION",
+        "CURRENT_REVIEW_PROJECTION",
+        "CURRENT_HUMAN_AUTHORITY_PROJECTION",
+        "CURRENT_EFFECT_PROJECTION",
+        "CURRENT_RESOURCE_PROJECTION",
+        "RUN_HORIZON_PROJECTION",
+        "REPOSITORY_CURRENTNESS_PROJECTION"
+      ],
+      "output_vocabulary": [
+        "PASS",
+        "REJECT",
+        "HUMAN_DECISION_REQUIRED",
+        "UNDECLARED_EFFECT"
+      ],
+      "output_fields": [
+        "capability_floor_decision"
+      ]
+    },
+    "ADOPTION_ELIGIBLE": {
+      "input_vocabulary": [
+        "OWN_LAW_PROJECTION",
+        "OLD_LAW_MIGRATION_PROJECTION",
+        "OLD_LAW_PREDICATE_PROJECTION",
+        "SHAPE_VALIDATION_PROJECTION",
+        "ADOPTION_SUBJECT_PROJECTION",
+        "HUMAN_STATEMENT_PROJECTION"
+      ],
+      "output_vocabulary": [
+        "ELIGIBLE",
+        "REJECT",
+        "lineage_status"
+      ],
+      "output_fields": [
+        "adoption_decision",
+        "lineage_status"
+      ]
+    },
+    "KERNEL_MIGRATION_CUTOVER_VALID": {
+      "input_vocabulary": [
+        "OWN_LAW_PROJECTION",
+        "CANDIDATE_ORIGIN_PROJECTION",
+        "CANDIDATE_KERNEL_MANIFEST_PROJECTION",
+        "SHAPE_VALIDATION_PROJECTION",
+        "OLD_LAW_PREDICATE_PROJECTION",
+        "PRESERVATION_PROJECTION",
+        "HUMAN_STATEMENT_PROJECTION"
+      ],
+      "output_vocabulary": [
+        "ADMIT",
+        "REJECT",
+        "NO_MIGRATION_REQUIRED"
+      ],
+      "output_fields": [
+        "migration_decision",
+        "admission_decision"
+      ]
+    },
+    "SOURCE_FREE_CLOSURE": {
+      "input_vocabulary": [
+        "SOURCE_AVAILABILITY_PROJECTION",
+        "AUTHORITY_RECOVERY_PROJECTION",
+        "CURRENT_TASK_MAP_PROJECTION",
+        "ATTEMPT_ELIGIBILITY_PROJECTION",
+        "SELECTED_CAPABILITY_PROJECTION",
+        "RECOVERY_REDUCER_PROJECTION"
+      ],
+      "output_vocabulary": [
+        "PASS",
+        "REJECT",
+        "cold_resume"
+      ],
+      "output_fields": [
+        "cold_resume",
+        "closure_status"
+      ],
+      "closure_operator_dependencies": [
+        "ATTEMPT_EXECUTION_ELIGIBILITY",
+        "REQUIRE_STOP_STATE",
+        "BINDING_REDUCER",
+        "CAPABILITY_FLOOR_ALGORITHM"
+      ]
+    }
+  },
+  "operator_rules": {
+    "VALIDATE_GENESIS_BASE": {
+      "evaluation_order": ["source and exact six-contract closure", "candidate origin", "human statement", "lineage"],
+      "outputs": {"NO_PROVABLE_LINEAGE": "no positive lineage is provable", "SINGLETON": "exactly one valid epoch-0/sequence-0 Genesis is admitted", "REJECT": "any missing, malformed, conflicting, or own-law-admissible input"},
+      "missing_or_malformed": "REJECT"
+    },
+    "REPLAY_SINGLETON_CHILDREN": {
+      "evaluation_order": ["bounded inventory", "typed predecessor graph", "admitted transition continuity", "currentness"],
+      "outputs": {"SINGLETON": "one reachable current head", "AUTHORITY_FORK_UNRESOLVED": "two or more distinct reachable heads", "head_set": "the exact sorted set of reachable heads"},
+      "empty_or_invalid": "NO_PROVABLE_LINEAGE or AUTHORITY_CURRENTNESS_UNKNOWN as applicable; never infer a head from file order"
+    },
+    "REPLAY_FORK_RESOLUTION": {
+      "inputs": "complete visible competing-head set, common base, selected winner, transition, and qualifying publication evidence",
+      "outputs": {"ADMIT": "all exact fork fields and evidence pass", "SINGLETON": "replayed post-resolution head is one", "AUTHORITY_FORK_UNRESOLVED": "competing set remains", "REJECT": "missing, malformed, conflicting, or non-member winner"}
+    },
+    "TASK_BINDING_MUTATION_ALLOWED": {
+      "inputs": "current Task map, one exact Task mutation, and current Task-relevant review predicate",
+      "outputs": {"ADMIT": "candidate changes only the addressed Task map entry and all predicates pass", "REJECT": "stale/multiple Task, unauthorized mutation, or unknown predicate", "task_map_delta": "the exact one-entry replacement or tombstone"},
+      "empty_or_malformed": "REJECT"
+    },
+    "RESULT_ACCEPT_LINKS_CURRENT_TASK": {
+      "inputs": "current Task map and the candidate result-accept transition's exact Task binding",
+      "outputs": {"ADMIT": "exactly one current non-tombstoned Task identity and operation match", "REJECT": "zero/multiple, stale, tombstoned, or mismatched Task"}
+    },
+    "APPLY_ORDINARY_BINDINGS": {
+      "evaluation_order": ["freeze predecessor", "validate exact binding cardinalities", "apply transition family", "reduce current bindings and Task map"],
+      "outputs": {"ADMIT": "all candidate deltas are exact and transition preconditions pass", "REJECT": "otherwise", "binding_delta": "only fields authorized by the selected transition family", "task_map_delta": "only the selected Task mutation, if any"}
+    },
+    "BINDING_REDUCER": {
+      "inputs": "admitted authority chain and exact current-binding records",
+      "outputs": {"BOUND": "one current record per binding identity", "UNBOUND": "no current record", "CURRENT_BINDING_PROJECTION": "the exact reduced bindings"},
+      "conflict": "UNBOUND or AUTHORITY_CURRENTNESS_UNKNOWN; equal maxima are not resolved by order"
+    },
+    "CAPABILITY_FLOOR_ALGORITHM": {
+      "evaluation_order": ["CURRENT_TASK_AND_OPERATION", "OPERATION_CONTRACT_POLICY_RESOLVER", "REVIEW", "EFFECT", "HUMAN", "RESOURCE", "ENFORCEMENT", "CURRENTNESS"],
+      "outputs": {"PASS": "all required exact inputs pass", "REJECT": "any missing, stale, unknown, conflicting, or failed input", "HUMAN_DECISION_REQUIRED": "a current human-owned intent is unresolved", "UNDECLARED_EFFECT": "planned effect is outside the closed operation/horizon relation"},
+      "empty_or_malformed": "REJECT except empty planned effects, which derive effective effect floor NONE"
+    },
+    "ADOPTION_ELIGIBLE": {
+      "outputs": {"ELIGIBLE": "only exact no-law or shape-only retired-law escape hatch passes", "REJECT": "own law admits or any barrier/authority/preservation/approval/trust failure", "lineage_status": "the exact resulting lineage classification"}
+    },
+    "KERNEL_MIGRATION_CUTOVER_VALID": {
+      "evaluation_order": ["old-law recovery", "candidate source/provenance", "shape validation", "preservation", "current barriers", "human approval", "single-parent cutover"],
+      "outputs": {"ADMIT": "all preserved current state remains equivalent under the candidate", "NO_MIGRATION_REQUIRED": "origin and manifest are identical with no drift", "REJECT": "otherwise"}
+    },
+    "SOURCE_FREE_CLOSURE": {
+      "evaluation_order": ["export availability", "authority recovery", "current Task/Attempt", "capability floor", "recovery reducer"],
+      "outputs": {"PASS": "fresh worker derives the same route without source/compiler/corpus", "REJECT": "any exported dependency is missing or a required result differs", "cold_resume": "the exact derived route and reduced state"}
+    }
+  },
+  "precondition_output_bindings": {
+    "ACTIVE_STOP_BARRIER_REQUIRED": "REQUIRE_STOP_STATE.stop_decision must equal BLOCKED and stop_classification must equal ACTIVE_QUALIFIED because exactly one or more current ACTIVE barriers are proven well-formed and eligible for RESUME; AMBIGUOUS_OR_UNKNOWN never satisfies this precondition",
+    "RESULT_ACCEPT_LINKS_CURRENT_TASK": "RESULT_ACCEPT_LINKS_CURRENT_TASK.admission_decision must equal ADMIT",
+    "TASK_CANCELS_CURRENT_TASK": "TASK_BINDING_MUTATION_ALLOWED.admission_decision must equal ADMIT",
+    "FORK_RESOLUTION_VALID": "REPLAY_FORK_RESOLUTION.admission_decision must equal ADMIT",
+    "KERNEL_MIGRATION_CUTOVER_VALID": "KERNEL_MIGRATION_CUTOVER_VALID.migration_decision must equal ADMIT"
   }
-  ,"transition_admission_shapes": {"ordinary_predecessor":{"min":1,"max":1},"ordinary_forbidden_fields":["fork_base_ref","competing_head_refs","selected_winner_ref"],"fork_resolve_predecessor":{"min":2,"max":100},"fork_resolve_required_fields":["predecessor_refs","fork_base_ref","competing_head_refs","selected_winner_ref"],"fork_structure":{"predecessor_refs":"EXACT_COMPLETE_VISIBLE_COMPETING_HEAD_SET","competing_head_refs":"EXACT_SAME_SET_AS_PREDECESSOR_REFS","fork_base_ref":"EXACT_COMMON_FORK_BASE","selected_winner_ref":"ONE_MEMBER_OF_COMPETING_HEAD_SET","authority_epoch":"MAX_PREDECESSOR_EPOCH_PLUS_ONE","sequence":"ZERO"},"human_authority":{"KERNEL_MIGRATE":"MIGRATION_APPROVAL","CAPABILITY_MIGRATE":"MIGRATION_APPROVAL","AUTHORITY_FORK_RESOLVE":"FORK_RESOLUTION_APPROVAL","INTENT_ACCEPT":"INTENT_CONFIRMATION","INTENT_SUPERSEDE":"INTENT_CONFIRMATION","RUN_HORIZON_RAISE":"INTENT_CONFIRMATION","CONVERGENCE_EXTEND":"CONVERGENCE_EXTENSION","STOP":"STOP","RESUME":"RESUME"},"human_statement_consumers":{"GOAL":["PROJECT_GENESIS"],"INTENT_CONFIRMATION":["INTENT_ACCEPT","INTENT_SUPERSEDE","RUN_HORIZON_RAISE"],"STOP":["STOP"],"RESUME":["RESUME"],"CONVERGENCE_EXTENSION":["CONVERGENCE_EXTEND"],"MIGRATION_APPROVAL":["KERNEL_MIGRATE","CAPABILITY_MIGRATE","ADOPTION"],"FORK_RESOLUTION_APPROVAL":["AUTHORITY_FORK_RESOLVE"],"EXECUTION_APPROVAL":[],"OTHER":[]}}
 }
 ---
 # MM-AUTHORITY/1
 
-This is the canonical authority-admission, binding, currentness, and
-migration evaluator. It is structured semantics; `RUNTIME.md` is the sole
-narrative explanation.
+This is the canonical authority-admission, binding, currentness, and migration
+evaluator. `operator_registry` is the sole executable operator vocabulary in
+this contract. Transition family/admission shape is consumed only from
+`MM-GOVERNING-RECORDS/1#transition_families`; this contract does not restate a
+second transition table.
 
-## 1. Authority transition rules
+## Mechanical operator result rules
 
-`AUTHORITY_TRANSITION` is admitted only from the exact current head, has one
-predecessor except for `AUTHORITY_FORK_RESOLVE`, and cites exact candidate
-records before those records become current. A transition cannot cite its own
-digest or a repository-sync observation. Positive authority is the admitted
-chain, never Git or file presence.
+The front-matter `operator_rules` table is normative. Each operator consumes
+only the listed projections and returns only its listed outputs. Missing,
+malformed, multiply resolved, stale, or conflicting inputs reject, except
+where that table explicitly returns `UNKNOWN` or
+`AUTHORITY_CURRENTNESS_UNKNOWN`. A precondition that names an operator is
+satisfied only by the exact output equality in `precondition_output_bindings`;
+the operator name, a prose description, or a truthy input is not sufficient.
 
-The ordinary transition families are exactly the closed families in the
-governing transition table: `INTENT_ACCEPT`, `INTENT_SUPERSEDE`,
-`CAPABILITY_BIND`, `CAPABILITY_SUSPEND`, `CAPABILITY_MIGRATE`,
-`LIFECYCLE_PUBLISH`, `RUN_HORIZON_RAISE`, `RUN_HORIZON_LOWER`,
-`TASK_AUTHORIZE`, `TASK_CANCEL`, `REVIEW_AUTHORIZE`, `RESULT_ACCEPT`, `STOP`,
-`RESUME`, `CONVERGENCE_EXTEND`, `AUTHORITY_FORK_RESOLVE`, and
-`KERNEL_MIGRATE`. Each family has a closed binding cardinality, human statement
-class, predecessor rule, preconditions, and operation-floor interaction.
+In particular, `ACTIVE_STOP_BARRIER_REQUIRED` is not a free-standing boolean:
+it is satisfied exactly when `REQUIRE_STOP_STATE.stop_decision == BLOCKED` and
+`stop_classification == ACTIVE_QUALIFIED`, because the current barrier reducer found
+one or more current, well-formed `ACTIVE` barriers eligible for RESUME. An
+empty, malformed, conflicting, or otherwise ambiguous barrier set has
+`stop_classification == AMBIGUOUS_OR_UNKNOWN` and does not satisfy RESUME. Likewise,
+`RESULT_ACCEPT_LINKS_CURRENT_TASK` and `TASK_CANCELS_CURRENT_TASK` require the
+corresponding `ADMIT` output, and a fork or kernel migration precondition
+requires the exact named operator's `ADMIT` output.
 
-Human subject binding is closed by the governing filter and consumed as follows:
+## 1. Authority transition admission
 
-| Statement class | Allowed target record types | Consuming transitions/operations |
-|---|---|---|
-| `GOAL` | `PROJECT_GENESIS`, `INTENT_BASELINE`, `CONVERGENCE_ROOT` | `PROJECT_GENESIS` |
-| `INTENT_CONFIRMATION` | `INTENT_BASELINE`, `RUN_HORIZON`, `REPOSITORY_BINDING` | `INTENT_ACCEPT`, `INTENT_SUPERSEDE`, `RUN_HORIZON_RAISE` |
-| `STOP` | `PROJECT_GENESIS`, `AUTHORITY_TRANSITION` | `STOP` |
-| `RESUME` | `PROJECT_GENESIS`, `AUTHORITY_TRANSITION` | `RESUME` |
-| `CONVERGENCE_EXTENSION` | `CONVERGENCE_EXTENSION` | `CONVERGENCE_EXTEND` |
-| `MIGRATION_APPROVAL` | `DISTRIBUTION_ORIGIN`, `EXTERNAL_SUBJECT`, `KERNEL_MANIFEST`, `CAPABILITY_BINDING`, `OPERATION_CONTRACT` | `KERNEL_MIGRATE`, `CAPABILITY_MIGRATE`, `ADOPTION` |
-| `FORK_RESOLUTION_APPROVAL` | `AUTHORITY_TRANSITION` | `AUTHORITY_FORK_RESOLVE` |
-| `EXECUTION_APPROVAL` | `TASK_CONTRACT`, `OPERATION_CONTRACT` | none in the transition registry |
-| `OTHER` | none | none |
+Positive authority is the admitted chain, never Git state or file presence.
+Candidate dependency records are inert until an admitted transition binds them.
 
-For `KERNEL_MIGRATE`, the exact current-human subject set is one candidate
-`DISTRIBUTION_ORIGIN` plus one candidate `KERNEL_MANIFEST`. For `ADOPTION`, it
-is one `EXTERNAL_SUBJECT` plus one candidate `KERNEL_MANIFEST`. No fixture or
-candidate-origin shorthand changes these target types.
+For every non-fork transition use this freshness sequence:
 
-`REVIEW_REQUEST_MATCHES_CURRENT_SUBJECT` is the closed precondition used by
-`REVIEW_AUTHORIZE`. It does not add an operator. Evaluate it as follows:
+1. Recover current durable state and repository currentness.
+2. Require one stable singleton current head.
+3. Freeze that head as the proposed predecessor.
+4. Stage all candidate dependency records as inert data.
+5. Immediately before transition durability/admission, re-enumerate and reduce
+   the durable current head with the candidate transition excluded.
+6. If the head, predecessor relation, binding currentness, or repository
+   currentness changed, reject the candidate transition and rebuild it from
+   fresh state.
+7. Persist the exact validated transition.
+8. Re-enumerate and reduce durable state; file presence alone never proves
+   admission.
 
-1. Every `subjects` item must match the exact bytes at its declared current
-   project/candidate path. Path/digest subjects may describe inert candidate
-   bytes because authorizing review never grants authority to those bytes. For
-   adoption acceptance, the path/digest set must equal the frozen adoption
-   payload defined by `MM-RECONCILIATION/1`; review-control records and HANDOFF
-   are outside that frozen set.
-2. Every `subject_record_ref` must resolve exactly to one allowed record family
-   and pass that family's existing current/non-inert rule:
-   - `TASK_CONTRACT`: the exact Task is present and non-tombstoned in the current
-     Task map produced by `BINDING_REDUCER`/ordinary Task binding replay;
-   - `OPERATION_CONTRACT`: the exact contract is selected by
-     `CURRENT_BINDING_STATE_VALID` as a current operation binding for the
-     current capability/intent state;
-   - `INTENT_BASELINE`: the exact record is the current intent binding selected
-     by `CURRENT_BINDING_STATE_VALID`;
-   - `LIFECYCLE_GRAPH`: the exact record is the current lifecycle binding
-     selected by `CURRENT_BINDING_STATE_VALID`;
-   - `ATTEMPT_RECORD`: `REQUIRE_CURRENT_TASK_BINDING` is `ELIGIBLE` for its
-     `task_contract_ref`, and this record is the greatest valid `revision` for
-     its `attempt_id` in the current governed set;
-   - `EFFECT_CLAIM`: its `operation_ref` resolves to a current operation binding
-     under `CURRENT_BINDING_STATE_VALID`, and this record is the greatest valid
-     `revision` for its `effect_claim_id` in the current governed set.
-3. If a review needs to assess immutable historical/non-current bytes rather
-   than a current governed record, it must use exact `subjects`
-   `{path,source_digest}` entries instead of laundering that artifact through a
-   `subject_record_ref` currentness claim.
-4. If any family test is ambiguous, multiply resolved, stale, superseded, or
-   otherwise not established by the named existing reducers, the precondition
-   rejects. A review authorization never changes any subject's binding/current
-   status.
+`AUTHORITY_FORK_RESOLVE` uses the exact fork predecessor rule in the governing
+transition table instead of the singleton step above.
 
-This family table is finite and closed over the already-permitted
-`REVIEW_REQUEST.subject_record_ref_targets`; adding another permitted target
-family in a future law requires an explicit corresponding currentness rule in
-that future law.
+Human subject binding is closed by the governing filter. `EXECUTION_APPROVAL`
+is not an authority-transition family; its consequences are evaluated by the
+operation floor algorithm and `MM-HUMAN-CONTROL/2`.
 
-`AUTHORITY_FORK_RESOLVE` must carry `predecessor_refs` equal to the complete
-visible competing-head set, carry the exact `fork_base_ref`, identify the
-selected winner, set epoch to one greater than the maximum parent epoch, and
-preserve all required bindings. Its non-peer enforcement evidence must prove
-canonical single-winner cutover. Before any successor transition, a fresh
-`REPOSITORY_SYNCED` observation must contain the resolution record; a
-`LOCAL_ONLY` binding requires the durable head itself to contain it.
+`REVIEW_REQUEST_MATCHES_CURRENT_SUBJECT` is the bounded governing precondition,
+not an additional operator. Exact path/digest subjects must match their frozen
+bytes. Typed record subjects must resolve exactly to an allowed family and be
+current/non-inert under `BINDING_REDUCER` or the exact family reducer. Historical
+or non-current bytes use path/digest subjects. Ambiguous, stale, superseded, or
+multiply resolved subjects reject.
 
-## 2. Repository-head currentness
+## 2. Repository-head currentness and candidate binding phase
 
-Definitions: governed tree means `.markdown-machine/`; persistence ref is
-`REPOSITORY_BINDING.persistence_ref`; durable head is the commit resolved by
-that ref; fresh observation is produced by the evaluating session's own
-readback. For repository-backed adoption before the first `INTENT_ACCEPT`, the
-compiler-selected binding used for candidate currentness must resolve to the
-actual durable ref whose head contains the adoption Genesis; naming a ref that
-does not contain that Genesis is simply rule 1's inert-candidate condition and
-never establishes canonical authority.
+Repository/Git state is visibility and durability evidence only. Currentness
+used to establish predecessor authority is always evaluated under the
+`REPOSITORY_BINDING` selected by the last already-admitted authority state.
 
-1. An authority file absent from the durable head commit is an inert candidate.
-2. A local HEAD that is not the persistence-ref commit or an ancestor-consistent
-   fast-forward yields `AUTHORITY_CURRENTNESS_UNKNOWN` and denies substantive
-   execution.
-3. Replay structurally valid admitted children from bootstrap Genesis: zero
-   children keeps the head, one advances it, and more than one yields the exact
-   `AUTHORITY_FORK_UNRESOLVED` head set.
-4. A local-only project is current when its durable head is sufficient and its
-   writer model is `SINGLE_WRITER`.
-5. With `PUSH_ON_BOUNDED_CLOSEOUT`, obtain a fresh observation before
-   substantive execution. `REPOSITORY_SYNCED` is current;
-   `LOCAL_AHEAD_REMOTE` is current for `SINGLE_WRITER` and denied for
-   `MULTI_WRITER`; remote-ahead, diverged, unknown, and blocked states deny.
-   Reconcile without force, then replay; fetched children may expose a fork.
-6. A failed push leaves `LOCAL_AHEAD_REMOTE`; no failure record is authoritative.
-7. STOP remains governed by STOP semantics and cannot be released by an
-   observation.
+A candidate `REPOSITORY_BINDING` may be shape-validated and persisted inertly,
+but it cannot prove its own admission or predecessor currentness. Only after the
+transition that binds it is admitted does it become the current binding, and
+repository currentness must then be freshly re-established under that binding
+before substantive execution. The existing repository-backed
+bootstrap/adoption publication exception can establish candidate publication
+visibility, but it creates no project authority.
 
-## 3. Reducer outputs
+An authority file absent from the durable persistence-ref commit is inert. A
+local HEAD inconsistent with the admitted persistence ref yields
+`AUTHORITY_CURRENTNESS_UNKNOWN`. Structural replay from bootstrap Genesis yields
+one singleton head, the exact unresolved competing-head set, or no provable
+lineage. For `PUSH_ON_BOUNDED_CLOSEOUT`, use a fresh observation:
+`REPOSITORY_SYNCED` is current; `LOCAL_AHEAD_REMOTE` is current only for
+`SINGLE_WRITER`; remote-ahead, diverged, unknown, or blocked states deny
+substantive work. Reconcile without force and replay; fetched children may
+expose a fork. `LOCAL_ONLY` is sufficient only for an explicitly bound
+`SINGLE_WRITER`.
 
-The reducer output set is exactly `SINGLETON`, `AUTHORITY_FORK_UNRESOLVED`,
-`AUTHORITY_CURRENTNESS_UNKNOWN`, and `NO_PROVABLE_LINEAGE`.
+## 3. Fork resolution phases
 
-`NO_PROVABLE_LINEAGE` is relative to the law being applied when no Genesis is
-admitted by that law. It is never execution-eligible or a migration prestate.
-`LATE_PRE_CUTOVER_BRANCH` describes a later transition from an older epoch that
-is not an ancestor of the current epoch base; it cannot revive authority.
+Fork resolution has two distinct publication phases.
 
-## 4. Migration
+**Pre-admission:** the complete visible competing-head set, common fork base,
+selected winner, exact epoch/sequence rule, and qualifying non-peer enforcement
+evidence must establish that a canonical single-winner publication can be
+produced. The not-yet-admitted resolution is not required already to exist at
+the canonical ref.
 
-`KERNEL_MIGRATE` is ordinary single-parent authority. It requires a singleton,
-exact candidate Origin and KernelManifest, coherent atomic bindings, preserved
-Tasks/reviews/convergence/barriers/human intent, source-free semantic closure,
-and a current-human `MIGRATION_APPROVAL` whose subject set exactly names the
-candidate `DISTRIBUTION_ORIGIN` and candidate `KERNEL_MANIFEST`. Identical current
-origin/manifest with no drift returns `NO_MIGRATION_REQUIRED`; candidate shape
-validation never supplies this approval.
+**Post-admission:** fresh repository readback must prove the durable canonical
+ref contains the admitted fork resolution. This readback is not part of the
+named transition precondition; it is an existing repository-currentness barrier
+after admission. No successor ordinary transition is lawful before that proof
+passes. A late pre-cutover branch cannot revive authority.
+
+## 4. Current bindings and operation floors
+
+`BINDING_REDUCER` is the canonical current-binding reducer; prose aliases are
+not executable vocabulary. It reduces current Origin, KernelManifest, intent,
+horizon, capabilities, lifecycle, operations, Tasks, reviews, convergence, and
+repository binding from admitted authority.
+
+`CAPABILITY_FLOOR_ALGORITHM` is the runtime execution-eligibility evaluator.
+It consumes the selected capability, exact **current admitted** Task and
+OperationContract, review state, human authority, planned effects, resources,
+current horizon, and repository currentness. It first resolves
+`OPERATION_CONTRACT_POLICY_RESOLVER` from the exact Task-bound capability
+binding and digest-bound selected capability export, then applies the single
+closed floor profile in `MM-GOVERNING-RECORDS/1#floors`; capability-specific
+logic remains in the selected capability export and no second floor engine
+exists.
+
+`CAPABILITY_BIND` does not invoke this Task-dependent runtime evaluator.
+`BOUND_OPERATION_CONTRACTS_SATISFY_FLOORS` instead invokes the same
+`OPERATION_CONTRACT_POLICY_RESOLVER` for each inert candidate OperationContract
+to prove exact policy-source representability while the candidate capability and
+operations remain inert.
+
+## 5. Governed kernel migration
+
+A healthy existing project with a provable current law uses `KERNEL_MIGRATE`,
+not adoption. The old/current law owns every authority question.
 
 Candidate-current objects—the candidate Origin, candidate KernelManifest, and
-records named by the candidate's `candidate_shaped_binding_types`—are
-shape-validated under the candidate grammar and governing registry resolved
-from the fixed Origin-bound paths `project-runtime/RECORD-GRAMMAR.md` and
-`project-runtime/GOVERNING-RECORD-CONTRACTS.md`. The Origin is checked only for
-the minimal `{governing_sources:[{path,sha256}]}` shape needed to locate those
-bytes; candidate-law source-membership predicates are not admission authority.
-Every other question, including authority, predecessor, structure, approval,
-source membership, barriers, preservation, and old-current state, is evaluated
-under the old law. Candidate shape semantics never authorize cutover.
+records named by the candidate's `candidate_shaped_binding_types`—may be
+shape-validated only under the candidate grammar and governing registry
+resolved from the fixed Origin-bound paths
+`project-runtime/RECORD-GRAMMAR.md` and
+`project-runtime/GOVERNING-RECORD-CONTRACTS.md`. Candidate semantics do not
+supply predecessor authority, migration approval, source membership,
+preservation, barriers, currentness, review applicability, STOP release, Task
+authority, convergence capacity, or RepositoryBinding authority.
 
-`KERNEL_MIGRATION_CUTOVER_VALID` resolves the candidate shape sources by this
-closed procedure: (1) minimally validate the bound candidate Origin as a list
-of `{path,sha256}` governing sources; (2) find exactly one Origin item for each
-fixed candidate-shape path, resolve bytes whose SHA-256 equals that item, and
-require the declared record type `GOVERNING_CONTRACT` for the grammar and
-`GOVERNING_RECORD_CONTRACT_REGISTRY` for the registry; (3) use
-`KERNEL_MANIFEST.candidate_shaped_binding_types` when present, otherwise
-`[DISTRIBUTION_ORIGIN,KERNEL_MANIFEST]`, to choose candidate-shape validation
-for bound records; and (4) evaluate every non-shape predicate under the old
-law. Any missing, duplicate, mismatched, or failed shape source rejects.
-Candidate registries contribute shape validation only and never an admission
-verdict. Identical Origin/Manifest inputs with no drift return
-`NO_MIGRATION_REQUIRED`.
+`KERNEL_MIGRATION_CUTOVER_VALID` therefore executes under the old/current
+admitted law: exact-bind candidate Origin and KernelManifest, validate only
+candidate shape with candidate semantics, prove current-human migration
+approval, preserve current Tasks, review barriers/PASS applicability,
+convergence roots/reservations/capacity, STOP state, effects/resources,
+RepositoryBinding, lifecycle/horizon, and source-free recovery, then admit one
+coherent ordinary single-parent cutover. Identical current Origin/Manifest with
+no drift returns `NO_MIGRATION_REQUIRED`.
 
-`SOURCE_FREE_CLOSURE` is the cold-resume closure operator. Given an assembled
-contract set and granted current state, it passes only when: (a) every
-assembled file parses under the assembled grammar and carries its declared
-`profile_id`, `registry_id`, or `contract_id`; (b) every contract-key reference
-and typed target identity resolves exactly within the assembled set; (c) the
-operator closure of attempt-execution eligibility, `REQUIRE_STOP_STATE`, the
-binding reducer, and the capability-floor algorithm resolves entirely to
-operators in that set; (d) the selected capability export's
-`operation_floor_profile_id` resolves to
-`MM-GOVERNING-RECORDS/1#floors`; and (e) no reference targets a path outside
-`.markdown-machine/`. The evaluator records `{target_path,sha256}` for every
-assembled file; source availability is hidden only after assembly. The
-expected cold-resume result is `cold_resume: PASS`.
+Changed or removed old validation contracts required to interpret historical
+state remain byte-identical under the existing history closure. Removed v0.7
+current-schema families (`RESULT_ACCEPT` record, `REPOSITORY_SYNC_INTENT`,
+`OBJECTIVE_RELATION`), the old HANDOFF shape, and the v0.7
+`INDEPENDENCE_ASSESSMENT` shape remain interpretable under preserved v0.7 law;
+they do not silently validate as current v0.9 records. The v0.9 HANDOFF is
+regenerated from current reducers. Existing review PASS evidence remains
+applicable only if its exact old-law subject and independence facts remain
+provable; it is never laundered through the new independence schema.
 
-Adoption uses this same migration authorization rule: the current human
-statement must be a `MIGRATION_APPROVAL` whose subject set exactly names the
-`EXTERNAL_SUBJECT` adoption subject and candidate `KERNEL_MANIFEST`. Adoption does not introduce a
-second human-control operation or permit candidate bytes to supply the
-approval.
+The v0.9 kernel migration also revalidates runtime provenance, convergence
+quantity domains and reservation histories, intent supersession mappings,
+Task-review selection, effect targets, and route dependencies under the
+candidate schema. It cannot reset capacity, clear an unresolved effect,
+rewrite a historical intent relation, or replace an old child capability's
+resource policy. The software capability's `IMPLEMENTATION` serial path is a
+`CAPABILITY_MIGRATE` policy change: existing children retain their bound
+`PROJECT_SPECIFIC` requirement until that capability migration is lawfully
+admitted.
 
-## 5. Existing-project dispatch
+Adoption is eligible only when the subject has no provable positive lineage or
+the old law rejects solely on the already-defined candidate-shape escape hatch.
+If the old law can admit the candidate, adoption rejects.
 
-For an existing subject and human-selected candidate, probe bytes only to find
-an own law: a `KERNEL_MANIFEST` whose admission-contract reference resolves
-within the subject to the `GOVERNING_CONTRACT` whose `contract_id` is
-`MM-AUTHORITY/1` (or a historical retired-law equivalent), with a Genesis
-binding that manifest by digest. Do not semantically evaluate old bytes during
-this probe.
+## 6. Source-free closure
 
-If an own-law subject recovers as `SINGLETON`, evaluate `KERNEL_MIGRATE` under
-that law. An admit is ordinary migration. A block/reject is adoption-eligible
-only when every non-shape predicate passed and the failures are exclusively
-candidate-shape checks; its lineage status is
-`PROVABLE_UNDER_RETIRED_LAW`. Any barrier, authority, structure, approval,
-trust, preservation, or genuine incompatibility failure rejects adoption. A
-fork is resolved under its own law first. `NO_PROVABLE_LINEAGE` under a claimed
-law means the subject is treated as having no law.
-
-With no own law, apply the candidate reducer. `NO_PROVABLE_LINEAGE` may admit
-adoption with lineage status `HISTORICAL_UNVERIFIED`. Adoption is never an
-escape hatch: if the own law can admit the candidate, or rejects for any reason
-other than candidate shape, adoption is rejected. No compatibility intermediary
-or second authority plane exists in this contract.
-
-## 6. Closed operator and predicate registry
-
-The operator registry includes every name in the front-matter `operators`
-list, including the projection-tested `REPLAY_SINGLETON_CHILDREN`,
-`REPLAY_FORK_RESOLUTION`, `TASK_BINDING_MUTATION_ALLOWED`,
-`RESULT_ACCEPT_LINKS_CURRENT_TASK`, `APPLY_ORDINARY_BINDINGS`,
-`ADOPTION_ELIGIBLE`, and `SOURCE_FREE_CLOSURE` operators. Unknown names
-reject. Transition preconditions named by `MM-GOVERNING-RECORDS/1`, including
-`REVIEW_REQUEST_MATCHES_CURRENT_SUBJECT`, are evaluated by the finite rules in
-this contract and the named existing reducers; they do not become additional
-operator-registry members merely by being transition preconditions. The
-evaluator is finite, source-free, and digest-bound; repository state can satisfy
-only durability or currentness evidence predicates.
+`SOURCE_FREE_CLOSURE` uses the exported runtime, exact six admitted contracts,
+current governed records, and selected capability semantics. It requires no
+original compiler/distribution, hidden state, database, service, index, or prior
+chat. Handoff may orient a worker but never seeds authority.

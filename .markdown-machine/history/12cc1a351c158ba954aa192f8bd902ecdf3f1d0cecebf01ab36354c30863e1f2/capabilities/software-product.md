@@ -50,7 +50,7 @@
       "authority_floor": "CURRENT_ADMITTED_TASK_AUTHORITY",
       "effect_floor": "REPOSITORY_WRITE",
       "review_floor": "SELF_CHECK",
-      "resource_floor": "SERIAL",
+      "resource_floor": "PROJECT_SPECIFIC",
       "human_boundary": "TECHNICAL_AUTONOMY",
       "allowed_effect_classes": [
         "REPOSITORY_WRITE"
@@ -102,18 +102,12 @@
     }
   ],
   "authoritative_operation_floor_source": "MM-GOVERNING-RECORDS/1#floors",
-  "resource_policy": {
-    "IMPLEMENTATION": "SERIAL_IF_NON_CONTENTING",
-    "serial_non_contention_proof": "the current Attempt is the only active Attempt in the project resource scope, its exact operation plan names no shared/project-specific resource, and a qualifying current LOCAL_MECHANICAL_PROOF, REMOTE_MECHANICAL_PROOF, or PROTECTED_ATTESTATION is bound to project, Task, OperationContract, Attempt, and resource scope; a worker declaration alone never qualifies",
-    "unknown_or_conflicting": "require a current PROJECT_SPECIFIC RESOURCE_RESERVATION and its qualifying proof; if neither is present, reject",
-    "reservation_accounting": "a serial proof never removes or reduces convergence reservations and never authorizes an effect"
-  },
   "declared_effect_classes": [
     "DEPLOYMENT",
     "PUBLIC_RELEASE",
     "REPOSITORY_WRITE"
   ],
-  "floor_satisfaction_rule": "OPERATION_CONTRACT_POLICY_RESOLVER_FROM_MM-GOVERNING-RECORDS/1#floors"
+  "floor_satisfaction_rule": "EXACT_MATRIX_AND_EFFECT_SET_RELATION_FROM_MM-GOVERNING-RECORDS/1#floors"
 }
 ---
 # Runtime export rule

@@ -13,18 +13,41 @@
     "product_freeze"
   ],
   "edges": [
-    {"from": "design_verification", "to": "product_freeze"},
-    {"from": "flows_ux", "to": "design_verification"},
-    {"from": "human_product_approval", "to": "flows_ux"},
-    {"from": "product_challenge", "to": "human_product_approval"},
-    {"from": "product_discovery", "to": "product_challenge"}
+    {
+      "from": "design_verification",
+      "to": "product_freeze"
+    },
+    {
+      "from": "flows_ux",
+      "to": "design_verification"
+    },
+    {
+      "from": "human_product_approval",
+      "to": "flows_ux"
+    },
+    {
+      "from": "product_challenge",
+      "to": "human_product_approval"
+    },
+    {
+      "from": "product_discovery",
+      "to": "product_challenge"
+    }
   ],
   "current_node_id": "product_discovery",
-  "terminal_node_ids": ["product_freeze"],
-  "capability_binding_refs": [
-    {"ref": "sha256:c8b81f0d805b4041e725152064261f62b154a4e4d9a6f77d4f152562dca48223", "path": ".markdown-machine/authority/capability-binding-software-product.md"}
+  "terminal_node_ids": [
+    "product_freeze"
   ],
-  "run_horizon_ref": {"ref": "sha256:285d8cd11cbb5e9b145a9069db3f635ad1d16150c02d5a0d33d9b51125f40bf2", "path": ".markdown-machine/intent/run-horizon-bootstrap-to-product-freeze.md"},
+  "capability_binding_refs": [
+    {
+      "ref": "sha256:65b6ba12f0648e52ff4911654d81733b3e52922b7b474eab4263730749ff3a4e",
+      "path": ".markdown-machine/authority/capability-binding-software-product.md"
+    }
+  ],
+  "run_horizon_ref": {
+    "ref": "sha256:285d8cd11cbb5e9b145a9069db3f635ad1d16150c02d5a0d33d9b51125f40bf2",
+    "path": ".markdown-machine/intent/run-horizon-bootstrap-to-product-freeze.md"
+  },
   "revision": 1
 }
 ---

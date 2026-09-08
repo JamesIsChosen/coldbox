@@ -3,52 +3,52 @@
   "record_type": "COMPILED_MANIFEST",
   "schema_version": 1,
   "project_id": "coldbox-d105f94a-f83e-4f85-9671-c64bcca74803",
-  "compiled_manifest_id": "coldbox-markdown-machine-v0.7.0",
+  "compiled_manifest_id": "coldbox-markdown-machine-v0.10.0",
   "distribution_origin_ref": {
-    "ref": "sha256:b3e0080189145d8b77edc7e5b115623df8e2501a3a34e80d61003c08f960e27b",
+    "ref": "sha256:2b0229394c45735786cb478f48df4543507782bb61a32f196f25927a4471493e",
     "path": ".markdown-machine/ORIGIN.md"
   },
   "runtime_export": {
     "path": ".markdown-machine/RUNTIME.md",
     "source_path": "project-runtime/RUNTIME.md",
-      "source_digest": "32147c7580a859e964b9e820fdcd9dfddb62f44270f3ae0c2ea6a0ff41c4f1f3"
+    "source_digest": "b82f830d2cb85c84cb5252c44b6aa85c7e88fb0447ef49ba3e288e044da22533"
   },
   "contract_exports": [
     {
       "path": ".markdown-machine/contracts/AUTHORITY-EVALUATOR.md",
       "contract_id": "MM-AUTHORITY/1",
       "source_path": "project-runtime/AUTHORITY-EVALUATOR.md",
-      "source_digest": "d07a5e4ebf5a0c27b999658e0b693015e16599c595aede8dc8e82b7d45376e50"
+      "source_digest": "00368d16eef91628b0e87d9ecf1a7518207b8eb8b80a14106b1d805d2c0ef6cb"
     },
     {
       "path": ".markdown-machine/contracts/GENESIS-ADMISSION.md",
       "contract_id": "DIRECT_HUMAN_GENESIS_ADMISSION/v3",
       "source_path": "bootstrap/GENESIS-ADMISSION.md",
-      "source_digest": "1bc787fdcd524032145576621af7cb635034ccaacb1516a0d3b94538d0e83d5e"
+      "source_digest": "f395faf32323d0527dbcb5e7756414eceff98e295a043b9257b06cbdfffcd7e9"
     },
     {
       "path": ".markdown-machine/contracts/GOVERNING-RECORD-CONTRACTS.md",
       "contract_id": "MM-GOVERNING-RECORDS/1",
       "source_path": "project-runtime/GOVERNING-RECORD-CONTRACTS.md",
-      "source_digest": "a7a9f72bea575f70fb393f1aa5ba6087d33f8beb498d250729be6c6d60a5f162"
+      "source_digest": "82fe05a4bd8191090e472391a3fdc37f76c359bdb78556ec4c43f8b29defb9e2"
     },
     {
       "path": ".markdown-machine/contracts/HUMAN-CONTROL.md",
       "contract_id": "MM-HUMAN-CONTROL/2",
       "source_path": "project-runtime/HUMAN-CONTROL.md",
-      "source_digest": "ad9dd45d856cbfa07442c7a32986af29332863bce975c2ad839ca6732d56cdf1"
+      "source_digest": "7c92664ce77ae0afa26f99e53175fe2ae0dbf5a14806ebb110edffde519b20ae"
     },
     {
       "path": ".markdown-machine/contracts/RECORD-GRAMMAR.md",
       "contract_id": "MM-RECORD-GRAMMAR/1",
       "source_path": "project-runtime/RECORD-GRAMMAR.md",
-      "source_digest": "71b4666f81f973472e98ddac4e17501933eeb2db8447a3d3372fa1030f7e4040"
+      "source_digest": "47c61d1aa92f492afd0419e961d51777058f9148ff90b2355d7ee57d73e34e3d"
     },
     {
       "path": ".markdown-machine/contracts/RECOVERY-CONTRACTS.md",
       "contract_id": "MM-RECOVERY/1",
       "source_path": "project-runtime/RECOVERY-CONTRACTS.md",
-      "source_digest": "ebd46e541f49b527d77a09f59d80082da33d6f4dfc8db362d1d42e09f5e86632"
+      "source_digest": "df7ba1c11932181f88779dddf0bce08e0ba14795030b200bab8afe4d57ca3539"
     }
   ],
   "selected_capability_exports": [
@@ -56,7 +56,7 @@
       "capability_id": "software-product",
       "path": ".markdown-machine/capabilities/software-product.md",
       "source_path": "project-runtime/capabilities/software-product.md",
-      "source_digest": "26eaf260c6a79d8067e3b9d7b1b8520fce7db48c02125114bdea5ff19e529ab6"
+      "source_digest": "678a8ebd6493d72b93f0822df87efe769413f06e61555f78701a5d795c6d7d30"
     }
   ],
   "child_layout": [
@@ -1637,6 +1637,71 @@
     },
     {
       "path": ".markdown-machine/history/aeacf0faf04cb515acf6c5451f96be381e592bc558ce9bbde17fd88ec4ab8c2c/contracts/RECOVERY-CONTRACTS.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/authority/authority-transition-kernel-migrate-v0.10.0.md",
+      "role": "authority_record",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/authority/human-statement-mm-v0.10.0-migration.md",
+      "role": "authority_record",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/authority/kernel-manifest-v0.10.0.md",
+      "role": "authority_record",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/12cc1a351c158ba954aa192f8bd902ecdf3f1d0cecebf01ab36354c30863e1f2/HISTORY-MANIFEST.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/12cc1a351c158ba954aa192f8bd902ecdf3f1d0cecebf01ab36354c30863e1f2/ORIGIN.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/12cc1a351c158ba954aa192f8bd902ecdf3f1d0cecebf01ab36354c30863e1f2/kernel-manifest-v0.7.0.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/12cc1a351c158ba954aa192f8bd902ecdf3f1d0cecebf01ab36354c30863e1f2/contracts/AUTHORITY-EVALUATOR.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/12cc1a351c158ba954aa192f8bd902ecdf3f1d0cecebf01ab36354c30863e1f2/contracts/GOVERNING-RECORD-CONTRACTS.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/12cc1a351c158ba954aa192f8bd902ecdf3f1d0cecebf01ab36354c30863e1f2/contracts/RECOVERY-CONTRACTS.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/12cc1a351c158ba954aa192f8bd902ecdf3f1d0cecebf01ab36354c30863e1f2/contracts/RECORD-GRAMMAR.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/12cc1a351c158ba954aa192f8bd902ecdf3f1d0cecebf01ab36354c30863e1f2/contracts/HUMAN-CONTROL.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/12cc1a351c158ba954aa192f8bd902ecdf3f1d0cecebf01ab36354c30863e1f2/contracts/GENESIS-ADMISSION.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/12cc1a351c158ba954aa192f8bd902ecdf3f1d0cecebf01ab36354c30863e1f2/capabilities/software-product.md",
       "role": "historical_provenance",
       "required": true
     }
