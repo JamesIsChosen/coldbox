@@ -40,7 +40,7 @@
   ],
   "capability_binding_refs": [
     {
-      "ref": "sha256:65b6ba12f0648e52ff4911654d81733b3e52922b7b474eab4263730749ff3a4e",
+      "ref": "sha256:f58ec31091cb0021d83673f78cf9c03a022c4f3a36b128efd7bb29b109f2f52f",
       "path": ".markdown-machine/authority/capability-binding-software-product.md"
     }
   ],

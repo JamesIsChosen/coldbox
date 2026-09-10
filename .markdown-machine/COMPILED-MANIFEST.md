@@ -3,9 +3,9 @@
   "record_type": "COMPILED_MANIFEST",
   "schema_version": 1,
   "project_id": "coldbox-d105f94a-f83e-4f85-9671-c64bcca74803",
-  "compiled_manifest_id": "coldbox-markdown-machine-v0.10.0",
+  "compiled_manifest_id": "coldbox-markdown-machine-v0.10.1",
   "distribution_origin_ref": {
-    "ref": "sha256:2b0229394c45735786cb478f48df4543507782bb61a32f196f25927a4471493e",
+    "ref": "sha256:643a6493ff64d91cfc73a08ca54127bb1962be9629fe3424d6ff24a633d1db5b",
     "path": ".markdown-machine/ORIGIN.md"
   },
   "runtime_export": {
@@ -56,7 +56,7 @@
       "capability_id": "software-product",
       "path": ".markdown-machine/capabilities/software-product.md",
       "source_path": "project-runtime/capabilities/software-product.md",
-      "source_digest": "678a8ebd6493d72b93f0822df87efe769413f06e61555f78701a5d795c6d7d30"
+      "source_digest": "d434bc11171aa9e643bf0f021f11c30d91da7bc7326581b398a0b9955bb99eab"
     }
   ],
   "child_layout": [
@@ -1704,6 +1704,21 @@
       "path": ".markdown-machine/history/12cc1a351c158ba954aa192f8bd902ecdf3f1d0cecebf01ab36354c30863e1f2/capabilities/software-product.md",
       "role": "historical_provenance",
       "required": true
+    },
+    {
+      "path": ".markdown-machine/authority/kernel-manifest-v0.10.1.md",
+      "role": "authority_record",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/authority/human-statement-mm-v0.10.1-migration.md",
+      "role": "authority_record",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/authority/authority-transition-kernel-migrate-v0.10.1.md",
+      "role": "authority_record",
+      "required": true
     }
   ],
   "forbidden_distribution_roots": [
@@ -1721,4 +1736,6 @@
   }
 }
 ---
-# Compiled Markdown Machine manifest
+# COMPILED_MANIFEST
+
+Compiled manifest for MM 0.10.1 kernel migration candidate.

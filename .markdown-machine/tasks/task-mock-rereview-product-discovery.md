@@ -9,11 +9,11 @@
     "path": ".markdown-machine/intent/intent-baseline-presentation-rebuild.md"
   },
   "capability_binding_ref": {
-    "ref": "sha256:65b6ba12f0648e52ff4911654d81733b3e52922b7b474eab4263730749ff3a4e",
+    "ref": "sha256:f58ec31091cb0021d83673f78cf9c03a022c4f3a36b128efd7bb29b109f2f52f",
     "path": ".markdown-machine/authority/capability-binding-software-product.md"
   },
   "operation_contract_ref": {
-    "ref": "sha256:327aedea4a5bdc5f1851a297206c72cdf9f3e28e46426f6520c34fe80e965309",
+    "ref": "sha256:c8cb7a601cb0950faa15cbd3d892b46aaee1e5951ebd1793fcdaf7aed8f0dfb0",
     "path": ".markdown-machine/authority/operation-contract-discovery.md"
   },
   "purpose": "Return the provisionally approved workstation mock to the human after Markdown Machine bootstrap, conduct the required deeper product review, and establish the product-discovery facts needed before challenge, flows/UX, design verification, and Product Freeze.",
