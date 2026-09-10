@@ -5,19 +5,19 @@
   "authoritative": false,
   "project_id": "coldbox-d105f94a-f83e-4f85-9671-c64bcca74803",
   "basis_head_ref": {
-    "ref": "sha256:c6c809b1fa25607275da2b4e55318069f09072fba5cb8ad1affd5b138a324370",
-    "path": ".markdown-machine/authority/authority-transition-kernel-migrate-v0.10.0.md"
+    "ref": "sha256:432641553d860c1544502e63820a8e181d6bfb163dc18106c2dac81e5ad37ec0",
+    "path": ".markdown-machine/authority/authority-transition-kernel-migrate-v0.10.1.md"
   },
-  "basis_repository_commit": "d8dbbd7e6516582f8294c7329825e3f21e137745",
+  "basis_repository_commit": "871d784a80a33ad01d3346d2c1d8ce1c45b4516f",
   "authority_epoch": 0,
-  "sequence": 6,
+  "sequence": 7,
   "origin_ref": {
-    "ref": "sha256:2b0229394c45735786cb478f48df4543507782bb61a32f196f25927a4471493e",
+    "ref": "sha256:643a6493ff64d91cfc73a08ca54127bb1962be9629fe3424d6ff24a633d1db5b",
     "path": ".markdown-machine/ORIGIN.md"
   },
   "kernel_manifest_ref": {
-    "ref": "sha256:7e5584c74ec7607c36b66bb5121a7c6f3a03afecc9e69cb7c9de3e791bf6f6ad",
-    "path": ".markdown-machine/authority/kernel-manifest-v0.10.0.md"
+    "ref": "sha256:87822d173dbf0de810e1d4d8a7c94346009ba3de38bd988d4697c02232309ad4",
+    "path": ".markdown-machine/authority/kernel-manifest-v0.10.1.md"
   },
   "stop_state": "NONE",
   "run_horizon_ref": {
@@ -31,7 +31,7 @@
     {
       "task_id": "mock-rereview-product-discovery",
       "ref": {
-        "ref": "sha256:3cc2b7784114117acf46936941aaa5ea277b5864769a70a68914c2786c2226fc",
+        "ref": "sha256:ee8bfa4b034837bd38b4abddd61e12454ba447d0e9a76cb1d59159e41ccfd648",
         "path": ".markdown-machine/tasks/task-mock-rereview-product-discovery.md"
       },
       "path": ".markdown-machine/tasks/task-mock-rereview-product-discovery.md",
@@ -47,10 +47,10 @@
     "product_discovery_cycles": 2,
     "product_freeze_reviews": 1
   },
-  "repository_sync": "REPOSITORY_SYNCED",
-  "next_lawful": "HUMAN_DECISION_REQUIRED",
+  "repository_sync": "LOCAL_AHEAD_REMOTE",
+  "next_lawful": "REPOSITORY_RECOVERY",
   "lifecycle_node_id": "product_discovery",
-  "generated_at_closeout": "2026-09-08T23:11:39Z"
+  "generated_at_closeout": "2026-09-10T00:17:23Z"
 }
 ---
 # Markdown Machine handoff projection
