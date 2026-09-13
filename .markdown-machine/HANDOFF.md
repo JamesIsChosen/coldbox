@@ -8,7 +8,7 @@
     "ref": "sha256:006952ab10830b8e5599df36b1f5a069ed4b15f0bb1c39ac33d2a2617c18d88f",
     "path": ".markdown-machine/authority/authority-transition-run-horizon-raise-repository-write.md"
   },
-  "basis_repository_commit": "c7aafbae538e6fdb0295879f0b01cb31a168e138",
+  "basis_repository_commit": "ca28ef0ec5e014882e4786c80ad47b13d5065439",
   "authority_epoch": 0,
   "sequence": 14,
   "origin_ref": {
@@ -50,7 +50,7 @@
   "repository_sync": "LOCAL_AHEAD_REMOTE",
   "next_lawful": "CURRENT_TASK",
   "lifecycle_node_id": "flows_ux",
-  "generated_at_closeout": "2026-09-13T05:05:00Z"
+"generated_at_closeout": "2026-09-13T05:34:00Z"
 }
 ---
 # Markdown Machine handoff projection
@@ -67,6 +67,8 @@ The human explicitly directed testing migration without protected original-Inbox
 The post-bootstrap mock review is recorded in the current repository. The human
 approved the Entropy Lab aesthetic and approved the first realization slice and
 its acceptance checklist. The current admitted task is flows/UX design
-realization, bounded to that slice and to reviewable mock behavior. Product
-implementation and Product Freeze remain outside this task. The candidate's
-protected original-Inbox-boundary evidence remains unproved.
+realization, bounded to that slice and to reviewable mock behavior. The shipped
+presentation now uses the approved self-custody workstation hierarchy and keeps
+Passphrase Studio and Recovery Assistant live as first-slice sealed flows.
+Product implementation and Product Freeze remain outside this task. The
+candidate's protected original-Inbox-boundary evidence remains unproved.
