@@ -6752,6 +6752,34 @@ __COLDBOX_QR_ENCODER__
   window.addEventListener('pagehide', function () {
     clearReleasedSecrets('realm teardown');
   });
+  // srcdoc has the parent URL as its implicit base. Intercept every internal
+  // fragment link so cold navigation scrolls this document instead of loading
+  // the warm shell back into the sealed iframe.
+  document.addEventListener('click', function (event) {
+    var link = event.target && typeof event.target.closest === 'function'
+      ? event.target.closest('a[href^="#"]')
+      : null;
+    if (!link) {
+      return;
+    }
+    var href = link.getAttribute('href') || '';
+    var targetId = href.slice(1);
+    var target = targetId ? document.getElementById(targetId) : null;
+    if (!target) {
+      return;
+    }
+    event.preventDefault();
+    try {
+      window.history.replaceState(null, '', '#' + targetId);
+    } catch (error) {
+      // Opaque srcdoc history can be unavailable; scrolling still works.
+    }
+    target.setAttribute('tabindex', '-1');
+    target.scrollIntoView({ block: 'start' });
+    if (typeof target.focus === 'function') {
+      target.focus({ preventScroll: true });
+    }
+  });
   document.addEventListener('click', function (event) {
     var link = event.target && typeof event.target.closest === 'function'
       ? event.target.closest('a[data-cold-more-target]')
