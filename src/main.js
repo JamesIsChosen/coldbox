@@ -6085,6 +6085,13 @@ __COLDBOX_CONCEALMENT__
       app.setAttribute('data-route', route);
     }
     if (route === 'cold-realm-status') {
+      // The sealed route is a dedicated workspace. Keep warm pages mounted for
+      // fast switching, but remove them from the visible and accessible tree
+      // so the previous Home UI cannot appear underneath the cold frame.
+      pages.forEach(function (page) {
+        page.hidden = true;
+        page.setAttribute('aria-hidden', 'true');
+      });
       closeMoreMenu();
       if (announcement) {
         announcement.textContent = 'Sealed realm';
