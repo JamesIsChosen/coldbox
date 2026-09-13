@@ -47,15 +47,20 @@
     "product_discovery_cycles": 2,
     "product_freeze_reviews": 1
   },
-  "repository_sync": "REPOSITORY_SYNCED",
+  "repository_sync": "LOCAL_AHEAD_REMOTE",
   "next_lawful": "HUMAN_DECISION_REQUIRED",
   "lifecycle_node_id": "product_discovery",
-  "generated_at_closeout": "2026-09-13T00:14:56Z"
+  "generated_at_closeout": "2026-09-13T01:11:51Z"
 }
 ---
 # Markdown Machine handoff projection
 
-The published main tree carries the user-requested v0.10.2.1 test candidate at basis commit `233e0f25bd8602c58945c9d169ea052efcea0fb5`. Its sequence-8 transition is a user-directed experimental test migration and is not asserted as satisfying the candidate's normal normative acceptance requirements. This projection retains the predecessor bindings and records the repository as synced.
+The local main tree carries the user-requested v0.10.2.1 test candidate and the
+post-bootstrap mock-review records at basis commit
+`a34039924439aa858fcaec776d285534cfb51ebe`. Its sequence-8 transition is a
+user-directed experimental test migration and is not asserted as satisfying the
+candidate's normal normative acceptance requirements. The local tree is ahead
+of the configured remote; fresh remote verification is pending.
 
 The human explicitly directed testing migration without protected original-Inbox-boundary evidence. That evidence and normative checkpoint acceptance remain unproved; do not infer them from the user instruction, local commit, or source hashes.
 
