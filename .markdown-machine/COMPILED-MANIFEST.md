@@ -1719,6 +1719,76 @@
       "path": ".markdown-machine/authority/authority-transition-kernel-migrate-v0.10.1.md",
       "role": "authority_record",
       "required": true
+    },
+    {
+      "path": ".markdown-machine/history/49988f75ac11a402cb1edf8073b7f3fc4339763123b85fb22480a23c93a7189b/recovered/HISTORY-MANIFEST.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/49988f75ac11a402cb1edf8073b7f3fc4339763123b85fb22480a23c93a7189b/recovered/ORIGIN.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/49988f75ac11a402cb1edf8073b7f3fc4339763123b85fb22480a23c93a7189b/recovered/authority/capability-binding-software-product.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/49988f75ac11a402cb1edf8073b7f3fc4339763123b85fb22480a23c93a7189b/recovered/authority/operation-contract-discovery.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/49988f75ac11a402cb1edf8073b7f3fc4339763123b85fb22480a23c93a7189b/recovered/authority/operation-contract-product-freeze.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/49988f75ac11a402cb1edf8073b7f3fc4339763123b85fb22480a23c93a7189b/recovered/capabilities/software-product.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/49988f75ac11a402cb1edf8073b7f3fc4339763123b85fb22480a23c93a7189b/recovered/lifecycle/lifecycle-graph-presentation-rebuild.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/49988f75ac11a402cb1edf8073b7f3fc4339763123b85fb22480a23c93a7189b/recovered/tasks/task-mock-rereview-product-discovery.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/aeacf0faf04cb515acf6c5451f96be381e592bc558ce9bbde17fd88ec4ab8c2c/recovered/HISTORY-MANIFEST.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/aeacf0faf04cb515acf6c5451f96be381e592bc558ce9bbde17fd88ec4ab8c2c/recovered/authority/capability-binding-software-product.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/aeacf0faf04cb515acf6c5451f96be381e592bc558ce9bbde17fd88ec4ab8c2c/recovered/authority/operation-contract-discovery.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/aeacf0faf04cb515acf6c5451f96be381e592bc558ce9bbde17fd88ec4ab8c2c/recovered/authority/operation-contract-product-freeze.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/aeacf0faf04cb515acf6c5451f96be381e592bc558ce9bbde17fd88ec4ab8c2c/recovered/lifecycle/lifecycle-graph-presentation-rebuild.md",
+      "role": "historical_provenance",
+      "required": true
+    },
+    {
+      "path": ".markdown-machine/history/aeacf0faf04cb515acf6c5451f96be381e592bc558ce9bbde17fd88ec4ab8c2c/recovered/tasks/task-mock-rereview-product-discovery.md",
+      "role": "historical_provenance",
+      "required": true
     }
   ],
   "forbidden_distribution_roots": [
@@ -1729,7 +1799,7 @@
     "machine-source"
   ],
   "closure_status": "COMPLETE",
-  "revision": 1,
+  "revision": 2,
   "repository_binding_ref": {
     "ref": "sha256:1d14436330d927359f39ec7363a1720a426cdbef66680782cbd82636ef5d14fe",
     "path": ".markdown-machine/REPOSITORY.md"
@@ -1738,4 +1808,4 @@
 ---
 # COMPILED_MANIFEST
 
-Compiled manifest for MM 0.10.1 kernel migration candidate.
+Markdown Machine v0.10.1 compiled closure with exact historical dependencies restored from Git history under the user-authorized recovery exception. No kernel migration is asserted by this recovery.
