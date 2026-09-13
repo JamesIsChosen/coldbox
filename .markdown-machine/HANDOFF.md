@@ -8,7 +8,7 @@
     "ref": "sha256:432641553d860c1544502e63820a8e181d6bfb163dc18106c2dac81e5ad37ec0",
     "path": ".markdown-machine/authority/authority-transition-kernel-migrate-v0.10.1.md"
   },
-  "basis_repository_commit": "caf4d26c8f975e9b9b4aa8c560b92227fa36cee9",
+  "basis_repository_commit": "06d4660d48ce22d0c6fc680afe7b861576761c23",
   "authority_epoch": 0,
   "sequence": 7,
   "origin_ref": {
@@ -50,7 +50,7 @@
   "repository_sync": "LOCAL_AHEAD_REMOTE",
   "next_lawful": "REPOSITORY_RECOVERY",
   "lifecycle_node_id": "product_discovery",
-  "generated_at_closeout": "2026-09-13T00:12:56Z"
+  "generated_at_closeout": "2026-09-13T00:14:56Z"
 }
 ---
 # Markdown Machine handoff projection
