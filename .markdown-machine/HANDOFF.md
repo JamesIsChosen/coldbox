@@ -8,9 +8,9 @@
     "ref": "sha256:006952ab10830b8e5599df36b1f5a069ed4b15f0bb1c39ac33d2a2617c18d88f",
     "path": ".markdown-machine/authority/authority-transition-run-horizon-raise-repository-write.md"
   },
-  "basis_repository_commit": "6e23677032a19bacbf0444a196175fba9cfc7ef3",
+  "basis_repository_commit": "1b85cab3c3696048132948270ef12080203ceec2",
   "authority_epoch": 0,
-  "sequence": 15,
+  "sequence": 16,
   "origin_ref": {
     "ref": "sha256:151fe4fd3baad4c0364aa925d38a2e4270005589f6c4971410759bee11540b81",
     "path": ".markdown-machine/ORIGIN.md"
@@ -50,7 +50,7 @@
   "repository_sync": "LOCAL_AHEAD_REMOTE",
   "next_lawful": "CURRENT_TASK",
   "lifecycle_node_id": "flows_ux",
-"generated_at_closeout": "2026-09-13T06:11:33Z"
+"generated_at_closeout": "2026-09-13T06:14:00Z"
 }
 ---
 # Markdown Machine handoff projection
@@ -72,8 +72,10 @@ presentation now uses the approved Entropy Lab first slice inside the sealed
 workstation frame, with the candidate's Forge heading, six-step progress rail,
 source tabs, and paper-panel treatment. Internal cold links are handled inside
 the sealed document so they cannot reload the warm shell back into the frame.
-The surrounding self-custody workstation hierarchy, boundary strip, and live
-lock/panic controls remain governed context; Passphrase Studio and Recovery
-Assistant remain live as first-slice sealed flows.
+The cold route also removes warm pages from the visible and accessible tree, so
+Home cannot appear underneath the sealed workspace. The surrounding
+self-custody workstation hierarchy, boundary strip, and live lock/panic
+controls remain governed context; Passphrase Studio and Recovery Assistant
+remain live as first-slice sealed flows.
 Product implementation and Product Freeze remain outside this task. The
 candidate's protected original-Inbox-boundary evidence remains unproved.
