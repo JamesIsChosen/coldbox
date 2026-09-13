@@ -8,12 +8,12 @@
     "ref": "sha256:432641553d860c1544502e63820a8e181d6bfb163dc18106c2dac81e5ad37ec0",
     "path": ".markdown-machine/authority/authority-transition-kernel-migrate-v0.10.1.md"
   },
-  "basis_repository_commit": "caf4d26c8f975e9b9b4aa8c560b92227fa36cee9",
+  "basis_repository_commit": "871d784a80a33ad01d3346d2c1d8ce1c45b4516f",
   "authority_epoch": 0,
   "sequence": 7,
   "origin_ref": {
     "ref": "sha256:643a6493ff64d91cfc73a08ca54127bb1962be9629fe3424d6ff24a633d1db5b",
-    "path": ".markdown-machine/history/8b71e8d18ae2d9a3820348fb195357f72cc7ef74e7323b315769a73cb9fa4766/ORIGIN.md"
+    "path": ".markdown-machine/ORIGIN.md"
   },
   "kernel_manifest_ref": {
     "ref": "sha256:87822d173dbf0de810e1d4d8a7c94346009ba3de38bd988d4697c02232309ad4",
@@ -47,16 +47,12 @@
     "product_discovery_cycles": 2,
     "product_freeze_reviews": 1
   },
-  "repository_sync": "LOCAL_AHEAD_REMOTE",
-  "next_lawful": "REPOSITORY_RECOVERY",
+  "repository_sync": "REPOSITORY_SYNCED",
+  "next_lawful": "HUMAN_DECISION_REQUIRED",
   "lifecycle_node_id": "product_discovery",
-  "generated_at_closeout": "2026-09-13T00:12:56Z"
+  "generated_at_closeout": "2026-09-10T00:20:46Z"
 }
 ---
 # Markdown Machine handoff projection
 
-The local tree carries the user-requested v0.10.2.1 test candidate. Its sequence-8 transition is not asserted admitted: shared-main publication was rejected by automatic approval review and remains pending explicit authorization. This projection retains the predecessor bindings and routes repository recovery.
-
-The human explicitly directed testing migration without protected original-Inbox-boundary evidence. That evidence and normative checkpoint acceptance remain unproved; do not infer them from the user instruction, local commit, or source hashes.
-
-Regenerate this projection from actual authority/currentness after publication. The required human mock review remains unfinished.
+This projection is non-authoritative. The authority head is recovered from the admitted records.

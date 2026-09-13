@@ -64,11 +64,7 @@ continuation, and the state-recovery portion of closeout/audit.
 12. Reduce lifecycle, the exact current intent envelope and Run Horizon,
     selected capabilities, current Tasks, and bound OperationContracts.
 13. Reduce current Attempts, review barriers, effects, resources, and human
-    authority needed by the current route. For relevant Inbox input or an
-    explicit Inbox status request, apply `MM-RECOVERY/1` `inbox_rules` and
-    `inbox_legacy_eligibility`: recover all exact destination-side matches and
-    current qualifying sources before deciding further work is needed. This
-    does not add an unrelated-Inbox audit to ordinary continuation.
+    authority needed by the current route.
 14. Run the deterministic convergence reducer.
 15. Evaluate the single operation-floor profile.
 16. Apply barrier precedence and derive exactly one truthful `next_lawful`.
@@ -110,14 +106,6 @@ output never manufacture positive authority.
 
 Use this procedure when creating a strict governed record or authority
 transition.
-
-For Inbox capture, first interpret applicable human controls, then apply
-`MM-RECOVERY/1` `inbox_rules.capture` and `inbox_rules.delivery_replay`. Before
-constructing or admitting an Inbox-dependent destination, and again at its
-existing execution preflight, apply
-`inbox_rules.current_meaning_and_destinations`; an administrative backlink is
-not a new request, and an absent backlink does not erase an applicable
-restriction. Capture and status grant no substantive-work authority.
 
 For an ordinary strict record:
 
@@ -195,13 +183,10 @@ This is a terminating closeout algorithm.
 
 1. Stop starting new substantive work.
 2. Preserve/classify meaningful transient state and uncertainty.
-3. Make authoritative and recovery-critical state durable. Include safe Inbox
-   capture and relevant handling/uncertainty under `MM-RECOVERY/1`
-   `inbox_rules`; acknowledgment must match actual persistence.
+3. Make authoritative and recovery-critical state durable.
 4. Freeze the current governed path-and-byte set for this evaluation.
 5. Perform source-free validation using this runtime and the exact six exported
-   contracts, including every required Inbox history and inherited-eligibility
-   check for the frozen clean-closeout subject.
+   contracts.
 6. Re-reduce complete current state and derive exactly one `next_lawful` or
    terminal result.
 7. Derive `HANDOFF_PROJECTION` only from the exact mechanical projection sources

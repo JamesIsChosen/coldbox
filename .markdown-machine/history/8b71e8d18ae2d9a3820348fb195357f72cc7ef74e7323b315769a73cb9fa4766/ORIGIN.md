@@ -4,18 +4,18 @@
   "schema_version": 1,
   "project_id": "coldbox-d105f94a-f83e-4f85-9671-c64bcca74803",
   "machine_name": "Markdown Machine",
-  "machine_version": "v0.10.2.1",
+  "machine_version": "v0.10.1",
   "source_transport": "GIT_REPOSITORY",
   "source_identity": "https://github.com/JamesIsChosen/markdown-machine.git",
-  "content_set_digest": "659cddf0a573603081075b3ec158b3ff0a6bfaf6ac9a130259b55f7c1c4d9b71",
+  "content_set_digest": "8b71e8d18ae2d9a3820348fb195357f72cc7ef74e7323b315769a73cb9fa4766",
   "compatibility_family": "MARKDOWN-MACHINE-V0-10",
   "enforcement_profile": "KERNEL_MIGRATE",
   "runtime_source": {
     "path": "project-runtime/RUNTIME.md",
-    "sha256": "619d37ecc81fea967bb9bc5018c13e4cffe00038a32a32aa3ebddcab17fecc4b"
+    "sha256": "b82f830d2cb85c84cb5252c44b6aa85c7e88fb0447ef49ba3e288e044da22533"
   },
-  "git_commit": "64f63a83136ad6fab8b785ff6635e94c91b25c04",
-  "git_tree": "fb15bf32d71661e05bd5a240bae00e1335463bcf",
+  "git_commit": "295011462402bee2b831b5955dca6acbce9cb121",
+  "git_tree": "651f77cc6c161c0437cb472da73beda8431f9e63",
   "governing_sources": [
     {
       "path": "project-runtime/RECORD-GRAMMAR.md",
@@ -27,11 +27,11 @@
     },
     {
       "path": "project-runtime/RECOVERY-CONTRACTS.md",
-      "sha256": "858fadbefc2a61c6938567ebad7180ba09a9066d4f99544f65c1179f06404a41"
+      "sha256": "df7ba1c11932181f88779dddf0bce08e0ba14795030b200bab8afe4d57ca3539"
     },
     {
       "path": "project-runtime/AUTHORITY-EVALUATOR.md",
-      "sha256": "ea1fdd9f64e29df0cde26188028a836f8e254631fe146abe1b00507daab9354e"
+      "sha256": "00368d16eef91628b0e87d9ecf1a7518207b8eb8b80a14106b1d805d2c0ef6cb"
     },
     {
       "path": "project-runtime/HUMAN-CONTROL.md",
@@ -51,6 +51,6 @@
   ]
 }
 ---
-# Candidate distribution origin
+# DISTRIBUTION_ORIGIN
 
-Inert v0.10.2.1 source selection. No admission or publication is asserted.
+Distribution origin record for MM 0.10.1 kernel migration candidate.
