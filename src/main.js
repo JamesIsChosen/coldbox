@@ -6096,6 +6096,10 @@ __COLDBOX_CONCEALMENT__
       if (announcement) {
         announcement.textContent = 'Sealed realm';
       }
+      // A direct sealed-realm deep link must reveal the workspace immediately;
+      // otherwise the ready-state collapse hides the only content on this
+      // route and leaves an empty shell behind.
+      setStatusStripExpanded(true);
       if (shouldFocus) {
         focusColdRealmTarget();
       }
