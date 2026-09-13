@@ -61,6 +61,11 @@
   ],
   "child_layout": [
     {
+      "path": ".markdown-machine/authority/human-statement-entropy-flow-design-direction.md",
+      "role": "authority_record",
+      "required": true
+    },
+    {
       "path": ".markdown-machine/COMPILED-MANIFEST.md",
       "role": "compiled_manifest",
       "required": true
