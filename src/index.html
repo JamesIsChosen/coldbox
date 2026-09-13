@@ -42,42 +42,47 @@ __COLDBOX_WORDMARK__
     <div class="app-layout">
       <aside class="nav-rail" id="nav-rail" aria-label="Primary navigation">
         <div class="nav-scroll">
+          <nav class="nav-group" aria-label="Workspace">
+            <p class="nav-group-title">Workspace</p>
+            <a class="nav-link" data-nav="home" href="#dashboard" data-route="dashboard"><span class="nav-icon" aria-hidden="true">◱</span><span>Home</span></a>
+            <a class="nav-link" data-nav="wallets" href="#wallets" data-route="wallets"><span class="nav-icon" aria-hidden="true">₿</span><span>Wallets</span><span class="nav-tag">P1.6</span></a>
+            <a class="nav-link" data-nav="backup" href="#backup" data-route="backup"><span class="nav-icon" aria-hidden="true">H</span><span>Backup &amp; recovery</span><span class="nav-tag">P2.7</span></a>
+            <button class="nav-link nav-link-unavailable" data-nav="portfolio" type="button" disabled aria-disabled="true" data-roadmap-id="P3.4" data-phase="Phase 3"><span class="nav-icon" aria-hidden="true">$</span><span>Portfolio &amp; records</span><span class="nav-tag">P3.4 · Phase 3</span></button>
+            <a class="nav-link" data-nav="security" href="#security" data-route="security"><span class="nav-icon" aria-hidden="true">✓</span><span>Security &amp; verify</span><span class="nav-tag">P1.8</span></a>
+          </nav>
+
           <nav class="nav-group" aria-label="Records">
             <p class="nav-group-title">Records</p>
-            <a class="nav-link" href="#registry" data-route="registry"><span class="nav-icon" aria-hidden="true">R</span><span>Registry</span><span class="nav-tag">P1.6</span></a>
-            <a class="nav-link" href="#devices" data-route="devices"><span class="nav-icon" aria-hidden="true">W</span><span>Devices</span><span class="nav-tag">P1.8</span></a>
-            <a class="nav-link" href="#verify" data-route="verify"><span class="nav-icon" aria-hidden="true">✓</span><span>Address bench</span><span class="nav-tag">P1.9</span></a>
-            <a class="nav-link" href="#qr" data-route="qr"><span class="nav-icon" aria-hidden="true">Q</span><span>QR Studio</span><span class="nav-tag">P1.10</span></a>
+            <a class="nav-link" data-nav="registry" href="#registry" data-route="registry"><span class="nav-icon" aria-hidden="true">R</span><span>Records &amp; registry</span><span class="nav-tag">P1.6</span></a>
+            <a class="nav-link" data-nav="devices" href="#devices" data-route="devices"><span class="nav-icon" aria-hidden="true">W</span><span>Devices</span><span class="nav-tag">P1.8</span></a>
+            <button class="nav-link nav-link-unavailable" data-nav="prices" type="button" disabled aria-disabled="true" data-roadmap-id="P3.1" data-phase="Phase 3"><span class="nav-icon" aria-hidden="true">¤</span><span>Prices &amp; FX</span><span class="nav-tag">P3.1 · Phase 3</span></button>
+            <button class="nav-link nav-link-unavailable" data-nav="taxes" type="button" disabled aria-disabled="true" data-roadmap-id="P3.9" data-phase="Phase 3"><span class="nav-icon" aria-hidden="true">T</span><span>Tax &amp; exports</span><span class="nav-tag">P3.9 · Phase 3</span></button>
+            <a class="nav-link" data-nav="backup-health" href="#backup/health" data-route="backup"><span class="nav-icon" aria-hidden="true">H</span><span>Backup Health</span><span class="nav-tag">P2.7</span></a>
           </nav>
 
-          <nav class="nav-group" aria-label="Money">
-            <p class="nav-group-title">Money</p>
-            <a class="nav-link" href="#dashboard" data-route="dashboard"><span class="nav-icon" aria-hidden="true">D</span><span>Dashboard</span></a>
-            <button class="nav-link nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P3.4" data-phase="Phase 3"><span class="nav-icon" aria-hidden="true">P</span><span>Portfolio</span><span class="nav-tag">P3.4 · Phase 3</span></button>
-            <button class="nav-link nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P3.1" data-phase="Phase 3"><span class="nav-icon" aria-hidden="true">$</span><span>Prices &amp; FX</span><span class="nav-tag">P3.1 · Phase 3</span></button>
-            <button class="nav-link nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P3.9" data-phase="Phase 3"><span class="nav-icon" aria-hidden="true">T</span><span>Tax &amp; exports</span><span class="nav-tag">P3.9 · Phase 3</span></button>
+          <nav class="nav-group" aria-label="Trust &amp; reference">
+            <p class="nav-group-title">Trust &amp; reference</p>
+            <a class="nav-link" data-nav="verify-file" href="#reference/verify" data-route="reference"><span class="nav-icon" aria-hidden="true">⌗</span><span>Verify this file</span><span class="nav-tag">P0.16</span></a>
+            <a class="nav-link" data-nav="provenance" href="#reference/legal" data-route="reference"><span class="nav-icon" aria-hidden="true">#</span><span>Provenance &amp; legal</span><span class="nav-tag">P0.16</span></a>
+            <a class="nav-link" data-nav="learn" href="#learn" data-route="learn"><span class="nav-icon" aria-hidden="true">?</span><span>Learn</span><span class="nav-tag">P0.17</span></a>
+            <a class="nav-link" data-nav="tool-map" href="#tool-map" data-route="tool-map"><span class="nav-icon" aria-hidden="true">⊞</span><span>Tool map</span><span class="nav-tag">all</span></a>
+            <a class="nav-link" data-nav="reference" href="#reference" data-route="reference"><span class="nav-icon" aria-hidden="true">i</span><span>Reference &amp; help</span><span class="nav-tag">P0.17</span></a>
           </nav>
 
-          <nav class="nav-group" aria-label="Vault files">
-            <p class="nav-group-title">Vault files</p>
-            <a class="nav-link" href="#vault" data-route="vault"><span class="nav-icon" aria-hidden="true">V</span><span>Vault files</span><span class="nav-tag">P0.13</span></a>
-            <a class="nav-link" href="#backup" data-route="backup"><span class="nav-icon" aria-hidden="true">H</span><span>Backup Health</span><span class="nav-tag">P2.7</span></a>
+          <nav class="nav-group" aria-label="Vault &amp; settings">
+            <p class="nav-group-title">Vault &amp; settings</p>
+            <a class="nav-link" data-nav="vault-files" href="#vault" data-route="vault"><span class="nav-icon" aria-hidden="true">V</span><span>Vault files</span><span class="nav-tag">P0.13</span></a>
+            <a class="nav-link" data-nav="vault-session" href="#vault/session" data-route="vault"><span class="nav-icon" aria-hidden="true">⏻</span><span>Vault session</span><span class="nav-tag">P0.13</span></a>
+            <a class="nav-link" data-nav="vault-transfer" href="#vault/transfer" data-route="vault"><span class="nav-icon" aria-hidden="true">⇄</span><span>Device transfer (QR)</span><span class="nav-tag">P0.13</span></a>
+            <a class="nav-link" data-nav="settings" href="#settings" data-route="settings"><span class="nav-icon" aria-hidden="true">⚙</span><span>Settings</span></a>
+            <a class="nav-link" data-nav="all-flows" href="#advanced" data-route="advanced"><span class="nav-icon" aria-hidden="true">⊕</span><span>All flows index</span><span class="nav-tag">all</span></a>
           </nav>
 
-          <nav class="nav-group" aria-label="Reference">
-            <p class="nav-group-title">Reference</p>
-            <button class="nav-link nav-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P4.10" data-phase="Phase 4"><span class="nav-icon" aria-hidden="true">i</span><span>Reference</span><span class="nav-tag">P4.10 · Phase 4</span></button>
-            <a class="nav-link" href="#learn" data-route="learn"><span class="nav-icon" aria-hidden="true">?</span><span>Learn</span><span class="nav-tag">P0.17</span></a>
-            <a class="nav-link" href="#reference" data-route="reference"><span class="nav-icon" aria-hidden="true">⌗</span><span>Verify this file</span><span class="nav-tag">P0.16</span></a>
-            <a class="nav-link" href="#reference"><span class="nav-icon" aria-hidden="true">#</span><span>Provenance &amp; legal</span><span class="nav-tag">P0.16</span></a>
-            <a class="nav-link" href="#tool-map" data-route="tool-map"><span class="nav-icon" aria-hidden="true">⊞</span><span>Tool map</span></a>
+          <nav class="nav-group" aria-label="Sealed work">
+            <p class="nav-group-title">Sealed work</p>
+            <a class="nav-link" data-nav="sealed" href="#cold-realm-status"><span class="nav-icon" aria-hidden="true">✻</span><span>Seeds &amp; secrets</span><span class="nav-tag">SEED</span></a>
           </nav>
-
-          <div class="nav-sealed-entry" aria-label="Sealed realm navigation">
-            <a class="nav-link" href="#cold-realm-status"><span class="nav-icon" aria-hidden="true">✻</span><span>Enter sealed realm</span></a>
-          </div>
         </div>
-
         <div class="nav-footer">
           <span class="build-badge"><span class="status-dot" aria-hidden="true"></span> Shell preview</span>
           <p class="nav-footer-note">The warm shell stays public. Secret handling lives inside the sealed realm.</p>
@@ -101,19 +106,27 @@ __COLDBOX_WORDMARK__
 
         <p class="sr-only" id="route-announcement" aria-live="polite"></p>
 
+        <section class="status-strip" id="status-strip" data-strip-state="checking">
+          <button type="button" class="status-strip-toggle" id="status-strip-toggle" aria-expanded="false" aria-controls="cold-realm-status-copy cold-realm-host capability-panel-detail airgap-banner-detail">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="status-strip-summary">Checking the security boundary</span>
+            <span class="status-strip-chevron" aria-hidden="true">&#9662;</span>
+          </button>
+          <p class="status-strip-alarm-note" id="status-strip-alarm-note" hidden>This can't be collapsed while it needs your attention.</p>
+        </section>
         <section class="realm-status" id="cold-realm-status" tabindex="-1" data-cold-state="starting" aria-labelledby="cold-realm-status-title" aria-live="polite">
           <div class="realm-status-copy">
             <p class="eyebrow">Security boundary / P0.8</p>
             <h2 id="cold-realm-status-title"><span id="cold-realm-status-title-text">Establishing the sealed realm</span>
               <button type="button" class="icon-button help-context-button" data-help-topic="glossary:cold-realm-warm-shell" aria-label="What is the sealed realm?">?</button>
             </h2>
-            <p id="cold-realm-status-copy">The secret-capable side of Coldbox is starting inside an opaque sandbox. The shell will stay locked down if that boundary cannot be established.</p>
+            <p id="cold-realm-status-copy" class="status-strip-detail" hidden>The secret-capable side of Coldbox is starting inside an opaque sandbox. The shell will stay locked down if that boundary cannot be established.</p>
           </div>
           <div class="realm-status-state" aria-label="Sealed realm status">
             <span class="status-dot" aria-hidden="true"></span>
             <span id="cold-realm-status-label">Starting</span>
           </div>
-          <div class="cold-frame-host" id="cold-realm-host" aria-label="Sealed realm viewport"></div>
+          <div class="cold-frame-host status-strip-detail" id="cold-realm-host" aria-label="Sealed realm viewport" hidden></div>
           <p class="realm-status-failure" id="cold-realm-failure" role="alert" hidden>Coldbox is locked down because the sealed realm could not be established. Reload a verified build in a supported browser; no secret operation is available in this state.</p>
           <p class="protocol-warning" id="protocol-warning" role="alert" hidden>Unexpected protocol traffic was discarded and logged. No message was accepted.</p>
         </section>
@@ -124,10 +137,12 @@ __COLDBOX_WORDMARK__
             <h2 id="airgap-banner-title"><span id="airgap-banner-title-text">Checking the airgap guard</span>
               <button type="button" class="icon-button help-context-button" data-help-topic="glossary:airgapped" aria-label="What does airgapped mean?">?</button>
             </h2>
-            <p id="airgap-banner-copy">Coldbox is confirming both CSP policies and the private cold-realm channel before vault operations can be considered.</p>
-            <div class="airgap-facts" aria-label="Network and isolation facts">
-              <p><strong>Warm reachability:</strong> <span id="warm-reachability-status">Checking external reachability.</span></p>
-              <p><strong>Cold isolation:</strong> <span id="cold-isolation-status">Checking CSP and runtime guards.</span></p>
+            <div id="airgap-banner-detail" class="status-strip-detail" hidden>
+              <p id="airgap-banner-copy">Coldbox is confirming both CSP policies and the private cold-realm channel before vault operations can be considered.</p>
+              <div class="airgap-facts" aria-label="Network and isolation facts">
+                <p><strong>Warm reachability:</strong> <span id="warm-reachability-status">Checking external reachability.</span></p>
+                <p><strong>Cold isolation:</strong> <span id="cold-isolation-status">Checking CSP and runtime guards.</span></p>
+              </div>
             </div>
           </div>
           <div class="airgap-banner-state" aria-label="Airgap and network status">
@@ -150,7 +165,7 @@ __COLDBOX_WORDMARK__
               <span id="capability-panel-label">Checking</span>
             </div>
           </div>
-          <div class="capability-list">
+          <div class="capability-list" id="capability-panel-detail" hidden>
             <article class="capability-row" id="capability-row-random-values" data-capability-row="randomValues" data-state="checking">
               <div>
                 <h3>Required randomness</h3>
@@ -206,142 +221,329 @@ __COLDBOX_WORDMARK__
         <section class="page" id="page-dashboard" data-page="dashboard" aria-labelledby="page-title-dashboard">
           <header class="page-header">
             <p class="eyebrow">Workspace / Warm shell</p>
-            <h1 id="page-title-dashboard">Dashboard</h1>
-            <p class="page-lede">A calm starting point for the public side of Coldbox. Your records, labels, and reference material will live here while secret work stays sealed away.</p>
+            <h1 id="page-title-dashboard">Your self-custody system</h1>
+            <p class="page-lede">These are your wallets, seeds, devices, backups, addresses and records. Coldbox helps you understand, protect, verify and recover them — the specialist tools are still here, one layer down under All flows index.</p>
           </header>
-          <section class="stage" id="stage" aria-labelledby="stage-title">
-            <div class="stage-intro">
-              <span class="panel-kicker">The two realms</span>
-              <h2 id="stage-title">One file. Two halves that cannot talk freely.</h2>
-              <p class="stage-lede">Move your pointer or scroll to turn the panels. Nothing here is live data — these describe how Coldbox is built.</p>
-            </div>
+          <div class="fact-grid home-object-grid" id="home-object-grid" aria-label="Your self-custody objects">
+            <article class="fact-card" aria-labelledby="home-wallets-title">
+              <p class="fact-card-owner"><span class="nav-tag" data-owner-item="P1.6">P1.6</span></p>
+              <h2 id="home-wallets-title">Wallets</h2>
+              <p class="home-card-count" id="home-wallets-count" aria-live="polite">Unlock a vault to see your wallets.</p>
+              <p>Everyday spending, savings and watch-only records — each one states plainly whether Coldbox can sign for it.</p>
+              <a class="comic-btn" href="#wallets" data-route="wallets">Open Wallets</a>
+            </article>
 
-            <div class="stage-viewport">
-              <div class="stage-scene" id="stage-scene">
-                <article class="stage-card stage-card-left" aria-labelledby="stage-card-warm">
-                  <div class="stage-card-head">
-                    <h3 class="stage-card-title" id="stage-card-warm">Warm shell</h3>
-                    <span class="stage-badge stage-badge-cyan">Online OK</span>
-                  </div>
-                  <p class="stage-card-sub">The outer document. This one.</p>
-                  <div class="stage-row">
-                    <span class="stage-mark stage-mark-cyan" aria-hidden="true">$</span>
-                    <span class="stage-row-copy"><span class="stage-row-name">Prices</span><span class="stage-row-note">Median of five sources</span></span>
-                    <span class="stage-row-value">Phase 3</span>
-                  </div>
-                  <div class="stage-row">
-                    <span class="stage-mark stage-mark-cyan" aria-hidden="true">P</span>
-                    <span class="stage-row-copy"><span class="stage-row-name">Portfolio</span><span class="stage-row-note">Lots and cost basis</span></span>
-                    <span class="stage-row-value">Phase 3</span>
-                  </div>
-                  <div class="stage-row">
-                    <span class="stage-mark stage-mark-cyan" aria-hidden="true">R</span>
-                    <span class="stage-row-copy"><span class="stage-row-name">Registry</span><span class="stage-row-note">Addresses and labels</span></span>
-                    <span class="stage-row-value">Phase 1</span>
-                  </div>
-                  <p class="speech-bubble">It can reach the network for public data. It never receives a secret.</p>
-                </article>
+            <article class="fact-card fact-card-unavailable" aria-labelledby="home-seeds-title">
+              <p class="fact-card-owner"><span class="nav-tag" data-owner-item="SEED.1">SEED.1</span></p>
+              <h2 id="home-seeds-title">Seeds &amp; lineage</h2>
+              <p class="fact-card-availability" data-availability="roadmap">Roadmap-owned · unavailable in this build</p>
+              <p>Root authority, BIP-85 recipes, and the wallets and devices linked to each seed, readable without opening a secret.</p>
+              <button class="comic-btn comic-btn-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="SEED.1" data-phase="Phase SEED">Unavailable · SEED.1 · Phase SEED</button>
+            </article>
 
-                <article class="stage-card stage-card-center" aria-labelledby="stage-card-core">
-                  <p class="sound-effect" aria-hidden="true">Not a wallet!</p>
-                  <div class="stage-card-head">
-                    <h3 class="stage-card-title" id="stage-card-core">Coldbox</h3>
-                    <span class="stage-badge stage-badge-green">Companion</span>
-                  </div>
-                  <p class="stage-card-sub">Toolkit · wallet registry · portfolio manager</p>
-                  <div class="stage-row">
-                    <span class="stage-row-copy"><span class="stage-row-name">Holds your keys</span><span class="stage-row-note">Your hardware wallet does</span></span>
-                    <span class="stage-row-value stage-row-value-no">No</span>
-                  </div>
-                  <div class="stage-row">
-                    <span class="stage-row-copy"><span class="stage-row-name">Signs transactions</span><span class="stage-row-note">Permanent non-goal</span></span>
-                    <span class="stage-row-value stage-row-value-no">No</span>
-                  </div>
-                  <div class="stage-row">
-                    <span class="stage-row-copy"><span class="stage-row-name">Verifies your device</span><span class="stage-row-note">Catches address swaps</span></span>
-                    <span class="stage-row-value stage-row-value-yes">Yes</span>
-                  </div>
-                  <p class="stage-card-foot">It cannot spend your money — so an attacker who compromises it cannot either.</p>
-                </article>
+            <article class="fact-card" aria-labelledby="home-backup-title">
+              <p class="fact-card-owner"><span class="nav-tag" data-owner-item="P2.7">P2.7</span></p>
+              <h2 id="home-backup-title">Backup &amp; recovery</h2>
+              <p class="home-card-count" id="home-backup-count" aria-live="polite">Unlock a vault to see backup health.</p>
+              <p>One score per seed, computed conservatively. A set that has never been reconstructed scores as no backup at all.</p>
+              <a class="comic-btn" href="#backup/health" data-route="backup">Open Backup Health</a>
+            </article>
+          </div>
 
-                <article class="stage-card stage-card-right" aria-labelledby="stage-card-cold">
-                  <div class="stage-card-head">
-                    <h3 class="stage-card-title" id="stage-card-cold">Sealed realm</h3>
-                    <span class="stage-badge stage-badge-pink">No network</span>
-                  </div>
-                  <p class="stage-card-sub">A sandboxed iframe with its own policy.</p>
-                  <div class="stage-row">
-                    <span class="stage-mark stage-mark-pink" aria-hidden="true">S</span>
-                    <span class="stage-row-copy"><span class="stage-row-name">Seed Forge</span><span class="stage-row-note">BIP-39 generate and check</span></span>
-                    <span class="stage-row-value">P1.3</span>
-                  </div>
-                  <div class="stage-row">
-                    <span class="stage-mark stage-mark-pink" aria-hidden="true">B</span>
-                    <span class="stage-row-copy"><span class="stage-row-name">Backup Lab</span><span class="stage-row-note">SLIP-39, codex32, XOR</span></span>
-                    <span class="stage-row-value">Phase 2</span>
-                  </div>
-                  <div class="stage-row">
-                    <span class="stage-mark stage-mark-pink" aria-hidden="true">V</span>
-                    <span class="stage-row-copy"><span class="stage-row-name">Vault</span><span class="stage-row-note">Argon2id + AES-256-GCM</span></span>
-                    <span class="stage-row-value">Active</span>
-                  </div>
-                  <p class="speech-bubble"><code>connect-src 'none'</code> — no fetch, no XHR, no socket. Not disabled. Absent.</p>
-                </article>
-              </div>
-            </div>
-
-            <p class="stage-cue" aria-hidden="true">▼ How the boundary is built ▼</p>
-          </section>
-
-          <section class="backup-health-dashboard" id="dashboard-backup-health" aria-labelledby="dashboard-backup-health-title">
-            <div class="backup-health-heading">
-              <div>
-                <p class="panel-kicker">Backup Health / P2.7</p>
-                <h2 id="dashboard-backup-health-title">Can you still recover?</h2>
-                <p class="backup-health-lede">This warm-only view checks public verification dates and recorded placement metadata. It never receives share words or reconstructed secrets.</p>
-              </div>
-              <a class="vault-button" href="#backup">Open Backup Lab</a>
-            </div>
-            <div id="dashboard-backup-health-locked" class="backup-health-locked" aria-live="polite">
-              <strong>Unlock a vault to see backup health.</strong>
-              <span>Backup records live in the public compartment of the selected vault.</span>
-            </div>
-            <div id="dashboard-backup-health-workspace" hidden aria-live="polite">
-              <p id="dashboard-backup-health-headline" class="backup-health-headline" role="status">Backup health is waiting for records.</p>
-              <div id="dashboard-backup-health-metrics" class="backup-health-metrics" aria-label="Backup health counts"></div>
-              <div class="backup-health-columns">
-                <section class="backup-health-subpanel" aria-labelledby="dashboard-backup-health-alerts-title">
-                  <h3 id="dashboard-backup-health-alerts-title">What needs attention</h3>
-                  <div id="dashboard-backup-health-alerts" class="backup-health-list"></div>
-                </section>
-                <section class="backup-health-subpanel" aria-labelledby="dashboard-backup-health-placement-title">
-                  <h3 id="dashboard-backup-health-placement-title">Recorded placement</h3>
-                  <div id="dashboard-backup-health-placement" class="backup-health-list"></div>
-                </section>
-              </div>
-              <section class="backup-health-subpanel backup-health-records-panel" aria-labelledby="dashboard-backup-health-records-title">
-                <h3 id="dashboard-backup-health-records-title">Backup records</h3>
-                <div id="dashboard-backup-health-records" class="backup-health-list"></div>
-              </section>
+          <section class="empty-panel home-do-next" aria-labelledby="home-do-next-title">
+            <span class="panel-kicker">Object-first</span>
+            <h2 id="home-do-next-title">Do next</h2>
+            <p>Pick the thing you own, and the workflow follows from it. Specialist tools stay one click away under Advanced tools.</p>
+            <div class="home-action-list">
+              <a class="comic-btn" href="#backup" data-route="backup">Verify a backup set</a>
+              <a class="comic-btn" href="#vault" data-route="vault">Create a vault</a>
+              <button class="comic-btn comic-btn-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="WAL.4" data-phase="Phase WAL">Receive to a wallet · WAL.4</button>
+              <button class="comic-btn comic-btn-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="SEED.1" data-phase="Phase SEED">Open a seed record · SEED.1</button>
             </div>
           </section>
 
-          <div class="card-grid card-grid-three">
+          <section class="empty-panel home-network-source" aria-labelledby="home-network-title">
+            <span class="panel-kicker">Two facts, never one badge</span>
+            <h2 id="home-network-title">Network &amp; source</h2>
+            <p class="security-guard" id="home-airgap-guard" data-airgap-state="checking" aria-live="polite">
+              <span class="status-dot" aria-hidden="true"></span>
+              <span id="home-airgap-guard-label">Checking the airgap guard</span>
+            </p>
+            <p>That is the warm shell's own network reach, reported live by the airgap guard — not a claim about where wallet chain data comes from, which is separate and not yet built.</p>
+            <div class="fact-grid">
+              <article class="fact-card fact-card-unavailable" aria-labelledby="home-tor-env-title">
+                <p class="fact-card-owner"><span class="nav-tag" data-owner-item="WAL.2">WAL.2</span></p>
+                <h3 id="home-tor-env-title">Tor environment</h3>
+                <p class="fact-card-availability" data-availability="roadmap">Roadmap-owned · not fingerprinted by this build</p>
+              </article>
+              <article class="fact-card fact-card-unavailable" aria-labelledby="home-tor-onion-title">
+                <p class="fact-card-owner"><span class="nav-tag" data-owner-item="WAL.2">WAL.2</span></p>
+                <h3 id="home-tor-onion-title">Tor-enforced onion</h3>
+                <p class="fact-card-availability" data-availability="roadmap">Roadmap-owned · fails closed</p>
+              </article>
+            </div>
+            <p class="fact-grid-note">Source assurance and transport privacy are separate facts. Coldbox never claims an in-page switch made your browser a Tor client.</p>
+          </section>
+        </section>
+
+        <section class="page" id="page-wallets" data-page="wallets" aria-labelledby="page-title-wallets" hidden>
+          <header class="page-header">
+            <p class="eyebrow">Objects / Wallets</p>
+            <h1 id="page-title-wallets">Wallets &amp; accounts</h1>
+            <p class="page-lede">One row per wallet, with the seed lineage it came from and how much of it Coldbox can operate today. Watch-only is a first-class state, not a degraded one.</p>
+          </header>
+
+          <section class="wallets-locked" id="wallets-locked" aria-live="polite">
+            <div class="empty-panel">
+              <span class="panel-kicker">Vault locked</span>
+              <h2>Unlock a vault to see your wallets.</h2>
+              <p>Wallets, accounts and addresses are public records inside the encrypted vault. Nothing about them is readable until it is unlocked.</p>
+              <p><a class="comic-btn" href="#vault" data-route="vault">Open Vault files</a></p>
+            </div>
+          </section>
+
+          <section class="wallets-workspace" id="wallets-workspace" aria-labelledby="wallets-workspace-title" hidden>
+            <h2 class="sr-only" id="wallets-workspace-title">Recorded wallets</h2>
+            <div class="wallets-toolbar">
+              <div class="wallets-filters" role="group" aria-label="Filter wallets">
+                <button class="wallets-filter" type="button" data-wallet-filter="all" aria-pressed="true">All wallets</button>
+                <button class="wallets-filter" type="button" data-wallet-filter="signing" aria-pressed="false">Seed recorded</button>
+                <button class="wallets-filter" type="button" data-wallet-filter="watch-only" aria-pressed="false">Watch-only</button>
+              </div>
+              <p class="wallets-summary" id="wallets-summary" aria-live="polite"></p>
+            </div>
+
+            <table class="wallets-table" id="wallets-table">
+              <caption class="sr-only">Wallets recorded in this vault, with lineage, address count and signing mode.</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Wallet</th>
+                  <th scope="col">Lineage</th>
+                  <th scope="col">Balance</th>
+                  <th scope="col">Addresses</th>
+                  <th scope="col">Mode</th>
+                  <th scope="col"><span class="sr-only">Record</span></th>
+                </tr>
+              </thead>
+              <tbody id="wallets-table-body"></tbody>
+            </table>
+            <p class="wallets-empty" id="wallets-empty" hidden>No wallets recorded yet. Add one in Records &amp; registry.</p>
+
+            <p class="wallets-note">Wallets, accounts and addresses are shipped registry objects (P1.6). The lineage column states which recorded seed fingerprint a wallet came from; a wallet imported from an xpub says so plainly rather than looking broken.</p>
+          </section>
+
+            <div class="wallets-actions-row">
+              <a class="comic-btn" data-nav="wallets-registry" href="#registry" data-route="registry">Edit in Records &amp; registry</a>
+              <a class="comic-btn" data-nav="wallets-qr-studio" href="#qr" data-route="qr">Receive · Open QR Studio</a>
+              <a class="comic-btn" data-nav="wallets-verify" href="#security" data-route="security">Check an address</a>
+            </div>
+
+          <div class="empty-panel">
+            <span class="panel-kicker">Not available in this build</span>
+            <h2>Coldbox does not build, sign or broadcast transactions yet.</h2>
+            <p>Balances, transaction history, UTXOs, coin control, fee choice, PSBT handling, signing and broadcast are owned by the WAL phase. Nothing on this screen constructs a transaction, and the Mode column describes what this vault has recorded — not an ability this build has.</p>
+          </div>
+        </section>
+
+        <section class="page" id="page-security" data-page="security" aria-labelledby="page-title-security" hidden>
+          <header class="page-header">
+            <p class="eyebrow">State / Security</p>
+            <h1 id="page-title-security">Security &amp; verify</h1>
+            <p class="page-lede">Devices, address verification, backup health, boundary status, file verification and — later — network source and transport facts, kept separate from each other.</p>
+          </header>
+
+          <p class="security-guard" id="security-guard" data-airgap-state="checking" aria-live="polite">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="security-guard-label">Checking the airgap guard</span>
+          </p>
+
+          <div class="fact-grid">
+            <article class="fact-card" aria-labelledby="fact-devices">
+              <p class="fact-card-owner"><span class="nav-tag" data-owner-item="P1.8">P1.8</span></p>
+              <h2 id="fact-devices">Device registry</h2>
+              <p>Hardware wallets and other signing devices as records: vendor, model, firmware, what they hold and when they were last checked.</p>
+              <p class="fact-card-availability" data-availability="available">Available now</p>
+              <a class="comic-btn" data-nav="security-devices" href="#devices" data-route="devices">Open Devices</a>
+            </article>
+
+            <article class="fact-card" aria-labelledby="fact-address">
+              <p class="fact-card-owner"><span class="nav-tag" data-owner-item="P1.9">P1.9</span></p>
+              <h2 id="fact-address">Address verification</h2>
+              <p>Derive fingerprint, receive address, account xpub, metal backup and BIP-39 passphrase inside the sealed realm and compare each against what a device or the registry claims.</p>
+              <p class="fact-card-availability" data-availability="available">Available now</p>
+              <a class="comic-btn" data-nav="security-verify-bench" href="#verify" data-route="verify">Open Verify Bench</a>
+            </article>
+
+            <article class="fact-card" aria-labelledby="fact-backup">
+              <p class="fact-card-owner"><span class="nav-tag" data-owner-item="P2.7">P2.7</span></p>
+              <h2 id="fact-backup">Backup health</h2>
+              <p>One score per seed, computed conservatively, with the exact reason it is not green. A set that has never been reconstructed scores as no backup at all.</p>
+              <p class="fact-card-availability" data-availability="available">Available now</p>
+              <a class="comic-btn" data-nav="security-backup" href="#backup/health" data-route="backup">Open Backup Health</a>
+            </article>
+
+            <article class="fact-card" aria-labelledby="fact-file">
+              <p class="fact-card-owner"><span class="nav-tag" data-owner-item="P0.16">P0.16</span></p>
+              <h2 id="fact-file">Verify this file</h2>
+              <p>Check the Coldbox file you are running against the hash the build recorded — and understand why that is not enough on its own.</p>
+              <p class="fact-card-availability" data-availability="available">Available now</p>
+              <a class="comic-btn" data-nav="security-verify-file" href="#reference/verify" data-route="reference">Open the self-hash check</a>
+            </article>
+
+            <article class="fact-card" aria-labelledby="fact-provenance">
+              <p class="fact-card-owner"><span class="nav-tag" data-owner-item="P0.16">P0.16</span></p>
+              <h2 id="fact-provenance">Provenance &amp; legal</h2>
+              <p>Every embedded library with its version and upstream hash, the full CSP allowlist, the build date, and the licence.</p>
+              <p class="fact-card-availability" data-availability="available">Available now</p>
+              <a class="comic-btn" data-nav="security-provenance" href="#reference/legal" data-route="reference">Open Provenance</a>
+            </article>
+
+            <article class="fact-card fact-card-unavailable" aria-labelledby="fact-source">
+              <p class="fact-card-owner"><span class="nav-tag" data-owner-item="WAL.2">WAL.2</span></p>
+              <h2 id="fact-source">Source &amp; transport</h2>
+              <p>Where chain data comes from and how it travels — two separate facts, never one “private” badge.</p>
+              <p class="fact-card-availability" data-availability="roadmap">Roadmap-owned · unavailable in this build</p>
+              <button class="comic-btn comic-btn-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="WAL.2" data-phase="Phase WAL">Unavailable · WAL.2 · Phase WAL</button>
+            </article>
+          </div>
+
+          <p class="fact-grid-note">Each card is a separate fact with a single owner, and opens that owner's surface. A combined “secure” badge would hide exactly the distinctions that matter when one of them fails.</p>
+
+          <div class="empty-panel">
+            <span class="panel-kicker">Two facts, never one badge</span>
+            <h2>Source assurance and transport privacy are separate.</h2>
+            <p>Coldbox never claims an in-page switch made your browser a Tor client, and there is no generic “private” badge anywhere in this build. The sealed realm's <code>connect-src 'none'</code> is a browser-enforced boundary; the warm shell's network reach is a separate, visible fact reported by the airgap guard above.</p>
+          </div>
+        </section>
+
+        <section class="page" id="page-settings" data-page="settings" aria-labelledby="page-title-settings" hidden>
+          <header class="page-header">
+            <p class="eyebrow">Vault / Settings</p>
+            <h1 id="page-title-settings">Settings</h1>
+            <p class="page-lede">Appearance, session and panic, privacy, and how much detail help content shows. Every control here is device-local and is never written into a vault.</p>
+          </header>
+          <div class="info-grid">
             <article class="info-card">
-              <span class="card-icon" aria-hidden="true">01</span>
-              <h2>A toolkit, not a wallet</h2>
-              <p>Coldbox holds no coins, reaches no blockchain to move them, and signs nothing. It is a companion to your hardware wallets: it checks their work, manages your backups, and keeps the records.</p>
+              <span class="card-icon" aria-hidden="true">☼</span>
+              <h2>Appearance</h2>
+              <p>Dark and light presentation share one token map. The theme control sits in the masthead so it is reachable from every screen, including the sealed realm.</p>
             </article>
             <article class="info-card">
-              <span class="card-icon" aria-hidden="true">02</span>
-              <h2>Portable by default</h2>
-              <p>One file on a USB stick, opened by double-clicking. The interface is designed for a narrow phone screen up through a desktop window, with no server and no install step.</p>
+              <span class="card-icon" aria-hidden="true">◌</span>
+              <h2>Privacy blur</h2>
+              <p>Blurs public values on screen without changing what is stored. The control sits in the content bar above, next to the realm badge.</p>
             </article>
             <article class="info-card">
-              <span class="card-icon" aria-hidden="true">03</span>
-              <h2>Secrets get their own boundary</h2>
-              <p>The sealed cold realm is active, and the airgap guard keeps its policy visible. The shell does not create a shortcut around that boundary.</p>
+              <span class="card-icon" aria-hidden="true">⏻</span>
+              <h2>Session and panic</h2>
+              <p>Lock all clears the released secret and tears the sealed document down. Panic conceals the application immediately. Both are in the masthead.</p>
+              <p><a class="comic-btn" href="#vault" data-route="vault">Open Vault files</a></p>
             </article>
+            <article class="info-card">
+              <span class="card-icon" aria-hidden="true">?</span>
+              <h2>Help depth</h2>
+              <p>Plain, working and technical depths are switchable wherever help appears.</p>
+              <p><a class="comic-btn" href="#learn" data-route="learn">Open Learn</a></p>
+            </article>
+          </div>
+          <div class="empty-panel">
+            <span class="panel-kicker">Free and open-source</span>
+            <h2>Nothing here is gated.</h2>
+            <p>Coldbox has no account, no login, no activation, no subscription and no advertising. There is no payment state that can unlock a security capability, and no funding prompt appears during vault creation, recovery, backup or any secret handling.</p>
+          </div>
+        </section>
+
+        <section class="page" id="page-advanced" data-page="advanced" aria-labelledby="page-title-advanced" hidden>
+          <header class="page-header">
+            <p class="eyebrow">Tools / All flows</p>
+            <h1 id="page-title-advanced">All flows index</h1>
+            <p class="page-lede">Every specialist Coldbox capability, still directly reachable. Moving them out of the top level did not remove one of them — each also appears on the object it acts on, and this screen is the expert route and the audit of that reorganisation.</p>
+          </header>
+
+          <section class="flow-index-group" aria-labelledby="flow-index-forge">
+            <h2 id="flow-index-forge" class="flow-index-title">Forge · sealed realm</h2>
+            <div class="flow-index-links">
+              <a class="flow-index-link" href="#cold-realm-status">Entropy Lab <span class="nav-tag">P1.1</span></a>
+              <a class="flow-index-link" href="#cold-realm-status">Seed Forge <span class="nav-tag">P1.3</span></a>
+              <a class="flow-index-link" href="#cold-realm-status">Secret notes &amp; concealment <span class="nav-tag">P1.7</span></a>
+              <button class="flow-index-link flow-index-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P4.5" data-phase="Phase 4">Passphrase Studio <span class="nav-tag">P4.5 · Phase 4</span></button>
+            </div>
+          </section>
+
+          <section class="flow-index-group" aria-labelledby="flow-index-derive">
+            <h2 id="flow-index-derive" class="flow-index-title">Derive · sealed realm</h2>
+            <div class="flow-index-links">
+              <button class="flow-index-link flow-index-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P1.4a" data-phase="Phase 1">Derivation paths <span class="nav-tag">P1.4a · Phase 1</span></button>
+              <button class="flow-index-link flow-index-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P1.4a" data-phase="Phase 1">Address derivation <span class="nav-tag">P1.4a · Phase 1</span></button>
+              <button class="flow-index-link flow-index-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P4.6" data-phase="Phase 4">Child seeds · BIP-85 <span class="nav-tag">P4.6 · Phase 4</span></button>
+              <button class="flow-index-link flow-index-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P4.9" data-phase="Phase 4">Descriptors <span class="nav-tag">P4.9 · Phase 4</span></button>
+            </div>
+          </section>
+
+          <section class="flow-index-group" aria-labelledby="flow-index-split">
+            <h2 id="flow-index-split" class="flow-index-title">Split &amp; carry · sealed realm</h2>
+            <div class="flow-index-links">
+              <a class="flow-index-link" href="#cold-realm-status">Split lab <span class="nav-tag">P2.1</span></a>
+              <a class="flow-index-link" href="#backup" data-route="backup">Verify / combine shares <span class="nav-tag">P2.6</span></a>
+              <a class="flow-index-link" href="#qr" data-route="qr">SeedQR studio <span class="nav-tag">P1.10</span></a>
+            </div>
+          </section>
+
+          <section class="flow-index-group" aria-labelledby="flow-index-recover">
+            <h2 id="flow-index-recover" class="flow-index-title">Recover &amp; verify</h2>
+            <div class="flow-index-links">
+              <a class="flow-index-link" href="#verify" data-route="verify">Verify Bench <span class="nav-tag">P1.9</span></a>
+              <button class="flow-index-link flow-index-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P4.3a" data-phase="Phase 4">Recovery assistant <span class="nav-tag">P4.3a · Phase 4</span></button>
+              <button class="flow-index-link flow-index-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="WAL.8" data-phase="Phase WAL">Level 3 signing <span class="nav-tag">WAL.8 · Phase WAL</span></button>
+            </div>
+          </section>
+
+          <section class="flow-index-group" aria-labelledby="flow-index-records">
+            <h2 id="flow-index-records" class="flow-index-title">Records</h2>
+            <div class="flow-index-links">
+              <a class="flow-index-link" href="#registry" data-route="registry">Records &amp; registry <span class="nav-tag">P1.6</span></a>
+              <a class="flow-index-link" href="#devices" data-route="devices">Device registry <span class="nav-tag">P1.8</span></a>
+              <a class="flow-index-link" href="#backup" data-route="backup">Backup Health <span class="nav-tag">P2.7</span></a>
+              <button class="flow-index-link flow-index-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P3.1" data-phase="Phase 3">Prices &amp; FX <span class="nav-tag">P3.1 · Phase 3</span></button>
+              <button class="flow-index-link flow-index-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P3.9" data-phase="Phase 3">Tax &amp; exports <span class="nav-tag">P3.9 · Phase 3</span></button>
+            </div>
+          </section>
+
+          <section class="flow-index-group" aria-labelledby="flow-index-trust">
+            <h2 id="flow-index-trust" class="flow-index-title">Trust &amp; reference</h2>
+            <div class="flow-index-links">
+              <a class="flow-index-link" href="#reference" data-route="reference">Verify this file <span class="nav-tag">P0.16</span></a>
+              <a class="flow-index-link" href="#reference" data-route="reference">Provenance &amp; legal <span class="nav-tag">P0.16</span></a>
+              <a class="flow-index-link" href="#learn" data-route="learn">Learn <span class="nav-tag">P0.17</span></a>
+              <a class="flow-index-link" href="#tool-map" data-route="tool-map">Tool map <span class="nav-tag">all</span></a>
+              <button class="flow-index-link flow-index-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="WAL.2" data-phase="Phase WAL">Source &amp; transport <span class="nav-tag">WAL.2 · Phase WAL</span></button>
+            </div>
+          </section>
+
+          <section class="flow-index-group" aria-labelledby="flow-index-vault">
+            <h2 id="flow-index-vault" class="flow-index-title">Vault</h2>
+            <div class="flow-index-links">
+              <a class="flow-index-link" href="#vault" data-route="vault">Vault session <span class="nav-tag">P0.13</span></a>
+              <a class="flow-index-link" href="#vault" data-route="vault">Device-to-device vault transfer <span class="nav-tag">P0.13</span></a>
+              <a class="flow-index-link" href="#settings" data-route="settings">Settings</a>
+              <a class="flow-index-link" href="#dashboard" data-route="dashboard">First run</a>
+            </div>
+          </section>
+
+          <section class="flow-index-group" aria-labelledby="flow-index-wallet">
+            <h2 id="flow-index-wallet" class="flow-index-title">Wallet · owned by the WAL phase, unavailable in this build</h2>
+            <div class="flow-index-links">
+              <button class="flow-index-link flow-index-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="WAL.5" data-phase="Phase WAL">Coin control <span class="nav-tag">WAL.5 · Phase WAL</span></button>
+              <button class="flow-index-link flow-index-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="WAL.9" data-phase="Phase WAL">Send &amp; review <span class="nav-tag">WAL.9 · Phase WAL</span></button>
+              <button class="flow-index-link flow-index-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="WAL.10" data-phase="Phase WAL">Broadcast, RBF &amp; CPFP <span class="nav-tag">WAL.10 · Phase WAL</span></button>
+              <button class="flow-index-link flow-index-link-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="WAL.13" data-phase="Phase WAL">PSBT inspector <span class="nav-tag">WAL.13 · Phase WAL</span></button>
+            </div>
+          </section>
+
+          <div class="empty-panel">
+            <span class="panel-kicker">Reachability</span>
+            <h2>Nothing was dropped in the reorganisation.</h2>
+            <p>Every capability that had a top-level tool name before is listed above with a live destination or an explicit roadmap owner. The <a href="#tool-map" data-route="tool-map">Tool map</a> compiles item status directly from the roadmap at build time and is the authority on what is built; this index is the authority on where each capability now lives.</p>
           </div>
         </section>
 
@@ -694,23 +896,8 @@ __COLDBOX_WORDMARK__
           </section>
         </section>
 
-        <section class="page" id="page-entropy" data-page="entropy" aria-labelledby="page-title-entropy" hidden>
-          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-entropy">Entropy Lab</h1><p class="page-lede">Entropy collection and health analysis will run inside the sealed realm.</p></header>
-          <div class="empty-panel"><span class="panel-kicker">Coming in Phase 1</span><h2>Secret creation will stay on the protected side.</h2><p>This route is present so the shell's information architecture is complete before secret-handling code arrives.</p></div>
-        </section>
-
-        <section class="page" id="page-seed-forge" data-page="seed-forge" aria-labelledby="page-title-seed-forge" hidden>
-          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-seed-forge">Seed Forge</h1><p class="page-lede">Seed generation and validation run only inside the sealed realm.</p></header>
-          <div class="empty-panel"><span class="panel-kicker">Use the sealed workspace</span><h2>Seed work stays on the protected side.</h2><p>Open the sealed workspace above to generate or validate a BIP-39 phrase. This warm shell deliberately receives no phrase, passphrase, seed, or fingerprint.</p></div>
-        </section>
-
-        <section class="page" id="page-derivation" data-page="derivation" aria-labelledby="page-title-derivation" hidden>
-          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-derivation">Derivation</h1><p class="page-lede">Derivation tools will live behind the realm boundary, with only public results returning to this shell.</p></header>
-          <div class="empty-panel"><span class="panel-kicker">Coming in Phase 1</span><h2>Public results, protected inputs.</h2><p>The route anticipates that separation without implementing either side early.</p></div>
-        </section>
-
         <section class="page" id="page-backup" data-page="backup" aria-labelledby="page-title-backup" hidden>
-          <header class="page-header"><p class="eyebrow">Tools / Backup records</p><h1 id="page-title-backup">Backup Lab</h1><p class="page-lede">Track where each backup lives in public metadata, then verify the actual shares inside the sealed realm before treating the record as complete.</p></header>
+          <header class="page-header"><p class="eyebrow">Objects / Backup &amp; recovery</p><h1 id="page-title-backup">Backup &amp; recovery</h1><p class="page-lede">Track where each backup lives in public metadata, verify the actual shares inside the sealed realm before treating a record as complete, and see the same health score Home summarizes.</p></header>
           <section class="backup-locked" id="backup-locked" aria-live="polite">
             <div class="empty-panel"><span class="panel-kicker">Vault locked</span><h2>Unlock a vault to record backup locations.</h2><p>Backup labels, locations, custodians, and verification dates are stored in the public compartment. Share material never enters this form or the warm shell.</p></div>
           </section>
@@ -773,6 +960,38 @@ __COLDBOX_WORDMARK__
                 <div id="backup-list" class="registry-list"></div>
               </article>
             </div>
+
+            <section class="backup-health-dashboard" id="dashboard-backup-health" aria-labelledby="dashboard-backup-health-title">
+              <div class="backup-health-heading">
+                <div>
+                  <p class="panel-kicker">Backup Health / P2.7</p>
+                  <h2 id="dashboard-backup-health-title">Can you still recover?</h2>
+                  <p class="backup-health-lede">This warm-only view checks public verification dates and recorded placement metadata. It never receives share words or reconstructed secrets.</p>
+                </div>
+              </div>
+              <div id="dashboard-backup-health-locked" class="backup-health-locked" aria-live="polite">
+                <strong>Unlock a vault to see backup health.</strong>
+                <span>Backup records live in the public compartment of the selected vault.</span>
+              </div>
+              <div id="dashboard-backup-health-workspace" hidden aria-live="polite">
+                <p id="dashboard-backup-health-headline" class="backup-health-headline" role="status">Backup health is waiting for records.</p>
+                <div id="dashboard-backup-health-metrics" class="backup-health-metrics" aria-label="Backup health counts"></div>
+                <div class="backup-health-columns">
+                  <section class="backup-health-subpanel" aria-labelledby="dashboard-backup-health-alerts-title">
+                    <h3 id="dashboard-backup-health-alerts-title">What needs attention</h3>
+                    <div id="dashboard-backup-health-alerts" class="backup-health-list"></div>
+                  </section>
+                  <section class="backup-health-subpanel" aria-labelledby="dashboard-backup-health-placement-title">
+                    <h3 id="dashboard-backup-health-placement-title">Recorded placement</h3>
+                    <div id="dashboard-backup-health-placement" class="backup-health-list"></div>
+                  </section>
+                </div>
+                <section class="backup-health-subpanel backup-health-records-panel" aria-labelledby="dashboard-backup-health-records-title">
+                  <h3 id="dashboard-backup-health-records-title">Backup records</h3>
+                  <div id="dashboard-backup-health-records" class="backup-health-list"></div>
+                </section>
+              </div>
+            </section>
           </section>
         </section>
 
@@ -817,11 +1036,6 @@ __COLDBOX_WORDMARK__
             </div>
             <p class="qr-public-warning">A QR code does not prove ownership or correctness. Read the whole destination address from an independent source, then test with a small amount before sending value.</p>
           </section>
-        </section>
-
-        <section class="page" id="page-recovery" data-page="recovery" aria-labelledby="page-title-recovery" hidden>
-          <header class="page-header"><p class="eyebrow">Tools / Sealed realm</p><h1 id="page-title-recovery">Recovery</h1><p class="page-lede">Recovery workflows will be designed around careful estimates, confirmation, and cancellation.</p></header>
-          <div class="empty-panel"><span class="panel-kicker">Coming in Phase 4</span><h2>Recovery is not a guess-and-click surface.</h2><p>The shell only reserves the route. No recovery input or search runs here.</p></div>
         </section>
 
         <section class="page" id="page-verify" data-page="verify" aria-labelledby="page-title-verify" hidden>
@@ -1021,28 +1235,33 @@ __COLDBOX_WORDMARK__
     </div>
 
     <nav class="mobile-tabs" id="mobile-tabs" aria-label="Mobile navigation">
-      <a class="mobile-tab" href="#dashboard" data-route="dashboard"><span class="mobile-tab-icon" aria-hidden="true">⌂</span><span>Home</span></a>
-      <button class="mobile-tab mobile-tab-unavailable" type="button" disabled aria-disabled="true" data-roadmap-id="P3.4" data-phase="Phase 3" data-route="portfolio"><span class="mobile-tab-icon" aria-hidden="true">$</span><span>Money · P3.4 · Phase 3</span></button>
-      <a class="mobile-tab" href="#registry" data-route="registry"><span class="mobile-tab-icon" aria-hidden="true">R</span><span>Records</span></a>
-      <a class="mobile-tab" href="#vault" data-route="vault"><span class="mobile-tab-icon" aria-hidden="true">V</span><span>Vault</span></a>
-      <button class="mobile-tab" id="mobile-more-tab" type="button" aria-controls="mobile-more-menu" aria-expanded="false"><span class="mobile-tab-icon" aria-hidden="true">⚙</span><span>Set</span></button>
+      <a class="mobile-tab" href="#dashboard" data-route="dashboard"><span class="mobile-tab-icon" aria-hidden="true">◱</span><span>Home</span></a>
+      <a class="mobile-tab" href="#wallets" data-route="wallets"><span class="mobile-tab-icon" aria-hidden="true">₿</span><span>Wallets</span></a>
+      <a class="mobile-tab" href="#cold-realm-status"><span class="mobile-tab-icon" aria-hidden="true">✻</span><span>Seeds</span></a>
+      <a class="mobile-tab" href="#backup" data-route="backup"><span class="mobile-tab-icon" aria-hidden="true">H</span><span>Backup</span></a>
+      <button class="mobile-tab" id="mobile-more-tab" type="button" aria-controls="mobile-more-menu" aria-expanded="false"><span class="mobile-tab-icon" aria-hidden="true">•••</span><span>More</span></button>
     </nav>
 
     <div class="mobile-more-menu" id="mobile-more-menu" hidden>
-      <div class="mobile-more-header"><span>More sections</span><button class="icon-button icon-button-small" id="mobile-more-close" type="button" aria-label="Close more sections">×</button></div>
-      <div class="mobile-more-links">
+      <div class="mobile-more-header"><span id="mobile-more-title">More · warm shell</span><button class="icon-button icon-button-small" id="mobile-more-close" type="button" aria-label="Close more sections">×</button></div>
+      <div class="mobile-more-links" id="mobile-more-links-warm">
+        <span class="mobile-more-link mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P3.4" data-phase="Phase 3">Portfolio &amp; records · P3.4 · Phase 3</span>
+        <a class="mobile-more-link" href="#security" data-route="security">Security &amp; verify</a>
+        <a class="mobile-more-link" href="#registry" data-route="registry">Records &amp; registry</a>
+        <a class="mobile-more-link" href="#backup" data-route="backup">Backup Health</a>
+        <a class="mobile-more-link" href="#reference" data-route="reference">Reference &amp; help</a>
+        <a class="mobile-more-link" href="#vault" data-route="vault">Vault files</a>
+        <a class="mobile-more-link" href="#vault" data-route="vault">Device transfer (QR)</a>
+        <a class="mobile-more-link" href="#settings" data-route="settings">Settings</a>
+        <a class="mobile-more-link" href="#advanced" data-route="advanced">Every flow</a>
         <a class="mobile-more-link" href="#devices" data-route="devices">Devices</a>
-        <a class="mobile-more-link" href="#qr" data-route="qr">QR Studio</a>
-        <a class="mobile-more-link" href="#verify" data-route="verify">Address bench</a>
         <span class="mobile-more-link mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P3.1" data-phase="Phase 3">Prices &amp; FX · P3.1 · Phase 3</span>
         <span class="mobile-more-link mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P3.9" data-phase="Phase 3">Tax &amp; exports · P3.9 · Phase 3</span>
-        <span class="mobile-more-link mobile-more-link-unavailable" aria-disabled="true" data-roadmap-id="P4.10" data-phase="Phase 4">Reference · P4.10 · Phase 4</span>
-        <a class="mobile-more-link" href="#reference" data-route="reference">Verify this file</a>
-        <a class="mobile-more-link" href="#reference" data-route="reference">Provenance &amp; legal</a>
         <a class="mobile-more-link" href="#learn" data-route="learn">Learn</a>
         <a class="mobile-more-link" href="#tool-map" data-route="tool-map">Tool map</a>
-        <a class="mobile-more-link" href="#cold-realm-status">Enter sealed realm</a>
+        <button class="mobile-more-link mobile-more-link-action" id="mobile-more-lock" type="button">Lock / panic</button>
       </div>
+    </div>
     </div>
 
   </div>

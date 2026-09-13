@@ -417,8 +417,12 @@ samp {
   margin: 0 0 1.1rem;
 }
 
-.nav-sealed-entry {
-  margin: 0.25rem 0 1.1rem;
+/* UI.10b - the sealed destination is its own rail group rather than a single
+   strip appended to the warm workspaces, so the rule that separates it now
+   attaches to that group. Keyed on the accessible name so the visual separation
+   and the announced grouping cannot drift apart. */
+.nav-group[aria-label="Sealed work"] {
+  margin-top: 0.25rem;
   padding-top: 0.65rem;
   border-top: var(--outline-width-thin) solid var(--outline);
 }
@@ -683,6 +687,78 @@ samp {
  * nothing that moves. A rotating sticker on a failed airgap check reads as a
  * joke at the exact moment the user needs to believe the interface.
  * -------------------------------------------------------------------------- */
+
+.status-strip {
+  max-width: 78rem;
+  margin: 1.25rem auto 0;
+}
+
+.status-strip-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.6rem 1rem;
+  border: var(--outline-width) solid var(--outline);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-hard-lg);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.status-strip-toggle:disabled {
+  cursor: not-allowed;
+}
+
+.status-strip-toggle #status-strip-summary {
+  flex: 1 1 auto;
+}
+
+.status-strip-chevron {
+  flex: 0 0 auto;
+  transition: none;
+}
+
+.status-strip-toggle[aria-expanded="true"] .status-strip-chevron {
+  transform: rotate(180deg);
+}
+
+.status-strip[data-strip-state="checking"] .status-strip-toggle .status-dot {
+  background: var(--warning);
+}
+
+.status-strip[data-strip-state="ready"] .status-strip-toggle .status-dot {
+  background: var(--success);
+}
+
+.status-strip[data-strip-state="alarm"] .status-strip-toggle {
+  border-color: var(--danger);
+}
+
+.status-strip[data-strip-state="alarm"] .status-strip-toggle .status-dot {
+  background: var(--danger);
+}
+
+.status-strip-alarm-note {
+  margin: 0.5rem 0 0;
+  color: var(--danger);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+/* #capability-panel-detail carries .capability-list's own `display: grid`,
+   which is the same specificity as the UA stylesheet's [hidden]{display:none}
+   and later in source order - so it would win and silently defeat the
+   `hidden` attribute without this explicit, higher-specificity override. */
+.status-strip-detail[hidden],
+#capability-panel-detail[hidden] {
+  display: none;
+}
 
 .realm-status,
 .airgap-banner,
@@ -1974,363 +2050,10 @@ samp {
  * a white panel needs dark text regardless of what the shell around it is doing.
  * -------------------------------------------------------------------------- */
 
-.stage {
-  margin-top: clamp(2rem, 5vw, 3.25rem);
-}
-
-.stage-intro h2 {
-  max-width: 42rem;
-  margin: 0;
-  color: var(--text);
-  font-family: var(--font-display);
-  font-size: clamp(1.6rem, 3.4vw, 2.8rem);
-  font-weight: 400;
-  letter-spacing: 0.02em;
-  line-height: 1.05;
-  text-shadow:
-    0.05em 0.05em 0 var(--drop),
-    -0.015em -0.015em 0 var(--drop),
-    0.015em -0.015em 0 var(--drop),
-    -0.015em 0.015em 0 var(--drop);
-}
-
-.stage-lede {
-  max-width: 40rem;
-  margin: 0.75rem 0 0;
-  color: var(--muted);
-  font-size: 0.88rem;
-  font-weight: 700;
-  line-height: 1.55;
-}
-
-.stage-viewport {
-  margin-top: 1.75rem;
-}
-
-.stage-scene {
-  display: grid;
-  gap: 1.25rem;
-}
-
-.stage-card {
-  position: relative;
-  padding: 1.15rem 1.2rem 1.3rem;
-  border: var(--outline-width) solid var(--drop);
-  border-radius: var(--radius);
-  background: var(--paper);
-  box-shadow: var(--shadow-hard-lg);
-  color: var(--paper-ink);
-}
-
-.stage-card-left {
-  background: var(--paper-cool);
-}
-
-.stage-card-right {
-  background: var(--paper-warm);
-}
-
-.stage-card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding-bottom: 0.6rem;
-  border-bottom: var(--outline-width-thin) solid var(--paper-ink);
-}
-
-.stage-card-title {
-  margin: 0;
-  color: var(--paper-ink);
-  font-family: var(--font-display);
-  font-size: 1.55rem;
-  font-weight: 400;
-  letter-spacing: 0.03em;
-  line-height: 1;
-}
-
-.stage-badge {
-  flex: 0 0 auto;
-  padding: 0.15rem 0.5rem;
-  border: 0.12rem solid var(--paper-ink);
-  background: var(--fill-yellow);
-  box-shadow: 0.12rem 0.12rem 0 var(--paper-ink);
-  color: var(--fill-ink);
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.stage-badge-cyan {
-  background: var(--fill-cyan);
-}
-
-.stage-badge-green {
-  background: var(--fill-green);
-}
-
-.stage-badge-pink {
-  background: var(--fill-pink);
-}
-
-.stage-card-sub {
-  margin: 0.55rem 0 0.35rem;
-  color: var(--paper-muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.stage-row {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.55rem 0;
-  border-bottom: 0.12rem dashed var(--paper-rule);
-}
-
-.stage-mark {
-  display: grid;
-  flex: 0 0 1.9rem;
-  place-items: center;
-  width: 1.9rem;
-  height: 1.9rem;
-  border: 0.12rem solid var(--paper-ink);
-  border-radius: 50%;
-  background: var(--fill-yellow);
-  color: var(--fill-ink);
-  font-family: var(--font-display);
-  font-size: 0.9rem;
-  font-weight: 400;
-}
-
-.stage-mark-cyan {
-  background: var(--fill-cyan);
-}
-
-.stage-mark-pink {
-  background: var(--fill-pink);
-}
-
-.stage-row-copy {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 auto;
-  flex-direction: column;
-}
-
-.stage-row-name {
-  color: var(--paper-ink);
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
-.stage-row-note {
-  color: var(--paper-muted);
-  font-size: 0.68rem;
-  font-weight: 700;
-}
-
-/* Values are mono: this column is where a real deployment shows figures, and
-   design-system.md §4 keeps data out of the display face. */
-.stage-row-value {
-  flex: 0 0 auto;
-  color: var(--paper-muted);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-align: right;
-}
-
-.stage-row-value-yes {
-  color: var(--paper-yes);
-}
-
-.stage-row-value-no {
-  color: var(--paper-no);
-}
-
-.stage-card-foot {
-  margin: 0.9rem 0 0;
-  color: var(--paper-muted);
-  font-size: 0.74rem;
-  font-weight: 700;
-  line-height: 1.5;
-}
-
-/* Speech bubble — explanatory voice only, never status, never a value. */
-.speech-bubble {
-  position: relative;
-  margin: 1.1rem 0 0.4rem;
-  padding: 0.7rem 0.8rem;
-  border: 0.16rem solid var(--paper-ink);
-  border-radius: 0.6rem;
-  background: #ffffff;
-  color: var(--paper-ink);
-  font-size: 0.76rem;
-  font-weight: 700;
-  line-height: 1.45;
-}
-
-.speech-bubble code {
-  font-size: 0.72rem;
-}
-
-/* Two stacked triangles: the outline layer sits behind and slightly larger. */
-.speech-bubble::before,
-.speech-bubble::after {
-  content: '';
-  position: absolute;
-  display: block;
-  width: 0;
-  border-style: solid;
-}
-
-.speech-bubble::before {
-  bottom: -0.95rem;
-  left: 1.55rem;
-  border-width: 0.95rem 0.95rem 0 0;
-  border-color: var(--paper-ink) transparent;
-}
-
-.speech-bubble::after {
-  bottom: -0.68rem;
-  left: 1.72rem;
-  border-width: 0.7rem 0.7rem 0 0;
-  border-color: #ffffff transparent;
-}
-
-/* Sound-effect sticker. Barred from every security surface by §6. */
-.sound-effect {
-  position: absolute;
-  top: -1.1rem;
-  right: -1.1rem;
-  z-index: 2;
-  margin: 0;
-  padding: 0.35rem 0.75rem;
-  border: 0.16rem solid var(--paper-ink);
-  background: var(--fill-red);
-  box-shadow: 0.25rem 0.25rem 0 var(--paper-ink);
-  color: var(--fill-yellow);
-  font-family: var(--font-display);
-  /* Yellow on red is 3.60:1. Held above 1.3rem so it qualifies as large text
-     under the 3:1 floor, and marked aria-hidden — it is decoration, and the
-     claim it decorates is stated in the card body as ordinary text. */
-  font-size: 1.35rem;
-  font-weight: 400;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  transform: rotate(9deg);
-  white-space: nowrap;
-}
-
-@media (max-width: 600px) {
-  /* Keep the decorative sticker inside the narrow dashboard card so the
-     responsive warm workspace never creates a horizontal page scroll. */
-  .sound-effect {
-    right: -0.25rem;
-  }
-}
-
-.stage-cue {
-  margin: 1.5rem 0 0;
-  color: var(--text);
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 400;
-  letter-spacing: 0.08em;
-  text-align: center;
-  text-shadow: 0.05em 0.05em 0 var(--drop);
-  text-transform: uppercase;
-}
-
-/* The 3D arrangement is desktop-only. Narrow screens get the same cards in a
-   readable stack — a 320 px phone has no room to rotate a 20 rem panel. */
-@media (min-width: 62rem) {
-  .stage-viewport {
-    perspective: 62rem;
-  }
-
-  .stage-scene {
-    position: relative;
-    display: block;
-    height: 30rem;
-    transform-style: preserve-3d;
-    transform: rotateX(var(--stage-tilt-x, 0deg)) rotateY(var(--stage-tilt-y, 0deg));
-    will-change: transform;
-  }
-
-  .stage-card {
-    position: absolute;
-    top: 50%;
-    width: 21rem;
-    backface-visibility: hidden;
-    transition: transform 420ms cubic-bezier(0.18, 0.89, 0.32, 1.15);
-  }
-
-  .stage-card-left {
-    left: 21%;
-    z-index: 5;
-    transform:
-      translate(-50%, calc(-50% + (var(--stage-depth, 0rem) * 0.55)))
-      rotateY(24deg)
-      scale(0.92);
-  }
-
-  .stage-card-center {
-    left: 50%;
-    z-index: 10;
-    transform:
-      translate(-50%, calc(-50% + var(--stage-depth, 0rem)))
-      translateZ(3.75rem);
-  }
-
-  .stage-card-right {
-    left: 79%;
-    z-index: 5;
-    transform:
-      translate(-50%, calc(-50% + (var(--stage-depth, 0rem) * 0.8)))
-      rotateY(-24deg)
-      scale(0.92);
-  }
-
-  .stage-card-left:hover,
-  .stage-card-right:hover {
-    z-index: 11;
-  }
-
-  .stage-card-left:hover {
-    transform: translate(-50%, calc(-50% + (var(--stage-depth, 0rem) * 0.55))) rotateY(8deg) scale(0.99);
-  }
-
-  .stage-card-right:hover {
-    transform: translate(-50%, calc(-50% + (var(--stage-depth, 0rem) * 0.8))) rotateY(-8deg) scale(0.99);
-  }
-
-  .stage-cue {
-    animation: stage-cue-bounce 1.1s ease-in-out infinite alternate;
-  }
-}
-
-@keyframes stage-cue-bounce {
-  from {
-    transform: translateY(0);
-  }
-
-  to {
-    transform: translateY(-0.5rem);
-  }
-}
-
 .card-grid {
   display: grid;
   gap: 1.25rem;
   margin-top: 1.25rem;
-}
-
-.card-grid-three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 /* Comic panels. These are editorial, not security surfaces, so they may tilt. */
@@ -2425,12 +2148,6 @@ samp {
   .comic-btn:active {
     transform: none;
   }
-
-  /* The stage keeps its static 3D arrangement but stops responding to the
-     pointer and to scroll. main.js also declines to attach those listeners. */
-  .stage-cue {
-    animation: none;
-  }
 }
 
 /* --------------------------------------------------------------------------
@@ -2444,10 +2161,6 @@ samp {
 
   .nav-link {
     font-size: 0.79rem;
-  }
-
-  .card-grid-three {
-    grid-template-columns: 1fr;
   }
 
   .vault-card-grid {
@@ -3119,4 +2832,379 @@ samp {
   .record-menu-fields { grid-template-columns: 1fr; }
   .record-menu-fields dt { padding-bottom: 0.2rem; border-bottom: 0; }
   .record-menu-fields dd { padding-top: 0.2rem; }
+}
+
+/* UI.10b - All flows index.
+   The expert route and the reachability audit for the workstation
+   reorganisation: every specialist capability, grouped by family, with either a
+   live destination or an explicit roadmap owner. Built from the same nav
+   vocabulary as the rail so a destination looks the same wherever it appears. */
+.flow-index-group {
+  margin: 1.4rem 0 0;
+}
+
+.flow-index-title {
+  margin: 0 0 0.6rem;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.flow-index-links {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.flow-index-link {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 44px;
+  padding: 0.55rem 0.8rem;
+  border: var(--outline-width-thin) solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.flow-index-link .nav-tag {
+  margin-left: auto;
+}
+
+.flow-index-link-unavailable {
+  width: 100%;
+  border-color: transparent;
+  background: transparent;
+  color: var(--faint);
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.mobile-more-link-action {
+  width: 100%;
+  border: var(--outline-width-thin) solid var(--outline);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+}
+
+/* UI.10b - the Wallets workspace.
+   A real table on desktop; on a phone each row becomes a labelled block, which
+   is the transformation the approved mobile reference demonstrates for every
+   wide table. */
+.wallets-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 1.2rem 0 0.8rem;
+}
+
+.wallets-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.wallets-filter {
+  min-height: 44px;
+  padding: 0.45rem 0.9rem;
+  border: var(--outline-width-thin) solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  letter-spacing: 0.03em;
+}
+
+.wallets-filter[aria-pressed="true"] {
+  background: var(--fill-cyan);
+  color: var(--fill-ink);
+}
+
+.wallets-summary {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+}
+
+.wallets-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: var(--outline-width-thin) solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+}
+
+.wallets-table th,
+.wallets-table td {
+  padding: 0.6rem 0.8rem;
+  border-bottom: var(--outline-width-thin) solid var(--outline);
+  font-size: 0.82rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.wallets-table th {
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wallets-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.wallets-name-label {
+  display: block;
+  font-weight: 700;
+}
+
+.wallets-name-meta,
+.wallets-lineage {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.wallets-unavailable {
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.wallets-empty,
+.wallets-note {
+  margin: 0.8rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+@media (max-width: 720px) {
+  .wallets-table,
+  .wallets-table tbody,
+  .wallets-table tr,
+  .wallets-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .wallets-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .wallets-table tr {
+    padding: 0.5rem 0;
+    border-bottom: var(--outline-width-thin) solid var(--outline);
+  }
+
+  .wallets-table td {
+    border-bottom: 0;
+    word-break: break-all;
+  }
+
+  .wallets-table td::before {
+    display: block;
+    color: var(--faint);
+    content: attr(data-label);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+}
+
+/* UI.10b - the actions an object carries. The approved design keeps each
+   specialist tool one click from the object it acts on, so these are the
+   contextual half of the reachability guarantee the All flows index audits. */
+.wallets-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+}
+
+/* UI.10b - the "separate facts" grid on Security & verify.
+   Each card is one fact with one owner and one destination. There is
+   deliberately no aggregate badge: a combined "secure" indicator hides exactly
+   the distinction that matters when one of the facts fails. */
+.security-guard {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0.4rem 0.8rem;
+  border: var(--outline-width-thin) solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  letter-spacing: 0.03em;
+}
+
+.security-guard[data-airgap-state="ready"] .status-dot {
+  background: var(--success);
+}
+
+.security-guard[data-airgap-state="offline"] .status-dot {
+  background: var(--success);
+}
+
+.security-guard[data-airgap-state="online"] .status-dot,
+.security-guard[data-airgap-state="checking"] .status-dot {
+  background: var(--warning);
+}
+
+.security-guard[data-airgap-state="failed"] .status-dot,
+.security-guard[data-airgap-state="lockdown"] .status-dot {
+  background: var(--danger);
+}
+
+.fact-grid {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+}
+
+.fact-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.9rem 1rem;
+  border: var(--outline-width-thin) solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+}
+
+.fact-card h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.fact-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.fact-card-owner {
+  margin: 0;
+}
+
+.fact-card-availability {
+  margin-top: auto;
+  padding-top: 0.5rem;
+  border-top: var(--outline-width-thin) dashed var(--outline);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+.fact-card-availability[data-availability="available"] {
+  color: var(--success);
+}
+
+.fact-card-availability[data-availability="roadmap"] {
+  color: var(--faint);
+}
+
+.fact-card .comic-btn {
+  align-self: flex-start;
+  min-height: 44px;
+}
+
+.comic-btn-unavailable {
+  border-color: transparent;
+  background: transparent;
+  color: var(--faint);
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.fact-grid-note {
+  margin: 0.9rem 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.fact-card h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+/* UI.10b - Home's three object cards reuse .fact-card, but the count line is
+   the headline fact rather than supporting copy, so it earns display weight
+   instead of the muted small-print .fact-card p gets by default. */
+.fact-card .home-card-count {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 400;
+}
+
+.home-object-grid {
+  margin-top: 1.25rem;
+}
+
+.home-do-next,
+.home-network-source {
+  margin-top: 1.25rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: var(--outline-width) solid var(--outline);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-hard-lg);
+}
+
+.home-do-next h2,
+.home-network-source h2 {
+  max-width: 40rem;
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 2.4vw, 2rem);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1.05;
+}
+
+.home-do-next p,
+.home-network-source p {
+  max-width: 44rem;
+  margin: 0.9rem 0 0;
+  color: var(--muted);
+}
+
+.home-network-source .security-guard {
+  margin-top: 0.9rem;
+}
+
+.home-network-source .fact-grid {
+  margin-top: 1.1rem;
+}
+
+.home-action-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.1rem;
+}
+
+.home-action-list .comic-btn {
+  min-height: 44px;
 }

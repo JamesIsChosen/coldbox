@@ -37,7 +37,20 @@ __COLDBOX_CONCEALMENT__
   var privacyBlurLabel = document.getElementById('privacy-blur-toggle-label');
   var moreMenu = document.getElementById('mobile-more-menu');
   var moreTab = document.getElementById('mobile-more-tab');
+  var moreLock = document.getElementById('mobile-more-lock');
   var moreClose = document.getElementById('mobile-more-close');
+  var statusStrip = document.getElementById('status-strip');
+  var statusStripToggle = document.getElementById('status-strip-toggle');
+  var statusStripSummary = document.getElementById('status-strip-summary');
+  var statusStripAlarmNote = document.getElementById('status-strip-alarm-note');
+  // The detail elements this strip shows/hides, including the sealed-realm
+  // iframe host itself - by far the largest thing here, since it renders the
+  // whole cold-realm app inline. Each panel's own outer *section* (with its
+  // data-*-state attribute) stays permanently visible regardless, which is
+  // the property that keeps every existing "is this panel visible" check
+  // intact; scripts/run-browser-harness.js's single getColdFrame() choke
+  // point expands this strip before it waits on anything inside the iframe.
+  var statusStripDetailIds = ['cold-realm-status-copy', 'cold-realm-host', 'airgap-banner-detail', 'capability-panel-detail'];
   var coldRealmStatus = document.getElementById('cold-realm-status');
   // R2-F2 remediation: this used to point at the <h2> itself, whose
   // .textContent assignment below silently deleted the contextual help
@@ -217,6 +230,17 @@ __COLDBOX_CONCEALMENT__
   var registryShowHidden = document.getElementById('registry-show-hidden');
   var registryHiddenHelp = document.getElementById('registry-hidden-help');
   var registryWalletList = document.getElementById('registry-wallet-list');
+  var securityGuard = document.getElementById('security-guard');
+  var securityGuardLabel = document.getElementById('security-guard-label');
+  var homeAirgapGuard = document.getElementById('home-airgap-guard');
+  var homeAirgapGuardLabel = document.getElementById('home-airgap-guard-label');
+  var homeWalletsCount = document.getElementById('home-wallets-count');
+  var homeBackupCount = document.getElementById('home-backup-count');
+  var walletsLocked = document.getElementById('wallets-locked');
+  var walletsWorkspace = document.getElementById('wallets-workspace');
+  var walletsTableBody = document.getElementById('wallets-table-body');
+  var walletsSummary = document.getElementById('wallets-summary');
+  var walletsEmpty = document.getElementById('wallets-empty');
   var registryAccountList = document.getElementById('registry-account-list');
   var registryAddressList = document.getElementById('registry-address-list');
   var backupLocked = document.getElementById('backup-locked');
@@ -370,6 +394,9 @@ __COLDBOX_CONCEALMENT__
   var pendingReceivedTransfer = null;
   var pendingReceivedTransferMeta = null;
   var registryStore = null;
+  // UI.10b - which wallets the Wallets workspace is showing. View state only:
+  // it never reaches the vault and is not persisted.
+  var walletFilter = 'all';
   var pendingRegistryMutation = null;
   var pendingAddressVerification = null;
   var pendingBackupVerification = null;
@@ -393,23 +420,35 @@ __COLDBOX_CONCEALMENT__
 
   clipboardCanaryController = createClipboardCanary();
 
+  // UI.10b - the warm rail's groups are the maintainer-approved workstation
+  // taxonomy (ADR-0059, ui-parity.md section 6.2): Workspace, Records,
+  // Trust & reference, Vault & settings, Sealed work. `group` here is what the
+  // route announcer reads aloud, so it names the rail group the destination
+  // actually sits in.
+  //
+  // Route ids are intentionally NOT renamed to the approved reference's screen
+  // ids. `dashboard` stays `dashboard` even though the approved screen is
+  // `home`, because a hash id is not part of the approved visual design and
+  // renaming it would churn the committed browser harness for no user-visible
+  // gain. UI.11's harness maps reference screen ids to product routes, exactly
+  // as its predecessor did.
   var routeDetails = Object.freeze({
-    vault: Object.freeze({ label: 'Vault', title: 'Vault', group: 'Workspace' }),
-    dashboard: Object.freeze({ label: 'Dashboard', title: 'Dashboard', group: 'Workspace' }),
-    portfolio: Object.freeze({ label: 'Portfolio', title: 'Portfolio', group: 'Workspace' }),
-    prices: Object.freeze({ label: 'Prices', title: 'Prices', group: 'Workspace' }),
-    registry: Object.freeze({ label: 'Registry', title: 'Registry', group: 'Workspace' }),
-    devices: Object.freeze({ label: 'Devices', title: 'Devices', group: 'Workspace' }),
-    entropy: Object.freeze({ label: 'Entropy Lab', title: 'Entropy Lab', group: 'Tools' }),
-    'seed-forge': Object.freeze({ label: 'Seed Forge', title: 'Seed Forge', group: 'Tools' }),
-    derivation: Object.freeze({ label: 'Derivation', title: 'Derivation', group: 'Tools' }),
-    backup: Object.freeze({ label: 'Backup Lab', title: 'Backup Lab', group: 'Tools' }),
-    qr: Object.freeze({ label: 'QR Studio', title: 'QR Studio', group: 'Tools' }),
-    recovery: Object.freeze({ label: 'Recovery', title: 'Recovery', group: 'Tools' }),
-    verify: Object.freeze({ label: 'Verify Bench', title: 'Verify Bench', group: 'Reference' }),
-    reference: Object.freeze({ label: 'Reference', title: 'Reference', group: 'Reference' }),
-    learn: Object.freeze({ label: 'Learn', title: 'Learn', group: 'Reference' }),
-    'tool-map': Object.freeze({ label: 'Tool map', title: 'Tool map', group: 'Reference' })
+    dashboard: Object.freeze({ label: 'Home', title: 'Home', group: 'Workspace' }),
+    wallets: Object.freeze({ label: 'Wallets', title: 'Wallets', group: 'Workspace' }),
+    backup: Object.freeze({ label: 'Backup & recovery', title: 'Backup & recovery', group: 'Workspace' }),
+    portfolio: Object.freeze({ label: 'Portfolio & records', title: 'Portfolio & records', group: 'Workspace' }),
+    security: Object.freeze({ label: 'Security & verify', title: 'Security & verify', group: 'Workspace' }),
+    registry: Object.freeze({ label: 'Records & registry', title: 'Records & registry', group: 'Records' }),
+    devices: Object.freeze({ label: 'Devices', title: 'Devices', group: 'Records' }),
+    prices: Object.freeze({ label: 'Prices & FX', title: 'Prices & FX', group: 'Records' }),
+    reference: Object.freeze({ label: 'Reference & help', title: 'Reference & help', group: 'Trust & reference' }),
+    learn: Object.freeze({ label: 'Learn', title: 'Learn', group: 'Trust & reference' }),
+    'tool-map': Object.freeze({ label: 'Tool map', title: 'Tool map', group: 'Trust & reference' }),
+    verify: Object.freeze({ label: 'Verify Bench', title: 'Verify Bench', group: 'Trust & reference' }),
+    vault: Object.freeze({ label: 'Vault files', title: 'Vault files', group: 'Vault & settings' }),
+    settings: Object.freeze({ label: 'Settings', title: 'Settings', group: 'Vault & settings' }),
+    advanced: Object.freeze({ label: 'All flows index', title: 'All flows index', group: 'Vault & settings' }),
+    qr: Object.freeze({ label: 'QR Studio', title: 'QR Studio', group: 'Vault & settings' })
   });
 
   function readStoredTheme() {
@@ -888,6 +927,58 @@ __COLDBOX_CONCEALMENT__
     });
   }
 
+  // UI.10b - some approved rail destinations share one built page. Vault files,
+  // Vault session and Device transfer (QR) are three approved destinations and
+  // one built vault page; Verify this file, Provenance & legal and Reference &
+  // help are three destinations and one reference page. Without this, three rail
+  // entries with three different accessible names would all land in the same
+  // place - which reads to a screen reader as three destinations and behaves as
+  // one.
+  //
+  // The `#route/section` form is the deep-link grammar contextual help already
+  // uses (`#learn/<topic>`), reused rather than duplicated: routeFromLocation
+  // takes the first segment, and normalizeLocation already leaves the rest
+  // alone so the link stays shareable.
+  var routeSections = Object.freeze({
+    vault: Object.freeze({ session: 'vault-status', transfer: 'vault-transfer-card' }),
+    backup: Object.freeze({ health: 'dashboard-backup-health-title' }),
+    reference: Object.freeze({ verify: 'provenance-drop-zone', legal: 'provenance-legal-notices' })
+  });
+
+  // Returns true when the segment named a real section and focus moved there, so
+  // the caller knows not to fall back to focusing the page. An unknown segment
+  // is not an error: the route still rendered, and stealing focus to nowhere
+  // would be worse than leaving it on the page.
+  function focusRouteSection(route, segment) {
+    var sections = routeSections[route];
+    if (!sections || !Object.prototype.hasOwnProperty.call(sections, segment)) {
+      return false;
+    }
+    var target = document.getElementById(sections[segment]);
+    if (!target) {
+      return false;
+    }
+    if (!target.hasAttribute('tabindex')) {
+      target.setAttribute('tabindex', '-1');
+    }
+    try {
+      target.scrollIntoView({ block: 'start' });
+    } catch (error) {
+      target.scrollIntoView();
+    }
+    try {
+      target.focus({ preventScroll: true });
+    } catch (error) {
+      target.focus();
+    }
+    // A hidden panel accepts neither focus nor a meaningful scroll - Backup
+    // Health's list, for instance, is not rendered while the vault is locked.
+    // Reporting success there would strand focus on the rail link the user just
+    // activated, so confirm focus actually landed and let the caller fall back
+    // to the page if it did not.
+    return document.activeElement === target;
+  }
+
   function routeFromLocation() {
     var hash = window.location.hash.replace(/^#/, '').trim();
     var route = hash.split('/')[0];
@@ -897,10 +988,75 @@ __COLDBOX_CONCEALMENT__
     return Object.prototype.hasOwnProperty.call(routeDetails, route) ? route : 'dashboard';
   }
 
+  // The three boot/security panels (sealed-realm handshake, airgap guard,
+  // capability self-check) used to render full-size above every page. This
+  // collapses them into one summary strip by default - but a real alarm
+  // (cold-realm failure, airgap lockdown, or a hard capability failure) must
+  // never be hidden by that default, so it forces the strip open and disables
+  // collapsing it again until the alarm clears.
+  function statusStripHasAlarm() {
+    return Boolean(
+      (coldRealmStatus && coldRealmStatus.getAttribute('data-cold-state') === 'failed')
+      || (airgapBanner && airgapBanner.getAttribute('data-airgap-state') === 'red')
+      || (capabilityPanel && capabilityPanel.getAttribute('data-capability-state') === 'failed')
+    );
+  }
+
+  function setStatusStripExpanded(expanded) {
+    if (statusStripToggle) {
+      statusStripToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    }
+    statusStripDetailIds.forEach(function (id) {
+      var detail = document.getElementById(id);
+      if (detail) {
+        detail.hidden = !expanded;
+      }
+    });
+  }
+
+  function updateStatusStrip() {
+    if (!statusStrip) {
+      return;
+    }
+    var alarm = statusStripHasAlarm();
+    var coldState = coldRealmStatus ? coldRealmStatus.getAttribute('data-cold-state') : null;
+    var airgapState = airgapBanner ? airgapBanner.getAttribute('data-airgap-state') : null;
+    var capabilityState = capabilityPanel ? capabilityPanel.getAttribute('data-capability-state') : null;
+    var checking = coldState === 'starting' || airgapState === 'checking' || capabilityState === 'checking';
+
+    var strippedState = alarm ? 'alarm' : (checking ? 'checking' : 'ready');
+    statusStrip.setAttribute('data-strip-state', strippedState);
+    if (statusStripSummary) {
+      statusStripSummary.textContent = alarm
+        ? 'Attention required — see below'
+        : (checking ? 'Checking the security boundary' : 'Security boundary confirmed');
+    }
+    if (statusStripToggle) {
+      statusStripToggle.disabled = alarm;
+    }
+    if (statusStripAlarmNote) {
+      statusStripAlarmNote.hidden = !alarm;
+    }
+    if (alarm) {
+      setStatusStripExpanded(true);
+    }
+  }
+
+  if (statusStripToggle) {
+    statusStripToggle.addEventListener('click', function () {
+      if (statusStripHasAlarm()) {
+        return;
+      }
+      var expanded = statusStripToggle.getAttribute('aria-expanded') === 'true';
+      setStatusStripExpanded(!expanded);
+    });
+  }
+
   function focusColdRealmTarget() {
     if (!coldRealmStatus) {
       return;
     }
+    setStatusStripExpanded(true);
     try {
       coldRealmStatus.scrollIntoView({ behavior: 'auto', block: 'start' });
     } catch (error) {
@@ -1011,6 +1167,7 @@ __COLDBOX_CONCEALMENT__
     if (capabilitySummary) {
       capabilitySummary.textContent = summary;
     }
+    updateStatusStrip();
   }
 
   function renderCryptoSummary() {
@@ -1473,7 +1630,26 @@ __COLDBOX_CONCEALMENT__
   function setAirgapBanner(state, title, copy, label) {
     root.setAttribute('data-airgap-state', state);
     app.setAttribute('data-airgap-state', state);
+    // UI.10b - Security & verify shows the guard as one of its separate facts.
+    // It renders from this call rather than keeping its own copy of the state,
+    // so the pill and the banner cannot disagree about whether the boundary
+    // holds - which is exactly the failure a second source of truth produces.
+    if (securityGuard) {
+      securityGuard.setAttribute('data-airgap-state', state);
+    }
+    if (securityGuardLabel) {
+      securityGuardLabel.textContent = title;
+    }
+    // Home's Network & source card shows the same guard for the same reason:
+    // one source of truth, never a copy that can drift from it.
+    if (homeAirgapGuard) {
+      homeAirgapGuard.setAttribute('data-airgap-state', state);
+    }
+    if (homeAirgapGuardLabel) {
+      homeAirgapGuardLabel.textContent = title;
+    }
     if (!airgapBanner) {
+      updateStatusStrip();
       return;
     }
     airgapBanner.setAttribute('data-airgap-state', state);
@@ -1486,6 +1662,7 @@ __COLDBOX_CONCEALMENT__
     if (airgapBannerLabel) {
       airgapBannerLabel.textContent = label;
     }
+    updateStatusStrip();
   }
 
   function sendColdMode(online) {
@@ -1831,6 +2008,7 @@ __COLDBOX_CONCEALMENT__
       coldRealmFailure.hidden = true;
     }
     app.setAttribute('data-cold-state', 'ready');
+    updateStatusStrip();
   }
 
   function recordGlobalMessageAnomaly() {
@@ -3236,7 +3414,7 @@ __COLDBOX_CONCEALMENT__
       case 'placement-unproven':
         return 'Placement diversity is not a threshold proof. The public record has no per-share placement map, so recoverability after a loss remains unproven.';
       default:
-        return 'Review the Backup Lab records before relying on this backup plan.';
+        return 'Review the Backup & recovery records before relying on this backup plan.';
     }
   }
 
@@ -3280,16 +3458,27 @@ __COLDBOX_CONCEALMENT__
     backupHealthLocked.hidden = available;
     backupHealthWorkspace.hidden = !available;
     if (!available) {
+      if (homeBackupCount) {
+        homeBackupCount.textContent = 'Unlock a vault to see backup health.';
+      }
       return;
     }
     if (!backupHealth || typeof backupHealth.summarize !== 'function') {
       backupHealthWorkspace.setAttribute('data-health-state', 'invalid');
       if (backupHealthHeadline) {
-        backupHealthHeadline.textContent = 'Backup health is unavailable; review the Backup Lab directly.';
+        backupHealthHeadline.textContent = 'Backup health is unavailable; review the Backup & recovery records directly.';
+      }
+      if (homeBackupCount) {
+        homeBackupCount.textContent = 'Backup health is unavailable; review Backup Health directly.';
       }
       return;
     }
     var summary = backupHealth.summarize(records, new Date());
+    if (homeBackupCount) {
+      homeBackupCount.textContent = summary.totalCount === 0
+        ? 'No backup records are being monitored yet.'
+        : summary.currentCount + ' of ' + summary.totalCount + ' verified · ' + summary.unverifiedCount + ' unverified';
+    }
     backupHealthWorkspace.setAttribute('data-health-state', summary.state);
     if (backupHealthHeadline) {
       if (summary.state === 'empty') {
@@ -4156,6 +4345,166 @@ __COLDBOX_CONCEALMENT__
     renderAddressVerificationOptions();
   }
 
+
+  // UI.10b - the approved Wallets screen.
+  //
+  // Every column is read from a public registry record that P1.6 already ships;
+  // nothing here is invented and nothing is fetched. Two columns deserve
+  // explanation because the approved reference shows them differently:
+  //
+  // Balance is rendered as an explicit unavailable state naming WAL.3 rather
+  // than a number. The reference shows demo balances; Coldbox has no chain
+  // access in this build, and a blank or zero cell would read as "you have
+  // nothing" rather than "this build cannot know". PAR-009 keeps the column in
+  // its approved place while refusing to fake its content.
+  //
+  // Mode says what this vault has recorded - a seed fingerprint, or an imported
+  // xpub with no seed - not what Coldbox can do with it. The reference's
+  // Spend/Hold labels describe a spending policy Coldbox does not model, and
+  // calling anything "Spend" while WAL is unbuilt would be untrue (PAR-002).
+  function walletMode(wallet) {
+    if (wallet.type === 'watch-only' || (!wallet.seedId && !wallet.fingerprint)) {
+      return { key: 'watch-only', label: 'Watch-only' };
+    }
+    return { key: 'signing', label: 'Seed recorded' };
+  }
+
+  function walletLineage(wallet) {
+    if (wallet.fingerprint) {
+      return 'fp ' + wallet.fingerprint;
+    }
+    if (wallet.seedId) {
+      return 'seed ' + wallet.seedId;
+    }
+    return 'imported xpub · no seed';
+  }
+
+  function walletAddressCount(wallet, accounts, addresses) {
+    var accountIds = accounts.filter(function (account) {
+      return account.walletId === wallet.id;
+    }).map(function (account) {
+      return account.id;
+    });
+    return addresses.filter(function (address) {
+      return accountIds.indexOf(address.accountId) !== -1;
+    }).length;
+  }
+
+  // The column heading travels with the cell as data-label, because the mobile
+  // presentation turns each row into a block and hides the header row - without
+  // it, a phone shows five unlabelled values per wallet.
+  function walletsCell(row, text, className, label) {
+    var cell = document.createElement('td');
+    if (className) {
+      cell.className = className;
+    }
+    cell.setAttribute('data-label', label);
+    cell.textContent = text;
+    row.appendChild(cell);
+    return cell;
+  }
+
+  function renderWalletsWorkspace(available, wallets, accounts, addresses) {
+    if (walletsLocked) {
+      walletsLocked.hidden = available;
+    }
+    if (walletsWorkspace) {
+      walletsWorkspace.hidden = !available;
+    }
+    if (homeWalletsCount) {
+      homeWalletsCount.textContent = available
+        ? (wallets.length + (wallets.length === 1 ? ' wallet recorded' : ' wallets recorded'))
+        : 'Unlock a vault to see your wallets.';
+    }
+    if (!walletsTableBody) {
+      return;
+    }
+    clearRegistryNode(walletsTableBody);
+    if (!available) {
+      if (walletsSummary) {
+        walletsSummary.textContent = '';
+      }
+      if (walletsEmpty) {
+        walletsEmpty.hidden = true;
+      }
+      return;
+    }
+
+    var totalAddresses = 0;
+    var watchOnly = 0;
+    var rows = [];
+    wallets.forEach(function (wallet) {
+      var mode = walletMode(wallet);
+      var count = walletAddressCount(wallet, accounts, addresses);
+      totalAddresses += count;
+      if (mode.key === 'watch-only') {
+        watchOnly += 1;
+      }
+      rows.push({ wallet: wallet, mode: mode, addresses: count });
+    });
+
+    if (walletsSummary) {
+      walletsSummary.textContent = wallets.length + (wallets.length === 1 ? ' wallet · ' : ' wallets · ')
+        + totalAddresses + (totalAddresses === 1 ? ' address · ' : ' addresses · ')
+        + watchOnly + ' watch-only';
+    }
+
+    var visible = rows.filter(function (entry) {
+      return walletFilter === 'all' || entry.mode.key === walletFilter;
+    });
+
+    visible.forEach(function (entry) {
+      var row = document.createElement('tr');
+      row.setAttribute('data-registry-id', entry.wallet.id);
+      row.setAttribute('data-wallet-mode', entry.mode.key);
+
+      var nameCell = document.createElement('td');
+      nameCell.className = 'wallets-name';
+      nameCell.setAttribute('data-label', 'Wallet');
+      var name = document.createElement('span');
+      name.className = 'wallets-name-label';
+      name.textContent = entry.wallet.label || 'Unlabeled wallet';
+      nameCell.appendChild(name);
+      var meta = document.createElement('span');
+      meta.className = 'wallets-name-meta';
+      meta.textContent = [entry.wallet.network, entry.wallet.scriptType, entry.wallet.type]
+        .filter(Boolean).join(' · ') || 'Public wallet record';
+      nameCell.appendChild(meta);
+      row.appendChild(nameCell);
+
+      walletsCell(row, walletLineage(entry.wallet), 'wallets-lineage', 'Lineage');
+
+      var balanceCell = document.createElement('td');
+      balanceCell.className = 'wallets-balance';
+      balanceCell.setAttribute('data-label', 'Balance');
+      var balance = document.createElement('span');
+      balance.className = 'wallets-unavailable';
+      balance.setAttribute('data-roadmap-id', 'WAL.3');
+      balance.setAttribute('data-phase', 'Phase WAL');
+      balance.textContent = 'Unavailable · WAL.3';
+      balanceCell.appendChild(balance);
+      row.appendChild(balanceCell);
+
+      walletsCell(row, String(entry.addresses), 'wallets-addresses', 'Addresses');
+      walletsCell(row, entry.mode.label, 'wallets-mode', 'Mode');
+
+      var actionCell = document.createElement('td');
+      actionCell.className = 'wallets-actions';
+      actionCell.setAttribute('data-label', 'Record');
+      actionCell.appendChild(recordMenuTrigger('wallet', entry.wallet.id));
+      row.appendChild(actionCell);
+
+      walletsTableBody.appendChild(row);
+    });
+
+    if (walletsEmpty) {
+      walletsEmpty.hidden = visible.length !== 0;
+      walletsEmpty.textContent = wallets.length === 0
+        ? 'No wallets recorded yet. Add one in Records & registry.'
+        : 'No wallet matches this filter.';
+    }
+  }
+
   function renderRegistry() {
     var available = Boolean(registryStore && vaultState === 'unlocked');
     if (registryLocked) {
@@ -4179,6 +4528,7 @@ __COLDBOX_CONCEALMENT__
     renderBackupHealth(available ? registryStore.list('backups', hiddenRegistryVisible) : []);
     renderAddressVerificationOptions();
     if (!available) {
+      renderWalletsWorkspace(false, [], [], []);
       return;
     }
     var wallets = registryVisibleRecords('wallets');
@@ -4187,6 +4537,7 @@ __COLDBOX_CONCEALMENT__
     var neverVerifiedCount = addresses.filter(function (address) {
       return address.verificationState === 'unverified';
     }).length;
+    renderWalletsWorkspace(true, wallets, accounts, addresses);
     var devices = deviceVisibleRecords();
     var notes = registryVisibleRecords('notes');
     var backups = backupVisibleRecords();
@@ -5496,83 +5847,6 @@ __COLDBOX_CONCEALMENT__
   // properties and never touches routing, protocol, or realm state. If any part
   // of it is unavailable the stage simply sits at its resting transform, which
   // is the same arrangement a narrow viewport gets.
-  function startStageMotion() {
-    var scene = document.getElementById('stage-scene');
-    if (!scene || typeof window.requestAnimationFrame !== 'function') {
-      return;
-    }
-
-    var reduceMotion = typeof window.matchMedia === 'function'
-      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var wideEnough = typeof window.matchMedia === 'function'
-      && window.matchMedia('(min-width: 62rem)').matches;
-    if (reduceMotion || !wideEnough) {
-      return;
-    }
-
-    var maximumTilt = 7;
-    var maximumDepth = 1.1;
-    var tiltX = 0;
-    var tiltY = 0;
-    var depth = 0;
-    var frameRequested = false;
-
-    function applyStageTransform() {
-      frameRequested = false;
-      scene.style.setProperty('--stage-tilt-x', tiltX.toFixed(2) + 'deg');
-      scene.style.setProperty('--stage-tilt-y', tiltY.toFixed(2) + 'deg');
-      scene.style.setProperty('--stage-depth', depth.toFixed(3) + 'rem');
-    }
-
-    function requestStageFrame() {
-      if (frameRequested) {
-        return;
-      }
-      frameRequested = true;
-      window.requestAnimationFrame(applyStageTransform);
-    }
-
-    function clamp(value, limit) {
-      if (value > limit) {
-        return limit;
-      }
-      if (value < -limit) {
-        return -limit;
-      }
-      return value;
-    }
-
-    function handlePointerMove(event) {
-      var width = window.innerWidth || 1;
-      var height = window.innerHeight || 1;
-      tiltY = clamp(((event.clientX - (width / 2)) / (width / 2)) * maximumTilt, maximumTilt);
-      tiltX = clamp((((height / 2) - event.clientY) / (height / 2)) * maximumTilt, maximumTilt);
-      requestStageFrame();
-    }
-
-    function handlePointerLeave() {
-      tiltX = 0;
-      tiltY = 0;
-      requestStageFrame();
-    }
-
-    // Offset from the scene's distance to the viewport centre, so the cards
-    // drift as the stage passes through the fold rather than accumulating.
-    function handleScroll() {
-      var bounds = scene.getBoundingClientRect();
-      var viewportCentre = (window.innerHeight || 1) / 2;
-      var sceneCentre = bounds.top + (bounds.height / 2);
-      var offset = (sceneCentre - viewportCentre) / viewportCentre;
-      depth = clamp(offset * maximumDepth, maximumDepth);
-      requestStageFrame();
-    }
-
-    document.addEventListener('mousemove', handlePointerMove, { passive: true });
-    document.addEventListener('mouseleave', handlePointerLeave, { passive: true });
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
-  }
-
   function startNetworkMonitor() {
     if (!airgap) {
       return;
@@ -5841,6 +6115,8 @@ __COLDBOX_CONCEALMENT__
 
     if (route === 'learn' && topicSegment) {
       focusHelpTopic(decodeURIComponent(topicSegment));
+    } else if (topicSegment && focusRouteSection(route, decodeURIComponent(topicSegment))) {
+      // focusRouteSection moved focus to the named panel.
     } else if (shouldFocus) {
       try {
         main.focus({ preventScroll: true });
@@ -5885,6 +6161,28 @@ __COLDBOX_CONCEALMENT__
   }
   if (moreClose) {
     moreClose.addEventListener('click', closeMoreMenu);
+  }
+  // UI.10b - the approved mobile More sheet ends with Lock / panic, because on a
+  // phone the masthead lock controls scroll away. It calls the same handler the
+  // masthead button does rather than duplicating the lock path, and closes the
+  // sheet first so focus is not stranded inside a hidden menu.
+  // UI.10b - the Wallets filter chips. View state only: filtering never touches
+  // the vault, so this re-renders from the same records rather than reloading.
+  document.querySelectorAll('[data-wallet-filter]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      walletFilter = button.getAttribute('data-wallet-filter');
+      document.querySelectorAll('[data-wallet-filter]').forEach(function (other) {
+        other.setAttribute('aria-pressed', String(other === button));
+      });
+      renderRegistry();
+    });
+  });
+
+  if (moreLock) {
+    moreLock.addEventListener('click', function () {
+      closeMoreMenu();
+      requestVaultLock();
+    });
   }
   routeLinks.forEach(function (link) {
     link.addEventListener('click', function () {
@@ -6251,7 +6549,7 @@ __COLDBOX_CONCEALMENT__
   window.addEventListener('hashchange', function () {
     renderRoute(true);
   });
-  startStageMotion();
+  updateStatusStrip();
   startNetworkMonitor();
   startCapabilities();
   startWarmCanary();

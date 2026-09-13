@@ -1,12 +1,5 @@
 # Approved UI reference package
 
-The ongoing post-bootstrap review records the human's request to carry the
-Entropy Lab aesthetic through every flow in
-[the flow design review](review/2026-09-13/flow-design-review.md).
-That document preserves the reviewed candidate and inventories the remaining
-desktop/mobile interaction gaps. It is supplemental discovery evidence; the
-complete workstation reference set below has not been replaced or frozen anew.
-
 This directory holds the maintainer-approved desktop and mobile handoffs used by
 the [visual parity contract](../../01-spec/ui-parity.md).
 

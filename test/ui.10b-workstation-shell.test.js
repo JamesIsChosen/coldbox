@@ -1,0 +1,795 @@
+'use strict';
+
+// UI.10b - the warm shell navigates the maintainer-approved workstation
+// hierarchy, every specialist capability is still reachable, and no destination
+// claims a capability the roadmap has not shipped.
+//
+// The point of the first test here is that the rail is not checked against a
+// second hand-written list. It is checked against the approved manifest UI.10a
+// imported, so "the exact hierarchy approved in UI.10a" is a machine-checked
+// claim rather than a promise. The manifest is read as test data only: the
+// approved package must never enter the product build-input graph, which
+// test/ui.10a-workstation-reference.test.js proves separately.
+
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const test = require('node:test');
+
+const { currentSet, readManifest, parseRoadmapStatuses } = require('../scripts/ui-reference-manifest.js');
+
+const root = path.resolve(__dirname, '..');
+const warmHtml = fs.readFileSync(path.join(root, 'src', 'index.html'), 'utf8');
+const warmCss = fs.readFileSync(path.join(root, 'src', 'styles.css'), 'utf8');
+const mainJs = fs.readFileSync(path.join(root, 'src', 'main.js'), 'utf8');
+const coldHtml = fs.readFileSync(path.join(root, 'src', 'cold', 'index.html'), 'utf8');
+
+const approved = currentSet(readManifest());
+
+function decode(value) {
+  return value
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"');
+}
+
+function railGroups() {
+  return Array.from(
+    warmHtml.matchAll(/<nav class="nav-group" aria-label="([^"]+)">([\s\S]*?)<\/nav>/g),
+    (match) => ({ label: decode(match[1]), markup: match[2] })
+  );
+}
+
+function entriesOf(markup) {
+  return Array.from(
+    markup.matchAll(/<(a|button) class="nav-link([^"]*)"([\s\S]*?)<\/\1>/g),
+    (match) => ({
+      tag: match[1],
+      modifier: match[2].trim(),
+      markup: match[0],
+      label: decode((/<span>([^<]+)<\/span>/.exec(match[3]) || [, ''])[1])
+    })
+  );
+}
+
+test('the warm rail groups are exactly the approved warm taxonomy, in order', () => {
+  const expected = approved.navigation.groups
+    .filter((group) => group.realm === 'warm')
+    .map((group) => group.label);
+
+  assert.deepEqual(railGroups().map((group) => group.label), expected);
+
+  // The visible group heading and its accessible name must agree. They drifted
+  // apart in the cold rail once already - a group titled "Split & Carry" kept
+  // aria-label="Split" - which reads correctly on screen and wrongly to a screen
+  // reader.
+  for (const group of railGroups()) {
+    assert.ok(
+      warmHtml.includes(`<p class="nav-group-title">${group.label.replace(/&/g, '&amp;')}</p>`),
+      `Rail group ${group.label} has no visible heading matching its accessible name`
+    );
+  }
+});
+
+test('every approved warm destination is present exactly once, in its approved group', () => {
+  // Destination labels, per group, transcribed from the approved desktop rail.
+  const expected = {
+    Workspace: ['Home', 'Wallets', 'Backup & recovery', 'Portfolio & records', 'Security & verify'],
+    Records: ['Records & registry', 'Devices', 'Prices & FX', 'Tax & exports', 'Backup Health'],
+    'Trust & reference': ['Verify this file', 'Provenance & legal', 'Learn', 'Tool map', 'Reference & help'],
+    'Vault & settings': ['Vault files', 'Vault session', 'Device transfer (QR)', 'Settings', 'All flows index'],
+    'Sealed work': ['Seeds & secrets']
+  };
+
+  const groups = railGroups();
+  assert.deepEqual(Object.keys(expected), groups.map((group) => group.label));
+
+  for (const group of groups) {
+    assert.deepEqual(
+      entriesOf(group.markup).map((entry) => entry.label),
+      expected[group.label],
+      `Rail group ${group.label} does not carry its approved destinations in order`
+    );
+  }
+
+  const all = groups.flatMap((group) => entriesOf(group.markup).map((entry) => entry.label));
+  assert.equal(new Set(all).size, all.length, 'A destination appears twice in the rail');
+});
+
+test('an unavailable destination is a disabled control naming a real roadmap owner', () => {
+  const statuses = parseRoadmapStatuses();
+  const entries = railGroups().flatMap((group) => entriesOf(group.markup));
+
+  const unavailable = entries.filter((entry) => entry.modifier.includes('nav-link-unavailable'));
+  assert.ok(unavailable.length > 0, 'The rail must show at least one unavailable destination');
+
+  for (const entry of unavailable) {
+    assert.equal(entry.tag, 'button', `${entry.label} must be a button, not a link`);
+    assert.match(entry.markup, /disabled/, `${entry.label} must be disabled`);
+    assert.match(entry.markup, /aria-disabled="true"/, `${entry.label} must be aria-disabled`);
+    const owner = /data-roadmap-id="([^"]+)"/.exec(entry.markup);
+    assert.ok(owner, `${entry.label} must name its roadmap owner`);
+    assert.ok(statuses.has(owner[1]), `${entry.label} names ${owner[1]}, which is not in ROADMAP.md`);
+    assert.notEqual(
+      statuses.get(owner[1]),
+      'x',
+      `${entry.label} is shown unavailable but ${owner[1]} is complete`
+    );
+    assert.match(entry.markup, /data-phase="(?:Phase|UI) [0-9A-Za-z.]+"/, `${entry.label} must name its phase`);
+    assert.doesNotMatch(entry.markup, /href=/, `${entry.label} must not be routable`);
+  }
+
+  // The converse: a live destination must not claim an unbuilt owner.
+  for (const entry of entries.filter((item) => item.tag === 'a')) {
+    const owner = /data-roadmap-id="([^"]+)"/.exec(entry.markup);
+    assert.equal(owner, null, `${entry.label} is routable and must not carry a roadmap-owner badge`);
+  }
+});
+
+test('every routable destination resolves to a built page and an announced route', () => {
+  const routes = Array.from(warmHtml.matchAll(/data-route="([a-z-]+)"/g), (match) => match[1]);
+  const pages = Array.from(warmHtml.matchAll(/data-page="([a-z-]+)"/g), (match) => match[1]);
+
+  for (const route of new Set(routes)) {
+    assert.ok(pages.includes(route), `route ${route} has no built page`);
+    assert.match(
+      mainJs,
+      new RegExp(`(?:^|[\\s{])'?${route}'?: Object\\.freeze\\(\\{ label:`, 'm'),
+      `route ${route} has no routeDetails entry, so its breadcrumb and announcement are undefined`
+    );
+  }
+
+  // No page may be stranded: every built page is either routable, or is the
+  // approved unavailable treatment for an unbuilt owner.
+  const unavailableOwners = Array.from(
+    warmHtml.matchAll(/<button class="nav-link nav-link-unavailable"[\s\S]*?<\/button>/g),
+    (match) => (/data-roadmap-id="([^"]+)"/.exec(match[0]) || [, ''])[1]
+  );
+  assert.ok(unavailableOwners.includes('P3.4'), 'Portfolio & records must be the approved unavailable treatment');
+  for (const page of new Set(pages)) {
+    if (new Set(routes).has(page)) {
+      continue;
+    }
+    assert.ok(
+      ['portfolio', 'prices'].includes(page),
+      `page ${page} is orphaned: no rail, tab or index entry reaches it`
+    );
+  }
+});
+
+test('the All flows index keeps every specialist capability reachable', () => {
+  const index = /<section class="page" id="page-advanced"[\s\S]*?\n        <\/section>/.exec(warmHtml);
+  assert.ok(index, 'The All flows index page is missing');
+  const markup = index[0];
+
+  // Every flow family the approved design names has a group here.
+  for (const title of ['Forge', 'Derive', 'Split & carry', 'Recover & verify', 'Records', 'Trust & reference', 'Vault', 'Wallet']) {
+    assert.ok(
+      markup.includes(`class="flow-index-title">${title.replace(/&/g, '&amp;')}`),
+      `The All flows index has no ${title} group`
+    );
+  }
+
+  // The tools that used to be top-level destinations are still reachable by
+  // name. This is the reachability guarantee the reorganisation has to keep.
+  for (const label of [
+    'Entropy Lab', 'Seed Forge', 'Split lab', 'SeedQR studio', 'Verify Bench',
+    'Records &amp; registry', 'Device registry', 'Backup Health', 'Verify this file',
+    'Provenance &amp; legal', 'Learn', 'Tool map', 'Vault session'
+  ]) {
+    assert.ok(markup.includes(label), `The All flows index lost ${label}`);
+  }
+
+  const statuses = parseRoadmapStatuses();
+  const unavailable = markup.match(/<button class="flow-index-link flow-index-link-unavailable"[\s\S]*?<\/button>/g) || [];
+  assert.ok(unavailable.length > 0);
+  for (const entry of unavailable) {
+    const owner = /data-roadmap-id="([^"]+)"/.exec(entry);
+    assert.ok(owner, `An index entry is unavailable without naming an owner: ${entry.slice(0, 80)}`);
+    assert.ok(statuses.has(owner[1]), `The index names ${owner[1]}, which is not in ROADMAP.md`);
+    assert.notEqual(statuses.get(owner[1]), 'x', `${owner[1]} is complete but shown unavailable in the index`);
+    assert.match(entry, /disabled/);
+    assert.match(entry, /aria-disabled="true"/);
+  }
+
+  // Every roadmap-owned wallet flow in the approved set is represented, and
+  // named as unavailable rather than omitted.
+  for (const flow of approved.flows.filter((entry) => entry.availability === 'roadmap-owned')) {
+    if (flow.id === 'signing' || flow.id === 'source') {
+      continue; // sealed-realm and trust families, asserted by label below
+    }
+    assert.ok(
+      markup.includes(flow.title.replace(/&/g, '&amp;')),
+      `The All flows index omits the roadmap-owned flow ${flow.title}`
+    );
+  }
+  assert.ok(markup.includes('Level 3 signing'));
+  assert.ok(markup.includes('Source &amp; transport'));
+});
+
+test('the mobile bottom bar is the approved five slots and the More sheet is realm-aware', () => {
+  const tabs = Array.from(
+    warmHtml.matchAll(/<(a|button) class="mobile-tab"[\s\S]*?<span>([^<]+)<\/span>/g),
+    (match) => decode(match[2])
+  );
+  assert.deepEqual(tabs, approved.navigation.mobileBottomBar);
+
+  // Seeds is the only cold slot, and it leaves the warm shell.
+  assert.match(
+    warmHtml,
+    /<a class="mobile-tab" href="#cold-realm-status">[\s\S]*?<span>Seeds<\/span>/,
+    'The Seeds tab must enter the sealed realm'
+  );
+
+  // The warm More sheet carries the approved warm destinations and no sealed
+  // capability: on mobile a sealed tool is never reached through a warm
+  // destination, which is what makes the realm boundary legible on a phone.
+  const sheet = /<div class="mobile-more-links" id="mobile-more-links-warm">([\s\S]*?)<\/div>/.exec(warmHtml);
+  assert.ok(sheet, 'The warm More sheet is missing');
+  for (const label of approved.navigation.mobileMore.warm) {
+    const needle = label === 'Every flow' ? 'Every flow' : label.replace(/&/g, '&amp;');
+    assert.ok(
+      sheet[1].includes(needle) || sheet[1].includes(needle.replace(' · panic', '')),
+      `The warm More sheet is missing ${label}`
+    );
+  }
+  for (const label of ['Entropy Lab', 'Seed Forge', 'Split lab', 'Passphrase Studio', 'Child seeds']) {
+    assert.ok(!sheet[1].includes(label), `The warm More sheet must not reach the sealed capability ${label}`);
+  }
+});
+
+test('the reorganised shell gains no secret-capable control and no funding prompt', () => {
+  const rail = /<div class="nav-scroll">([\s\S]*?)<div class="nav-footer">/.exec(warmHtml);
+  assert.ok(rail);
+  assert.doesNotMatch(rail[1], /<(?:input|textarea)\b|data-secret=/i, 'Navigation must not gain secret-capable controls');
+
+  // The one sealed destination sits in its own group and is the only entry in
+  // it, so entering the sealed realm is never one item in a list of warm work.
+  const sealed = /<nav class="nav-group" aria-label="Sealed work">([\s\S]*?)<\/nav>/.exec(warmHtml);
+  assert.ok(sealed, 'Sealed work must be its own rail group');
+  assert.equal(entriesOf(sealed[1]).length, 1);
+  assert.match(sealed[1], /href="#cold-realm-status"/);
+  for (const group of railGroups().filter((entry) => entry.label !== 'Sealed work')) {
+    assert.doesNotMatch(
+      group.markup,
+      /href="#cold-realm-status"/,
+      `Warm workspace group ${group.label} must not carry the sealed-realm entry`
+    );
+  }
+
+  // ADR-0059's funding constraint. Scoped to interactive elements: the Settings
+  // page legitimately says in prose that there is no subscription and no
+  // advertising, and a scan over all text would flag that denial as a prompt.
+  const interactive = warmHtml.match(/<(?:a|button)\b[\s\S]*?<\/(?:a|button)>/g) || [];
+  for (const term of ['donate', 'donation', 'sponsor', 'subscribe', 'subscription', 'upgrade to pro', 'sign in', 'log in', 'activate']) {
+    for (const element of interactive) {
+      const text = element.replace(/<[^>]*>/g, ' ');
+      assert.ok(
+        !new RegExp(`\\b${term}\\b`, 'i').test(text),
+        `The warm shell must not offer "${term}" as a control: ${element.slice(0, 90)}`
+      );
+    }
+  }
+});
+
+test('new destinations meet the shell touch-target and focus floors', () => {
+  assert.match(warmCss, /\.flow-index-link \{[\s\S]*?min-height: 44px/);
+  assert.match(warmCss, /\.mobile-more-link-action \{/);
+  assert.match(warmCss, /\.nav-link \{[\s\S]*?min-height: 44px/);
+  assert.match(warmCss, /\.mobile-more-link \{[\s\S]*?min-height: 44px/);
+
+  // A disabled index entry is a real disabled control, so it cannot be tabbed to.
+  const index = /<section class="page" id="page-advanced"[\s\S]*?\n        <\/section>/.exec(warmHtml)[0];
+  for (const entry of index.match(/<button class="flow-index-link flow-index-link-unavailable"[\s\S]*?<\/button>/g) || []) {
+    assert.match(entry, /type="button" disabled/);
+  }
+
+  // The superseded single-entry sealed strip is gone rather than left as dead
+  // markup and dead CSS.
+  assert.doesNotMatch(warmHtml, /nav-sealed-entry/);
+  assert.doesNotMatch(warmCss, /\.nav-sealed-entry/);
+});
+
+// ---------------------------------------------------------------------------
+// Sealed realm
+// ---------------------------------------------------------------------------
+
+function coldRailGroups() {
+  return Array.from(
+    coldHtml.matchAll(/<nav class="cold-nav-group" aria-label="([^"]+)">([\s\S]*?)<\/nav>/g),
+    (match) => ({ label: decode(match[1]), markup: match[2] })
+  );
+}
+
+test('the sealed rail groups are exactly the approved cold taxonomy, in order', () => {
+  const expected = approved.navigation.groups
+    .filter((group) => group.realm === 'cold')
+    .map((group) => group.label);
+
+  assert.deepEqual(coldRailGroups().map((group) => group.label), expected);
+
+  // The defect this replaces: the sealed rail carried a group titled
+  // "Split & Carry" whose accessible name was still "Split", and two groups
+  // whose visible heading had been emptied to `aria-hidden="true"` while the
+  // group kept an accessible name. Screen and screen reader disagreed.
+  for (const group of coldRailGroups()) {
+    assert.ok(
+      coldHtml.includes(`<p class="cold-nav-group-title">${group.label.replace(/&/g, '&amp;')}</p>`),
+      `Sealed rail group ${group.label} has no visible heading matching its accessible name`
+    );
+  }
+  assert.doesNotMatch(
+    coldHtml,
+    /<p class="cold-nav-group-title"[^>]*aria-hidden="true"[^>]*><\/p>/,
+    'A sealed rail group has an emptied heading'
+  );
+});
+
+test('the sealed rail carries the approved cold destinations plus only its known production extras', () => {
+  const approvedByGroup = {
+    'Seeds & lineage': ['Seeds & lineage', 'Selected seed', 'Secret QR'],
+    Forge: ['Entropy Lab', 'Seed Forge', 'Passphrase Studio', 'Secret notes'],
+    Derive: ['Derivation paths', 'Address derivation', 'Child seeds · BIP-85', 'Descriptors'],
+    'Split & carry': ['Split lab', 'Verify / combine', 'SeedQR studio'],
+    'Recover & verify': ['Recovery Assistant', 'Verify Bench', 'Level 3 signing'],
+    Session: ['Lock / wipe']
+  };
+
+  // Production has three sealed surfaces the prototype folds into other
+  // screens, and they keep their sealed-rail shortcut rather than losing
+  // keyboard access to satisfy a mock. Each is listed here so the rail cannot
+  // quietly grow a fourth.
+  const productionExtras = {
+    Forge: ['Reveal hidden'],
+    'Split & carry': ['Backup Health'],
+    Session: ['Vault session']
+  };
+
+  for (const group of coldRailGroups()) {
+    const labels = Array.from(
+      group.markup.matchAll(/<(?:a|button|span) class="cold-nav-link[^"]*"[\s\S]*?<span>([^<]+)<\/span>/g),
+      (match) => decode(match[1])
+    );
+    const allowed = approvedByGroup[group.label].concat(productionExtras[group.label] || []);
+    assert.deepEqual(
+      labels.slice().sort(),
+      allowed.slice().sort(),
+      `Sealed rail group ${group.label} does not carry its approved destinations`
+    );
+  }
+
+  // "Return to warm shell" is the one approved cold entry deliberately absent.
+  // The sealed frame is sandboxed with allow-scripts, allow-downloads and
+  // allow-modals only - no allow-top-navigation and no allow-same-origin - so it
+  // cannot navigate its parent, and granting it that permission to satisfy a
+  // rail entry would weaken realm isolation for a shortcut. PAR-003 puts realm
+  // isolation above prototype treatment. The warm masthead's realm switcher is
+  // visible above the sealed frame at all times and is the return path.
+  assert.match(mainJs, /setAttribute\('sandbox', 'allow-scripts allow-downloads allow-modals'\)/);
+  assert.ok(!coldHtml.includes('Return to warm shell'));
+});
+
+test('no sealed destination claims a completed roadmap item, and none is a dead anchor', () => {
+  const statuses = parseRoadmapStatuses();
+
+  for (const entry of coldHtml.match(/<button class="cold-nav-link cold-nav-link-unavailable"[\s\S]*?<\/button>/g) || []) {
+    const owner = /data-roadmap-id="([^"]+)"/.exec(entry);
+    assert.ok(owner, `A sealed rail entry is unavailable without naming an owner: ${entry.slice(0, 90)}`);
+    assert.ok(statuses.has(owner[1]), `The sealed rail names ${owner[1]}, which is not in ROADMAP.md`);
+    assert.notEqual(
+      statuses.get(owner[1]),
+      'x',
+      `The sealed rail shows ${owner[1]} as unavailable but the roadmap has it complete`
+    );
+    assert.match(entry, /type="button" disabled/);
+    assert.match(entry, /aria-disabled="true"/);
+  }
+
+  for (const entry of coldHtml.match(/<span class="cold-mobile-more-link cold-mobile-more-link-unavailable"[\s\S]*?<\/span>/g) || []) {
+    const owner = /data-roadmap-id="([^"]+)"/.exec(entry);
+    assert.ok(owner, 'A sealed More entry is unavailable without naming an owner');
+    assert.ok(statuses.has(owner[1]), `The sealed More sheet names ${owner[1]}, which is not in ROADMAP.md`);
+    assert.notEqual(statuses.get(owner[1]), 'x', `${owner[1]} is complete but shown unavailable in the sealed More sheet`);
+  }
+
+  // Every sealed anchor resolves inside the sealed document. The sealed realm is
+  // one scrolling document rather than a router, so a rail entry pointing at a
+  // removed id fails silently in a browser and would never be caught by a
+  // routing assertion.
+  const ids = new Set(Array.from(coldHtml.matchAll(/\sid="([^"]+)"/g), (match) => match[1]));
+  const anchors = Array.from(
+    coldHtml.matchAll(/<a[^>]*class="cold-nav-link"[^>]*href="#([^"]+)"|<a href="#([^"]+)"/g),
+    (match) => match[1] || match[2]
+  );
+  assert.ok(anchors.length > 0);
+  for (const anchor of new Set(anchors)) {
+    assert.ok(ids.has(anchor), `Sealed navigation points at #${anchor}, which does not exist`);
+  }
+});
+
+test('the sealed More sheet reaches only sealed capability', () => {
+  const sheet = /<div class="cold-mobile-more-links">([\s\S]*?)<\/div>/.exec(coldHtml);
+  assert.ok(sheet, 'The sealed More sheet is missing');
+
+  for (const label of ['Entropy Lab', 'Seed Forge', 'Secret notes', 'Split lab', 'SeedQR studio', 'Verify Bench', 'Lock &amp; wipe']) {
+    assert.ok(sheet[1].includes(label), `The sealed More sheet is missing ${label}`);
+  }
+
+  // A warm destination is never reached from the sealed sheet: that is what
+  // makes the realm boundary legible on a phone.
+  for (const label of ['Portfolio', 'Prices &amp; FX', 'Tax &amp; exports', 'Records &amp; registry', 'Reference &amp; help', 'Tool map']) {
+    assert.ok(!sheet[1].includes(label), `The sealed More sheet must not reach the warm destination ${label}`);
+  }
+});
+
+test('every rail destination has a unique stable handle, and deep links resolve', () => {
+  // Three approved destinations resolve to the vault page and three to the
+  // reference page, so a selector keyed on the route matches several elements.
+  // `data-nav` gives each destination one stable handle, which is what the
+  // committed browser harness addresses them by; without it the harness needed
+  // `.first()` and silently depended on DOM order.
+  const navs = Array.from(warmHtml.matchAll(/data-nav="([a-z-]+)"/g), (match) => match[1]);
+  const railNavs = railGroups().flatMap((group) => Array.from(
+    group.markup.matchAll(/data-nav="([a-z-]+)"/g),
+    (match) => match[1]
+  ));
+  assert.equal(new Set(navs).size, navs.length, 'A data-nav handle is used twice');
+  assert.equal(
+    railNavs.length,
+    railGroups().reduce((total, group) => total + entriesOf(group.markup).length, 0),
+    'Every rail destination must carry a data-nav handle'
+  );
+
+  // Each `#route/section` deep link must name a section main.js knows about,
+  // and that section must exist in the document. A typo here produces a link
+  // that navigates to the right page and then silently does nothing.
+  const sections = /var routeSections = Object\.freeze\(\{([\s\S]*?)\}\);/.exec(mainJs);
+  assert.ok(sections, 'main.js declares no routeSections map');
+  const declared = new Map(
+    Array.from(sections[1].matchAll(/(\w+): Object\.freeze\(\{([^}]*)\}\)/g), (match) => [
+      match[1],
+      new Map(Array.from(match[2].matchAll(/(\w+): '([^']+)'/g), (pair) => [pair[1], pair[2]]))
+    ])
+  );
+  assert.ok(declared.size > 0);
+
+  const deepLinks = Array.from(
+    warmHtml.matchAll(/href="#([a-z-]+)\/([a-z-]+)"/g),
+    (match) => ({ route: match[1], section: match[2] })
+  );
+  assert.ok(deepLinks.length >= 5, `expected the approved sub-destinations to deep link, saw ${deepLinks.length}`);
+  for (const link of deepLinks) {
+    const routeSections = declared.get(link.route);
+    assert.ok(routeSections, `#${link.route}/${link.section} has no routeSections entry for ${link.route}`);
+    const targetId = routeSections.get(link.section);
+    assert.ok(targetId, `#${link.route}/${link.section} names a section main.js does not map`);
+    assert.ok(
+      warmHtml.includes(`id="${targetId}"`),
+      `#${link.route}/${link.section} maps to #${targetId}, which does not exist`
+    );
+  }
+
+  // Focus must be confirmed, not assumed: a panel that is not rendered yet -
+  // Backup Health's list while the vault is locked - accepts neither focus nor
+  // a useful scroll, and reporting success there strands focus on the rail link
+  // the user just activated.
+  assert.match(mainJs, /return document\.activeElement === target;/);
+});
+
+test('no surface anywhere in src claims a completed roadmap item as unavailable', () => {
+  // The rail, the flow index, the More sheets and now the Wallets balance column
+  // all name a roadmap owner. One assertion over every `data-roadmap-id` in the
+  // product source catches the next one too, wherever it is added.
+  const statuses = parseRoadmapStatuses();
+  const sources = [
+    ['src/index.html', warmHtml],
+    ['src/cold/index.html', coldHtml],
+    ['src/main.js', mainJs]
+  ];
+  let seen = 0;
+  for (const [name, source] of sources) {
+    for (const match of source.matchAll(/data-roadmap-id="([^"]+)"|setAttribute\('data-roadmap-id', '([^']+)'\)/g)) {
+      const id = match[1] || match[2];
+      seen += 1;
+      assert.ok(statuses.has(id), `${name} names ${id}, which is not a roadmap item`);
+      assert.notEqual(
+        statuses.get(id),
+        'x',
+        `${name} presents ${id} as unavailable, but the roadmap has it complete`
+      );
+    }
+  }
+  assert.ok(seen >= 20, `expected the product source to name roadmap owners, saw ${seen}`);
+
+  // `data-owner-item` is the informational counterpart: it labels which item
+  // owns a fact that IS available, so it may name a completed item. It must
+  // still name a real one.
+  let owners = 0;
+  for (const [name, source] of sources) {
+    for (const match of source.matchAll(/data-owner-item="([^"]+)"/g)) {
+      owners += 1;
+      assert.ok(statuses.has(match[1]), `${name} names owner ${match[1]}, which is not a roadmap item`);
+    }
+  }
+  assert.ok(owners >= 6, `expected the fact cards to name their owners, saw ${owners}`);
+});
+
+test('Security & verify keeps its facts separate and never aggregates them', () => {
+  const page = /<section class="page" id="page-security"[\s\S]*?\n        <\/section>/.exec(warmHtml);
+  assert.ok(page, 'The Security & verify page is missing');
+  const markup = page[0];
+
+  const cards = markup.match(/<article class="fact-card[\s\S]*?<\/article>/g) || [];
+  assert.equal(cards.length, 6, 'The approved screen has six separate facts');
+
+  const statuses = parseRoadmapStatuses();
+  for (const card of cards) {
+    const owner = /data-owner-item="([^"]+)"/.exec(card);
+    assert.ok(owner, 'Every fact card must name the item that owns it');
+    const availability = /data-availability="([a-z]+)"/.exec(card);
+    assert.ok(availability, 'Every fact card must state whether it is available');
+
+    if (availability[1] === 'available') {
+      // A card may only claim to be available if its owner is actually built.
+      assert.equal(
+        statuses.get(owner[1]),
+        'x',
+        `${owner[1]} is presented as available but is not complete in ROADMAP.md`
+      );
+      assert.match(card, /<a class="comic-btn"[^>]*href="#/, `${owner[1]} claims to be available but opens nothing`);
+    } else {
+      assert.notEqual(
+        statuses.get(owner[1]),
+        'x',
+        `${owner[1]} is presented as roadmap-owned but is complete`
+      );
+      assert.match(card, /disabled/, `${owner[1]} is unavailable and must not be actionable`);
+      assert.match(card, /data-roadmap-id="/, `${owner[1]} must carry its unavailable owner`);
+    }
+  }
+
+  // There is no aggregate. The one status element on this screen reports the
+  // airgap guard specifically, and it renders from the same call that sets the
+  // banner rather than keeping a second copy of the state - so the two cannot
+  // disagree about whether the boundary holds.
+  assert.match(markup, /id="security-guard"[^>]*data-airgap-state="checking"/);
+  assert.match(mainJs, /function setAirgapBanner\(state, title, copy, label\) \{[\s\S]{0,600}?securityGuard\.setAttribute\('data-airgap-state', state\)/);
+  assert.match(mainJs, /securityGuardLabel\.textContent = title;/);
+  // Exactly one live status region, and it is the guard. Grepping the prose for
+  // the words "secure" or "private" would fail on the copy that explains why
+  // there is no such badge, so assert the structural property instead: no
+  // second status element can appear without failing here.
+  const liveRegions = markup.match(/aria-live="[a-z]+"/g) || [];
+  assert.equal(liveRegions.length, 1, 'Security & verify must expose exactly one live status region');
+  assert.match(
+    markup,
+    /<p class="security-guard" id="security-guard"[^>]*aria-live="polite"/,
+    'The one live region on this screen must be the airgap guard'
+  );
+
+  // Every fact names its own owner; none aggregates two.
+  const owners = Array.from(markup.matchAll(/data-owner-item="([^"]+)"/g), (m) => m[1]);
+  assert.equal(owners.length, cards.length, 'Every card names exactly one owner');
+});
+
+test('the Wallets workspace reads the shipped registry and invents no balance', () => {
+  const page = /<section class="page" id="page-wallets"[\s\S]*?\n        <\/section>/.exec(warmHtml);
+  assert.ok(page, 'The Wallets page is missing');
+  const markup = page[0];
+
+  // Locked-first: wallet records live inside the encrypted vault, so the screen
+  // must say so rather than render an empty table that reads as "no wallets".
+  assert.match(markup, /id="wallets-locked"/);
+  assert.match(markup, /id="wallets-workspace"[^>]*hidden/);
+  assert.match(markup, /Unlock a vault to see your wallets/);
+
+  // The approved columns, in the approved order.
+  const headers = Array.from(markup.matchAll(/<th scope="col">(?:<span class="sr-only">)?([^<]+)</g), (m) => m[1].trim());
+  assert.deepEqual(headers, ['Wallet', 'Lineage', 'Balance', 'Addresses', 'Mode', 'Record']);
+
+  // No literal balance figure anywhere in the markup, and the render path emits
+  // an owner-named unavailable state instead.
+  assert.doesNotMatch(markup, /[0-9]+\.[0-9]{4,}/, 'The Wallets markup must not contain a balance figure');
+  assert.match(mainJs, /balance\.setAttribute\('data-roadmap-id', 'WAL\.3'\)/);
+  assert.match(mainJs, /balance\.textContent = 'Unavailable · WAL\.3'/);
+
+  // Mode is derived from what the vault recorded, not from what Coldbox can do.
+  assert.match(mainJs, /function walletMode\(wallet\) \{/);
+  assert.match(mainJs, /wallet\.type === 'watch-only' \|\| \(!wallet\.seedId && !wallet\.fingerprint\)/);
+  assert.doesNotMatch(markup, />\s*Spend\s*</, 'No wallet surface may offer a spend mode in this build');
+
+  // Every cell carries its column heading so the mobile block layout stays
+  // labelled, and the table actually transforms below the phone breakpoint.
+  assert.match(mainJs, /cell\.setAttribute\('data-label', label\)/);
+  assert.match(warmCss, /@media \(max-width: 720px\)[\s\S]*?\.wallets-table td::before[\s\S]*?content: attr\(data-label\)/);
+
+  // The object carries its own actions, outside the locked gate: opening QR
+  // Studio does not require an unlocked vault and must not be hidden behind one.
+  const workspace = /<section class="wallets-workspace"[\s\S]*?<\/section>/.exec(markup)[0];
+  for (const nav of ['wallets-registry', 'wallets-qr-studio', 'wallets-verify']) {
+    assert.ok(markup.includes(`data-nav="${nav}"`), `The Wallets page is missing its ${nav} action`);
+    assert.ok(!workspace.includes(`data-nav="${nav}"`), `${nav} must stay reachable while the vault is locked`);
+  }
+
+  // The record menu is the one interaction pattern for public records; the
+  // Wallets rows reuse it rather than introducing a second one.
+  assert.match(mainJs, /actionCell\.appendChild\(recordMenuTrigger\('wallet', entry\.wallet\.id\)\)/);
+});
+
+test('Home is object-first and no longer asserts the superseded toolkit identity', () => {
+  const page = /<section class="page" id="page-dashboard"[\s\S]*?\n        <\/section>\n\n        <section class="page" id="page-wallets"/.exec(warmHtml);
+  assert.ok(page, 'The Home page is missing');
+  const markup = page[0];
+
+  // ADR-0059 explicitly supersedes this exact language. It must not survive
+  // anywhere in the shipped Home markup.
+  for (const stale of [
+    'A toolkit, not a wallet',
+    'Not a wallet!',
+    'Permanent non-goal',
+    'holds no coins',
+    'Two halves that cannot talk freely'
+  ]) {
+    assert.doesNotMatch(markup, new RegExp(stale.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      `Home still contains the superseded toolkit-era claim: "${stale}"`);
+  }
+
+  const statuses = parseRoadmapStatuses();
+
+  // The three approved objects, each a fact-card naming its real owner.
+  const objectGrid = /<div class="fact-grid home-object-grid"[\s\S]*?\n          <\/div>/.exec(markup);
+  assert.ok(objectGrid, 'Home is missing its object summary grid');
+  const cards = objectGrid[0].match(/<article class="fact-card[\s\S]*?<\/article>/g) || [];
+  assert.equal(cards.length, 3, 'Home has exactly three object cards: Wallets, Seeds & lineage, Backup & recovery');
+
+  const byHeading = {};
+  for (const card of cards) {
+    const heading = /<h2[^>]*>([^<]+)</.exec(card)[1];
+    byHeading[heading] = card;
+    const owner = /data-owner-item="([^"]+)"/.exec(card);
+    assert.ok(owner, `${heading} must name the item that owns it`);
+    if (card.includes('fact-card-unavailable')) {
+      assert.notEqual(statuses.get(owner[1]), 'x', `${heading} is presented as roadmap-owned but ${owner[1]} is complete`);
+      assert.match(card, /disabled/, `${heading} is unavailable and must not be actionable`);
+    } else {
+      assert.equal(statuses.get(owner[1]), 'x', `${heading} is presented as available but ${owner[1]} is not complete in ROADMAP.md`);
+      assert.match(card, /<a class="comic-btn"[^>]*href="#/, `${heading} claims to be available but opens nothing`);
+    }
+  }
+  assert.ok(byHeading['Wallets'], 'Home must summarize Wallets');
+  assert.ok(byHeading['Seeds &amp; lineage'], 'Home must summarize Seeds & lineage');
+  assert.ok(byHeading['Backup &amp; recovery'], 'Home must summarize Backup & recovery');
+
+  // Seeds & lineage is real future scope (SEED.1), not a fabricated number -
+  // the approved mock shows demo root/child counts, but SEED.1 has not shipped.
+  assert.match(byHeading['Seeds &amp; lineage'], /data-roadmap-id="SEED\.1"/);
+  assert.notEqual(statuses.get('SEED.1'), 'x');
+
+  // Wallets and Backup & recovery show live counts, computed from the same
+  // functions the Wallets and Security pages already use - not a second
+  // hand-maintained figure that can drift from them.
+  assert.match(mainJs, /homeWalletsCount\.textContent = available/);
+  assert.match(mainJs, /homeBackupCount\.textContent = summary\.totalCount === 0/);
+
+  // Do next: a real mix of available actions and honestly unavailable ones.
+  const doNext = /<section class="empty-panel home-do-next"[\s\S]*?<\/section>/.exec(markup);
+  assert.ok(doNext, 'Home is missing its Do next panel');
+  const actionList = /<div class="home-action-list">([\s\S]*?)<\/div>/.exec(doNext[0])[1];
+  const availableActions = actionList.match(/<a class="comic-btn"/g) || [];
+  const unavailableActions = actionList.match(/<button class="comic-btn comic-btn-unavailable"/g) || [];
+  assert.equal(availableActions.length, 2, 'Do next has exactly two available actions');
+  assert.equal(unavailableActions.length, 2, 'Do next has exactly two roadmap-owned actions');
+  for (const roadmapId of ['WAL.4', 'SEED.1']) {
+    assert.match(actionList, new RegExp('data-roadmap-id="' + roadmapId.replace('.', '\\.') + '"'));
+    assert.notEqual(statuses.get(roadmapId), 'x');
+  }
+
+  // Network & source reuses the one real airgap-guard signal rather than a
+  // second status region, exactly like Security & verify does - and the two
+  // Tor facts stay honestly roadmap-owned (WAL.2) rather than claiming a
+  // detection Coldbox does not perform.
+  assert.match(markup, /id="home-airgap-guard"[^>]*data-airgap-state="checking"/);
+  assert.match(mainJs, /homeAirgapGuard\.setAttribute\('data-airgap-state', state\)/);
+  assert.match(mainJs, /homeAirgapGuardLabel\.textContent = title;/);
+  const networkSection = /<section class="empty-panel home-network-source"[\s\S]*?<\/section>/.exec(markup)[0];
+  const torCards = networkSection.match(/<article class="fact-card fact-card-unavailable"[\s\S]*?<\/article>/g) || [];
+  assert.equal(torCards.length, 2, 'Network & source shows exactly the two roadmap-owned Tor facts');
+  for (const card of torCards) {
+    assert.match(card, /data-owner-item="WAL\.2"/);
+    assert.notEqual(statuses.get('WAL.2'), 'x');
+  }
+  // Unlike Security & verify's single guard, Home genuinely has three regions
+  // that change without a navigation: the two live summary counts and the
+  // guard itself. Each is real dynamic content, so each earns its own
+  // aria-live rather than the page inventing one aggregate region.
+  const liveRegions = markup.match(/aria-live="[a-z]+"/g) || [];
+  assert.equal(liveRegions.length, 3, 'Home must expose exactly its three live regions: two summary counts and the airgap guard');
+});
+
+test('Backup Health now lives on the Backup page, and its deep link resolves there', () => {
+  const backupPage = /<section class="page" id="page-backup"[\s\S]*?\n        <\/section>\n\n        <section class="page" id="page-qr"/.exec(warmHtml);
+  assert.ok(backupPage, 'The Backup page is missing');
+  assert.match(backupPage[0], /<section class="backup-health-dashboard" id="dashboard-backup-health"/,
+    'Backup Health must live inside the Backup page now that Home only summarizes it');
+
+  const dashboardPage = /<section class="page" id="page-dashboard"[\s\S]*?\n        <\/section>\n\n        <section class="page" id="page-wallets"/.exec(warmHtml)[0];
+  assert.doesNotMatch(dashboardPage, /id="dashboard-backup-health"/,
+    'Home must not duplicate the full Backup Health dashboard - it links to it instead');
+
+  // The deep link Security & verify's "Open Backup Health" card already uses
+  // (#backup/health) must resolve to the relocated dashboard, not the raw
+  // backup-record list it used to point at before the dashboard moved here.
+  assert.match(mainJs, /backup: Object\.freeze\(\{ health: 'dashboard-backup-health-title' \}\)/);
+
+  // The warm Backup page and the sealed realm's own "Backup Lab" group
+  // (SLIP-39/codex32 generation, src/cold/index.html) are two different
+  // destinations. The warm page's old "Backup Lab" title collided with that
+  // name; it must read "Backup & recovery" instead, matching the nav rail,
+  // Home's card, and the approved manifest's screen name, and the warm-only
+  // fallback copy in main.js must not still point a user at "Backup Lab".
+  assert.match(backupPage[0], /<h1 id="page-title-backup">Backup &amp; recovery<\/h1>/);
+  assert.doesNotMatch(backupPage[0], />Backup Lab</);
+  assert.doesNotMatch(mainJs, /Backup Lab records/);
+  assert.doesNotMatch(mainJs, /review the Backup Lab directly/);
+});
+
+test('the boot/security status strip collapses its detail by default but never hides a real alarm', () => {
+  // The three panels' own sections - the ones every browser-harness boot
+  // assertion already waits on by data-*-state - must stay permanently
+  // visible. Only their verbose detail collapses. This is the property that
+  // keeps this change from silently breaking the ~30 existing harness
+  // assertions that wait for these exact sections to be visible.
+  for (const id of ['cold-realm-status', 'airgap-banner', 'capability-panel']) {
+    const section = new RegExp('<section class="[^"]*"\\s+id="' + id + '"[^>]*>');
+    const match = section.exec(warmHtml);
+    assert.ok(match, `#${id} section is missing`);
+    assert.doesNotMatch(match[0], /\bhidden\b/, `#${id}'s own section must never carry the hidden attribute`);
+  }
+  // The sealed-realm iframe host IS part of the collapsible detail - it is by
+  // far the largest of the three panels' content, since it renders the whole
+  // cold realm inline, and leaving it always-visible was tried first and
+  // rejected: it defeated the entire point of collapsing, since scrolling
+  // past a collapsed one-line summary straight into a full-size nested app
+  // is exactly what a maintainer review of the real build caught. The
+  // section that HOSTS it (#cold-realm-status, asserted above) still never
+  // collapses, which is what keeps every harness boot-visibility check safe;
+  // only its interior does.
+  assert.match(warmHtml, /<div class="cold-frame-host status-strip-detail" id="cold-realm-host"[^>]*\bhidden\b/);
+
+  // The four detail regions that collapse, each starting hidden.
+  assert.match(warmHtml, /<p id="cold-realm-status-copy" class="status-strip-detail" hidden>/);
+  assert.match(warmHtml, /<div id="airgap-banner-detail" class="status-strip-detail" hidden>/);
+  assert.match(warmHtml, /<div class="capability-list" id="capability-panel-detail" hidden>/);
+  assert.match(mainJs, /statusStripDetailIds = \[[^\]]*'cold-realm-host'[^\]]*\]/);
+
+  // The single choke point every cold-frame harness interaction goes through
+  // (~29 call sites) must expand the host before waiting on anything inside
+  // the iframe, rather than requiring each call site to know about this.
+  const harnessSrc = fs.readFileSync(path.join(root, 'scripts', 'run-browser-harness.js'), 'utf8');
+  assert.match(
+    harnessSrc,
+    /async function getColdFrame\(page, engine\) \{[\s\S]{0,1000}?cold-realm-host[\s\S]{0,200}?hidden = false/
+  );
+
+  // The toggle, and the alarm states it must respect.
+  assert.match(warmHtml, /<button type="button" class="status-strip-toggle" id="status-strip-toggle" aria-expanded="false"/);
+  assert.match(mainJs, /function statusStripHasAlarm\(\) \{[\s\S]{0,400}?data-cold-state'\) === 'failed'/);
+  assert.match(mainJs, /data-airgap-state'\) === 'red'/);
+  assert.match(mainJs, /data-capability-state'\) === 'failed'/);
+  assert.match(mainJs, /if \(statusStripHasAlarm\(\)\) \{\s*\n\s*return;/, 'the toggle click handler must refuse to collapse while alarmed');
+  assert.match(mainJs, /if \(alarm\) \{\s*\n\s*setStatusStripExpanded\(true\);/, 'any alarm must force the strip open');
+  assert.match(mainJs, /statusStripToggle\.disabled = alarm;/, 'the toggle must be disabled, not just ignored, while alarmed');
+
+  // The existing "Sealed realm" jump target (#cold-realm-status, reached from
+  // the realm switcher, rail, and mobile tab) must still land somewhere
+  // visible - it force-expands the strip before scrolling/focusing there.
+  assert.match(mainJs, /function focusColdRealmTarget\(\) \{[\s\S]{0,120}?setStatusStripExpanded\(true\);/);
+
+  // The one existing harness assertion pair that reached inside the now-
+  // collapsed capability detail must expand it first.
+  assert.match(
+    harnessSrc,
+    /status-strip-toggle'\)\.click\(\);\s*\n\s*await page\.locator\('#capability-row-random-values/
+  );
+});
