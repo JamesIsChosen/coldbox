@@ -5,37 +5,37 @@
   "authoritative": false,
   "project_id": "coldbox-d105f94a-f83e-4f85-9671-c64bcca74803",
   "basis_head_ref": {
-    "ref": "sha256:432641553d860c1544502e63820a8e181d6bfb163dc18106c2dac81e5ad37ec0",
-    "path": ".markdown-machine/authority/authority-transition-kernel-migrate-v0.10.1.md"
+    "ref": "sha256:006952ab10830b8e5599df36b1f5a069ed4b15f0bb1c39ac33d2a2617c18d88f",
+    "path": ".markdown-machine/authority/authority-transition-run-horizon-raise-repository-write.md"
   },
-  "basis_repository_commit": "a34039924439aa858fcaec776d285534cfb51ebe",
+  "basis_repository_commit": "c7aafbae538e6fdb0295879f0b01cb31a168e138",
   "authority_epoch": 0,
-  "sequence": 7,
+  "sequence": 14,
   "origin_ref": {
-    "ref": "sha256:643a6493ff64d91cfc73a08ca54127bb1962be9629fe3424d6ff24a633d1db5b",
-    "path": ".markdown-machine/history/8b71e8d18ae2d9a3820348fb195357f72cc7ef74e7323b315769a73cb9fa4766/ORIGIN.md"
+    "ref": "sha256:151fe4fd3baad4c0364aa925d38a2e4270005589f6c4971410759bee11540b81",
+    "path": ".markdown-machine/ORIGIN.md"
   },
   "kernel_manifest_ref": {
-    "ref": "sha256:87822d173dbf0de810e1d4d8a7c94346009ba3de38bd988d4697c02232309ad4",
-    "path": ".markdown-machine/authority/kernel-manifest-v0.10.1.md"
+    "ref": "sha256:72f28f42c686438918801f2d82527ab9893fb8cec6a368226a3aec4fb7937873",
+    "path": ".markdown-machine/authority/kernel-manifest-v0.10.2.1.md"
   },
   "stop_state": "NONE",
   "run_horizon_ref": {
-    "ref": "sha256:285d8cd11cbb5e9b145a9069db3f635ad1d16150c02d5a0d33d9b51125f40bf2",
-    "path": ".markdown-machine/intent/run-horizon-bootstrap-to-product-freeze.md"
+    "ref": "sha256:6e516f73b2fbc23d03a386b7819d072c54b8345b1bfe66559366553c7f1d85a4",
+    "path": ".markdown-machine/intent/run-horizon-bootstrap-to-product-freeze-r2.md"
   },
   "selected_capability_ids": [
     "software-product"
   ],
   "current_tasks": [
     {
-      "task_id": "mock-rereview-product-discovery",
+      "task_id": "flows-ux-design-realization",
       "ref": {
-        "ref": "sha256:ee8bfa4b034837bd38b4abddd61e12454ba447d0e9a76cb1d59159e41ccfd648",
-        "path": ".markdown-machine/tasks/task-mock-rereview-product-discovery.md"
+        "ref": "sha256:4a20a5fb3b1680ba83a78d3b4f10e2426faa442222360fee5fa362a3e715d494",
+        "path": ".markdown-machine/tasks/task-flows-ux-design-realization.md"
       },
-      "path": ".markdown-machine/tasks/task-mock-rereview-product-discovery.md",
-      "operation_family": "DISCOVERY",
+      "path": ".markdown-machine/tasks/task-flows-ux-design-realization.md",
+      "operation_family": "DESIGN_REALIZATION",
       "effective_review_floor": "SELF_CHECK"
     }
   ],
@@ -48,16 +48,16 @@
     "product_freeze_reviews": 1
   },
   "repository_sync": "LOCAL_AHEAD_REMOTE",
-  "next_lawful": "HUMAN_DECISION_REQUIRED",
-  "lifecycle_node_id": "product_discovery",
-  "generated_at_closeout": "2026-09-13T01:11:51Z"
+  "next_lawful": "CURRENT_TASK",
+  "lifecycle_node_id": "flows_ux",
+  "generated_at_closeout": "2026-09-13T05:05:00Z"
 }
 ---
 # Markdown Machine handoff projection
 
 The local main tree carries the user-requested v0.10.2.1 test candidate and the
-post-bootstrap mock-review records at basis commit
-`a34039924439aa858fcaec776d285534cfb51ebe`. Its sequence-8 transition is a
+post-bootstrap mock-review records at the local basis commit
+`16101abe966468c3aa05c4896db43c6d72abf63d`. Its sequence-8 transition is a
 user-directed experimental test migration and is not asserted as satisfying the
 candidate's normal normative acceptance requirements. The local tree is ahead
 of the configured remote; fresh remote verification is pending.
@@ -65,9 +65,8 @@ of the configured remote; fresh remote verification is pending.
 The human explicitly directed testing migration without protected original-Inbox-boundary evidence. That evidence and normative checkpoint acceptance remain unproved; do not infer them from the user instruction, local commit, or source hashes.
 
 The post-bootstrap mock review is recorded in the current repository. The human
-approved the Entropy Lab aesthetic as the direction for subsequent flows and
-requested that the documented input, state, responsive, and completion gaps be
-closed before the design is sealed. Product implementation and Product Freeze
-remain outside the current discovery Task; the next implementation stage needs
-its own admitted Task. The candidate's protected original-Inbox-boundary evidence
-remains unproved.
+approved the Entropy Lab aesthetic and approved the first realization slice and
+its acceptance checklist. The current admitted task is flows/UX design
+realization, bounded to that slice and to reviewable mock behavior. Product
+implementation and Product Freeze remain outside this task. The candidate's
+protected original-Inbox-boundary evidence remains unproved.
