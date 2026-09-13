@@ -8,9 +8,9 @@
     "ref": "sha256:006952ab10830b8e5599df36b1f5a069ed4b15f0bb1c39ac33d2a2617c18d88f",
     "path": ".markdown-machine/authority/authority-transition-run-horizon-raise-repository-write.md"
   },
-  "basis_repository_commit": "b1d6603a5175cc7dc72276fe4fbcb07708999a99",
+  "basis_repository_commit": "6e23677032a19bacbf0444a196175fba9cfc7ef3",
   "authority_epoch": 0,
-  "sequence": 14,
+  "sequence": 15,
   "origin_ref": {
     "ref": "sha256:151fe4fd3baad4c0364aa925d38a2e4270005589f6c4971410759bee11540b81",
     "path": ".markdown-machine/ORIGIN.md"
@@ -50,14 +50,14 @@
   "repository_sync": "LOCAL_AHEAD_REMOTE",
   "next_lawful": "CURRENT_TASK",
   "lifecycle_node_id": "flows_ux",
-"generated_at_closeout": "2026-09-13T05:34:00Z"
+"generated_at_closeout": "2026-09-13T06:11:33Z"
 }
 ---
 # Markdown Machine handoff projection
 
 The local main tree carries the user-requested v0.10.2.1 test candidate and the
 post-bootstrap mock-review records at the local basis commit
-`b1d6603a5175cc7dc72276fe4fbcb07708999a99`. Its sequence-8 transition is a
+`6e23677032a19bacbf0444a196175fba9cfc7ef3`. Its sequence-8 transition is a
 user-directed experimental test migration and is not asserted as satisfying the
 candidate's normal normative acceptance requirements. The local tree is ahead
 of the configured remote; fresh remote verification is pending.
@@ -68,9 +68,12 @@ The post-bootstrap mock review is recorded in the current repository. The human
 approved the Entropy Lab aesthetic and approved the first realization slice and
 its acceptance checklist. The current admitted task is flows/UX design
 realization, bounded to that slice and to reviewable mock behavior. The shipped
-presentation now uses the approved self-custody workstation hierarchy,
-including the matched desktop masthead, public-records boundary strip, three-card
-Home grid, paired support panels, and live lock/panic controls. Passphrase Studio
-and Recovery Assistant remain live as first-slice sealed flows.
+presentation now uses the approved Entropy Lab first slice inside the sealed
+workstation frame, with the candidate's Forge heading, six-step progress rail,
+source tabs, and paper-panel treatment. Internal cold links are handled inside
+the sealed document so they cannot reload the warm shell back into the frame.
+The surrounding self-custody workstation hierarchy, boundary strip, and live
+lock/panic controls remain governed context; Passphrase Studio and Recovery
+Assistant remain live as first-slice sealed flows.
 Product implementation and Product Freeze remain outside this task. The
 candidate's protected original-Inbox-boundary evidence remains unproved.
