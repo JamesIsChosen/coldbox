@@ -8,7 +8,7 @@
     "ref": "sha256:432641553d860c1544502e63820a8e181d6bfb163dc18106c2dac81e5ad37ec0",
     "path": ".markdown-machine/authority/authority-transition-kernel-migrate-v0.10.1.md"
   },
-  "basis_repository_commit": "06d4660d48ce22d0c6fc680afe7b861576761c23",
+  "basis_repository_commit": "233e0f25bd8602c58945c9d169ea052efcea0fb5",
   "authority_epoch": 0,
   "sequence": 7,
   "origin_ref": {
@@ -47,16 +47,16 @@
     "product_discovery_cycles": 2,
     "product_freeze_reviews": 1
   },
-  "repository_sync": "LOCAL_AHEAD_REMOTE",
-  "next_lawful": "REPOSITORY_RECOVERY",
+  "repository_sync": "REPOSITORY_SYNCED",
+  "next_lawful": "HUMAN_DECISION_REQUIRED",
   "lifecycle_node_id": "product_discovery",
   "generated_at_closeout": "2026-09-13T00:14:56Z"
 }
 ---
 # Markdown Machine handoff projection
 
-The local tree carries the user-requested v0.10.2.1 test candidate. Its sequence-8 transition is not asserted admitted: shared-main publication was rejected by automatic approval review and remains pending explicit authorization. This projection retains the predecessor bindings and routes repository recovery.
+The published main tree carries the user-requested v0.10.2.1 test candidate at basis commit `233e0f25bd8602c58945c9d169ea052efcea0fb5`. Its sequence-8 transition is a user-directed experimental test migration and is not asserted as satisfying the candidate's normal normative acceptance requirements. This projection retains the predecessor bindings and records the repository as synced.
 
 The human explicitly directed testing migration without protected original-Inbox-boundary evidence. That evidence and normative checkpoint acceptance remain unproved; do not infer them from the user instruction, local commit, or source hashes.
 
-Regenerate this projection from actual authority/currentness after publication. The required human mock review remains unfinished.
+The required human mock review remains unfinished. The candidate's protected original-Inbox-boundary evidence remains unproved.
