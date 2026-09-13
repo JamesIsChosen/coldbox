@@ -6783,6 +6783,26 @@ __COLDBOX_QR_ENCODER__
       }
     } else if (targetId === 'cold-secret-notes') {
       target.focus();
+    } else if (targetId === 'cold-seed-forge-generated-passphrase') {
+      var passphraseTarget = document.getElementById('cold-seed-forge-generated-passphrase-input');
+      if (passphraseTarget && !passphraseTarget.disabled) {
+        passphraseTarget.focus();
+      } else {
+        target.focus();
+      }
+    } else if (targetId === 'cold-vault-recovery') {
+      var recoveryTarget = document.getElementById('cold-vault-recovery-input');
+      if (recoveryTarget && !recoveryTarget.disabled) {
+        recoveryTarget.focus();
+      } else {
+        var recoveryStatus = document.getElementById('cold-vault-recovery-status');
+        if (recoveryStatus) {
+          recoveryStatus.setAttribute('tabindex', '-1');
+          recoveryStatus.focus();
+        } else {
+          target.focus();
+        }
+      }
     } else if (targetId === 'cold-vault-controls') {
       var lockTarget = document.getElementById('cold-vault-lock');
       if (lockTarget && !lockTarget.disabled) {
