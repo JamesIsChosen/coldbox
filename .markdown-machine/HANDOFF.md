@@ -8,7 +8,7 @@
     "ref": "sha256:432641553d860c1544502e63820a8e181d6bfb163dc18106c2dac81e5ad37ec0",
     "path": ".markdown-machine/authority/authority-transition-kernel-migrate-v0.10.1.md"
   },
-  "basis_repository_commit": "233e0f25bd8602c58945c9d169ea052efcea0fb5",
+  "basis_repository_commit": "a34039924439aa858fcaec776d285534cfb51ebe",
   "authority_epoch": 0,
   "sequence": 7,
   "origin_ref": {
@@ -59,4 +59,10 @@ The published main tree carries the user-requested v0.10.2.1 test candidate at b
 
 The human explicitly directed testing migration without protected original-Inbox-boundary evidence. That evidence and normative checkpoint acceptance remain unproved; do not infer them from the user instruction, local commit, or source hashes.
 
-The required human mock review remains unfinished. The candidate's protected original-Inbox-boundary evidence remains unproved.
+The post-bootstrap mock review is recorded in the current repository. The human
+approved the Entropy Lab aesthetic as the direction for subsequent flows and
+requested that the documented input, state, responsive, and completion gaps be
+closed before the design is sealed. Product implementation and Product Freeze
+remain outside the current discovery Task; the next implementation stage needs
+its own admitted Task. The candidate's protected original-Inbox-boundary evidence
+remains unproved.
