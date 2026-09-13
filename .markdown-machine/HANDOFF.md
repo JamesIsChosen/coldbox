@@ -8,7 +8,7 @@
     "ref": "sha256:006952ab10830b8e5599df36b1f5a069ed4b15f0bb1c39ac33d2a2617c18d88f",
     "path": ".markdown-machine/authority/authority-transition-run-horizon-raise-repository-write.md"
   },
-  "basis_repository_commit": "ca28ef0ec5e014882e4786c80ad47b13d5065439",
+  "basis_repository_commit": "2bd209bd52403dc122c540377ba73863086e86fe",
   "authority_epoch": 0,
   "sequence": 14,
   "origin_ref": {
