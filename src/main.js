@@ -32,6 +32,8 @@ __COLDBOX_CONCEALMENT__
   var announcement = document.getElementById('route-announcement');
   var themeToggle = document.getElementById('theme-toggle');
   var themeLabel = document.getElementById('theme-toggle-label');
+  var appBarLock = document.getElementById('app-bar-lock');
+  var appBarPanic = document.getElementById('app-bar-panic');
   var themeMeta = document.querySelector('meta[name="theme-color"]');
   var privacyBlurToggle = document.getElementById('privacy-blur-toggle');
   var privacyBlurLabel = document.getElementById('privacy-blur-toggle-label');
@@ -1003,6 +1005,9 @@ __COLDBOX_CONCEALMENT__
   }
 
   function setStatusStripExpanded(expanded) {
+    if (app) {
+      app.setAttribute('data-status-expanded', expanded ? 'true' : 'false');
+    }
     if (statusStripToggle) {
       statusStripToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
     }
@@ -6076,6 +6081,9 @@ __COLDBOX_CONCEALMENT__
     var hashSegments = rawHash.split('/');
     var topicSegment = hashSegments.length > 1 ? hashSegments.slice(1).join('/') : null;
     var route = routeFromLocation();
+    if (app) {
+      app.setAttribute('data-route', route);
+    }
     if (route === 'cold-realm-status') {
       closeMoreMenu();
       if (announcement) {
@@ -6127,6 +6135,7 @@ __COLDBOX_CONCEALMENT__
   }
 
   setTheme(readStoredTheme(), false);
+  setStatusStripExpanded(false);
   app.setAttribute('data-build-state', 'warm-shell');
   app.setAttribute('data-routing-ready', 'true');
   app.setAttribute('data-cold-state', 'starting');
@@ -6154,6 +6163,12 @@ __COLDBOX_CONCEALMENT__
       var nextTheme = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
       setTheme(nextTheme, true);
     });
+  }
+  if (appBarLock) {
+    appBarLock.addEventListener('click', requestVaultLock);
+  }
+  if (appBarPanic) {
+    appBarPanic.addEventListener('click', panicHide);
   }
 
   if (moreTab) {

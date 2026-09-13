@@ -28,6 +28,9 @@ __COLDBOX_WORDMARK__
       <nav class="app-bar-actions" aria-label="Quick links">
         <a class="comic-btn" href="#vault" data-route="vault">Libraries</a>
         <a class="comic-btn" href="#settings" data-route="settings">Settings</a>
+        <span class="app-bar-network" id="app-bar-network" role="status"><span class="status-dot" aria-hidden="true"></span>Network: public data only</span>
+        <button class="comic-btn app-bar-lock" id="app-bar-lock" type="button">Lock all</button>
+        <button class="comic-btn app-bar-panic" id="app-bar-panic" type="button">Panic</button>
         <button class="comic-btn comic-btn-toggle" id="theme-toggle" type="button" aria-pressed="false">
           <span class="theme-toggle-icon" aria-hidden="true">☼</span>
           <span id="theme-toggle-label">Light mode</span>
@@ -36,7 +39,7 @@ __COLDBOX_WORDMARK__
     </header>
 
     <div class="realm-strip realm-strip-warm" id="warm-realm-strip" role="status" aria-label="Warm shell boundary">
-      <span>☼ warm shell · public data only · no secret arrives here ☼</span>
+      <span>☼ warm shell · public records only · no secret arrives here ☼</span>
     </div>
 
     <div class="app-layout">
@@ -222,7 +225,7 @@ __COLDBOX_WORDMARK__
           <header class="page-header">
             <p class="eyebrow">Workspace / Warm shell</p>
             <h1 id="page-title-dashboard">Your self-custody system</h1>
-            <p class="page-lede">These are your wallets, seeds, devices, backups, addresses and records. Coldbox helps you understand, protect, verify and recover them — the specialist tools are still here, one layer down under All flows index.</p>
+            <p class="page-lede">These are your wallets, seeds, devices, backups, addresses and records. Coldbox helps you understand, protect, operate, verify and recover them — the specialist tools are still here, one layer down.</p>
           </header>
           <div class="fact-grid home-object-grid" id="home-object-grid" aria-label="Your self-custody objects">
             <article class="fact-card" aria-labelledby="home-wallets-title">
@@ -250,6 +253,7 @@ __COLDBOX_WORDMARK__
             </article>
           </div>
 
+          <div class="home-support-grid">
           <section class="empty-panel home-do-next" aria-labelledby="home-do-next-title">
             <span class="panel-kicker">Object-first</span>
             <h2 id="home-do-next-title">Do next</h2>
@@ -284,6 +288,7 @@ __COLDBOX_WORDMARK__
             </div>
             <p class="fact-grid-note">Source assurance and transport privacy are separate facts. Coldbox never claims an in-page switch made your browser a Tor client.</p>
           </section>
+          </div>
         </section>
 
         <section class="page" id="page-wallets" data-page="wallets" aria-labelledby="page-title-wallets" hidden>

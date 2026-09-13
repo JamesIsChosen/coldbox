@@ -166,7 +166,7 @@ samp {
 
 .app-layout {
   display: grid;
-  grid-template-columns: 17rem minmax(0, 1fr);
+  grid-template-columns: 16rem minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -271,7 +271,7 @@ samp {
 /* The mock's tagline read "AIR-GAPPED VAULT v2.0" — wrong noun, and a version
    that does not exist. This says the two things the README insists on. */
 .brand-badge {
-  margin: 0;
+  margin: 0 0 0 0.35rem;
   padding: 0.2rem 0.6rem;
   border: var(--outline-width-thin) solid var(--drop);
   background: var(--fill-pink);
@@ -296,6 +296,7 @@ samp {
 .realm-switcher {
   display: inline-flex;
   align-items: stretch;
+  flex-shrink: 0;
   min-height: 2.75rem;
   margin-left: 1rem;
   overflow: hidden;
@@ -401,6 +402,42 @@ samp {
 
 .comic-btn-toggle {
   background: var(--fill-green);
+}
+
+.app-bar-network {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.25rem;
+  padding: 0.25rem 0.65rem;
+  border: var(--outline-width-thin) solid var(--drop);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  box-shadow: var(--shadow-hard);
+  color: var(--paper-ink);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.app-bar-network .status-dot {
+  background: var(--success);
+}
+
+.app-bar-lock {
+  background: var(--fill-red);
+  color: var(--paper);
+}
+
+.app-bar-panic {
+  background: var(--fill-yellow);
+}
+
+#app[data-status-expanded="false"][data-cold-state="ready"] .realm-status,
+#app[data-status-expanded="false"][data-cold-state="ready"] .airgap-banner,
+#app[data-status-expanded="false"][data-cold-state="ready"] .capability-panel {
+  display: none;
 }
 
 /* --------------------------------------------------------------------------
@@ -2185,6 +2222,14 @@ samp {
   .backup-health-columns {
     grid-template-columns: 1fr;
   }
+
+  .home-object-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-support-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 720px) {
@@ -2239,6 +2284,12 @@ samp {
   }
 
   .app-bar-actions .comic-btn:not(.comic-btn-toggle) {
+    display: none;
+  }
+
+  .app-bar-network,
+  .app-bar-lock,
+  .app-bar-panic {
     display: none;
   }
 
@@ -2473,6 +2524,57 @@ samp {
     color: var(--faint);
     cursor: not-allowed;
     opacity: 0.62;
+  }
+}
+
+@media (min-width: 721px) {
+  /* The approved desktop masthead reserves its final slot for lock and panic
+     controls. Theme switching remains reachable from the mobile More surface. */
+  .app-bar-actions .comic-btn-toggle {
+    display: none;
+  }
+
+  /* Breadcrumbs remain available on every specialist route but do not compete
+     with the approved hero layout on Home. */
+  #app[data-route="dashboard"] .content-bar {
+    display: none;
+  }
+
+  #app[data-route="dashboard"][data-status-expanded="false"][data-cold-state="ready"] .status-strip {
+    display: none;
+  }
+
+  #app[data-route="dashboard"] #page-dashboard {
+    padding-top: 0.5rem;
+  }
+
+  #app[data-route="dashboard"] .content {
+    padding-top: 0;
+    padding-right: 2rem;
+    padding-left: 2rem;
+  }
+
+  #app[data-route="dashboard"] .page-header {
+    max-width: 64rem;
+  }
+
+  #app[data-route="dashboard"] .page-lede {
+    max-width: none;
+    font-size: 0.95rem;
+  }
+
+  #app[data-route="dashboard"] .page h1 {
+    font-size: clamp(2.5rem, 5.4vw, 4.5rem);
+  }
+}
+
+@media (max-width: 720px) {
+  .home-object-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-support-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -3159,6 +3261,79 @@ samp {
 
 .home-object-grid {
   margin-top: 1.25rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* The approved workstation uses three paper object cards across the desktop
+   canvas. Their flat fills keep the object hierarchy readable at a glance,
+   while the live counts and unavailable states still come from the runtime. */
+.home-object-grid .fact-card:nth-child(1) {
+  background: var(--paper);
+  color: var(--paper-ink);
+}
+
+.home-object-grid .fact-card:nth-child(2) {
+  background: var(--paper-cool);
+  color: var(--paper-ink);
+}
+
+.home-object-grid .fact-card:nth-child(3) {
+  background: var(--paper-warm);
+  color: var(--paper-ink);
+}
+
+.home-object-grid .fact-card h2,
+.home-object-grid .fact-card p,
+.home-object-grid .fact-card .home-card-count {
+  color: var(--paper-ink);
+}
+
+.home-object-grid .fact-card p {
+  color: var(--paper-muted);
+}
+
+.home-object-grid .fact-card .home-card-count {
+  color: var(--paper-ink);
+}
+
+.home-support-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(18rem, 0.8fr);
+  gap: 1.25rem;
+}
+
+.home-support-grid .home-do-next,
+.home-support-grid .home-network-source {
+  min-width: 0;
+  display: block;
+}
+
+.home-object-grid .fact-card h2 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.home-object-grid .fact-card {
+  gap: 0.25rem;
+  padding: 0.6rem 0.75rem;
+}
+
+.home-object-grid .fact-card p {
+  font-size: 0.7rem;
+  line-height: 1.25;
+}
+
+.home-object-grid .fact-card .home-card-count {
+  font-size: 1.12rem;
+}
+
+.home-object-grid .fact-card .comic-btn {
+  min-height: 2rem;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.86rem;
 }
 
 .home-do-next,
