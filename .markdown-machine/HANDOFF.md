@@ -8,7 +8,7 @@
     "ref": "sha256:006952ab10830b8e5599df36b1f5a069ed4b15f0bb1c39ac33d2a2617c18d88f",
     "path": ".markdown-machine/authority/authority-transition-run-horizon-raise-repository-write.md"
   },
-  "basis_repository_commit": "2bd209bd52403dc122c540377ba73863086e86fe",
+  "basis_repository_commit": "b1d6603a5175cc7dc72276fe4fbcb07708999a99",
   "authority_epoch": 0,
   "sequence": 14,
   "origin_ref": {
@@ -57,7 +57,7 @@
 
 The local main tree carries the user-requested v0.10.2.1 test candidate and the
 post-bootstrap mock-review records at the local basis commit
-`16101abe966468c3aa05c4896db43c6d72abf63d`. Its sequence-8 transition is a
+`b1d6603a5175cc7dc72276fe4fbcb07708999a99`. Its sequence-8 transition is a
 user-directed experimental test migration and is not asserted as satisfying the
 candidate's normal normative acceptance requirements. The local tree is ahead
 of the configured remote; fresh remote verification is pending.
@@ -68,7 +68,9 @@ The post-bootstrap mock review is recorded in the current repository. The human
 approved the Entropy Lab aesthetic and approved the first realization slice and
 its acceptance checklist. The current admitted task is flows/UX design
 realization, bounded to that slice and to reviewable mock behavior. The shipped
-presentation now uses the approved self-custody workstation hierarchy and keeps
-Passphrase Studio and Recovery Assistant live as first-slice sealed flows.
+presentation now uses the approved self-custody workstation hierarchy,
+including the matched desktop masthead, public-records boundary strip, three-card
+Home grid, paired support panels, and live lock/panic controls. Passphrase Studio
+and Recovery Assistant remain live as first-slice sealed flows.
 Product implementation and Product Freeze remain outside this task. The
 candidate's protected original-Inbox-boundary evidence remains unproved.
