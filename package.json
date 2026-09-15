@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "node scripts/build.js",
+    "build:review": "node scripts/build-review-candidate.js",
     "lint": "node scripts/lint.js",
     "verify-vendor": "node scripts/verify-vendor.js",
     "check-docs": "node scripts/check-docs.js",
