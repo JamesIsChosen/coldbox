@@ -2323,9 +2323,9 @@ For a current non-tombstoned Task, the required set is the union of (a) the
 `REVIEW_REQUEST` records exactly bound by that Task's admitting
 `TASK_AUTHORIZE` transition and (b) later currently authorized requests whose
 immutable typed subject set contains both the exact current Task and its exact
-current `OPERATION_CONTRACT`. The canonical review kind is the exact effective
-review floor returned by `OPERATION_CONTRACT_POLICY_RESOLVER`:
-`SELF_CHECK` requires an empty dimension set, and
+current `OPERATION_CONTRACT`. The canonical review kind is the exact
+The effective review floor returned by `OPERATION_CONTRACT_POLICY_RESOLVER` is
+canonical: `SELF_CHECK` requires an empty dimension set, and
 `INDEPENDENT_REQUIRED` requires exactly `author_independence` and
 `subject_binding`. A request applies only when its project, Task, operation,
 subject bytes, authorization transition, review kind, and required dimension

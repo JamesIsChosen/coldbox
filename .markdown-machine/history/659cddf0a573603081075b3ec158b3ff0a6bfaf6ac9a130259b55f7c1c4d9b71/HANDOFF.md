@@ -5,19 +5,19 @@
   "authoritative": false,
   "project_id": "coldbox-d105f94a-f83e-4f85-9671-c64bcca74803",
   "basis_head_ref": {
-    "ref": "sha256:f205d02cdba7ec2e78d90ef32522381bd19c80b4f8c802fd45339209ce4b65f9",
-    "path": ".markdown-machine/authority/authority-transition-kernel-migrate-v0.10.2.4.md"
+    "ref": "sha256:006952ab10830b8e5599df36b1f5a069ed4b15f0bb1c39ac33d2a2617c18d88f",
+    "path": ".markdown-machine/authority/authority-transition-run-horizon-raise-repository-write.md"
   },
-  "basis_repository_commit": "0fc551ab06c4e27754f60fdc6da77ebba8833462",
+  "basis_repository_commit": "595696a7eb54f8b985b3e84222e1b9a19972e540",
   "authority_epoch": 0,
-  "sequence": 15,
+  "sequence": 17,
   "origin_ref": {
-    "ref": "sha256:ebf4f0791d5356e9b05a2550008c29dc6c1bdd4f92e97d098fdb5d6d12612f30",
+    "ref": "sha256:151fe4fd3baad4c0364aa925d38a2e4270005589f6c4971410759bee11540b81",
     "path": ".markdown-machine/ORIGIN.md"
   },
   "kernel_manifest_ref": {
-    "ref": "sha256:f2cce183afe68cd911da7c0ba11a44f2613c619deaf52003002e8bcac15d1ff8",
-    "path": ".markdown-machine/authority/kernel-manifest-v0.10.2.4.md"
+    "ref": "sha256:72f28f42c686438918801f2d82527ab9893fb8cec6a368226a3aec4fb7937873",
+    "path": ".markdown-machine/authority/kernel-manifest-v0.10.2.1.md"
   },
   "stop_state": "NONE",
   "run_horizon_ref": {
@@ -47,24 +47,22 @@
     "product_discovery_cycles": 2,
     "product_freeze_reviews": 1
   },
-  "repository_sync": "REPOSITORY_SYNCED",
+  "repository_sync": "LOCAL_AHEAD_REMOTE",
   "next_lawful": "CURRENT_TASK",
   "lifecycle_node_id": "flows_ux",
-  "generated_at_closeout": "2026-09-26T19:07:49Z"
+"generated_at_closeout": "2026-09-13T06:17:00Z"
 }
 ---
 # Markdown Machine handoff projection
 
-The canonical main tree carries the human-directed Markdown Machine v0.10.2.4
-tag migration from the exact sequence-14 predecessor. The prior v0.10.2.1
-current-law closure is preserved byte-identically under its content-set history
-identity. Earlier distribution selections are historical and v0.10.2.4 is the
-current kernel selection.
+The local main tree carries the user-requested v0.10.2.1 test candidate and the
+post-bootstrap mock-review records at the local basis commit
+`6e23677032a19bacbf0444a196175fba9cfc7ef3`. Its sequence-8 transition is a
+user-directed experimental test migration and is not asserted as satisfying the
+candidate's normal normative acceptance requirements. The local tree is ahead
+of the configured remote; fresh remote verification is pending.
 
-The unavailable protected original-Inbox-boundary evidence was not fabricated.
-The human explicitly directed completion of the v0.10.2.4/main migration with
-the earlier upgrade selections superseded; the preserved historical limitation
-must not be misreported as protected evidence.
+The human explicitly directed testing migration without protected original-Inbox-boundary evidence. That evidence and normative checkpoint acceptance remain unproved; do not infer them from the user instruction, local commit, or source hashes.
 
 The post-bootstrap mock review is recorded in the current repository. The human
 approved the Entropy Lab aesthetic and approved the first realization slice and

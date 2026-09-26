@@ -187,7 +187,7 @@
     "EVALUATE_NEW_RESERVATION": {
       "evaluation_order": ["validate identity/revision", "validate quantity domain", "validate policy dimensions", "reduce prior charge", "compare capacity"],
       "outputs": {"RESERVED": "candidate is a valid successor and every reserved value is within current remaining capacity; capacity_delta is the exact admitted charge", "REJECT": "otherwise"},
-      "quantity_revision_rule": "see revision_rules.quantity_revision_rule",
+      "quantity_revision_rule": "for a successor of the greatest valid revision, a RESERVED, COMMITTED, or UNCERTAIN state may not decrease any previously charged dimension; each increase is the checked component-wise delta and must fit current remaining capacity after excluding the prior amount of this same reservation. A decrease or zeroing is lawful only when the successor state is RELEASED and the exact reservation-bound non-use/non-consumption proof passes; RELEASED quantities must be zero for every policy dimension. No quantity mutation may reset or transfer capacity across projects, roots, or epochs",
       "empty_set": "REJECT",
       "missing_or_malformed": "REJECT",
       "conflict": "REJECT; no file or discovery order tie-break is lawful"

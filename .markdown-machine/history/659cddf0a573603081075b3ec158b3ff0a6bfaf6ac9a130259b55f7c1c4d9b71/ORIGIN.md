@@ -4,18 +4,18 @@
   "schema_version": 1,
   "project_id": "coldbox-d105f94a-f83e-4f85-9671-c64bcca74803",
   "machine_name": "Markdown Machine",
-  "machine_version": "v0.10.2.4",
+  "machine_version": "v0.10.2.1",
   "source_transport": "GIT_REPOSITORY",
   "source_identity": "https://github.com/JamesIsChosen/markdown-machine.git",
-  "content_set_digest": "e9a34022bb68a03d0f7a8140445742d1cf7acc9a86dc11c2ec46c7bbb33a899e",
+  "content_set_digest": "659cddf0a573603081075b3ec158b3ff0a6bfaf6ac9a130259b55f7c1c4d9b71",
   "compatibility_family": "MARKDOWN-MACHINE-V0-10",
   "enforcement_profile": "KERNEL_MIGRATE",
   "runtime_source": {
     "path": "project-runtime/RUNTIME.md",
     "sha256": "619d37ecc81fea967bb9bc5018c13e4cffe00038a32a32aa3ebddcab17fecc4b"
   },
-  "git_commit": "17361e5a139a242cff5b7daa611645889e7ac39e",
-  "git_tree": "6f1c41c1c275ce6c34f2813e52a2b3e4fee8b04f",
+  "git_commit": "64f63a83136ad6fab8b785ff6635e94c91b25c04",
+  "git_tree": "fb15bf32d71661e05bd5a240bae00e1335463bcf",
   "governing_sources": [
     {
       "path": "project-runtime/RECORD-GRAMMAR.md",
@@ -23,15 +23,15 @@
     },
     {
       "path": "project-runtime/GOVERNING-RECORD-CONTRACTS.md",
-      "sha256": "bb90ea47dea6b4d6674efffb3b0a48502e19d6f95389285a928561e6a70c7ca9"
+      "sha256": "82fe05a4bd8191090e472391a3fdc37f76c359bdb78556ec4c43f8b29defb9e2"
     },
     {
       "path": "project-runtime/RECOVERY-CONTRACTS.md",
-      "sha256": "565c84f593165914d34fdaaa8ce059da9bfc451fa9eaf669a1b1329eda7d2dcd"
+      "sha256": "858fadbefc2a61c6938567ebad7180ba09a9066d4f99544f65c1179f06404a41"
     },
     {
       "path": "project-runtime/AUTHORITY-EVALUATOR.md",
-      "sha256": "5c22f2655c7cdd3abfb4a790af33b6d7e0278640187c376ced8f84309465e3f8"
+      "sha256": "ea1fdd9f64e29df0cde26188028a836f8e254631fe146abe1b00507daab9354e"
     },
     {
       "path": "project-runtime/HUMAN-CONTROL.md",
@@ -53,6 +53,4 @@
 ---
 # Candidate distribution origin
 
-Exact Markdown Machine v0.10.2.4 tag source selected by the human for the
-Coldbox main-branch migration. This record remains inert until the bound
-KERNEL_MIGRATE transition is durably published and admitted.
+Inert v0.10.2.1 source selection. No admission or publication is asserted.

@@ -3,9 +3,9 @@
   "record_type": "COMPILED_MANIFEST",
   "schema_version": 1,
   "project_id": "coldbox-d105f94a-f83e-4f85-9671-c64bcca74803",
-  "compiled_manifest_id": "coldbox-markdown-machine-v0.10.2.4",
+  "compiled_manifest_id": "coldbox-markdown-machine-v0.10.2.1",
   "distribution_origin_ref": {
-    "ref": "sha256:ebf4f0791d5356e9b05a2550008c29dc6c1bdd4f92e97d098fdb5d6d12612f30",
+    "ref": "sha256:151fe4fd3baad4c0364aa925d38a2e4270005589f6c4971410759bee11540b81",
     "path": ".markdown-machine/ORIGIN.md"
   },
   "runtime_export": {
@@ -18,7 +18,7 @@
       "path": ".markdown-machine/contracts/AUTHORITY-EVALUATOR.md",
       "contract_id": "MM-AUTHORITY/1",
       "source_path": "project-runtime/AUTHORITY-EVALUATOR.md",
-      "source_digest": "5c22f2655c7cdd3abfb4a790af33b6d7e0278640187c376ced8f84309465e3f8"
+      "source_digest": "ea1fdd9f64e29df0cde26188028a836f8e254631fe146abe1b00507daab9354e"
     },
     {
       "path": ".markdown-machine/contracts/GENESIS-ADMISSION.md",
@@ -30,7 +30,7 @@
       "path": ".markdown-machine/contracts/GOVERNING-RECORD-CONTRACTS.md",
       "contract_id": "MM-GOVERNING-RECORDS/1",
       "source_path": "project-runtime/GOVERNING-RECORD-CONTRACTS.md",
-      "source_digest": "bb90ea47dea6b4d6674efffb3b0a48502e19d6f95389285a928561e6a70c7ca9"
+      "source_digest": "82fe05a4bd8191090e472391a3fdc37f76c359bdb78556ec4c43f8b29defb9e2"
     },
     {
       "path": ".markdown-machine/contracts/HUMAN-CONTROL.md",
@@ -48,7 +48,7 @@
       "path": ".markdown-machine/contracts/RECOVERY-CONTRACTS.md",
       "contract_id": "MM-RECOVERY/1",
       "source_path": "project-runtime/RECOVERY-CONTRACTS.md",
-      "source_digest": "565c84f593165914d34fdaaa8ce059da9bfc451fa9eaf669a1b1329eda7d2dcd"
+      "source_digest": "858fadbefc2a61c6938567ebad7180ba09a9066d4f99544f65c1179f06404a41"
     }
   ],
   "selected_capability_exports": [
@@ -60,6 +60,11 @@
     }
   ],
   "child_layout": [
+    {
+      "path": ".markdown-machine/authority/human-statement-entropy-flow-design-direction.md",
+      "role": "authority_record",
+      "required": true
+    },
     {
       "path": ".markdown-machine/COMPILED-MANIFEST.md",
       "role": "compiled_manifest",
@@ -111,47 +116,12 @@
       "required": true
     },
     {
-      "path": ".markdown-machine/authority/authority-transition-kernel-migrate-v0.10.2.4.md",
-      "role": "authority_record",
-      "required": true
-    },
-    {
       "path": ".markdown-machine/authority/authority-transition-kernel-migrate-v0.7.0.md",
       "role": "authority_record",
       "required": true
     },
     {
-      "path": ".markdown-machine/authority/authority-transition-lifecycle-publish-flows-ux.md",
-      "role": "authority_record",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/authority/authority-transition-lifecycle-publish-human-approval.md",
-      "role": "authority_record",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/authority/authority-transition-lifecycle-publish-product-challenge.md",
-      "role": "authority_record",
-      "required": true
-    },
-    {
       "path": ".markdown-machine/authority/authority-transition-lifecycle-publish.md",
-      "role": "authority_record",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/authority/authority-transition-run-horizon-raise-repository-write.md",
-      "role": "authority_record",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/authority/authority-transition-task-authorize-flows-ux.md",
-      "role": "authority_record",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/authority/authority-transition-task-authorize-product-challenge.md",
       "role": "authority_record",
       "required": true
     },
@@ -167,11 +137,6 @@
     },
     {
       "path": ".markdown-machine/authority/external-subject-coldbox-pre-mm.md",
-      "role": "authority_record",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/authority/human-statement-entropy-flow-design-direction.md",
       "role": "authority_record",
       "required": true
     },
@@ -206,22 +171,7 @@
       "required": true
     },
     {
-      "path": ".markdown-machine/authority/human-statement-mm-v0.10.2.4-migration.md",
-      "role": "authority_record",
-      "required": true
-    },
-    {
       "path": ".markdown-machine/authority/human-statement-mm-v0.7.0-migration.md",
-      "role": "authority_record",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/authority/human-statement-product-challenge-approval.md",
-      "role": "authority_record",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/authority/human-statement-repository-write-approval.md",
       "role": "authority_record",
       "required": true
     },
@@ -241,22 +191,12 @@
       "required": true
     },
     {
-      "path": ".markdown-machine/authority/kernel-manifest-v0.10.2.4.md",
-      "role": "authority_record",
-      "required": true
-    },
-    {
       "path": ".markdown-machine/authority/kernel-manifest-v0.6.1.md",
       "role": "authority_record",
       "required": true
     },
     {
       "path": ".markdown-machine/authority/kernel-manifest-v0.7.0.md",
-      "role": "authority_record",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/authority/operation-contract-design-realization.md",
       "role": "authority_record",
       "required": true
     },
@@ -1791,71 +1731,6 @@
       "required": true
     },
     {
-      "path": ".markdown-machine/history/659cddf0a573603081075b3ec158b3ff0a6bfaf6ac9a130259b55f7c1c4d9b71/COMPILED-MANIFEST.md",
-      "role": "historical_provenance",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/history/659cddf0a573603081075b3ec158b3ff0a6bfaf6ac9a130259b55f7c1c4d9b71/HANDOFF.md",
-      "role": "historical_provenance",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/history/659cddf0a573603081075b3ec158b3ff0a6bfaf6ac9a130259b55f7c1c4d9b71/HISTORY-MANIFEST.md",
-      "role": "historical_provenance",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/history/659cddf0a573603081075b3ec158b3ff0a6bfaf6ac9a130259b55f7c1c4d9b71/ORIGIN.md",
-      "role": "historical_provenance",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/history/659cddf0a573603081075b3ec158b3ff0a6bfaf6ac9a130259b55f7c1c4d9b71/RUNTIME.md",
-      "role": "historical_provenance",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/history/659cddf0a573603081075b3ec158b3ff0a6bfaf6ac9a130259b55f7c1c4d9b71/authority/kernel-manifest-v0.10.2.1.md",
-      "role": "historical_provenance",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/history/659cddf0a573603081075b3ec158b3ff0a6bfaf6ac9a130259b55f7c1c4d9b71/capabilities/software-product.md",
-      "role": "historical_provenance",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/history/659cddf0a573603081075b3ec158b3ff0a6bfaf6ac9a130259b55f7c1c4d9b71/contracts/AUTHORITY-EVALUATOR.md",
-      "role": "historical_provenance",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/history/659cddf0a573603081075b3ec158b3ff0a6bfaf6ac9a130259b55f7c1c4d9b71/contracts/GENESIS-ADMISSION.md",
-      "role": "historical_provenance",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/history/659cddf0a573603081075b3ec158b3ff0a6bfaf6ac9a130259b55f7c1c4d9b71/contracts/GOVERNING-RECORD-CONTRACTS.md",
-      "role": "historical_provenance",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/history/659cddf0a573603081075b3ec158b3ff0a6bfaf6ac9a130259b55f7c1c4d9b71/contracts/HUMAN-CONTROL.md",
-      "role": "historical_provenance",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/history/659cddf0a573603081075b3ec158b3ff0a6bfaf6ac9a130259b55f7c1c4d9b71/contracts/RECORD-GRAMMAR.md",
-      "role": "historical_provenance",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/history/659cddf0a573603081075b3ec158b3ff0a6bfaf6ac9a130259b55f7c1c4d9b71/contracts/RECOVERY-CONTRACTS.md",
-      "role": "historical_provenance",
-      "required": true
-    },
-    {
       "path": ".markdown-machine/history/8b71e8d18ae2d9a3820348fb195357f72cc7ef74e7323b315769a73cb9fa4766/COMPILED-MANIFEST.md",
       "role": "historical_provenance",
       "required": true
@@ -1986,28 +1861,8 @@
       "required": true
     },
     {
-      "path": ".markdown-machine/intent/run-horizon-bootstrap-to-product-freeze-r2.md",
-      "role": "intent_record",
-      "required": true
-    },
-    {
       "path": ".markdown-machine/intent/run-horizon-bootstrap-to-product-freeze.md",
       "role": "intent_record",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/lifecycle/lifecycle-graph-presentation-rebuild-flows-ux.md",
-      "role": "lifecycle_record",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/lifecycle/lifecycle-graph-presentation-rebuild-human-approval.md",
-      "role": "lifecycle_record",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/lifecycle/lifecycle-graph-presentation-rebuild-product-challenge.md",
-      "role": "lifecycle_record",
       "required": true
     },
     {
@@ -2016,17 +1871,7 @@
       "required": true
     },
     {
-      "path": ".markdown-machine/tasks/task-flows-ux-design-realization.md",
-      "role": "task_record",
-      "required": true
-    },
-    {
       "path": ".markdown-machine/tasks/task-mock-rereview-product-discovery.md",
-      "role": "task_record",
-      "required": true
-    },
-    {
-      "path": ".markdown-machine/tasks/task-product-challenge-presentation-rebuild.md",
       "role": "task_record",
       "required": true
     }
@@ -2039,7 +1884,7 @@
     "machine-source"
   ],
   "closure_status": "COMPLETE",
-  "revision": 4,
+  "revision": 3,
   "repository_binding_ref": {
     "ref": "sha256:1d14436330d927359f39ec7363a1720a426cdbef66680782cbd82636ef5d14fe",
     "path": ".markdown-machine/REPOSITORY.md"
@@ -2048,4 +1893,4 @@
 ---
 # COMPILED_MANIFEST
 
-Exact v0.10.2.4 exports and the complete current Coldbox child closure compiled for the human-directed main-branch migration. COMPLETE describes the finite byte/path closure and preserves the prior experimental checkpoint limitation without claiming unavailable protected evidence.
+Exact v0.10.2.1 exports and project closure prepared for the explicitly requested Coldbox testing migration. COMPLETE describes the finite file/export closure; it does not assert protected boundary evidence, canonical publication, or normative acceptance.

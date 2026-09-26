@@ -29,41 +29,6 @@
     "DISTRIBUTION_ORIGIN",
     "KERNEL_MANIFEST"
   ],
-  "human_subject_binding_rules": {
-    "EXACT_BOUND_CONTRACT_SET": {
-      "resolution_kind": "BOUNDED_RULE",
-      "input_vocabulary": [
-        "ADMITTED_LAW_PROJECTION",
-        "CANDIDATE_AUTHORITY_TRANSITION_PROJECTION",
-        "EXACT_CONTRACT_BINDINGS_PROJECTION",
-        "HUMAN_STATEMENT_PROJECTION",
-        "BOUNDED_RECORD_SCOPE_PROJECTION"
-      ],
-      "output_vocabulary": [
-        "PASS",
-        "REJECT"
-      ],
-      "output_fields": [
-        "subject_binding"
-      ],
-      "evaluation_order": [
-        "resolve admitted transition-family row and required human statement class",
-        "validate every exact_contract_bindings entry and complete binding cardinality",
-        "derive the nonempty allowed bound digest set E",
-        "resolve and validate every subject_ref in a qualifying human statement",
-        "reject repeated identities and compare complete digest sets"
-      ],
-      "algorithm": [
-        "For every candidate authority transition whose uniquely resolved admitted transition-family row declares EXACT_BOUND_CONTRACT_SET, evaluate this rule under that admitted law in addition to every other required admission check; resolve the row, required human statement class, and existing human subject filter through transition_admission_shape_source and human_subject_type_filter_source. This rule does not apply to another human_subject_mode, success alone never admits a transition, and missing, unrecognized, multiply resolved, or otherwise unestablished law, mode, class, or filter rejects with no all-bound or empty-filter fallback.",
-        "Within the finite candidate/current scope, resolve every exact_contract_bindings entry by full SHA-256 record identity. Validate its typed reference, same-project identity, resolved record type, and the selected family's complete binding cardinality before selecting human subjects. Missing, extra, duplicate, wrong-type, wrong-project, or unresolved bindings reject. A type excluded by the required human statement class is excluded only from human equality; it remains subject to binding validation and every required transition precondition.",
-        "Let E be the set of resolved binding digests whose resolved record types are allowed by the required class's existing filter. E must be nonempty. Derive E only from that required class and the transition's validated bindings; never from an attacker-supplied statement class or an unbound record elsewhere in the bounded tree.",
-        "Evaluate a cited qualifying statement of the required class under the existing human-control provenance, timing, meaning, and applicability rules. Resolve and validate all of its subject_refs. Disallowed, wrong-project, missing, unresolved, ambiguous, malformed typed references, malformed hint fields, or malformed canonical path syntax reject the statement. A path is advisory: a syntactically valid stale hint may resolve by exact digest within the bounded scope. Two byte-identical copies reachable at permitted paths are one content identity for this comparison, while enclosing record/contract uniqueness checks remain separate. Neither path text nor logical record ID establishes equality; a different revision or digest is a different subject.",
-        "Reject repeated subject or binding digest identities, including one digest written with different hint spellings. For valid lists, order is immaterial. Let S be the complete resolved subject digest set. Pass exactly when S = E. Do not drop disallowed or extra subjects, deduplicate invalid input, compare only IDs or types, accept subset or superset equality, or union partial statements into one confirmation. Each individual qualifying statement must cover E. Additional statements remain subject to existing conflict and authority rules; this rule creates no global one-statement cardinality.",
-        "Exact equality may use inert candidate records bound by this transition; those records need not already be current. Passing equality neither admits those records nor makes them current. All other admission, human-meaning, currentness, barrier, and precondition checks remain required."
-      ],
-      "failure_behavior": "Any missing, malformed, stale, disallowed, duplicate, extra, unresolved, ambiguous, wrong-project, wrong-type, incomplete, or conflicting input rejects subject_binding; inability to establish the rule prevents admission and never changes the derived bound set."
-    }
-  },
   "operator_registry": {
     "VALIDATE_GENESIS_BASE": {
       "input_vocabulary": [
@@ -280,7 +245,7 @@
       "empty_or_invalid": "NO_PROVABLE_LINEAGE or AUTHORITY_CURRENTNESS_UNKNOWN as applicable; never infer a head from file order"
     },
     "REPLAY_FORK_RESOLUTION": {
-      "inputs": "complete visible competing-head set and its exact per-head predecessor epochs, common base, selected winner, transition including competing_head_refs, and qualifying publication evidence bound to the assessment, exact competing-head set, selected winner, and canonical persistence ref; post-admission readback, when used for current-head replay, identifies the exact resolution record at that same ref",
+      "inputs": "complete visible competing-head set, common base, selected winner, transition, and qualifying publication evidence",
       "outputs": {"ADMIT": "all exact fork fields and evidence pass", "SINGLETON": "replayed post-resolution head is one", "AUTHORITY_FORK_UNRESOLVED": "competing set remains", "REJECT": "missing, malformed, conflicting, or non-member winner"}
     },
     "TASK_BINDING_MUTATION_ALLOWED": {
@@ -314,22 +279,8 @@
       "outputs": {"ADMIT": "all preserved current state remains equivalent under the candidate", "NO_MIGRATION_REQUIRED": "origin and manifest are identical with no drift", "REJECT": "otherwise"}
     },
     "SOURCE_FREE_CLOSURE": {
-      "evaluation_order": [
-        "export availability",
-        "authority recovery",
-        "current Task/Attempt",
-        "capability floor",
-        "recovery reducer"
-      ],
-      "outputs": {
-        "PASS": "fresh worker derives the same route without source/compiler/corpus",
-        "REJECT": "any exported dependency is missing or a required result differs",
-        "cold_resume": "PASS when export closure is complete, both exact route/reduced-state snapshots are derivable, and the independently derived warm and source-free cold snapshots are equal; otherwise REJECT for established failure. This is the closure verdict, not the route itself.",
-        "closure_status": "The paired warm and source-free cold derived route/reduced-state snapshots fixed by the evaluator, retained as actual-result diagnostics. They are outputs, never premises."
-      },
-      "inputs": "export availability plus exact authority, current Task/Attempt, selected capability, capability-floor and recovery inputs. In conformance projection evaluation, scoped lower-operator results may stand for their complete source histories. They must be bound to the same head, Task, OperationContract, Attempt, capability, project and current convergence root/epoch as applicable. An input result from CAPABILITY_FLOOR_ALGORITHM is not a SOURCE_FREE_CLOSURE result. Missing, conflicting or mismatched required scope facts do not default to success or empty state. Real-child execution still evaluates every existing gate from current governed state and qualifying evidence.",
-      "projection_scope_rule": "CURRENT_TASK_MAP_PROJECTION.authority_head_ref equals AUTHORITY_RECOVERY_PROJECTION.current_head. Its included Task projection_identity is the exact task_ref used by ATTEMPT_ELIGIBILITY_PROJECTION.task_contract_ref and floor/recovery facts; task_id remains the logical Task id in the tasks list and candidate. The exact OperationContract and capability refs in the Task equal the floor-fact operation_ref and capability_ref, whose capability row identifies the selected export. floor_facts.attempt_ref identifies the supplied Attempt. Recovery scope_facts match this head, project, Task, operation and Task convergence root and select the current continuity epoch. All stop, review, repository, intent and capacity facts match their applicable scope keys. The effect_claim_refs inventory is explicit and complete. Symbols needed only for equality may be external; any field read requires its declared projected row.",
-      "comparison_rule": "Derive a route and reduced-state snapshot from the complete permitted premises while the selected source is available. After exact assembly and source exclusion, a fresh worker independently derives the same snapshot from only exported bytes and those same premises. Do not provide the warm derived snapshot or either SOURCE_FREE_CLOSURE output as a cold premise. Compare snapshots only after the cold result is fixed. Equality establishes closure, not permission to execute a blocked route. Actual missing exports, incomplete required inputs or differing results never count as PASS; semantic disagreement remains NOT_ESTABLISHED under MM-CONFORMANCE/1."
+      "evaluation_order": ["export availability", "authority recovery", "current Task/Attempt", "capability floor", "recovery reducer"],
+      "outputs": {"PASS": "fresh worker derives the same route without source/compiler/corpus", "REJECT": "any exported dependency is missing or a required result differs", "cold_resume": "the exact derived route and reduced state"}
     }
   },
   "precondition_output_bindings": {
@@ -392,15 +343,9 @@ For every non-fork transition use this freshness sequence:
 `AUTHORITY_FORK_RESOLVE` uses the exact fork predecessor rule in the governing
 transition table instead of the singleton step above.
 
-For an admitted transition-family row declaring `EXACT_BOUND_CONTRACT_SET`,
-dispatch to the normative front-matter
-`human_subject_binding_rules.EXACT_BOUND_CONTRACT_SET` rule. It resolves every
-binding before applying the existing statement-class filter and compares the
-complete digest sets with fail-closed duplicate, scope, provenance, and
-applicability handling. The other human subject modes remain specialized and
-unchanged. `EXECUTION_APPROVAL` is not an authority-transition family; its
-consequences are evaluated by the operation floor algorithm and
-`MM-HUMAN-CONTROL/2`.
+Human subject binding is closed by the governing filter. `EXECUTION_APPROVAL`
+is not an authority-transition family; its consequences are evaluated by the
+operation floor algorithm and `MM-HUMAN-CONTROL/2`.
 
 `REVIEW_REQUEST_MATCHES_CURRENT_SUBJECT` is the bounded governing precondition,
 not an additional operator. Exact path/digest subjects must match their frozen
@@ -497,27 +442,25 @@ RepositoryBinding, lifecycle/horizon, and source-free recovery, then admit one
 coherent ordinary single-parent cutover. Identical current Origin/Manifest with
 no drift returns `NO_MIGRATION_REQUIRED`.
 
-Changed or removed historical validation contracts required to interpret
-retained state remain byte-identical under the existing history closure. The
-historical v0.7 families (`RESULT_ACCEPT` record, `REPOSITORY_SYNC_INTENT`,
-`OBJECTIVE_RELATION`), old HANDOFF shape, and
+Changed or removed old validation contracts required to interpret historical
+state remain byte-identical under the existing history closure. Removed v0.7
+current-schema families (`RESULT_ACCEPT` record, `REPOSITORY_SYNC_INTENT`,
+`OBJECTIVE_RELATION`), the old HANDOFF shape, and the v0.7
 `INDEPENDENCE_ASSESSMENT` shape remain interpretable under preserved v0.7 law;
-they are not current-schema records for a successor candidate. Historical v0.9
-HANDOFF bytes remain preserved under the old law; the current HANDOFF projection
-is regenerated from current reducers under the admitted current law. Historical
-review PASS evidence remains applicable only if its exact old-law subject and
-independence facts remain provable; it is never laundered through the successor
-schema.
+they do not silently validate as current v0.9 records. The v0.9 HANDOFF is
+regenerated from current reducers. Existing review PASS evidence remains
+applicable only if its exact old-law subject and independence facts remain
+provable; it is never laundered through the new independence schema.
 
-The kernel migration then performs current successor checks: it revalidates
-runtime provenance, convergence quantity domains and reservation histories,
-intent supersession mappings, Task-review selection, effect targets, and route
-dependencies under the candidate schema. These checks cannot reset capacity,
-clear an unresolved effect, rewrite a historical intent relation, or replace
-an old child capability's resource policy. The software capability's
-`IMPLEMENTATION` serial path is a `CAPABILITY_MIGRATE` policy change: existing
-children retain their bound `PROJECT_SPECIFIC` requirement until that
-capability migration is lawfully admitted.
+The v0.9 kernel migration also revalidates runtime provenance, convergence
+quantity domains and reservation histories, intent supersession mappings,
+Task-review selection, effect targets, and route dependencies under the
+candidate schema. It cannot reset capacity, clear an unresolved effect,
+rewrite a historical intent relation, or replace an old child capability's
+resource policy. The software capability's `IMPLEMENTATION` serial path is a
+`CAPABILITY_MIGRATE` policy change: existing children retain their bound
+`PROJECT_SPECIFIC` requirement until that capability migration is lawfully
+admitted.
 
 Adoption is eligible only when the subject has no provable positive lineage or
 the old law rejects solely on the already-defined candidate-shape escape hatch.
@@ -528,10 +471,7 @@ If the old law can admit the candidate, adoption rejects.
 The successor evaluator never decides whether its predecessor was admitted.
 When a migration attempt is missing, damaged, or unparsable in the present
 materialization, classify it only by replay under the exact predecessor law
-and complete retained persistence evidence. Resolve that law from the exact
-admitted predecessor history and its preserved law bytes; never substitute the
-newest Authority document or the successor candidate's semantics for a
-historical question.
+and complete retained persistence evidence.
 
 For this purpose, the evaluator uses the exact closed disposable projection
 defined here. Each retained snapshot is the object
@@ -623,22 +563,15 @@ sequence/file order are not evidence of completeness.
 Historical invalidity is proved only by a complete negative durable-publication
 boundary for the exact attempted transition, or by a retained complete
 snapshot in which old-law replay returns `REJECT` and traversal of every
-complete canonical path from that rejected snapshot through every later
-derived head replays every later item under the exact old law and finds no
-snapshot in which that transition returns `ADMIT`. The damaged observation
-must itself be an exact item in the complete retained inventory; worktree-only
-damage supplies no historical continuity proof. Construct child edges from the
-exact ordered parent lists, and fully replay every competing path, including
-paths that do not reach the damaged observation. A missing or unreplayed path,
-an unclosed parent edge, or an unresolved later head yields unknown; complete
-inventory enumeration alone is not replay evidence. A replay-complete snapshot
-contains the predecessor Genesis/chain and old validation closure, candidate
-dependency closure, exact approval, transition, and matching
-repository/currentness inputs, with every exact byte/reference resolved under
-that snapshot's law. Absence from a worktree, branch, remote observation, or
-incomplete current enumeration; a harness or worker claim; a filename or
-sequence number; and present-day parse failure are not such proof. Partial or
-missing inputs remain unproven.
+complete canonical path to the damaged observation shows no later snapshot in
+which that transition returns `ADMIT`. A replay-complete snapshot contains the
+predecessor Genesis/chain and old validation closure, candidate dependency
+closure, exact approval, transition, and matching repository/currentness
+inputs, with every exact byte/reference resolved under that snapshot's law.
+Absence from a worktree, branch, remote observation, or incomplete current
+enumeration; a harness or worker claim; a filename or sequence number; and
+present-day parse failure are not such proof. Partial or missing inputs remain
+unproven.
 
 Prior admission is proved only by a retained complete snapshot containing the
 old-law Genesis/chain, candidate dependencies, exact migration approval,
